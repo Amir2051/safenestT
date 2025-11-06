@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { toast } from "sonner"; // Added toast import
 
 import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
@@ -70,8 +71,61 @@ export default function Dashboard() {
       });
       
       setUser(prev => ({ ...prev, risk_score: score, last_scan_date: new Date().toISOString() }));
+
+      // Check for automated protections
+      const autoThreshold = user?.auto_protection_threshold || 70;
+      
+      // Auto-enable VPN if score drops below threshold
+      if (score < autoThreshold && user?.auto_vpn_enable && !user?.vpn_enabled) {
+        await base44.auth.updateMe({ vpn_enabled: true });
+        await base44.entities.AutomatedRemediation.create({
+          action_type: 'vpn_enable',
+          trigger_reason: `Security score dropped to ${score}, below threshold of ${autoThreshold}`,
+          status: 'completed',
+          details: { before: 'disabled', after: 'enabled', score_impact: 5 },
+          user_notified: true,
+          auto_approved: true
+        });
+        toast.success('VPN automatically enabled for protection 🛡️');
+      }
+
+      // Auto-enable 2FA if score drops critically
+      if (score < 60 && user?.auto_2fa_enable && !user?.two_factor_enabled) {
+        await base44.auth.updateMe({ two_factor_enabled: true });
+        await base44.entities.AutomatedRemediation.create({
+          action_type: '2fa_enable',
+          trigger_reason: `Critical: Security score at ${score}`,
+          status: 'completed',
+          details: { before: 'disabled', after: 'enabled', score_impact: 10 },
+          user_notified: true,
+          auto_approved: true
+        });
+        toast.success('Two-factor authentication automatically enabled 🔒');
+      }
+
+      // Check for critical alerts and enable auto-remediation
+      const criticalAlertsCount = alerts.filter(a => a.severity === 'critical').length;
+      if (criticalAlertsCount > 0 && user?.auto_alert_remediation) {
+        for (const alert of alerts.filter(a => a.severity === 'critical' && a.status === 'active')) {
+          if ((alert.alert_type === 'wifi' || alert.alert_type === 'vpn') && !user?.vpn_enabled) { // Added !user?.vpn_enabled check for idempotence
+            await base44.auth.updateMe({ vpn_enabled: true });
+            await base44.entities.AutomatedRemediation.create({
+              action_type: 'vpn_enable',
+              trigger_reason: `Critical ${alert.alert_type} alert: ${alert.title}`,
+              status: 'completed',
+              affected_entity: alert.id,
+              details: { before: 'disabled', after: 'enabled', score_impact: 5 },
+              user_notified: true,
+              auto_approved: true
+            });
+            toast.success('VPN enabled to address critical alert');
+          }
+        }
+      }
+
     } catch (error) {
       console.error('Scan error:', error);
+      toast.error('Failed to run security scan.'); // Added error toast
     }
     setScanning(false);
   };

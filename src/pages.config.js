@@ -5,6 +5,7 @@ import MiaAssistant from './pages/MiaAssistant';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import DeviceCare from './pages/DeviceCare';
+import AutoProtection from './pages/AutoProtection';
 import Layout from './Layout.jsx';
 
 
@@ -16,6 +17,7 @@ export const PAGES = {
     "Reports": Reports,
     "Settings": Settings,
     "DeviceCare": DeviceCare,
+    "AutoProtection": AutoProtection,
 }
 
 export const pagesConfig = {

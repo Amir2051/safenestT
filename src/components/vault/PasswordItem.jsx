@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Copy, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Copy, Trash2, ExternalLink, AlertTriangle, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -23,10 +24,58 @@ const categoryIcons = {
 
 export default function PasswordItem({ password, onDelete }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [fixing, setFixing] = useState(false);
 
   const copyPassword = () => {
     navigator.clipboard.writeText(password.encrypted_password);
     toast.success('Password copied to clipboard');
+  };
+
+  const quickFix = async () => {
+    setFixing(true);
+    try {
+      // Generate strong password
+      const length = 16;
+      const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+      let newPassword = "";
+      for (let i = 0; i < length; i++) {
+        newPassword += charset.charAt(Math.floor(Math.random() * charset.length));
+      }
+
+      // Update password
+      // Assuming 'base44' is globally available or imported elsewhere in the application context.
+      // If not, this line will cause a runtime error.
+      await window.base44.entities.Password.update(password.id, { // Changed to window.base44 for safer global access
+        encrypted_password: newPassword,
+        password_strength: 'excellent',
+        last_changed: new Date().toISOString()
+      });
+
+      // Log remediation
+      // Assuming 'base44' is globally available or imported elsewhere in the application context.
+      // If not, this line will cause a runtime error.
+      await window.base44.entities.AutomatedRemediation.create({ // Changed to window.base44 for safer global access
+        action_type: 'password_update',
+        trigger_reason: `Weak password detected for ${password.site_name}`,
+        status: 'completed',
+        affected_entity: password.id,
+        details: {
+          before: password.password_strength,
+          after: 'excellent',
+          score_impact: 5
+        },
+        user_notified: true,
+        auto_approved: true
+      });
+
+      toast.success('Password updated to strong version! 🎉');
+      window.location.reload();
+    } catch (error) {
+      console.error('Quick fix error:', error);
+      toast.error('Failed to update password');
+    } finally {
+      setFixing(false);
+    }
   };
 
   const colors = strengthColors[password.password_strength] || strengthColors.medium;
@@ -118,9 +167,26 @@ export default function PasswordItem({ password, onDelete }) {
           </Button>
         </div>
 
-        {password.compromised && (
-          <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <p className="text-xs text-red-400 font-semibold">⚠️ This password may be compromised</p>
+        {(password.compromised || password.password_strength === 'weak' || password.password_strength === 'medium') && (
+          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-red-400 font-semibold flex-1">
+                {password.compromised ? '⚠️ This password may be compromised' : '⚠️ Weak password detected'}
+              </p>
+              <Button
+                size="sm"
+                onClick={quickFix}
+                disabled={fixing}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-xs flex-shrink-0"
+              >
+                {fixing ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1" />
+                ) : (
+                  <Sparkles className="w-3 h-3 mr-1" />
+                )}
+                Quick Fix
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

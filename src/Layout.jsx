@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -29,6 +29,11 @@ const navigationItems = [
     title: "Device Care",
     url: createPageUrl("DeviceCare"),
     icon: Smartphone,
+  },
+  {
+    title: "Auto Protection",
+    url: createPageUrl("AutoProtection"),
+    icon: Zap,
   },
   {
     title: "Password Vault",
