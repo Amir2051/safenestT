@@ -6,6 +6,8 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import DeviceCare from './pages/DeviceCare';
 import AutoProtection from './pages/AutoProtection';
+import Upgrade from './pages/Upgrade';
+import PaymentSuccess from './pages/PaymentSuccess';
 import Layout from './Layout.jsx';
 
 
@@ -18,6 +20,8 @@ export const PAGES = {
     "Settings": Settings,
     "DeviceCare": DeviceCare,
     "AutoProtection": AutoProtection,
+    "Upgrade": Upgrade,
+    "PaymentSuccess": PaymentSuccess,
 }
 
 export const pagesConfig = {

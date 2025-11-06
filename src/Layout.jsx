@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -74,6 +74,9 @@ export default function Layout({ children, currentPageName }) {
     base44.auth.logout();
   };
 
+  const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
+  const isActive = user?.payment_status === 'active';
+
   return (
     <SidebarProvider>
       <style>{`
@@ -144,6 +147,25 @@ export default function Layout({ children, currentPageName }) {
               </SidebarGroupContent>
             </SidebarGroup>
 
+            {/* Upgrade CTA */}
+            {(!isPremium || !isActive) && (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <Link to={createPageUrl("Upgrade")}>
+                    <div className="mx-2 p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30 hover:border-purple-500/50 transition-all cursor-pointer">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-4 h-4 text-purple-400" />
+                        <span className="text-sm font-semibold text-purple-400">Upgrade to Premium</span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        Unlock advanced protection features
+                      </p>
+                    </div>
+                  </Link>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
             {user?.risk_score !== undefined && (
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
@@ -170,9 +192,18 @@ export default function Layout({ children, currentPageName }) {
                         style={{ width: `${user.risk_score}%` }}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {user.subscription_plan === 'premium' ? '✨ Premium' : '🆓 Free Plan'}
-                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-gray-500">
+                        {isPremium && isActive ? (
+                          user.subscription_plan === 'elite' ? '✨ Elite' : '💎 Basic'
+                        ) : '🆓 Free'}
+                      </p>
+                      {isPremium && isActive && user.renewal_date && (
+                        <p className="text-xs text-gray-500">
+                          Renews {new Date(user.renewal_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </SidebarGroupContent>
               </SidebarGroup>
