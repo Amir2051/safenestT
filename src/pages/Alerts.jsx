@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +11,7 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import AlertDetail from "../components/alerts/AlertDetail";
+import AlertDetail from "../components/alerts/AlertDetail.jsx";
 
 const alertIcons = {
   breach: Shield,
