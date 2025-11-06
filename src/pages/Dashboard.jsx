@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -10,10 +11,10 @@ import {
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
-import SecurityScoreCard from "../components/dashboard/SecurityScoreCard";
-import QuickActionsGrid from "../components/dashboard/QuickActionsGrid";
-import RecentAlertsCard from "../components/dashboard/RecentAlertsCard";
-import MiaQuickChat from "../components/dashboard/MiaQuickChat";
+import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
+import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
+import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
+import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
