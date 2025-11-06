@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Lock, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-import PasswordItem from "../components/vault/PasswordItem";
-import AddPasswordDialog from "../components/vault/AddPasswordDialog";
+import PasswordItem from "../components/vault/PasswordItem.jsx";
+import AddPasswordDialog from "../components/vault/AddPasswordDialog.jsx";
 
 export default function PasswordVault() {
   const [searchTerm, setSearchTerm] = useState("");
