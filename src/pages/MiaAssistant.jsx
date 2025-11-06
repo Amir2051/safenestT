@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import { toast } from "sonner";
 
 export default function MiaAssistant() {
   const [user, setUser] = useState(null);
@@ -14,6 +15,7 @@ export default function MiaAssistant() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   const queryClient = useQueryClient();
 
@@ -60,59 +62,69 @@ export default function MiaAssistant() {
   });
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
+    const userMessageText = input.trim();
     const userMessage = {
       role: "user",
-      content: input.trim(),
+      content: userMessageText,
       timestamp: new Date().toISOString()
     };
 
+    // Add user message immediately
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Get user context
-      const { data: alerts = [] } = await queryClient.fetchQuery({
+      // Fetch context data
+      const alertsData = await queryClient.fetchQuery({
         queryKey: ['alerts'],
-        queryFn: () => base44.entities.Alert.filter({ status: 'active' }, '-created_date', 5),
+        queryFn: () => base44.entities.Alert.filter({ status: 'active' }, '-created_date', 10),
       });
 
-      const { data: passwords = [] } = await queryClient.fetchQuery({
+      const passwordsData = await queryClient.fetchQuery({
         queryKey: ['passwords'],
-        queryFn: () => base44.entities.Password.list('-created_date'),
+        queryFn: () => base44.entities.Password.list('-created_date', 50),
       });
 
-      const contextPrompt = `You are Mia, a friendly AI security assistant for SafeNest, a cybersecurity platform. 
+      const alerts = alertsData || [];
+      const passwords = passwordsData || [];
 
-Current user context:
-- Security Score: ${user?.risk_score || 85}/100
-- Active Alerts: ${alerts.length}
-- Critical Alerts: ${alerts.filter(a => a.severity === 'critical').length}
-- Saved Passwords: ${passwords.length}
-- VPN Status: ${user?.vpn_enabled ? 'Enabled' : 'Disabled'}
-- 2FA Status: ${user?.two_factor_enabled ? 'Enabled' : 'Disabled'}
+      // Build context-rich prompt
+      const contextPrompt = `You are Mia, SafeNest's friendly and knowledgeable AI security assistant.
 
-User question: ${input.trim()}
+Current User Security Profile:
+• Security Score: ${user?.risk_score || 85}/100
+• Total Active Alerts: ${alerts.length}
+• Critical Alerts: ${alerts.filter(a => a.severity === 'critical').length}
+• High Priority Alerts: ${alerts.filter(a => a.severity === 'high').length}
+• Saved Passwords: ${passwords.length}
+• Weak Passwords: ${passwords.filter(p => p.password_strength === 'weak' || p.password_strength === 'medium').length}
+• VPN Status: ${user?.vpn_enabled ? '✅ Enabled' : '❌ Disabled'}
+• 2FA Status: ${user?.two_factor_enabled ? '✅ Enabled' : '❌ Disabled'}
+• Subscription: ${user?.subscription_plan === 'elite' ? '✨ Elite' : user?.subscription_plan === 'basic' ? '💎 Basic' : '🆓 Free'}
 
-Please provide helpful, friendly security advice. Be conversational and supportive. If they ask about their security, reference the data above.`;
+User's Question: "${userMessageText}"
 
-      const response = await base44.integrations.Core.InvokeLLM({
+Please respond in a friendly, encouraging, and helpful manner. Be conversational and supportive. Reference the user's specific security data when relevant. Use emojis sparingly (🛡️, ✅, 💡, 🚀). Always end with actionable advice or next steps.`;
+
+      // Get AI response
+      const aiResponse = await base44.integrations.Core.InvokeLLM({
         prompt: contextPrompt,
       });
 
       const assistantMessage = {
         role: "assistant",
-        content: response,
+        content: aiResponse || "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
         timestamp: new Date().toISOString()
       };
 
       const updatedMessages = [...newMessages, assistantMessage];
       setMessages(updatedMessages);
 
-      // Update or create conversation
+      // Save to database
       if (conversation) {
         await updateConversationMutation.mutateAsync({
           id: conversation.id,
@@ -131,21 +143,32 @@ Please provide helpful, friendly security advice. Be conversational and supporti
           }
         });
       }
+
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage = {
         role: "assistant",
-        content: "I apologize, but I encountered an error. Please try again.",
+        content: "I apologize, but I encountered an error processing your request. Please try rephrasing your question or contact support if the issue persists.",
         timestamp: new Date().toISOString()
       };
       setMessages([...newMessages, errorMessage]);
+      toast.error('Failed to get response from Mia');
     }
 
     setIsLoading(false);
+    inputRef.current?.focus();
   };
 
   const startNewChat = () => {
     createConversationMutation.mutate();
+    toast.success('Started new conversation');
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   if (!user) {
@@ -170,7 +193,7 @@ Please provide helpful, friendly security advice. Be conversational and supporti
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Mia AI Assistant</h1>
-              <p className="text-sm text-gray-400">Your personal security advisor</p>
+              <p className="text-sm text-gray-400">Your personal security advisor • Online</p>
             </div>
           </div>
           <Button
@@ -232,14 +255,17 @@ Please provide helpful, friendly security advice. Be conversational and supporti
                         : 'bg-[#1a2332] border border-cyan-500/20 text-gray-100'
                     }`}>
                       {msg.role === 'user' ? (
-                        <p className="text-sm leading-relaxed">{msg.content}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       ) : (
                         <ReactMarkdown 
                           className="text-sm prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                           components={{
                             p: ({ children }) => <p className="my-1 leading-relaxed">{children}</p>,
                             ul: ({ children }) => <ul className="my-2 ml-4 list-disc">{children}</ul>,
+                            ol: ({ children }) => <ol className="my-2 ml-4 list-decimal">{children}</ol>,
                             li: ({ children }) => <li className="my-0.5">{children}</li>,
+                            strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                            code: ({ children }) => <code className="px-1 py-0.5 rounded bg-gray-700 text-cyan-400 text-xs">{children}</code>,
                           }}
                         >
                           {msg.content}
@@ -284,17 +310,18 @@ Please provide helpful, friendly security advice. Be conversational and supporti
         <div className="max-w-4xl mx-auto">
           <div className="flex gap-3">
             <Input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
+              onKeyPress={handleKeyPress}
               placeholder="Ask Mia anything about your security..."
-              className="flex-1 bg-[#1a2332] border-cyan-500/20 text-white"
+              className="flex-1 bg-[#1a2332] border-cyan-500/20 text-white placeholder:text-gray-500"
               disabled={isLoading}
             />
             <Button
               onClick={sendMessage}
               disabled={isLoading || !input.trim()}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -303,6 +330,9 @@ Please provide helpful, friendly security advice. Be conversational and supporti
               )}
             </Button>
           </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Mia is powered by AI and has access to your security data to provide personalized advice
+          </p>
         </div>
       </div>
     </div>

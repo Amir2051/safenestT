@@ -16,6 +16,7 @@ import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
+import VPNControl from "../components/dashboard/VPNControl.jsx"; // New import
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -219,8 +220,9 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Right Column - Alerts & Mia */}
+        {/* Right Column - VPN, Alerts & Mia */}
         <div className="space-y-6">
+          <VPNControl user={user} />
           <RecentAlertsCard alerts={alerts} isLoading={alertsLoading} />
           <MiaQuickChat user={user} />
         </div>
