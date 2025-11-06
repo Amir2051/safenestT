@@ -3,6 +3,7 @@ import PasswordVault from './pages/PasswordVault';
 import Alerts from './pages/Alerts';
 import MiaAssistant from './pages/MiaAssistant';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import Layout from './Layout.jsx';
 
 
@@ -12,6 +13,7 @@ export const PAGES = {
     "Alerts": Alerts,
     "MiaAssistant": MiaAssistant,
     "Reports": Reports,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
