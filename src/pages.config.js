@@ -4,6 +4,7 @@ import Alerts from './pages/Alerts';
 import MiaAssistant from './pages/MiaAssistant';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import DeviceCare from './pages/DeviceCare';
 import Layout from './Layout.jsx';
 
 
@@ -14,6 +15,7 @@ export const PAGES = {
     "MiaAssistant": MiaAssistant,
     "Reports": Reports,
     "Settings": Settings,
+    "DeviceCare": DeviceCare,
 }
 
 export const pagesConfig = {
