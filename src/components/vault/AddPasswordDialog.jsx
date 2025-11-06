@@ -1,163 +1,169 @@
 import React, { useState } from 'react';
-import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Lock, Sparkles } from 'lucide-react';
+import { base44 } from "@/api/base44Client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Sparkles } from 'lucide-react';
+import { toast } from "sonner";
 
 export default function AddPasswordDialog({ open, onClose }) {
-  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     site_name: '',
     site_url: '',
     username: '',
     encrypted_password: '',
-    password_strength: 'medium',
     category: 'other',
-    notes: '',
-    last_changed: new Date().toISOString(),
+    notes: ''
   });
+  const [generating, setGenerating] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const createPasswordMutation = useMutation({
     mutationFn: (data) => base44.entities.Password.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passwords'] });
+      toast.success('Password added successfully!');
       onClose();
       setFormData({
         site_name: '',
         site_url: '',
         username: '',
         encrypted_password: '',
-        password_strength: 'medium',
         category: 'other',
-        notes: '',
-        last_changed: new Date().toISOString(),
+        notes: ''
       });
     },
+    onError: () => {
+      toast.error('Failed to add password');
+    }
   });
 
-  const analyzePasswordStrength = (pwd) => {
-    if (!pwd) return 'weak';
-    const length = pwd.length;
-    const hasUpper = /[A-Z]/.test(pwd);
-    const hasLower = /[a-z]/.test(pwd);
-    const hasNumber = /[0-9]/.test(pwd);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
-    
-    const conditions = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
-    
-    if (length >= 16 && conditions >= 4) return 'excellent';
-    if (length >= 12 && conditions >= 3) return 'strong';
-    if (length >= 8 && conditions >= 2) return 'medium';
-    return 'weak';
-  };
-
-  const generatePassword = () => {
+  const generateStrongPassword = () => {
+    setGenerating(true);
     const length = 16;
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
     let password = "";
     for (let i = 0; i < length; i++) {
       password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
-    setFormData(prev => ({
-      ...prev,
-      encrypted_password: password,
-      password_strength: analyzePasswordStrength(password)
-    }));
+    setFormData(prev => ({ ...prev, encrypted_password: password }));
+    setTimeout(() => setGenerating(false), 500);
+    toast.success('Strong password generated!');
   };
 
-  const handlePasswordChange = (pwd) => {
-    setFormData(prev => ({
-      ...prev,
-      encrypted_password: pwd,
-      password_strength: analyzePasswordStrength(pwd)
-    }));
+  const calculateStrength = (password) => {
+    if (!password) return 'weak';
+    if (password.length < 8) return 'weak';
+    if (password.length < 12) return 'medium';
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()]/.test(password);
+    const strength = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+    if (strength >= 3 && password.length >= 12) return 'excellent';
+    if (strength >= 2) return 'strong';
+    return 'medium';
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createPasswordMutation.mutate(formData);
+    const passwordStrength = calculateStrength(formData.encrypted_password);
+    createPasswordMutation.mutate({
+      ...formData,
+      password_strength: passwordStrength,
+      last_changed: new Date().toISOString()
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Lock className="w-5 h-5 text-cyan-400" />
-            Add New Password
-          </DialogTitle>
+          <DialogTitle className="text-white text-xl">Add New Password</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label className="text-gray-300">Site Name *</Label>
             <Input
+              required
               value={formData.site_name}
               onChange={(e) => setFormData(prev => ({ ...prev, site_name: e.target.value }))}
-              className="bg-[#0f1419] border-cyan-500/20 text-white"
-              placeholder="e.g., Gmail, Facebook"
-              required
+              className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+              placeholder="e.g., Facebook"
             />
           </div>
 
           <div>
-            <Label className="text-gray-300">Site URL</Label>
+            <Label className="text-gray-300">Website URL</Label>
             <Input
+              type="url"
               value={formData.site_url}
               onChange={(e) => setFormData(prev => ({ ...prev, site_url: e.target.value }))}
-              className="bg-[#0f1419] border-cyan-500/20 text-white"
+              className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
               placeholder="https://example.com"
             />
           </div>
 
           <div>
-            <Label className="text-gray-300">Username / Email *</Label>
+            <Label className="text-gray-300">Username/Email *</Label>
             <Input
+              required
               value={formData.username}
               onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-              className="bg-[#0f1419] border-cyan-500/20 text-white"
-              placeholder="your@email.com"
-              required
+              className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+              placeholder="username@email.com"
             />
           </div>
 
           <div>
-            <Label className="text-gray-300">Password *</Label>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                value={formData.encrypted_password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
-                className="bg-[#0f1419] border-cyan-500/20 text-white flex-1"
-                placeholder="Enter or generate password"
-                required
-              />
+            <Label className="text-gray-300 flex items-center justify-between">
+              <span>Password *</span>
               <Button
                 type="button"
-                onClick={generatePassword}
-                className="bg-gradient-to-r from-purple-500 to-pink-500"
+                size="sm"
+                onClick={generateStrongPassword}
+                disabled={generating}
+                variant="ghost"
+                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 h-auto py-1"
               >
-                <Sparkles className="w-4 h-4" />
+                {generating ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3 h-3 mr-1" />
+                )}
+                Generate Strong
               </Button>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Strength: <span className={
-                formData.password_strength === 'excellent' ? 'text-emerald-400' :
-                formData.password_strength === 'strong' ? 'text-green-400' :
-                formData.password_strength === 'medium' ? 'text-yellow-400' : 'text-red-400'
-              }>
-                {formData.password_strength}
-              </span>
-            </p>
+            </Label>
+            <Input
+              required
+              type="text"
+              value={formData.encrypted_password}
+              onChange={(e) => setFormData(prev => ({ ...prev, encrypted_password: e.target.value }))}
+              className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono"
+              placeholder="Enter password"
+            />
+            {formData.encrypted_password && (
+              <p className={`text-xs mt-1 ${
+                calculateStrength(formData.encrypted_password) === 'excellent' ? 'text-green-400' :
+                calculateStrength(formData.encrypted_password) === 'strong' ? 'text-green-400' :
+                calculateStrength(formData.encrypted_password) === 'medium' ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                Strength: {calculateStrength(formData.encrypted_password)}
+              </p>
+            )}
           </div>
 
           <div>
@@ -166,13 +172,13 @@ export default function AddPasswordDialog({ open, onClose }) {
               value={formData.category}
               onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
             >
-              <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white">
+              <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-[#1a2332] border-cyan-500/20">
+                <SelectItem value="social">Social Media</SelectItem>
                 <SelectItem value="banking">Banking</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="social">Social</SelectItem>
                 <SelectItem value="shopping">Shopping</SelectItem>
                 <SelectItem value="work">Work</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
@@ -185,29 +191,35 @@ export default function AddPasswordDialog({ open, onClose }) {
             <Textarea
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              className="bg-[#0f1419] border-cyan-500/20 text-white"
-              placeholder="Additional information..."
-              rows={3}
+              className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 h-20"
+              placeholder="Additional notes..."
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <DialogFooter className="flex gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1 border-cyan-500/20 text-gray-300"
+              className="border-gray-600 text-gray-300"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={createPasswordMutation.isPending}
-              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
             >
-              {createPasswordMutation.isPending ? 'Adding...' : 'Add Password'}
+              {createPasswordMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Password'
+              )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
