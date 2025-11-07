@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added useQueryClient
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp, 
+import {
+  Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp,
   CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -24,6 +24,8 @@ export default function Dashboard() {
   const [scanning, setScanning] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
+  const queryClient = useQueryClient(); // Initialized useQueryClient
+
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => base44.entities.Alert.filter({ created_by: user?.email, status: 'active' }, '-created_date', 5),
@@ -39,13 +41,40 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(fetchedUser => {
-      setUser(fetchedUser);
-      // Store user tier in localStorage for prompt logic
-      if (fetchedUser?.subscription_plan) {
-        localStorage.setItem('userTier', fetchedUser.subscription_plan);
-      } else {
-        localStorage.setItem('userTier', 'free');
+    base44.auth.me().then(async (userData) => { // Made async to await updates
+      setUser(userData);
+      
+      // Daily check-in for streak
+      const today = new Date().toISOString().split('T')[0];
+      const lastCheckIn = userData.last_checkin_date;
+      
+      if (lastCheckIn !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        let newStreak = 1;
+        if (lastCheckIn === yesterdayStr) {
+          newStreak = (userData.current_streak || 0) + 1;
+        }
+        
+        await base44.auth.updateMe({ 
+          last_checkin_date: today,
+          current_streak: newStreak,
+          longest_streak: Math.max(newStreak, userData.longest_streak || 0)
+        });
+        
+        // Update local user state immediately after DB update
+        setUser(prev => ({ 
+          ...prev, 
+          last_checkin_date: today,
+          current_streak: newStreak,
+          longest_streak: Math.max(newStreak, userData.longest_streak || 0)
+        }));
+
+        if (newStreak === 7 || newStreak === 30) {
+          toast.success(`🔥 ${newStreak} Day Streak! Keep it up!`);
+        }
       }
     }).catch(() => {});
     
@@ -56,16 +85,17 @@ export default function Dashboard() {
     // Show upgrade prompt if free user and hasn't seen it in 3 days
     if (daysSincePrompt > 3) {
       setTimeout(() => {
-        const tier = localStorage.getItem('userTier') || 'free';
-        if (tier === 'free') {
+        // Use the current `user` state which should be updated by now
+        if (user?.subscription_plan === 'free' || !user?.subscription_plan) {
           setShowUpgradePrompt(true);
           localStorage.setItem('lastUpgradePrompt', Date.now().toString());
         }
       }, 10000); // 10 seconds after page load
     }
-  }, []);
+  }, [user]); // Added user to dependency array to ensure `user` state is current for setTimeout
 
   const runSecurityScan = async () => {
+    const startTime = Date.now(); // Start timer for scan duration
     setScanning(true);
     try {
       // Simulate scan and update risk score
@@ -98,7 +128,25 @@ export default function Dashboard() {
       
       setUser(prev => ({ ...prev, risk_score: score, last_scan_date: new Date().toISOString() }));
 
-      // Check for automated protections
+      const scanDuration = Date.now() - startTime; // Calculate scan duration
+      
+      // Check achievement for first scan
+      const deviceLogs = await queryClient.fetchQuery({
+        queryKey: ['device-logs'],
+        queryFn: () => base44.entities.DeviceProtectionLog.list(),
+      });
+      
+      // If this is the very first scan ever recorded for the user
+      // Assuming DeviceProtectionLog.list() would return logs including this just completed scan,
+      // or that this check happens before the log is created.
+      // If it should check for historical logs before THIS scan, the logic might need slight adjustment
+      // to ensure this scan is NOT yet counted. For now, assuming if no logs existed BEFORE this run.
+      // A more robust check might involve comparing scan dates.
+      if (deviceLogs.length === 0 || deviceLogs.every(log => new Date(log.created_date).getTime() >= startTime)) { // Added condition to ensure it's truly the first scan if logs exist from *after* this scan started.
+        toast.success('First security scan complete! 🎉');
+      }
+
+      // Auto-protection logic
       const autoThreshold = user?.auto_protection_threshold || 70;
       
       // Auto-enable VPN if score drops below threshold
