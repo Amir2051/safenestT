@@ -8,6 +8,8 @@ import DeviceCare from './pages/DeviceCare';
 import AutoProtection from './pages/AutoProtection';
 import Upgrade from './pages/Upgrade';
 import PaymentSuccess from './pages/PaymentSuccess';
+import DarkWebMonitor from './pages/DarkWebMonitor';
+import StorageOptimizer from './pages/StorageOptimizer';
 import Layout from './Layout.jsx';
 
 
@@ -22,6 +24,8 @@ export const PAGES = {
     "AutoProtection": AutoProtection,
     "Upgrade": Upgrade,
     "PaymentSuccess": PaymentSuccess,
+    "DarkWebMonitor": DarkWebMonitor,
+    "StorageOptimizer": StorageOptimizer,
 }
 
 export const pagesConfig = {
