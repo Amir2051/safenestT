@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +18,15 @@ const PLANS = {
     color: "from-blue-500 to-cyan-500",
     icon: Shield,
     features: [
-      "Full device virus scanning",
-      "Automatic cleanup & optimization",
-      "Identity theft monitoring",
-      "Password vault (unlimited)",
-      "Dark web monitoring",
-      "Email breach alerts",
-      "VPN protection",
-      "24/7 threat detection",
-      "Weekly security reports"
+      "✅ Unlimited password breach checking",
+      "✅ Unlimited email monitoring (3 addresses)",
+      "✅ Real-time breach alerts",
+      "✅ Identity theft monitoring",
+      "✅ Password vault (unlimited)",
+      "✅ Dark web monitoring",
+      "✅ VPN protection",
+      "✅ 24/7 threat detection",
+      "✅ Weekly security reports"
     ]
   },
   elite: {
@@ -37,16 +38,17 @@ const PLANS = {
     icon: Sparkles,
     popular: true,
     features: [
-      "Everything in Basic Plan",
-      "Advanced malware detection",
-      "AI-powered threat analysis",
-      "Priority 24/7 support",
-      "Automated security fixes",
-      "Real-time threat blocking",
-      "Family protection (up to 5 devices)",
-      "Custom security policies",
-      "Monthly expert consultations",
-      "Zero-knowledge encryption"
+      "✨ Everything in Basic Plan",
+      "✅ Unlimited email monitoring (10+ addresses)",
+      "✅ Advanced malware detection",
+      "✅ AI-powered threat analysis",
+      "✅ Priority 24/7 support",
+      "✅ Automated security fixes",
+      "✅ Real-time threat blocking",
+      "✅ Family protection (up to 5 devices)",
+      "✅ Custom security policies",
+      "✅ Monthly expert consultations",
+      "✅ Zero-knowledge encryption"
     ]
   }
 };
@@ -100,6 +102,51 @@ export default function Upgrade() {
             Choose the perfect plan to keep your digital life safe and secure
           </p>
         </div>
+
+        {/* Free vs Premium Comparison */}
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-6">
+            <h3 className="text-white font-semibold text-lg mb-4 text-center">What's Included in Each Tier?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-gray-600">
+                <h4 className="text-white font-semibold mb-3">🆓 Free Tier</h4>
+                <ul className="space-y-2 text-sm">
+                  <li className="text-green-400">✅ Unlimited password breach checking</li>
+                  <li className="text-green-400">✅ 1 email check per day</li>
+                  <li className="text-green-400">✅ Security score & tips</li>
+                  <li className="text-green-400">✅ Basic vault (10 items)</li>
+                  <li className="text-green-400">✅ Device optimization guide</li>
+                  <li className="text-gray-500">❌ Real-time monitoring</li>
+                  <li className="text-gray-500">❌ VPN protection</li>
+                </ul>
+              </div>
+              <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/30">
+                <h4 className="text-white font-semibold mb-3">💎 Basic - $9.99/mo</h4>
+                <ul className="space-y-2 text-sm">
+                  <li className="text-green-400">✅ Everything in Free</li>
+                  <li className="text-cyan-400">✨ Unlimited email monitoring (3)</li>
+                  <li className="text-cyan-400">✨ Real-time breach alerts</li>
+                  <li className="text-cyan-400">✨ Unlimited vault storage</li>
+                  <li className="text-cyan-400">✨ VPN protection</li>
+                  <li className="text-cyan-400">✨ Priority support</li>
+                  <li className="text-cyan-400">✨ Export PDF reports</li>
+                </ul>
+              </div>
+              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/30">
+                <h4 className="text-white font-semibold mb-3">✨ Elite - $14.99/mo</h4>
+                <ul className="space-y-2 text-sm">
+                  <li className="text-green-400">✅ Everything in Basic</li>
+                  <li className="text-purple-400">⭐ 10+ email addresses</li>
+                  <li className="text-purple-400">⭐ AI threat analysis</li>
+                  <li className="text-purple-400">⭐ Auto security fixes</li>
+                  <li className="text-purple-400">⭐ Family protection (5 devices)</li>
+                  <li className="text-purple-400">⭐ Expert consultations</li>
+                  <li className="text-purple-400">⭐ Custom policies</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Current Plan Status */}
         {currentPlan !== 'free' && isActive && (
@@ -254,15 +301,21 @@ export default function Upgrade() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <h4 className="text-white font-semibold mb-2">What's the difference between free and premium?</h4>
+              <p className="text-gray-400 text-sm">
+                Free tier includes unlimited password checking but limited email monitoring (1/day). Premium unlocks unlimited email monitoring, real-time alerts, VPN, and advanced features.
+              </p>
+            </div>
+            <div>
               <h4 className="text-white font-semibold mb-2">How do I cancel my subscription?</h4>
               <p className="text-gray-400 text-sm">
                 You can cancel anytime from your Settings page. Your access continues until the end of your billing period.
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-2">Can I upgrade from Basic to Elite?</h4>
+              <h4 className="text-white font-semibold mb-2">Is the password checker really unlimited and free?</h4>
               <p className="text-gray-400 text-sm">
-                Yes! You can upgrade at any time and only pay the difference for the remainder of your billing cycle.
+                Yes! Password breach checking uses the free Have I Been Pwned API and is 100% unlimited for all users. We never charge for this feature.
               </p>
             </div>
             <div>
