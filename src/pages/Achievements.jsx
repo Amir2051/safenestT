@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Trophy, Star, TrendingUp, Lock, CheckCircle, 
-  Flame, Target, Award, Sparkles, Info
+  Flame, Target, Award, Sparkles, Info, Zap
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +34,8 @@ export default function Achievements() {
   const [user, setUser] = useState(null);
   const [selectedAchievement, setSelectedAchievement] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebratingAchievement, setCelebratingAchievement] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -68,93 +70,56 @@ export default function Achievements() {
 
   const updateUserMutation = useMutation({
     mutationFn: (data) => base44.auth.updateMe(data),
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
   });
 
-  // Check achievements when data changes
-  useEffect(() => {
-    if (user && passwords && monitors) {
-      checkAchievements();
-    }
-  }, [user, passwords, monitors]);
-
-  const checkAchievements = async () => {
-    const unlockedIds = achievements.map(a => a.achievement_id);
+  const unlockAchievement = async (achievementDef) => {
+    const alreadyUnlocked = achievements.some(a => a.achievement_id === achievementDef.id && a.unlocked);
     
-    // Check password_guardian
-    if (passwords.length >= 5 && !unlockedIds.includes('password_guardian')) {
-      await unlockAchievement('password_guardian');
+    if (alreadyUnlocked) {
+      toast.info('This achievement is already unlocked!');
+      return;
     }
-
-    // Check vault_master
-    if (passwords.length >= 20 && !unlockedIds.includes('vault_master')) {
-      await unlockAchievement('vault_master');
-    }
-
-    // Check breach_detector
-    if (monitors.length >= 1 && !unlockedIds.includes('breach_detector')) {
-      await unlockAchievement('breach_detector');
-    }
-
-    // Check protected_identity
-    if (monitors.length >= 3 && !unlockedIds.includes('protected_identity')) {
-      await unlockAchievement('protected_identity');
-    }
-
-    // Check security_pro
-    if (user?.risk_score >= 75 && !unlockedIds.includes('security_pro')) {
-      await unlockAchievement('security_pro');
-    }
-
-    // Check security_champion
-    if (user?.risk_score >= 90 && !unlockedIds.includes('security_champion')) {
-      await unlockAchievement('security_champion');
-    }
-
-    // Check premium_member
-    const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
-    if (isPremium && !unlockedIds.includes('premium_member')) {
-      await unlockAchievement('premium_member');
-    }
-
-    // Check streaks
-    if (user?.current_streak >= 7 && !unlockedIds.includes('streak_7')) {
-      await unlockAchievement('streak_7');
-    }
-
-    if (user?.current_streak >= 30 && !unlockedIds.includes('streak_30')) {
-      await unlockAchievement('streak_30');
-    }
-  };
-
-  const unlockAchievement = async (achievementId) => {
-    const achievement = ACHIEVEMENT_DEFINITIONS.find(a => a.id === achievementId);
-    if (!achievement) return;
 
     try {
+      // Create achievement record
       await createAchievementMutation.mutateAsync({
-        achievement_id: achievement.id,
-        name: achievement.name,
-        description: achievement.desc,
-        category: achievement.category,
-        icon: achievement.icon,
-        points: achievement.points,
+        achievement_id: achievementDef.id,
+        name: achievementDef.name,
+        description: achievementDef.desc,
+        category: achievementDef.category,
+        icon: achievementDef.icon,
+        points: achievementDef.points,
         unlocked: true,
         unlocked_date: new Date().toISOString(),
         progress: 100,
-        requirement: achievement.hint
+        requirement: achievementDef.hint
       });
 
-      // Update total points
+      // Update total points and check level
       const currentPoints = user?.total_points || 0;
+      const newPoints = currentPoints + achievementDef.points;
+      
+      // Calculate new level
+      let newLevel = user?.level || 1;
+      if (newPoints >= 1001) newLevel = 5;
+      else if (newPoints >= 601) newLevel = 4;
+      else if (newPoints >= 301) newLevel = 3;
+      else if (newPoints >= 101) newLevel = 2;
+      else newLevel = 1;
+
       await updateUserMutation.mutateAsync({ 
-        total_points: currentPoints + achievement.points 
+        total_points: newPoints,
+        level: newLevel
       });
 
       // Show celebration
-      toast.success(`🎉 Achievement Unlocked: ${achievement.name} (+${achievement.points} points)!`);
+      setCelebratingAchievement(achievementDef);
+      setShowCelebration(true);
+      setSelectedAchievement(null);
 
       // Save in-app notification
       const notifications = JSON.parse(localStorage.getItem('inAppNotifications') || '[]');
@@ -162,14 +127,22 @@ export default function Achievements() {
         id: `notif_${Date.now()}`,
         type: 'achievement',
         title: '🎉 Achievement Unlocked!',
-        message: `${achievement.icon} ${achievement.name} - ${achievement.desc} (+${achievement.points} points)`,
+        message: `${achievementDef.icon} ${achievementDef.name} - ${achievementDef.desc} (+${achievementDef.points} points)`,
         timestamp: Date.now(),
         read: false
       });
       localStorage.setItem('inAppNotifications', JSON.stringify(notifications));
       window.dispatchEvent(new CustomEvent('notificationAdded'));
+
+      // Hide celebration after 5 seconds
+      setTimeout(() => {
+        setShowCelebration(false);
+        setCelebratingAchievement(null);
+      }, 5000);
+
     } catch (error) {
       console.error('Error unlocking achievement:', error);
+      toast.error('Failed to unlock achievement. It may already be unlocked.');
     }
   };
 
@@ -356,7 +329,7 @@ export default function Achievements() {
               className={`relative bg-gradient-to-br from-[#1a2332] to-[#0f1419] rounded-xl p-6 border transition-all cursor-pointer ${
                 unlocked
                   ? 'border-green-500/50 hover:border-green-500/70 hover:scale-105'
-                  : 'border-gray-700 opacity-60 hover:opacity-80'
+                  : 'border-gray-700 opacity-60 hover:opacity-80 hover:scale-105'
               }`}
             >
               {!unlocked && progress.percentage === 0 && (
@@ -396,70 +369,99 @@ export default function Achievements() {
         })}
       </div>
 
+      {/* Achievement Detail Dialog */}
       {selectedAchievement && (
         <Dialog open={!!selectedAchievement} onOpenChange={() => setSelectedAchievement(null)}>
-          <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white">
+          <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-white text-2xl flex items-center gap-3">
-                <span className="text-5xl">{selectedAchievement.icon}</span>
-                {selectedAchievement.name}
+              <DialogTitle className="text-white text-2xl flex items-center gap-3 justify-center">
+                <span className="text-6xl">{selectedAchievement.icon}</span>
               </DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <p className="text-gray-400">{selectedAchievement.desc}</p>
+            <div className="space-y-4 text-center">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">{selectedAchievement.name}</h2>
+                <p className="text-gray-400">{selectedAchievement.desc}</p>
+              </div>
               
               <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/10">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Points</p>
-                    <p className="text-xl font-bold text-white">{selectedAchievement.points}</p>
+                    <p className="text-xl font-bold text-yellow-400">{selectedAchievement.points}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Category</p>
                     <p className="text-sm font-semibold text-cyan-400 capitalize">{selectedAchievement.category}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Status</p>
-                    <Badge className={isUnlocked(selectedAchievement.id) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}>
-                      {isUnlocked(selectedAchievement.id) ? 'Unlocked' : 'Locked'}
+                    <p className="text-xs text-gray-400 mb-1">Rarity</p>
+                    <Badge className={`${
+                      selectedAchievement.category === 'advanced' ? 'bg-purple-500/20 text-purple-400' :
+                      selectedAchievement.category === 'intermediate' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {selectedAchievement.category === 'advanced' ? 'Rare' : 
+                       selectedAchievement.category === 'intermediate' ? 'Uncommon' : 'Common'}
                     </Badge>
                   </div>
                 </div>
               </div>
 
-              {!isUnlocked(selectedAchievement.id) && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h4 className="text-yellow-400 font-semibold mb-1">How to unlock:</h4>
-                      <p className="text-gray-300 text-sm">{selectedAchievement.hint}</p>
-                    </div>
-                  </div>
-                  
-                  {(() => {
-                    const progress = getProgress(selectedAchievement.id);
-                    return progress.percentage > 0 && (
-                      <div className="mt-3">
-                        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-1">
-                          <div
-                            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
-                            style={{ width: `${progress.percentage}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-400">Progress: {progress.current}/{progress.target}</p>
+              {!isUnlocked(selectedAchievement.id) ? (
+                <>
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-left">
+                    <div className="flex items-start gap-2 mb-3">
+                      <Info className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="text-yellow-400 font-semibold mb-1">How to unlock:</h4>
+                        <p className="text-gray-300 text-sm">{selectedAchievement.hint}</p>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    </div>
+                    
+                    {(() => {
+                      const progress = getProgress(selectedAchievement.id);
+                      return progress.percentage > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-400">Progress</span>
+                            <span className="text-xs text-white font-semibold">{progress.current}/{progress.target}</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
+                              style={{ width: `${progress.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-              {isUnlocked(selectedAchievement.id) && (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 text-center">
-                  <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
-                  <p className="text-green-400 font-semibold">Achievement Unlocked!</p>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <Button
+                    onClick={() => unlockAchievement(selectedAchievement)}
+                    disabled={createAchievementMutation.isPending}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 py-6 text-lg font-semibold"
+                  >
+                    {createAchievementMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                        Unlocking...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-5 h-5 mr-2" />
+                        Complete Achievement
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-6">
+                  <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-3" />
+                  <p className="text-green-400 font-semibold text-lg mb-2">Achievement Unlocked! 🎉</p>
+                  <p className="text-gray-400 text-sm">
                     Unlocked on {new Date(achievements.find(a => a.achievement_id === selectedAchievement.id)?.unlocked_date).toLocaleDateString()}
                   </p>
                 </div>
@@ -467,6 +469,79 @@ export default function Achievements() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Celebration Dialog */}
+      {showCelebration && celebratingAchievement && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="relative">
+            {/* Confetti Animation */}
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(30)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute text-3xl animate-bounce"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 0.5}s`,
+                    animationDuration: `${1 + Math.random()}s`
+                  }}
+                >
+                  {['🎉', '✨', '🎊', '⭐', '💫', '🏆', '👏'][Math.floor(Math.random() * 7)]}
+                </div>
+              ))}
+            </div>
+
+            <Card className="max-w-md w-full bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/50 relative z-10">
+              <CardContent className="p-12 text-center">
+                <div className="mb-6 animate-bounce">
+                  <div className="text-8xl mb-4">{celebratingAchievement.icon}</div>
+                  <Sparkles className="w-12 h-12 text-yellow-400 mx-auto animate-spin" style={{ animationDuration: '3s' }} />
+                </div>
+
+                <h1 className="text-4xl font-bold text-white mb-3">
+                  🎉 Achievement Unlocked!
+                </h1>
+                
+                <h2 className="text-2xl font-semibold text-green-400 mb-2">
+                  {celebratingAchievement.name}
+                </h2>
+                
+                <p className="text-gray-400 mb-6">
+                  {celebratingAchievement.desc}
+                </p>
+
+                <div className="inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/40 px-6 py-3 rounded-full mb-6">
+                  <Star className="w-6 h-6 text-yellow-400" />
+                  <span className="text-2xl font-bold text-yellow-400">+{celebratingAchievement.points} Points</span>
+                </div>
+
+                <div className="bg-[#0f1419] rounded-lg p-4 border border-green-500/20 mb-6">
+                  <p className="text-sm text-gray-400 mb-2">New Total Points</p>
+                  <p className="text-3xl font-bold text-white">{totalPoints}</p>
+                  {nextLevel && totalPoints >= nextLevel.min && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30">
+                      <p className="text-purple-400 font-semibold">🎊 Level Up!</p>
+                      <p className="text-sm text-gray-300">You're now a {getLevelInfo(level + 1).title}!</p>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setShowCelebration(false);
+                    setCelebratingAchievement(null);
+                  }}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-3"
+                >
+                  Awesome! Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   );
