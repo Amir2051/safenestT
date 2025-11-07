@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -18,7 +17,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import NotificationCenter from "../components/shared/NotificationCenter.jsx";
+import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 
 const navigationItems = [
   {
@@ -178,9 +177,6 @@ export default function Layout({ children, currentPageName }) {
                         <CreditCard className="w-4 h-4 text-purple-400" />
                         <span className="text-sm font-semibold text-purple-400">Upgrade to Premium</span>
                       </div>
-                      <p className="text-xs text-gray-400">
-                        Unlock advanced protection features
-                      </p>
                       <p className="text-xs text-gray-400 mb-2">
                         From $9.99/month
                       </p>

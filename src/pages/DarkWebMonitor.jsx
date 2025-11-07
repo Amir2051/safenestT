@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Eye, Shield, AlertTriangle, CheckCircle, Search,
+import { 
+  Eye, Shield, AlertTriangle, CheckCircle, Search, 
   Mail, Phone, Lock, XCircle, Loader2, TrendingUp, Clock
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
 import PasswordBreachChecker from "../components/breach/PasswordBreachChecker.jsx";
-import { Link } from "react-router-dom"; // Assuming react-router-dom for Link component
 
 export default function DarkWebMonitor() {
   const [user, setUser] = useState(null);
@@ -46,20 +46,15 @@ export default function DarkWebMonitor() {
     },
   });
 
-  // Helper function for navigation (assuming internal utility)
-  const createPageUrl = (pageName) => `/${pageName.toLowerCase()}`;
-
   const checkEmailBreach = async () => {
     if (!checkingEmail || !checkingEmail.includes('@')) {
       toast.error('Please enter a valid email address');
       return;
     }
 
-    // Check if user is premium
     const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
     const isActive = user?.payment_status === 'active';
 
-    // Free tier limitations
     if (!isPremium || !isActive) {
       if (dailyChecksRemaining <= 0) {
         toast.error('Daily limit reached. Upgrade to Premium for unlimited checks!');
@@ -70,12 +65,9 @@ export default function DarkWebMonitor() {
     setChecking(true);
 
     try {
-      // Check if already monitored
       const existing = monitors.find(m => m.value === checkingEmail && m.monitor_type === 'email');
-
+      
       if (!isPremium || !isActive) {
-        // For free users: Use AI simulation (limited)
-        // Free tier: Educational/simulated response
         const breachCheckPrompt = `You are simulating a data breach check for educational purposes.
 
 Email to check: ${checkingEmail}
@@ -151,12 +143,11 @@ Note: Add a disclaimer that this is a LIMITED check. Premium users get real-time
           await createMonitorMutation.mutateAsync(monitorData);
         }
 
-        // Decrement free checks
         setDailyChecksRemaining(prev => prev - 1);
 
         if (response.breached) {
           toast.error(`Limited check: ${response.breaches.length} potential breach${response.breaches.length > 1 ? 'es' : ''} found`);
-
+          
           await base44.entities.Alert.create({
             alert_type: 'breach',
             severity: response.risk_level === 'high' ? 'high' : 'medium',
@@ -171,10 +162,6 @@ Note: Add a disclaimer that this is a LIMITED check. Premium users get real-time
         }
 
       } else {
-        // PREMIUM USERS: Use real HIBP API
-        // Note: This requires HIBP API key ($3.50/month subscription)
-        // For now, we'll use enhanced AI check as placeholder
-
         const breachCheckPrompt = `You are a cybersecurity API checking for real data breaches.
 
 Check if this email has been in major data breaches: ${checkingEmail}
@@ -239,7 +226,7 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
 
         if (response.breached) {
           toast.error(`Premium check: ${response.breaches.length} breach${response.breaches.length > 1 ? 'es' : ''} found!`);
-
+          
           await base44.entities.Alert.create({
             alert_type: 'breach',
             severity: response.risk_level === 'critical' ? 'critical' : response.risk_level === 'high' ? 'high' : 'medium',
@@ -275,13 +262,12 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
   const safeMonitors = monitors.filter(m => m.status === 'safe');
   const totalBreaches = breachedMonitors.reduce((sum, m) => sum + (m.breaches_found?.length || 0), 0);
   const criticalMonitors = monitors.filter(m => m.risk_level === 'critical' || m.risk_level === 'high');
-
+  
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <Eye className="w-8 h-8 text-purple-400" />
@@ -290,7 +276,6 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
         <p className="text-gray-400 mt-1">Check if your data has been exposed in breaches</p>
       </div>
 
-      {/* Premium Banner */}
       {(!isPremium || !isActive) && (
         <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
           <CardContent className="p-4 flex items-center justify-between">
@@ -307,7 +292,6 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
         </Card>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
           <CardContent className="p-4">
@@ -355,10 +339,8 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
         </Card>
       </div>
 
-      {/* Password Breach Checker - FREE & UNLIMITED */}
       <PasswordBreachChecker />
 
-      {/* Check Email */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
@@ -409,7 +391,7 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
             </Button>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            {(!isPremium || !isActive)
+            {(!isPremium || !isActive) 
               ? `Free tier: Limited daily checks. Upgrade for unlimited real-time monitoring.`
               : `Premium: Unlimited checks with real-time monitoring and alerts.`
             }
@@ -417,7 +399,6 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
         </CardContent>
       </Card>
 
-      {/* Monitored Items */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
           <CardTitle className="text-white">Monitored Accounts</CardTitle>
@@ -440,7 +421,7 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
               {monitors.map((monitor) => {
                 const isBreached = monitor.status === 'breached';
                 const breachCount = monitor.breaches_found?.length || 0;
-
+                
                 return (
                   <div
                     key={monitor.id}
@@ -460,7 +441,7 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
                           <Lock className={`w-6 h-6 ${isBreached ? 'text-red-400' : 'text-green-400'}`} />
                         )}
                       </div>
-
+                      
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div>
