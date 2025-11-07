@@ -60,7 +60,6 @@ export default function Upgrade() {
   }, []);
 
   const handleSubscribe = (planType, checkoutUrl) => {
-    // Track conversion attempt
     const event = {
       type: 'upgrade_clicked',
       plan: planType,
@@ -71,7 +70,6 @@ export default function Upgrade() {
     events.push(event);
     localStorage.setItem('analytics_events', JSON.stringify(events));
 
-    // Redirect to Stripe checkout
     window.location.href = checkoutUrl;
   };
 
@@ -89,7 +87,6 @@ export default function Upgrade() {
   return (
     <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 px-4 py-2 rounded-full border border-cyan-500/30 mb-4">
             <Shield className="w-4 h-4 text-cyan-400" />
@@ -102,7 +99,6 @@ export default function Upgrade() {
             Secure your digital identity with comprehensive monitoring and instant alerts
           </p>
           
-          {/* Trust Badges */}
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1">✅ 30-Day Money Back</span>
             <span className="flex items-center gap-1">🔒 Secure via Stripe</span>
@@ -110,7 +106,6 @@ export default function Upgrade() {
           </div>
         </div>
 
-        {/* Urgency Banner */}
         {currentPlan === 'free' && (
           <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30 animate-pulse">
             <CardContent className="p-4">
@@ -127,12 +122,10 @@ export default function Upgrade() {
           </Card>
         )}
 
-        {/* Free vs Premium Comparison */}
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-6">
             <h3 className="text-white font-semibold text-xl mb-6 text-center">Feature Comparison</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Free */}
               <div className="bg-[#0f1419] rounded-lg p-5 border border-gray-600">
                 <h4 className="text-white font-semibold mb-4 text-lg">🆓 Free Tier</h4>
                 <ul className="space-y-2 text-sm">
@@ -147,7 +140,6 @@ export default function Upgrade() {
                 </ul>
               </div>
               
-              {/* Basic */}
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-5 border-2 border-blue-500/40">
                 <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
                   💎 Basic
@@ -165,8 +157,7 @@ export default function Upgrade() {
                 </ul>
               </div>
               
-              {/* Elite */}
-              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-5 border-2 border-purple-500/40">
+              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-5 border-2 border-purple-500/40 relative">
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1">
                     <Star className="w-3 h-3 mr-1 inline" />
@@ -192,7 +183,6 @@ export default function Upgrade() {
           </CardContent>
         </Card>
 
-        {/* Current Plan Status */}
         {currentPlan !== 'free' && isActive && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-6">
@@ -214,7 +204,6 @@ export default function Upgrade() {
           </Card>
         )}
 
-        {/* Plans Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {Object.entries(PLANS).map(([key, plan]) => {
             const Icon = plan.icon;
@@ -250,7 +239,6 @@ export default function Upgrade() {
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                  {/* Features List */}
                   <ul className="space-y-3">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-3">
@@ -262,7 +250,6 @@ export default function Upgrade() {
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
                   <Button
                     onClick={() => handleSubscribe(key, plan.checkoutUrl)}
                     disabled={isCurrentPlan}
@@ -285,7 +272,6 @@ export default function Upgrade() {
                     )}
                   </Button>
 
-                  {/* Trust Badge */}
                   <div className="text-center pt-4 border-t border-gray-700">
                     <div className="flex items-center justify-center gap-2 text-gray-400 text-xs">
                       <Lock className="w-3 h-3" />
@@ -298,7 +284,6 @@ export default function Upgrade() {
           })}
         </div>
 
-        {/* Benefits */}
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white text-center">Why Upgrade to Premium?</CardTitle>
@@ -338,7 +323,6 @@ export default function Upgrade() {
           </CardContent>
         </Card>
 
-        {/* FAQ */}
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white">Frequently Asked Questions</CardTitle>
@@ -377,7 +361,6 @@ export default function Upgrade() {
           </CardContent>
         </Card>
 
-        {/* Social Proof */}
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-8 text-center">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
