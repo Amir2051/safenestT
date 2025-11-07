@@ -18,6 +18,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import NotificationCenter from "../components/shared/NotificationCenter.jsx";
 
 const navigationItems = [
   {
@@ -180,6 +181,12 @@ export default function Layout({ children, currentPageName }) {
                       <p className="text-xs text-gray-400">
                         Unlock advanced protection features
                       </p>
+                      <p className="text-xs text-gray-400 mb-2">
+                        From $9.99/month
+                      </p>
+                      <p className="text-xs text-purple-300">
+                        ⚡ Limited: 20% off for first 100 users!
+                      </p>
                     </div>
                   </Link>
                 </SidebarGroupContent>
@@ -257,13 +264,18 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col bg-[#0f1419]">
-          <header className="bg-[#0f1419] border-b border-[#1a2332] px-6 py-4 lg:hidden">
-            <div className="flex items-center gap-4">
+          <header className="bg-[#0f1419] border-b border-[#1a2332] px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4 lg:hidden">
               <SidebarTrigger className="hover:bg-[#1a2332] p-2 rounded-lg transition-colors text-white" />
               <div className="flex items-center gap-2">
                 <Shield className="w-6 h-6 text-cyan-400" />
                 <h1 className="text-xl font-bold text-white">SafeNest</h1>
               </div>
+            </div>
+            
+            {/* Notification Center */}
+            <div className="ml-auto">
+              <NotificationCenter />
             </div>
           </header>
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp, 
-  CheckCircle, XCircle, Clock, Sparkles, ChevronRight 
+  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -17,10 +17,12 @@ import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx"; // New import
+import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts'],
@@ -37,7 +39,30 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    base44.auth.me().then(fetchedUser => {
+      setUser(fetchedUser);
+      // Store user tier in localStorage for prompt logic
+      if (fetchedUser?.subscription_plan) {
+        localStorage.setItem('userTier', fetchedUser.subscription_plan);
+      } else {
+        localStorage.setItem('userTier', 'free');
+      }
+    }).catch(() => {});
+    
+    // Check for upgrade prompt trigger
+    const lastPrompt = localStorage.getItem('lastUpgradePrompt');
+    const daysSincePrompt = lastPrompt ? (Date.now() - parseInt(lastPrompt)) / (1000 * 60 * 60 * 24) : 999;
+    
+    // Show upgrade prompt if free user and hasn't seen it in 3 days
+    if (daysSincePrompt > 3) {
+      setTimeout(() => {
+        const tier = localStorage.getItem('userTier') || 'free';
+        if (tier === 'free') {
+          setShowUpgradePrompt(true);
+          localStorage.setItem('lastUpgradePrompt', Date.now().toString());
+        }
+      }, 10000); // 10 seconds after page load
+    }
   }, []);
 
   const runSecurityScan = async () => {
@@ -140,7 +165,8 @@ export default function Dashboard() {
   }
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
-  const highAlerts = alerts.filter(a => a.severity === 'high').length;
+  const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
+  const isActive = user?.payment_status === 'active';
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -177,6 +203,50 @@ export default function Dashboard() {
           )}
         </Button>
       </div>
+
+      {/* Premium Welcome (if just upgraded) */}
+      {isPremium && isActive && new URLSearchParams(window.location.search).get('upgraded') === 'true' && (
+        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl" />
+          <CardContent className="p-6 relative">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                  🎊 Welcome to Premium!
+                  <Sparkles className="w-6 h-6 text-yellow-400" />
+                </h2>
+                <p className="text-purple-300">Your account has been successfully upgraded. Here's what you can do now:</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <Link to={createPageUrl("DarkWebMonitor")}>
+                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
+                  <Shield className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                  <p className="text-white font-semibold text-sm">Add More Emails</p>
+                  <p className="text-gray-400 text-xs mt-1">Monitor multiple addresses</p>
+                </div>
+              </Link>
+              
+              <Link to={createPageUrl("Settings")}>
+                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
+                  <Bell className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
+                  <p className="text-white font-semibold text-sm">Enable Alerts</p>
+                  <p className="text-gray-400 text-xs mt-1">Get instant notifications</p>
+                </div>
+              </Link>
+              
+              <Link to={createPageUrl("PasswordVault")}>
+                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
+                  <Lock className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                  <p className="text-white font-semibold text-sm">Unlimited Vault</p>
+                  <p className="text-gray-400 text-xs mt-1">Store unlimited passwords</p>
+                </div>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Critical Alert Banner */}
       {criticalAlerts > 0 && (
@@ -227,6 +297,14 @@ export default function Dashboard() {
           <MiaQuickChat user={user} />
         </div>
       </div>
+
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && !isPremium && (
+        <UpgradePrompt
+          feature="premium protection"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }
