@@ -4,56 +4,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Shield, Check, Zap, Lock, Eye, Smartphone, Bot, 
+  Shield, Check, Zap, Lock, Bot, 
   TrendingUp, CreditCard, Star, Sparkles, AlertTriangle
 } from "lucide-react";
 
-const PLANS = {
-  basic: {
-    name: "Basic Protection",
-    price: "$9.99",
-    period: "month",
-    checkoutUrl: "https://buy.stripe.com/14AfZacYa62u0vVaY14gg09",
-    color: "from-blue-500 to-cyan-500",
-    icon: Shield,
-    features: [
-      "✅ Unlimited password breach checking",
-      "✅ Real-time breach monitoring (3 emails)",
-      "✅ Instant breach notifications",
-      "✅ Phone number monitoring",
-      "✅ Unlimited vault storage",
-      "✅ Dark web scan reports",
-      "✅ VPN protection",
-      "✅ Priority email support",
-      "✅ Export reports (PDF)"
-    ]
-  },
-  elite: {
-    name: "Elite Protection",
-    price: "$14.99",
-    period: "month",
-    checkoutUrl: "https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a",
-    color: "from-purple-500 to-pink-500",
-    icon: Sparkles,
-    popular: true,
-    features: [
-      "✨ Everything in Basic Plan",
-      "✅ Family protection (5 emails)",
-      "✅ Credit card breach monitoring",
-      "✅ SSN monitoring",
-      "✅ Advanced dark web scanning",
-      "✅ 24/7 priority support",
-      "✅ AI-powered threat analysis",
-      "✅ Automated security fixes",
-      "✅ Monthly security consultation",
-      "✅ Custom security alerts",
-      "✅ Early access to features"
-    ]
-  }
-};
-
 export default function Upgrade() {
   const [user, setUser] = useState(null);
+
+  const PLANS = {
+    basic: {
+      name: "Basic Protection",
+      price: "$9.99",
+      period: "month",
+      checkoutUrl: "https://buy.stripe.com/14AfZacYa62u0vVaY14gg09",
+      color: "from-blue-500 to-cyan-500",
+      icon: Shield,
+      features: [
+        "✅ Unlimited password breach checking",
+        "✅ Real-time breach monitoring (3 emails)",
+        "✅ Instant breach notifications",
+        "✅ Phone number monitoring",
+        "✅ Unlimited vault storage",
+        "✅ Dark web scan reports",
+        "✅ VPN protection",
+        "✅ Priority email support",
+        "✅ Export reports (PDF)"
+      ]
+    },
+    elite: {
+      name: "Elite Protection",
+      price: "$14.99",
+      period: "month",
+      checkoutUrl: "https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a",
+      color: "from-purple-500 to-pink-500",
+      icon: Sparkles,
+      popular: true,
+      features: [
+        "✨ Everything in Basic Plan",
+        "✅ Family protection (5 emails)",
+        "✅ Credit card breach monitoring",
+        "✅ SSN monitoring",
+        "✅ Advanced dark web scanning",
+        "✅ 24/7 priority support",
+        "✅ AI-powered threat analysis",
+        "✅ Automated security fixes",
+        "✅ Monthly security consultation",
+        "✅ Custom security alerts",
+        "✅ Early access to features"
+      ]
+    }
+  };
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -183,7 +183,7 @@ export default function Upgrade() {
           </CardContent>
         </Card>
 
-        {currentPlan !== 'free' && isActive && (
+        {currentPlan !== 'free' && isActive && PLANS[currentPlan] && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ export default function Upgrade() {
                 <div className="flex-1">
                   <p className="text-white font-semibold text-lg">Active Subscription</p>
                   <p className="text-green-400 text-sm">
-                    {PLANS[currentPlan]?.name} • Renews {user.renewal_date ? new Date(user.renewal_date).toLocaleDateString() : 'N/A'}
+                    {PLANS[currentPlan].name} • Renews {user.renewal_date ? new Date(user.renewal_date).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
                 <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
