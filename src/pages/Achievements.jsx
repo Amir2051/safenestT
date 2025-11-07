@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Trophy, Star, TrendingUp, Lock, CheckCircle, 
-  Flame, Target, Award, Sparkles, Info, Zap
+  Flame, Target, Award, Sparkles, Info, Zap, ArrowRight
 } from "lucide-react";
 import {
   Dialog,
@@ -220,7 +221,7 @@ export default function Achievements() {
         <p className="text-gray-400 mt-1">Unlock badges and level up your security game</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-yellow-500/20">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
