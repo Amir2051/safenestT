@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -59,6 +59,16 @@ const navigationItems = [
     title: "Reports",
     url: createPageUrl("Reports"),
     icon: FileText,
+  },
+  {
+    title: "Achievements",
+    url: createPageUrl("Achievements"),
+    icon: Trophy,
+  },
+  {
+    title: "Invite Friends",
+    url: createPageUrl("Referrals"),
+    icon: Users,
   },
   {
     title: "Mia AI Assistant",

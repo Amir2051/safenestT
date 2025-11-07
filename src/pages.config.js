@@ -10,6 +10,9 @@ import Upgrade from './pages/Upgrade';
 import PaymentSuccess from './pages/PaymentSuccess';
 import DarkWebMonitor from './pages/DarkWebMonitor';
 import StorageOptimizer from './pages/StorageOptimizer';
+import Onboarding from './pages/Onboarding';
+import Achievements from './pages/Achievements';
+import Referrals from './pages/Referrals';
 import Layout from './Layout.jsx';
 
 
@@ -26,6 +29,9 @@ export const PAGES = {
     "PaymentSuccess": PaymentSuccess,
     "DarkWebMonitor": DarkWebMonitor,
     "StorageOptimizer": StorageOptimizer,
+    "Onboarding": Onboarding,
+    "Achievements": Achievements,
+    "Referrals": Referrals,
 }
 
 export const pagesConfig = {
