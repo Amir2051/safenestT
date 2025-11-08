@@ -97,7 +97,7 @@ function LayoutContent({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
-  const { setOpen } = useSidebar();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   React.useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -107,11 +107,16 @@ function LayoutContent({ children, currentPageName }) {
     base44.auth.logout();
   };
 
-  const handleMenuClick = (url) => {
-    // Close sidebar on mobile/tablet after clicking
-    setOpen(false);
-    // Navigate to the page
-    navigate(url);
+  const handleMenuClick = (e, url) => {
+    e.preventDefault();
+    // Close sidebar on mobile
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    // Small delay to allow sidebar animation
+    setTimeout(() => {
+      navigate(url);
+    }, 100);
   };
 
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
@@ -203,16 +208,17 @@ function LayoutContent({ children, currentPageName }) {
                               : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
                           }`}
                         >
-                          <button 
-                            onClick={() => handleMenuClick(item.url)} 
-                            className="flex items-center gap-3 px-4 py-3 w-full text-left"
+                          <Link 
+                            to={item.url} 
+                            onClick={(e) => handleMenuClick(e, item.url)}
+                            className="flex items-center gap-3 px-4 py-3"
                           >
                             <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-300'}`} />
                             <span className="font-semibold text-[15px]">{item.title}</span>
                             {isActive && (
                               <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
                             )}
-                          </button>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -225,9 +231,9 @@ function LayoutContent({ children, currentPageName }) {
             {(!isPremium || !isActive) && (
               <SidebarGroup>
                 <SidebarGroupContent>
-                  <button 
-                    onClick={() => handleMenuClick(createPageUrl("Upgrade"))}
-                    className="w-full"
+                  <Link 
+                    to={createPageUrl("Upgrade")}
+                    onClick={(e) => handleMenuClick(e, createPageUrl("Upgrade"))}
                   >
                     <div className="mx-2 my-4 p-5 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-xl border-2 border-purple-500/50 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/30 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 mb-2">
@@ -241,7 +247,7 @@ function LayoutContent({ children, currentPageName }) {
                         ⚡ Limited: 20% off for first 100 users!
                       </p>
                     </div>
-                  </button>
+                  </Link>
                 </SidebarGroupContent>
               </SidebarGroup>
             )}
