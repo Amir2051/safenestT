@@ -15,9 +15,15 @@ export default function MiaQuickChat({ user }) {
 
   const getMessage = () => {
     const score = user?.risk_score || 85;
-    if (score >= 90) return "Your security looks excellent! Want to learn more ways to stay protected?";
-    if (score >= 70) return "You're doing well! I can help you reach an even higher security score.";
-    return "I've noticed some security concerns. Let's work together to improve your protection!";
+    const userName = user?.full_name?.split(' ')[0] || 'there';
+    
+    if (score >= 90) {
+      return `Hey ${userName}! Your security looks excellent! Want to learn more ways to stay protected?`;
+    }
+    if (score >= 70) {
+      return `Hi ${userName}! You're doing well! I can help you reach an even higher security score.`;
+    }
+    return `Hey ${userName}, I've noticed some security concerns. Let's work together to improve your protection!`;
   };
 
   return (
