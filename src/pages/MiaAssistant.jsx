@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -92,10 +93,16 @@ export default function MiaAssistant() {
       const alerts = alertsData || [];
       const passwords = passwordsData || [];
 
-      // Build context-rich prompt
+      // Get user's first name for personalization
+      const userName = user?.full_name?.split(' ')[0] || 'there';
+
+      // Build context-rich prompt with personalization
       const contextPrompt = `You are Mia, SafeNest's friendly and knowledgeable AI security assistant.
 
+IMPORTANT: The user's name is ${userName}. Address them by name naturally throughout the conversation (e.g., "Hey ${userName}!", "Hi ${userName}", "${userName}, here's what I found"). Make the conversation feel personal and warm.
+
 Current User Security Profile:
+• Name: ${user?.full_name || 'User'}
 • Security Score: ${user?.risk_score || 85}/100
 • Total Active Alerts: ${alerts.length}
 • Critical Alerts: ${alerts.filter(a => a.severity === 'critical').length}
@@ -105,10 +112,12 @@ Current User Security Profile:
 • VPN Status: ${user?.vpn_enabled ? '✅ Enabled' : '❌ Disabled'}
 • 2FA Status: ${user?.two_factor_enabled ? '✅ Enabled' : '❌ Disabled'}
 • Subscription: ${user?.subscription_plan === 'elite' ? '✨ Elite' : user?.subscription_plan === 'basic' ? '💎 Basic' : '🆓 Free'}
+• Current Streak: ${user?.current_streak || 0} days
+• Level: ${user?.level || 1}
 
-User's Question: "${userMessageText}"
+${userName}'s Question: "${userMessageText}"
 
-Please respond in a friendly, encouraging, and helpful manner. Be conversational and supportive. Reference the user's specific security data when relevant. Use emojis sparingly (🛡️, ✅, 💡, 🚀). Always end with actionable advice or next steps.`;
+Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${userName}'s name in your response. Be conversational and supportive. Reference their specific security data when relevant. Use emojis sparingly (🛡️, ✅, 💡, 🚀). Always end with actionable advice or next steps. Make it feel like you know them personally.`;
 
       // Get AI response
       const aiResponse = await base44.integrations.Core.InvokeLLM({
@@ -193,7 +202,9 @@ Please respond in a friendly, encouraging, and helpful manner. Be conversational
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Mia AI Assistant</h1>
-              <p className="text-sm text-gray-400">Your personal security advisor • Online</p>
+              <p className="text-sm text-gray-400">
+                Your personal security advisor • Chatting with {user?.full_name?.split(' ')[0] || 'you'}
+              </p>
             </div>
           </div>
           <Button
@@ -215,7 +226,9 @@ Please respond in a friendly, encouraging, and helpful manner. Be conversational
               <div className="w-24 h-24 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Bot className="w-12 h-12 text-green-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Hi! I'm Mia 👋</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Hi {user?.full_name?.split(' ')[0] || 'there'}! I'm Mia 👋
+              </h2>
               <p className="text-gray-400 mb-6">Your AI-powered security assistant. How can I help you today?</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
                 {[
