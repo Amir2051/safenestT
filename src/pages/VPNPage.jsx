@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,9 @@ export default function VPNPage() {
   const [rotationCount, setRotationCount] = useState(0);
   const [nextRotationIn, setNextRotationIn] = useState(30);
   
+  const rotationTimerRef = useRef(null);
+  const countdownTimerRef = useRef(null);
+  
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -61,10 +64,10 @@ export default function VPNPage() {
         ping: server.basePing + Math.floor(Math.random() * 10 - 5),
         load: Math.max(10, Math.min(95, server.baseLoad + Math.floor(Math.random() * 10 - 5))),
         users: Math.max(100, server.baseUsers + Math.floor(Math.random() * 100 - 50)),
-        bandwidth: (Math.random() * 800 + 200).toFixed(1), // 200-1000 Mbps
-        uptime: 99.9 - Math.random() * 0.2 // 99.7-99.9%
+        bandwidth: (Math.random() * 800 + 200).toFixed(1),
+        uptime: (99.9 - Math.random() * 0.2).toFixed(1)
       })));
-    }, 3000); // Update every 3 seconds
+    }, 3000);
 
     return () => clearInterval(updateInterval);
   }, []);
@@ -88,56 +91,67 @@ export default function VPNPage() {
     return () => clearInterval(interval);
   }, [user?.vpn_enabled]);
 
-  // FIXED: Auto-rotation system with proper dependencies
+  // FIXED: Auto-rotation with useRef to prevent stale closures
   useEffect(() => {
-    let rotationTimerRef = null;
-    let countdownTimerRef = null;
+    console.log('🔄 Auto-rotation effect triggered', {
+      vpnEnabled: user?.vpn_enabled,
+      autoRotateEnabled,
+      rotationInterval
+    });
 
-    const startRotation = () => {
-      console.log(`🚀 Starting VPN auto-rotation: every ${rotationInterval} seconds`);
+    // Clear any existing timers
+    if (rotationTimerRef.current) {
+      console.log('🧹 Clearing existing rotation timer');
+      clearInterval(rotationTimerRef.current);
+      rotationTimerRef.current = null;
+    }
+    if (countdownTimerRef.current) {
+      console.log('🧹 Clearing existing countdown timer');
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+
+    // Only start if VPN is enabled AND auto-rotation is enabled
+    if (user?.vpn_enabled && autoRotateEnabled) {
+      console.log(`🚀 Starting auto-rotation: every ${rotationInterval} seconds`);
       
-      // Set initial countdown
+      // Reset countdown
       setNextRotationIn(rotationInterval);
       
       // Countdown timer - updates every second
-      countdownTimerRef = setInterval(() => {
+      countdownTimerRef.current = setInterval(() => {
         setNextRotationIn(prev => {
-          const newValue = prev - 1;
-          if (newValue <= 0) {
-            return rotationInterval;
-          }
-          return newValue;
+          const next = prev - 1;
+          if (next <= 0) return rotationInterval;
+          return next;
         });
       }, 1000);
       
-      // Rotation timer - triggers server change
-      rotationTimerRef = setInterval(() => {
-        console.log('🔄 VPN Rotation triggered!');
+      // Rotation timer - triggers server rotation
+      rotationTimerRef.current = setInterval(() => {
+        console.log('⏰ ROTATION TIMER FIRED!', new Date().toLocaleTimeString());
         rotateToRandomServer();
       }, rotationInterval * 1000);
-    };
-
-    const stopRotation = () => {
-      console.log('⏹️ Stopping VPN auto-rotation');
-      if (rotationTimerRef) clearInterval(rotationTimerRef);
-      if (countdownTimerRef) clearInterval(countdownTimerRef);
-      rotationTimerRef = null;
-      countdownTimerRef = null;
-    };
-
-    // Start rotation if VPN is enabled AND auto-rotation is enabled
-    if (user?.vpn_enabled && autoRotateEnabled) {
-      startRotation();
+      
+      console.log(`✅ Timers started - Rotation every ${rotationInterval}s`);
     } else {
-      stopRotation();
+      console.log('⏹️ Auto-rotation not active');
       setNextRotationIn(rotationInterval);
     }
 
-    // Cleanup on unmount or when dependencies change
+    // Cleanup function
     return () => {
-      stopRotation();
+      console.log('🧹 Cleaning up rotation timers');
+      if (rotationTimerRef.current) {
+        clearInterval(rotationTimerRef.current);
+        rotationTimerRef.current = null;
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
     };
-  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]); // All dependencies
+  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]);
 
   const updateVPNMutation = useMutation({
     mutationFn: async (enabled) => {
@@ -169,7 +183,7 @@ export default function VPNPage() {
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       
       if (updatedUser.vpn_enabled) {
-        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? '(Auto-rotation active)' : ''}`);
+        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? `(Auto-rotating every ${rotationInterval}s)` : ''}`);
         setRotationCount(0);
       } else {
         toast.success('VPN disconnected');
@@ -193,31 +207,32 @@ export default function VPNPage() {
   };
 
   const rotateToRandomServer = async () => {
+    console.log('🔄 rotateToRandomServer() called');
+    
     if (!user?.vpn_enabled) {
-      console.log('❌ Cannot rotate: VPN not enabled');
+      console.log('❌ VPN not enabled, cannot rotate');
       return;
     }
     
-    console.log(`🔄 Rotating from ${selectedServer}...`);
     setIsRotating(true);
     
-    // Get random server different from current
     const availableServers = servers.filter(s => s.id !== selectedServer);
     const randomServer = availableServers[Math.floor(Math.random() * availableServers.length)];
     const oldServer = servers.find(s => s.id === selectedServer);
     
-    // Simulate rotation delay
+    console.log(`🔄 Rotating: ${oldServer?.name} → ${randomServer.name}`);
+    
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     setSelectedServer(randomServer.id);
     setRotationCount(prev => {
       const newCount = prev + 1;
-      console.log(`✅ Rotated to ${randomServer.name} (Rotation #${newCount})`);
+      console.log(`✅ Rotation #${newCount} complete`);
       return newCount;
     });
     setIsRotating(false);
+    setNextRotationIn(rotationInterval);
     
-    // Log rotation
     await base44.entities.AuditLog.create({
       action_type: 'vpn_server_changed',
       action_category: 'vpn',
@@ -271,12 +286,14 @@ export default function VPNPage() {
     setAutoRotateEnabled(newValue);
     localStorage.setItem('vpn_auto_rotate', newValue.toString());
     
+    console.log(`🔄 Auto-rotation ${newValue ? 'ENABLED' : 'DISABLED'}`);
     toast.success(newValue ? `🔄 Auto-rotation enabled - rotating every ${rotationInterval}s` : 'Auto-rotation disabled');
   };
 
   const updateRotationInterval = (seconds) => {
     setRotationInterval(seconds);
     localStorage.setItem('vpn_rotation_interval', seconds.toString());
+    console.log(`⏱️ Rotation interval changed to ${seconds}s`);
     toast.success(`Rotation interval set to ${seconds}s`);
   };
 
@@ -327,6 +344,16 @@ export default function VPNPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {/* Debug Info - Remove in production */}
+      <Card className="bg-yellow-500/10 border-yellow-500/30">
+        <CardContent className="p-4">
+          <p className="text-yellow-400 text-sm font-mono">
+            🐛 Debug: VPN={isEnabled ? 'ON' : 'OFF'} | Auto-Rotate={autoRotateEnabled ? 'ON' : 'OFF'} | 
+            Interval={rotationInterval}s | Next={nextRotationIn}s | Count={rotationCount}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -394,6 +421,11 @@ export default function VPNPage() {
                     <div className="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin" />
                   )}
                   <Wifi className={`w-16 h-16 ${isEnabled ? 'text-green-400' : 'text-gray-400'}`} />
+                  {isEnabled && autoRotateEnabled && (
+                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                      <ArrowUpDown className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
                 
                 <h2 className={`text-3xl font-bold mb-2 ${isEnabled ? 'text-green-400' : 'text-gray-400'}`}>
@@ -412,7 +444,7 @@ export default function VPNPage() {
                   {isEnabled 
                     ? autoRotateEnabled 
                       ? `🔄 Auto-rotating every ${rotationInterval}s • ${rotationCount} rotations completed`
-                      : 'Connected (manual mode)'
+                      : 'Connected (manual mode - enable auto-rotation above)'
                     : 'Your connection is not protected'
                   }
                 </p>
@@ -447,19 +479,22 @@ export default function VPNPage() {
                 <>
                   {/* Next Rotation Countdown */}
                   {autoRotateEnabled && (
-                    <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-cyan-400 font-semibold">Next rotation in:</span>
-                        <span className="text-2xl font-bold text-white">{nextRotationIn}s</span>
+                    <div className="mb-6 p-5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-cyan-500/30 rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-cyan-400 font-bold flex items-center gap-2">
+                          <Clock className="w-5 h-5" />
+                          Next rotation in:
+                        </span>
+                        <span className="text-3xl font-bold text-white tabular-nums">{nextRotationIn}s</span>
                       </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000"
+                          className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-1000 animate-pulse"
                           style={{ width: `${(nextRotationIn / rotationInterval) * 100}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">
-                        ⚡ Automatic rotation active • Total: {rotationCount} rotations
+                      <p className="text-xs text-gray-400 mt-3 text-center">
+                        ⚡ Automatic rotation active • Total: {rotationCount} rotations • Timer: {rotationTimerRef.current ? '✅ Active' : '❌ Inactive'}
                       </p>
                     </div>
                   )}
@@ -499,8 +534,8 @@ export default function VPNPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
                   <div>
-                    <p className="text-white font-semibold">Auto-Rotation</p>
-                    <p className="text-xs text-gray-400">Automatically change servers</p>
+                    <p className="text-white font-semibold">Enable Auto-Rotation</p>
+                    <p className="text-xs text-gray-400">Automatically change servers for max anonymity</p>
                   </div>
                   <button
                     onClick={toggleAutoRotation}
@@ -508,7 +543,7 @@ export default function VPNPage() {
                       autoRotateEnabled ? 'bg-green-500' : 'bg-gray-600'
                     }`}
                   >
-                    <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform ${
+                    <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform shadow-md ${
                       autoRotateEnabled ? 'translate-x-7' : 'translate-x-0'
                     }`} />
                   </button>
@@ -528,6 +563,7 @@ export default function VPNPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1a2332] border-cyan-500/20">
+                      <SelectItem value="10">10 seconds (Ultra Fast)</SelectItem>
                       <SelectItem value="15">15 seconds (Fast)</SelectItem>
                       <SelectItem value="30">30 seconds (Balanced)</SelectItem>
                       <SelectItem value="60">60 seconds (Stable)</SelectItem>
@@ -542,9 +578,17 @@ export default function VPNPage() {
 
                 <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
                   <p className="text-cyan-400 text-sm">
-                    <strong>💡 Tip:</strong> Auto-rotation enhances anonymity by constantly changing your virtual location every {rotationInterval} seconds.
+                    <strong>💡 Tip:</strong> Auto-rotation enhances anonymity by constantly changing your virtual location every {rotationInterval} seconds. Enable it above!
                   </p>
                 </div>
+
+                {!autoRotateEnabled && isEnabled && (
+                  <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg animate-pulse">
+                    <p className="text-orange-400 text-sm font-semibold">
+                      ⚠️ Auto-rotation is OFF. Enable it for maximum security!
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -613,6 +657,11 @@ export default function VPNPage() {
                   <span className={`text-sm ${feature.active ? 'text-gray-300' : 'text-gray-500'}`}>
                     {feature.text}
                   </span>
+                  {feature.text === 'Auto-rotation active' && feature.active && (
+                    <Badge className="ml-auto bg-purple-500/20 text-purple-400 text-xs">
+                      Every {rotationInterval}s
+                    </Badge>
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -627,6 +676,9 @@ export default function VPNPage() {
             <CardTitle className="text-white flex items-center gap-2">
               <Server className="w-5 h-5 text-cyan-400" />
               Available Servers ({servers.length}) - Live Statistics
+              <Badge className="ml-2 bg-green-500/20 text-green-400 text-xs animate-pulse">
+                Updating every 3s
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -638,13 +690,18 @@ export default function VPNPage() {
                   disabled={isEnabled}
                   className={`p-5 rounded-xl border-2 transition-all text-left ${
                     selectedServer === server.id
-                      ? 'border-cyan-500 bg-cyan-500/10 shadow-lg'
+                      ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20'
                       : 'border-gray-700 bg-[#0f1419] hover:border-gray-600'
                   } ${isEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-white font-bold text-lg">{server.name}</h3>
+                      <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                        {server.name}
+                        {selectedServer === server.id && isEnabled && (
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        )}
+                      </h3>
                       <p className="text-sm text-gray-400">{server.location}</p>
                     </div>
                     {selectedServer === server.id && (
@@ -691,7 +748,7 @@ export default function VPNPage() {
                         <span className="text-xs text-gray-400">Users</span>
                       </div>
                       <span className="text-sm font-bold text-purple-400">
-                        {server.users || server.baseUsers}
+                        {(server.users || server.baseUsers).toLocaleString()}
                       </span>
                     </div>
 
