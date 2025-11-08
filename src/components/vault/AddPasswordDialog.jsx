@@ -30,11 +30,18 @@ export default function AddPasswordDialog({ open, onClose }) {
   const queryClient = useQueryClient();
 
   const createPasswordMutation = useMutation({
-    mutationFn: (data) => base44.entities.Password.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['passwords'] });
-      toast.success('Password added successfully!');
-      onClose();
+    mutationFn: async (data) => {
+      const result = await base44.entities.Password.create(data);
+      return result;
+    },
+    onSuccess: async () => {
+      // Invalidate and refetch immediately
+      await queryClient.invalidateQueries({ queryKey: ['passwords'] });
+      await queryClient.refetchQueries({ queryKey: ['passwords'] });
+      
+      toast.success('Password added successfully! 🔒');
+      
+      // Reset form
       setFormData({
         site_name: '',
         site_url: '',
@@ -43,9 +50,13 @@ export default function AddPasswordDialog({ open, onClose }) {
         category: 'other',
         notes: ''
       });
+      
+      // Close dialog
+      onClose();
     },
-    onError: () => {
-      toast.error('Failed to add password');
+    onError: (error) => {
+      console.error('Error adding password:', error);
+      toast.error('Failed to add password. Please try again.');
     }
   });
 
@@ -76,10 +87,17 @@ export default function AddPasswordDialog({ open, onClose }) {
     return 'medium';
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!formData.site_name || !formData.username || !formData.encrypted_password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
     const passwordStrength = calculateStrength(formData.encrypted_password);
-    createPasswordMutation.mutate({
+    
+    await createPasswordMutation.mutateAsync({
       ...formData,
       password_strength: passwordStrength,
       last_changed: new Date().toISOString()
@@ -202,6 +220,7 @@ export default function AddPasswordDialog({ open, onClose }) {
               variant="outline"
               onClick={onClose}
               className="border-gray-600 text-gray-300"
+              disabled={createPasswordMutation.isPending}
             >
               Cancel
             </Button>
