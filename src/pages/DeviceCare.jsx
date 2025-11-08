@@ -273,7 +273,7 @@ export default function DeviceCare() {
 
       // Check browser data size
       const totalKB = realBrowserData.totalSize / 1024;
-      if (totalKB > 1000) { // If total browser data exceeds 1MB
+      if (totalKB > 1000) {
         threats.push({
           name: `Large Browser Data (${totalKB.toFixed(0)}KB)`,
           severity: "low",
@@ -335,7 +335,8 @@ Be encouraging and explain what was found. Sign as "Mia 🤖"`;
         device_info: deviceInfo,
         ai_summary: aiSummary,
         browser_data: realBrowserData,
-        cleanup_potential_mb: cleanupPotential / (1024 * 1024)
+        cleanup_potential_mb: cleanupPotential / (1024 * 1024),
+        deletable_count: deletableItems.length
       };
 
       await createLogMutation.mutateAsync(results);
@@ -375,6 +376,13 @@ Be encouraging and explain what was found. Sign as "Mia 🤖"`;
   const lastScan = deviceLogs[0];
   const totalThreatsBlocked = deviceLogs.reduce((sum, log) => sum + (log.threats_found || 0), 0);
   const totalJunkCleaned = deviceLogs.reduce((sum, log) => sum + (log.junk_cleaned_mb || 0), 0); // This will remain 0 unless auto-cleanup is implemented.
+
+  // Calculate deletable items count from browserData
+  const deletableCount = browserData ? (
+    browserData.localStorage.filter(i => i.canDelete).length +
+    browserData.sessionStorage.filter(i => i.canDelete).length +
+    browserData.cookies.filter(i => i.canDelete).length
+  ) : 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -487,7 +495,7 @@ Be encouraging and explain what was found. Sign as "Mia 🤖"`;
                   </CardTitle>
                   <Button
                     onClick={cleanAllDeletable}
-                    disabled={cleaning || deletableItems.length === 0}
+                    disabled={cleaning || deletableCount === 0}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   >
                     {cleaning ? (
@@ -498,7 +506,7 @@ Be encouraging and explain what was found. Sign as "Mia 🤖"`;
                     ) : (
                       <>
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Clean All Safe Items
+                        Clean All ({deletableCount})
                       </>
                     )}
                   </Button>
