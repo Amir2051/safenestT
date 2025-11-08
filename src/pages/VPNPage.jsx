@@ -74,11 +74,25 @@ export default function VPNPage() {
   const [nextRotationIn, setNextRotationIn] = useState(30);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   
+  // USE REFS FOR VALUES THAT NEED TO BE ACCESSED IN INTERVALS OR CALLBACKS WITHOUT RECREATING THEM
+  const rotationCountRef = useRef(0);
+  const selectedServerRef = useRef('us-east');
+  const currentSessionIdRef = useRef(null);
+  const connectionTimeRef = useRef(0);
+  const dataTransferredRef = useRef({ download: 0, upload: 0 });
+  
   const rotationTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const dataUpdateTimerRef = useRef(null);
   
   const queryClient = useQueryClient();
+
+  // Sync refs with state
+  useEffect(() => { rotationCountRef.current = rotationCount; }, [rotationCount]);
+  useEffect(() => { selectedServerRef.current = selectedServer; }, [selectedServer]);
+  useEffect(() => { currentSessionIdRef.current = currentSessionId; }, [currentSessionId]);
+  useEffect(() => { connectionTimeRef.current = connectionTime; }, [connectionTime]);
+  useEffect(() => { dataTransferredRef.current = dataTransferred; }, [dataTransferred]);
 
   // Fetch active VPN sessions
   const { data: activeSessions = [] } = useQuery({
@@ -110,12 +124,14 @@ export default function VPNPage() {
           if (sessions && sessions.length > 0) {
             const session = sessions[0];
             setCurrentSessionId(session.session_id);
+            currentSessionIdRef.current = session.session_id; // Sync ref
             setRotationCount(session.total_rotations || 0);
-            setSelectedServer(session.current_server.id);
+            rotationCountRef.current = session.total_rotations || 0; // Sync ref
+            setSelectedServer(session.current_server.id); // Sync state (ref syncs automatically)
             
             const duration = Math.floor((new Date().getTime() - new Date(session.started_at).getTime()) / 1000);
-            setConnectionTime(duration);
-            setDataTransferred({
+            setConnectionTime(duration); // Sync state (ref syncs automatically)
+            setDataTransferred({ // Sync state (ref syncs automatically)
               download: session.data_transferred?.download_kb || 0,
               upload: session.data_transferred?.upload_kb || 0,
             });
@@ -156,6 +172,7 @@ export default function VPNPage() {
       setConnectionTime(0);
       setDataTransferred({ download: 0, upload: 0 });
       setRotationCount(0);
+      rotationCountRef.current = 0; // Sync ref
     }
     return () => clearInterval(interval);
   }, [user?.vpn_enabled]);
@@ -165,22 +182,24 @@ export default function VPNPage() {
     if (user?.vpn_enabled && currentSessionId) {
       dataUpdateTimerRef.current = setInterval(async () => {
         try {
-          await base44.entities.VPNSession.update(currentSessionId, {
-            duration_seconds: connectionTime,
+          const currentServer = servers.find(s => s.id === selectedServerRef.current); // Use ref for selected server
+          
+          await base44.entities.VPNSession.update(currentSessionIdRef.current, { // Use ref for current session ID
+            duration_seconds: connectionTimeRef.current, // Use ref for connection time
             data_transferred: {
-              download_kb: dataTransferred.download,
-              upload_kb: dataTransferred.upload
+              download_kb: dataTransferredRef.current.download, // Use ref for data transferred
+              upload_kb: dataTransferredRef.current.upload
             },
-            total_rotations: rotationCount,
+            total_rotations: rotationCountRef.current, // Use ref for rotation count
             current_server: {
-              id: selectedServer,
-              name: servers.find(s => s.id === selectedServer)?.name,
-              location: servers.find(s => s.id === selectedServer)?.location,
-              ip: servers.find(s => s.id === selectedServer)?.ip
+              id: selectedServerRef.current,
+              name: currentServer?.name,
+              location: currentServer?.location,
+              ip: currentServer?.ip
             }
           });
           
-          // Refresh session data
+          console.log(`📊 Session updated: ${rotationCountRef.current} rotations, ${connectionTimeRef.current}s`);
           queryClient.invalidateQueries({ queryKey: ['vpn-sessions'] });
         } catch (error) {
           console.error('Failed to update session:', error);
@@ -193,63 +212,7 @@ export default function VPNPage() {
         clearInterval(dataUpdateTimerRef.current);
       }
     };
-  }, [user?.vpn_enabled, currentSessionId, connectionTime, dataTransferred, rotationCount, selectedServer, servers]);
-
-  // FIXED: Auto-rotation with useRef to prevent stale closures
-  useEffect(() => {
-    console.log('🔄 Auto-rotation effect triggered', {
-      vpnEnabled: user?.vpn_enabled,
-      autoRotateEnabled,
-      rotationInterval
-    });
-
-    if (rotationTimerRef.current) {
-      console.log('🧹 Clearing existing rotation timer');
-      clearInterval(rotationTimerRef.current);
-      rotationTimerRef.current = null;
-    }
-    if (countdownTimerRef.current) {
-      console.log('🧹 Clearing existing countdown timer');
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-
-    if (user?.vpn_enabled && autoRotateEnabled) {
-      console.log(`🚀 Starting auto-rotation: every ${rotationInterval} seconds`);
-      
-      setNextRotationIn(rotationInterval);
-      
-      countdownTimerRef.current = setInterval(() => {
-        setNextRotationIn(prev => {
-          const next = prev - 1;
-          if (next <= 0) return rotationInterval;
-          return next;
-        });
-      }, 1000);
-      
-      rotationTimerRef.current = setInterval(() => {
-        console.log('⏰ ROTATION TIMER FIRED!', new Date().toLocaleTimeString());
-        rotateToRandomServer();
-      }, rotationInterval * 1000);
-      
-      console.log(`✅ Timers started - Rotation every ${rotationInterval}s`);
-    } else {
-      console.log('⏹️ Auto-rotation not active');
-      setNextRotationIn(rotationInterval);
-    }
-
-    return () => {
-      console.log('🧹 Cleaning up rotation timers');
-      if (rotationTimerRef.current) {
-        clearInterval(rotationTimerRef.current);
-        rotationTimerRef.current = null;
-      }
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-    };
-  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]);
+  }, [user?.vpn_enabled, currentSessionId, servers]); // currentSessionId is a dependency because its change means a new session starts/stops, requiring timer setup/teardown. servers is needed because the currentServer lookup uses it.
 
   // Calculate server performance score (lower is better)
   const calculateServerScore = (server) => {
@@ -279,16 +242,19 @@ export default function VPNPage() {
 
   // Get smart random server (avoid overloaded servers)
   const getSmartRandomServer = () => {
+    // Use selectedServerRef for the current server ID
+    const currentServerId = selectedServerRef.current;
+    
     // Filter out current server and critically overloaded servers (>85% load)
     const availableServers = servers.filter(s => 
-      s.id !== selectedServer && 
+      s.id !== currentServerId && 
       (s.load || s.baseLoad) < 85
     );
     
     if (availableServers.length === 0) {
       console.log('⚠️ All servers overloaded, using any available server');
       // If all other servers are overloaded, rotate to a random one, even if slightly overloaded
-      const fallbackServers = servers.filter(s => s.id !== selectedServer);
+      const fallbackServers = servers.filter(s => s.id !== currentServerId);
       if (fallbackServers.length === 0) return servers[0]; // Fallback if only one server exists
       return fallbackServers[Math.floor(Math.random() * fallbackServers.length)];
     }
@@ -325,154 +291,101 @@ export default function VPNPage() {
     }
   };
 
-  const updateVPNMutation = useMutation({
-    mutationFn: async (enabled) => {
-      let serverToConnect = servers.find(s => s.id === selectedServer);
-      
-      if (enabled && !autoRotateEnabled) {
-        const bestServer = getBestServer();
-        setSelectedServer(bestServer.id);
-        serverToConnect = bestServer;
-        
-        toast.success(`🎯 Auto-selected best server: ${bestServer.name}`, { duration: 3000 });
-        console.log('✅ Intelligent server selection:', bestServer.name);
-      } else if (!enabled && currentSessionId) {
-         // Ensure currentServer is correctly identified for disconnection audit log
-         const disconnectedServer = servers.find(s => s.id === selectedServer);
-         serverToConnect = disconnectedServer;
-      }
-      
-      const result = await base44.auth.updateMe({ vpn_enabled: enabled });
-      
-      // Create or end VPN session
-      if (enabled) {
-        const sessionId = `vpn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        setCurrentSessionId(sessionId);
-        
-        await base44.entities.VPNSession.create({
-          session_id: sessionId,
-          user_email: user.email,
-          status: 'active',
-          current_server: {
-            id: serverToConnect.id,
-            name: serverToConnect.name,
-            location: serverToConnect.location,
-            ip: serverToConnect.ip
-          },
-          started_at: new Date().toISOString(),
-          auto_rotation_enabled: autoRotateEnabled,
-          rotation_interval: rotationInterval,
-          total_rotations: 0,
-          data_transferred: {
-            download_kb: 0,
-            upload_kb: 0
-          },
-          rotation_history: []
-        });
-      } else if (currentSessionId) {
-        await base44.entities.VPNSession.update(currentSessionId, {
-          status: 'disconnected',
-          ended_at: new Date().toISOString(),
-          duration_seconds: connectionTime,
-          data_transferred: {
-            download_kb: dataTransferred.download,
-            upload_kb: dataTransferred.upload
-          },
-          total_rotations: rotationCount
-        });
-        setCurrentSessionId(null);
-      }
-      
-      await base44.entities.AuditLog.create({
-        action_type: enabled ? 'vpn_connected' : 'vpn_disconnected',
-        action_category: 'vpn',
-        description: enabled 
-          ? `VPN connected to ${serverToConnect.name} (Auto-selected: ${!autoRotateEnabled}) with auto-rotation ${autoRotateEnabled ? 'enabled' : 'disabled'}`
-          : `VPN disconnected after ${Math.floor(connectionTime / 60)} minutes`,
-        metadata: {
-          server: serverToConnect.location,
-          ip_address: enabled ? serverToConnect.ip : null,
-          device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-          auto_rotation: autoRotateEnabled ? 'enabled' : 'disabled',
-          rotation_interval: autoRotateEnabled ? `${rotationInterval}s` : 'N/A',
-          server_load: enabled ? `${serverToConnect.load || serverToConnect.baseLoad}%` : null,
-          server_ping: enabled ? `${serverToConnect.ping || serverToConnect.basePing}ms` : null,
-          selection_method: enabled ? (autoRotateEnabled ? 'auto-rotation' : 'intelligent-load-balancing') : null,
-          total_rotations: enabled ? 0 : rotationCount,
-          data_transferred: enabled ? null : `↓${(dataTransferred.download / 1024).toFixed(2)}MB ↑${(dataTransferred.upload / 1024).toFixed(2)}MB`,
-          session_id: currentSessionId || undefined
-        },
-        severity: 'info',
-        status: 'success'
-      });
-      
-      return result;
-    },
-    onSuccess: (updatedUser, enabled) => {
-      setUser(updatedUser);
-      queryClient.invalidateQueries({ queryKey: ['user'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-      queryClient.invalidateQueries({ queryKey: ['vpn-sessions'] });
-      
-      if (updatedUser.vpn_enabled) {
-        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? `(Auto-rotating every ${rotationInterval}s)` : '(Best server selected)'}`);
-        setRotationCount(0); // Reset rotation count for new session
-      } else {
-        toast.success('VPN disconnected');
-        setRotationCount(0); // Reset rotation count on disconnect
-      }
-    },
-    onError: async (error) => {
-      console.error("VPN mutation error:", error);
-      await base44.entities.AuditLog.create({
-        action_type: 'vpn_connection_failed',
-        action_category: 'vpn',
-        description: 'Failed to connect/disconnect VPN',
-        severity: 'high',
-        status: 'failed',
-        metadata: {
-          error_message: error.message,
-          session_id: currentSessionId || undefined
-        }
-      });
-      toast.error('Failed to update VPN status');
+  // FIXED: Auto-rotation with proper closure handling
+  // This effect manages the auto-rotation timers. Its dependencies should only be for starting/stopping the timers.
+  useEffect(() => {
+    console.log('🔄 Auto-rotation effect triggered', {
+      vpnEnabled: user?.vpn_enabled,
+      autoRotateEnabled,
+      rotationInterval
+    });
+
+    if (rotationTimerRef.current) {
+      console.log('🧹 Clearing existing rotation timer');
+      clearInterval(rotationTimerRef.current);
+      rotationTimerRef.current = null;
     }
-  });
+    if (countdownTimerRef.current) {
+      console.log('🧹 Clearing existing countdown timer');
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
 
-  const toggleVPN = () => {
-    updateVPNMutation.mutate(!user?.vpn_enabled);
-  };
+    // Only start timers if VPN is enabled and auto-rotate is active
+    if (user?.vpn_enabled && autoRotateEnabled) {
+      console.log(`🚀 Starting auto-rotation: every ${rotationInterval} seconds`);
+      
+      setNextRotationIn(rotationInterval); // Reset countdown
+      
+      countdownTimerRef.current = setInterval(() => {
+        setNextRotationIn(prev => {
+          const next = prev - 1;
+          if (next <= 0) return rotationInterval;
+          return next;
+        });
+      }, 1000);
+      
+      // The performRotation function uses refs, so it always gets current state without being a dependency here.
+      rotationTimerRef.current = setInterval(() => {
+        console.log('⏰ ROTATION TIMER FIRED!', new Date().toLocaleTimeString());
+        performRotation();
+      }, rotationInterval * 1000);
+      
+      console.log(`✅ Timers started - Rotation every ${rotationInterval}s`);
+    } else {
+      console.log('⏹️ Auto-rotation not active');
+      setNextRotationIn(rotationInterval); // Reset countdown display if disabled
+    }
 
-  const rotateToRandomServer = async () => {
-    console.log('🔄 rotateToRandomServer() called');
+    // Cleanup function to clear timers when component unmounts or dependencies change
+    return () => {
+      console.log('🧹 Cleaning up rotation timers');
+      if (rotationTimerRef.current) {
+        clearInterval(rotationTimerRef.current);
+        rotationTimerRef.current = null;
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]); // Dependencies for controlling timer lifecycle
+
+  // Moved rotation logic into a stable function that uses refs
+  const performRotation = async () => {
+    console.log('🔄 performRotation() called at', new Date().toLocaleTimeString());
     
-    if (!user?.vpn_enabled) {
+    if (!user?.vpn_enabled) { // Check user.vpn_enabled directly from user state
       console.log('❌ VPN not enabled, cannot rotate');
       return;
     }
     
     setIsRotating(true);
     
-    const oldServer = servers.find(s => s.id === selectedServer);
-    const newServer = getSmartRandomServer();
+    const oldServer = servers.find(s => s.id === selectedServerRef.current); // Use ref for current server
+    const newServer = getSmartRandomServer(); // This function already uses selectedServerRef.current
     
     console.log(`🔄 Smart rotation: ${oldServer?.name} (${oldServer?.load || oldServer?.baseLoad}%) → ${newServer.name} (${newServer.load || newServer.baseLoad}%)`);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate connection time
     
-    setSelectedServer(newServer.id);
-    const newRotationCount = rotationCount + 1;
-    setRotationCount(newRotationCount);
+    setSelectedServer(newServer.id); // Update state (ref will sync)
+    selectedServerRef.current = newServer.id; // Directly update ref for immediate use by intervals/other callbacks
+    
+    const newRotationCount = rotationCountRef.current + 1; // Use ref for rotation count
+    setRotationCount(newRotationCount); // Update state (ref will sync)
+    rotationCountRef.current = newRotationCount; // Directly update ref
+    
     setIsRotating(false);
-    setNextRotationIn(rotationInterval);
+    setNextRotationIn(rotationInterval); // Reset countdown
     
     console.log(`✅ Rotation #${newRotationCount} complete`);
     
     // Update session with rotation history
-    if (currentSessionId) {
+    if (currentSessionIdRef.current) { // Use ref for current session ID
       try {
         const currentSession = await base44.entities.VPNSession.filter({ 
-          session_id: currentSessionId 
+          session_id: currentSessionIdRef.current 
         }, '-created_date', 1).then(sessions => sessions[0]);
         
         const rotationHistory = currentSession?.rotation_history || [];
@@ -485,8 +398,8 @@ export default function VPNPage() {
           reason: 'intelligent-load-balancing'
         });
         
-        await base44.entities.VPNSession.update(currentSessionId, {
-          total_rotations: newRotationCount,
+        await base44.entities.VPNSession.update(currentSessionIdRef.current, { // Use ref
+          total_rotations: newRotationCount, // Use new count
           current_server: {
             id: newServer.id,
             name: newServer.name,
@@ -515,7 +428,7 @@ export default function VPNPage() {
         server_load: `${newServer.load || newServer.baseLoad}%`,
         server_ping: `${newServer.ping || newServer.basePing}ms`,
         selection_reason: 'intelligent-load-balancing',
-        session_id: currentSessionId
+        session_id: currentSessionIdRef.current // Use ref
       },
       severity: 'info',
       status: 'success'
@@ -525,16 +438,140 @@ export default function VPNPage() {
     toast.success(`🔄 Rotated to ${newServer.name} (${newServer.load || newServer.baseLoad}% load)`, { duration: 2000 });
   };
 
+  const updateVPNMutation = useMutation({
+    mutationFn: async (enabled) => {
+      let serverToConnect = servers.find(s => s.id === selectedServerRef.current); // Use ref for current server
+      
+      if (enabled && !autoRotateEnabled) {
+        const bestServer = getBestServer();
+        setSelectedServer(bestServer.id); // Update state
+        selectedServerRef.current = bestServer.id; // Sync ref
+        serverToConnect = bestServer;
+        
+        toast.success(`🎯 Auto-selected best server: ${bestServer.name}`, { duration: 3000 });
+        console.log('✅ Intelligent server selection:', bestServer.name);
+      } else if (!enabled && currentSessionIdRef.current) { // Use ref for current session ID
+         // Ensure currentServer is correctly identified for disconnection audit log
+         const disconnectedServer = servers.find(s => s.id === selectedServerRef.current); // Use ref
+         serverToConnect = disconnectedServer;
+      }
+      
+      const result = await base44.auth.updateMe({ vpn_enabled: enabled });
+      
+      // Create or end VPN session
+      if (enabled) {
+        const sessionId = `vpn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setCurrentSessionId(sessionId); // Update state
+        currentSessionIdRef.current = sessionId; // Sync ref
+        
+        await base44.entities.VPNSession.create({
+          session_id: sessionId,
+          user_email: user.email,
+          status: 'active',
+          current_server: {
+            id: serverToConnect.id,
+            name: serverToConnect.name,
+            location: serverToConnect.location,
+            ip: serverToConnect.ip
+          },
+          started_at: new Date().toISOString(),
+          auto_rotation_enabled: autoRotateEnabled,
+          rotation_interval: rotationInterval,
+          total_rotations: 0,
+          data_transferred: {
+            download_kb: 0,
+            upload_kb: 0
+          },
+          rotation_history: []
+        });
+      } else if (currentSessionIdRef.current) { // Use ref
+        await base44.entities.VPNSession.update(currentSessionIdRef.current, { // Use ref
+          status: 'disconnected',
+          ended_at: new Date().toISOString(),
+          duration_seconds: connectionTimeRef.current, // Use ref
+          data_transferred: {
+            download_kb: dataTransferredRef.current.download, // Use ref
+            upload_kb: dataTransferredRef.current.upload
+          },
+          total_rotations: rotationCountRef.current // Use ref
+        });
+        setCurrentSessionId(null); // Update state
+        currentSessionIdRef.current = null; // Sync ref
+      }
+      
+      await base44.entities.AuditLog.create({
+        action_type: enabled ? 'vpn_connected' : 'vpn_disconnected',
+        action_category: 'vpn',
+        description: enabled 
+          ? `VPN connected to ${serverToConnect.name} (Auto-selected: ${!autoRotateEnabled}) with auto-rotation ${autoRotateEnabled ? 'enabled' : 'disabled'}`
+          : `VPN disconnected after ${Math.floor(connectionTimeRef.current / 60)} minutes`, // Use ref
+        metadata: {
+          server: serverToConnect.location,
+          ip_address: enabled ? serverToConnect.ip : null,
+          device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+          auto_rotation: autoRotateEnabled ? 'enabled' : 'disabled',
+          rotation_interval: autoRotateEnabled ? `${rotationInterval}s` : 'N/A',
+          server_load: enabled ? `${serverToConnect.load || serverToConnect.baseLoad}%` : null,
+          server_ping: enabled ? `${serverToConnect.ping || serverToConnect.basePing}ms` : null,
+          selection_method: enabled ? (autoRotateEnabled ? 'auto-rotation' : 'intelligent-load-balancing') : null,
+          total_rotations: enabled ? 0 : rotationCountRef.current, // Use ref
+          data_transferred: enabled ? null : `↓${(dataTransferredRef.current.download / 1024).toFixed(2)}MB ↑${(dataTransferredRef.current.upload / 1024).toFixed(2)}MB`, // Use ref
+          session_id: currentSessionIdRef.current || undefined // Use ref
+        },
+        severity: 'info',
+        status: 'success'
+      });
+      
+      return result;
+    },
+    onSuccess: (updatedUser, enabled) => {
+      setUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['vpn-sessions'] });
+      
+      if (updatedUser.vpn_enabled) {
+        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? `(Auto-rotating every ${rotationInterval}s)` : '(Best server selected)'}`);
+        setRotationCount(0); // Reset rotation count for new session
+        rotationCountRef.current = 0; // Sync ref
+      } else {
+        toast.success('VPN disconnected');
+        setRotationCount(0); // Reset rotation count on disconnect
+        rotationCountRef.current = 0; // Sync ref
+      }
+    },
+    onError: async (error) => {
+      console.error("VPN mutation error:", error);
+      await base44.entities.AuditLog.create({
+        action_type: 'vpn_connection_failed',
+        action_category: 'vpn',
+        description: 'Failed to connect/disconnect VPN',
+        severity: 'high',
+        status: 'failed',
+        metadata: {
+          error_message: error.message,
+          session_id: currentSessionIdRef.current || undefined // Use ref
+        }
+      });
+      toast.error('Failed to update VPN status');
+    }
+  });
+
+  const toggleVPN = () => {
+    updateVPNMutation.mutate(!user?.vpn_enabled);
+  };
+
   const changeServer = async (serverId) => {
     if (user?.vpn_enabled) {
       toast.info('Disconnect VPN to change server manually');
       return;
     }
     
-    const previousServer = servers.find(s => s.id === selectedServer);
+    const previousServer = servers.find(s => s.id === selectedServerRef.current); // Use ref
     const newServer = servers.find(s => s.id === serverId);
     
-    setSelectedServer(serverId);
+    setSelectedServer(serverId); // Update state
+    selectedServerRef.current = serverId; // Sync ref
     
     await base44.entities.AuditLog.create({
       action_type: 'vpn_server_changed',
@@ -681,7 +718,7 @@ export default function VPNPage() {
               <p className="text-xs text-gray-400">Active Users</p>
             </div>
             <p className="text-3xl font-bold text-cyan-400">{activeUsersCount}</p>
-            <p className="text-xs text-gray-500 mt-1 animate-pulse">Live</p>
+            <p className="text-xs text-gray-500 mt-1 animate-pulse">● Live</p>
           </CardContent>
         </Card>
 
@@ -712,11 +749,11 @@ export default function VPNPage() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/20">
           <CardContent className="p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <BarChart3 className="w-4 h-4 text-orange-400" />
+              <BarChart3 className="w-4 h-4 text-orange-400 animate-pulse" />
               <p className="text-xs text-gray-400">Your Rotations</p>
             </div>
             <p className="text-3xl font-bold text-orange-400">{rotationCount}</p>
-            <p className="text-xs text-gray-500 mt-1">This session</p>
+            <p className="text-xs text-gray-500 mt-1">This session ● Live</p>
           </CardContent>
         </Card>
       </div>
@@ -761,7 +798,7 @@ export default function VPNPage() {
                       <div>
                         <p className="text-white font-bold">🔄 Auto-Rotation Active</p>
                         <p className="text-purple-300 text-sm">
-                          Smart rotation every {rotationInterval}s • Avoiding overloaded servers • Next in {nextRotationIn}s
+                          Smart rotation every {rotationInterval}s • Next in {nextRotationIn}s • {rotationCount} rotations ● Live
                         </p>
                       </div>
                     </>
