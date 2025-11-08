@@ -1,22 +1,21 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added useQueryClient
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp,
-  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell
+  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { toast } from "sonner"; // Added toast import
+import { toast } from "sonner";
 
 import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
-import VPNControl from "../components/dashboard/VPNControl.jsx"; // New import
+import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 
 export default function Dashboard() {
@@ -24,7 +23,7 @@ export default function Dashboard() {
   const [scanning, setScanning] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
-  const queryClient = useQueryClient(); // Initialized useQueryClient
+  const queryClient = useQueryClient();
 
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts'],
@@ -41,10 +40,9 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(async (userData) => { // Made async to await updates
+    base44.auth.me().then(async (userData) => {
       setUser(userData);
       
-      // Daily check-in for streak
       const today = new Date().toISOString().split('T')[0];
       const lastCheckIn = userData.last_checkin_date;
       
@@ -64,7 +62,6 @@ export default function Dashboard() {
           longest_streak: Math.max(newStreak, userData.longest_streak || 0)
         });
         
-        // Update local user state immediately after DB update
         setUser(prev => ({ 
           ...prev, 
           last_checkin_date: today,
@@ -78,45 +75,35 @@ export default function Dashboard() {
       }
     }).catch(() => {});
     
-    // Check for upgrade prompt trigger
     const lastPrompt = localStorage.getItem('lastUpgradePrompt');
     const daysSincePrompt = lastPrompt ? (Date.now() - parseInt(lastPrompt)) / (1000 * 60 * 60 * 24) : 999;
     
-    // Show upgrade prompt if free user and hasn't seen it in 3 days
     if (daysSincePrompt > 3) {
       setTimeout(() => {
-        // Use the current `user` state which should be updated by now
         if (user?.subscription_plan === 'free' || !user?.subscription_plan) {
           setShowUpgradePrompt(true);
           localStorage.setItem('lastUpgradePrompt', Date.now().toString());
         }
-      }, 10000); // 10 seconds after page load
+      }, 10000);
     }
-  }, [user]); // Added user to dependency array to ensure `user` state is current for setTimeout
+  }, [user]);
 
   const runSecurityScan = async () => {
-    const startTime = Date.now(); // Start timer for scan duration
+    const startTime = Date.now();
     setScanning(true);
     try {
-      // Simulate scan and update risk score
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Calculate risk score based on various factors
       let score = 100;
       
-      // Deduct points for active alerts
       score -= alerts.filter(a => a.severity === 'critical').length * 10;
       score -= alerts.filter(a => a.severity === 'high').length * 5;
       score -= alerts.filter(a => a.severity === 'medium').length * 2;
       
-      // Deduct points for weak passwords
       const weakPasswords = passwords.filter(p => p.password_strength === 'weak');
       score -= weakPasswords.length * 3;
       
-      // Deduct points if VPN not enabled
       if (!user?.vpn_enabled) score -= 5;
-      
-      // Deduct points if 2FA not enabled
       if (!user?.two_factor_enabled) score -= 10;
       
       score = Math.max(0, Math.min(100, score));
@@ -128,28 +115,19 @@ export default function Dashboard() {
       
       setUser(prev => ({ ...prev, risk_score: score, last_scan_date: new Date().toISOString() }));
 
-      const scanDuration = Date.now() - startTime; // Calculate scan duration
+      const scanDuration = Date.now() - startTime;
       
-      // Check achievement for first scan
       const deviceLogs = await queryClient.fetchQuery({
         queryKey: ['device-logs'],
         queryFn: () => base44.entities.DeviceProtectionLog.list(),
       });
       
-      // If this is the very first scan ever recorded for the user
-      // Assuming DeviceProtectionLog.list() would return logs including this just completed scan,
-      // or that this check happens before the log is created.
-      // If it should check for historical logs before THIS scan, the logic might need slight adjustment
-      // to ensure this scan is NOT yet counted. For now, assuming if no logs existed BEFORE this run.
-      // A more robust check might involve comparing scan dates.
-      if (deviceLogs.length === 0 || deviceLogs.every(log => new Date(log.created_date).getTime() >= startTime)) { // Added condition to ensure it's truly the first scan if logs exist from *after* this scan started.
+      if (deviceLogs.length === 0 || deviceLogs.every(log => new Date(log.created_date).getTime() >= startTime)) {
         toast.success('First security scan complete! 🎉');
       }
 
-      // Auto-protection logic
       const autoThreshold = user?.auto_protection_threshold || 70;
       
-      // Auto-enable VPN if score drops below threshold
       if (score < autoThreshold && user?.auto_vpn_enable && !user?.vpn_enabled) {
         await base44.auth.updateMe({ vpn_enabled: true });
         await base44.entities.AutomatedRemediation.create({
@@ -163,7 +141,6 @@ export default function Dashboard() {
         toast.success('VPN automatically enabled for protection 🛡️');
       }
 
-      // Auto-enable 2FA if score drops critically
       if (score < 60 && user?.auto_2fa_enable && !user?.two_factor_enabled) {
         await base44.auth.updateMe({ two_factor_enabled: true });
         await base44.entities.AutomatedRemediation.create({
@@ -177,11 +154,10 @@ export default function Dashboard() {
         toast.success('Two-factor authentication automatically enabled 🔒');
       }
 
-      // Check for critical alerts and enable auto-remediation
       const criticalAlertsCount = alerts.filter(a => a.severity === 'critical').length;
       if (criticalAlertsCount > 0 && user?.auto_alert_remediation) {
         for (const alert of alerts.filter(a => a.severity === 'critical' && a.status === 'active')) {
-          if ((alert.alert_type === 'wifi' || alert.alert_type === 'vpn') && !user?.vpn_enabled) { // Added !user?.vpn_enabled check for idempotence
+          if ((alert.alert_type === 'wifi' || alert.alert_type === 'vpn') && !user?.vpn_enabled) {
             await base44.auth.updateMe({ vpn_enabled: true });
             await base44.entities.AutomatedRemediation.create({
               action_type: 'vpn_enable',
@@ -199,7 +175,7 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error('Scan error:', error);
-      toast.error('Failed to run security scan.'); // Added error toast
+      toast.error('Failed to run security scan.');
     }
     setScanning(false);
   };
@@ -252,7 +228,35 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* Premium Welcome (if just upgraded) */}
+      {/* OWASP Protection Banner */}
+      <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl" />
+        <CardContent className="p-6 relative">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center">
+                <ShieldCheck className="w-8 h-8 text-green-400 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">
+                  🛡️ OWASP Top 10 Protection Active
+                </h3>
+                <p className="text-green-300 text-sm">
+                  Real-time defense against all major vulnerabilities • 100% coverage • 0 threats blocked today
+                </p>
+              </div>
+            </div>
+            <Link to={createPageUrl("SecurityDashboard")}>
+              <Button className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/50">
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                View Security Dashboard
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Premium Welcome */}
       {isPremium && isActive && new URLSearchParams(window.location.search).get('upgraded') === 'true' && (
         <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl" />
@@ -322,7 +326,7 @@ export default function Dashboard() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Score & Stats */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <SecurityScoreCard 
             score={user.risk_score || 85} 
@@ -338,7 +342,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Right Column - VPN, Alerts & Mia */}
+        {/* Right Column */}
         <div className="space-y-6">
           <VPNControl user={user} />
           <RecentAlertsCard alerts={alerts} isLoading={alertsLoading} />

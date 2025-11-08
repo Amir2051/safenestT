@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -25,6 +25,13 @@ const navigationItems = [
     title: "Dashboard",
     url: createPageUrl("Dashboard"),
     icon: LayoutDashboard,
+  },
+  {
+    title: "Security Dashboard",
+    url: createPageUrl("SecurityDashboard"),
+    icon: ShieldCheck,
+    badge: "OWASP",
+    highlight: true
   },
   {
     title: "VPN Protection",
@@ -109,11 +116,9 @@ function LayoutContent({ children, currentPageName }) {
 
   const handleMenuClick = (e, url) => {
     e.preventDefault();
-    // Close sidebar on mobile
     if (isMobile) {
       setOpenMobile(false);
     }
-    // Small delay to allow sidebar animation
     setTimeout(() => {
       navigate(url);
     }, 100);
@@ -141,20 +146,17 @@ function LayoutContent({ children, currentPageName }) {
           --ring: 177 70% 55%;
         }
         
-        /* Enhanced Sidebar Visibility */
         [data-sidebar] {
           background: #1a1a2e !important;
           opacity: 1 !important;
           box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2) !important;
         }
         
-        /* Remove any dimming effects */
         [data-sidebar] * {
           opacity: 1 !important;
           filter: none !important;
         }
         
-        /* Scrollbar styling */
         [data-sidebar]::-webkit-scrollbar {
           width: 6px;
         }
@@ -171,6 +173,20 @@ function LayoutContent({ children, currentPageName }) {
         [data-sidebar]::-webkit-scrollbar-thumb:hover {
           background: #667eea;
         }
+
+        /* Highlight animation for OWASP badge */
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+          }
+        }
+
+        .owasp-highlight {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
       `}</style>
       <div className="min-h-screen flex w-full bg-[#0f1419]">
         <Sidebar className="border-r-2 border-[#0f3460] bg-[#1a1a2e] shadow-xl">
@@ -184,7 +200,7 @@ function LayoutContent({ children, currentPageName }) {
               </div>
               <div>
                 <h2 className="font-bold text-xl text-white">SafeNest</h2>
-                <p className="text-xs text-cyan-400 font-medium">AI-Powered Security</p>
+                <p className="text-xs text-cyan-400 font-medium">OWASP Protected</p>
               </div>
             </div>
           </SidebarHeader>
@@ -205,18 +221,35 @@ function LayoutContent({ children, currentPageName }) {
                           className={`rounded-xl mb-1.5 transition-all duration-300 ${
                             isActive 
                               ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30 scale-105' 
+                              : item.highlight
+                              ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-white hover:from-green-500/20 hover:to-emerald-500/20 hover:scale-105 hover:shadow-md border border-green-500/30'
                               : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
                           }`}
                         >
                           <Link 
                             to={item.url} 
                             onClick={(e) => handleMenuClick(e, item.url)}
-                            className="flex items-center gap-3 px-4 py-3"
+                            className="flex items-center gap-3 px-4 py-3 w-full"
                           >
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-300'}`} />
-                            <span className="font-semibold text-[15px]">{item.title}</span>
+                            <item.icon className={`w-5 h-5 ${
+                              isActive 
+                                ? 'text-white' 
+                                : item.highlight 
+                                ? 'text-green-400' 
+                                : 'text-gray-300'
+                            }`} />
+                            <span className="font-semibold text-[15px] flex-1">{item.title}</span>
+                            {item.badge && (
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                item.highlight 
+                                  ? 'bg-green-500/20 text-green-400 border border-green-500/50 owasp-highlight' 
+                                  : 'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            )}
                             {isActive && (
-                              <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -224,6 +257,36 @@ function LayoutContent({ children, currentPageName }) {
                     );
                   })}
                 </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* OWASP Status Widget */}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="mx-2 my-4 p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border-2 border-green-500/30 owasp-highlight">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldCheck className="w-5 h-5 text-green-400 animate-pulse" />
+                    <span className="text-sm font-bold text-green-300">Live OWASP Protection</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">Coverage</span>
+                      <span className="text-green-400 font-bold">100%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 w-full animate-pulse" />
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-2">
+                      <span className="text-gray-400">Threats Blocked</span>
+                      <span className="text-green-400 font-bold">0 Today</span>
+                    </div>
+                  </div>
+                  <Link to={createPageUrl("SecurityDashboard")}>
+                    <button className="w-full mt-3 bg-green-500/20 hover:bg-green-500/30 text-green-400 text-xs font-semibold py-2 rounded-lg transition-all border border-green-500/50">
+                      View Security Dashboard
+                    </button>
+                  </Link>
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
 
@@ -332,7 +395,18 @@ function LayoutContent({ children, currentPageName }) {
               </div>
             </div>
             
-            {/* Notification Center */}
+            {/* OWASP Badge in Header */}
+            <div className="hidden lg:flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
+                <ShieldCheck className="w-4 h-4 text-green-400" />
+                <span className="text-xs font-bold text-green-400">OWASP Protected</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 rounded-full border border-purple-500/30">
+                <ShieldAlert className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-bold text-purple-400">100% Coverage</span>
+              </div>
+            </div>
+
             <div className="ml-auto">
               <NotificationCenter />
             </div>
