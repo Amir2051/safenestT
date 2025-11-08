@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp,
-  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck
+  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck, Gift, Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -36,6 +37,14 @@ export default function Dashboard() {
   const { data: passwords = [] } = useQuery({
     queryKey: ['passwords'],
     queryFn: () => base44.entities.Password.list('-created_date'),
+    enabled: !!user,
+    initialData: [],
+  });
+
+  // Add referrals query
+  const { data: referrals = [] } = useQuery({
+    queryKey: ['referrals'],
+    queryFn: () => base44.entities.Referral.list('-created_date'),
     enabled: !!user,
     initialData: [],
   });
@@ -216,6 +225,12 @@ export default function Dashboard() {
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
+  
+  // Calculate referral metrics
+  const myReferrals = referrals.filter(r => r.referrer_email === user.email);
+  const completedReferrals = myReferrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
+  const pendingReferrals = myReferrals.filter(r => r.status === 'pending').length;
+  const bonusMonthsEarned = user?.referral_stats?.bonus_months_earned || 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -348,6 +363,81 @@ export default function Dashboard() {
                 View Alerts <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Referral Program CTA - Show for users with low referrals */}
+      {myReferrals.length < 3 && (
+        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                  <Gift className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">
+                    🎁 Earn FREE Premium by Referring Friends!
+                  </h3>
+                  <p className="text-purple-300 text-sm">
+                    Get 1 month premium for each friend who signs up. Unlimited rewards!
+                  </p>
+                </div>
+              </div>
+              <Link to={createPageUrl("Referrals")}>
+                <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                  <Gift className="w-4 h-4 mr-2" />
+                  Start Referring
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Referral Stats Card - Show for users with referrals */}
+      {myReferrals.length > 0 && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                <Users className="w-5 h-5 text-purple-400" />
+                Your Referral Performance
+              </h3>
+              <Link to={createPageUrl("Referrals")}>
+                <Button variant="outline" size="sm" className="border-purple-500/20 text-purple-400 hover:bg-purple-500/10">
+                  View Details
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-purple-500/10">
+                <p className="text-2xl font-bold text-white mb-1">{myReferrals.length}</p>
+                <p className="text-xs text-gray-400">Total Sent</p>
+              </div>
+              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-green-500/10">
+                <p className="text-2xl font-bold text-green-400 mb-1">{completedReferrals}</p>
+                <p className="text-xs text-gray-400">Completed</p>
+              </div>
+              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-yellow-500/10">
+                <p className="text-2xl font-bold text-yellow-400 mb-1">{pendingReferrals}</p>
+                <p className="text-xs text-gray-400">Pending</p>
+              </div>
+              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <p className="text-2xl font-bold text-cyan-400 mb-1">{bonusMonthsEarned}</p>
+                <p className="text-xs text-gray-400">Months Earned</p>
+              </div>
+            </div>
+
+            {bonusMonthsEarned > 0 && (
+              <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-green-400 text-sm text-center">
+                  🎉 You've earned {bonusMonthsEarned} month{bonusMonthsEarned > 1 ? 's' : ''} of premium worth ${(bonusMonthsEarned * 9.99).toFixed(2)}!
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -18,6 +18,7 @@ import Activity from './pages/Activity';
 import SecurityDashboard from './pages/SecurityDashboard';
 import CreditCardMonitor from './pages/CreditCardMonitor';
 import ReferralLanding from './pages/ReferralLanding';
+import AdminReferrals from './pages/AdminReferrals';
 import Layout from './Layout.jsx';
 
 
@@ -42,6 +43,7 @@ export const PAGES = {
     "SecurityDashboard": SecurityDashboard,
     "CreditCardMonitor": CreditCardMonitor,
     "ReferralLanding": ReferralLanding,
+    "AdminReferrals": AdminReferrals,
 }
 
 export const pagesConfig = {
