@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -16,6 +16,7 @@ import {
   SidebarFooter,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 
@@ -92,9 +93,11 @@ const navigationItems = [
   },
 ];
 
-export default function Layout({ children, currentPageName }) {
+function LayoutContent({ children, currentPageName }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
+  const { setOpen } = useSidebar();
 
   React.useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -104,11 +107,18 @@ export default function Layout({ children, currentPageName }) {
     base44.auth.logout();
   };
 
+  const handleMenuClick = (url) => {
+    // Close sidebar on mobile/tablet after clicking
+    setOpen(false);
+    // Navigate to the page
+    navigate(url);
+  };
+
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
 
   return (
-    <SidebarProvider>
+    <>
       <style>{`
         :root {
           --background: 222 12% 8%;
@@ -193,13 +203,16 @@ export default function Layout({ children, currentPageName }) {
                               : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
                           }`}
                         >
-                          <Link to={item.url} className="flex items-center gap-3 px-4 py-3">
+                          <button 
+                            onClick={() => handleMenuClick(item.url)} 
+                            className="flex items-center gap-3 px-4 py-3 w-full text-left"
+                          >
                             <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-300'}`} />
                             <span className="font-semibold text-[15px]">{item.title}</span>
                             {isActive && (
                               <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
                             )}
-                          </Link>
+                          </button>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -212,7 +225,10 @@ export default function Layout({ children, currentPageName }) {
             {(!isPremium || !isActive) && (
               <SidebarGroup>
                 <SidebarGroupContent>
-                  <Link to={createPageUrl("Upgrade")}>
+                  <button 
+                    onClick={() => handleMenuClick(createPageUrl("Upgrade"))}
+                    className="w-full"
+                  >
                     <div className="mx-2 my-4 p-5 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-xl border-2 border-purple-500/50 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/30 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-5 h-5 text-purple-300" />
@@ -225,7 +241,7 @@ export default function Layout({ children, currentPageName }) {
                         ⚡ Limited: 20% off for first 100 users!
                       </p>
                     </div>
-                  </Link>
+                  </button>
                 </SidebarGroupContent>
               </SidebarGroup>
             )}
@@ -321,6 +337,14 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </main>
       </div>
+    </>
+  );
+}
+
+export default function Layout({ children, currentPageName }) {
+  return (
+    <SidebarProvider>
+      <LayoutContent children={children} currentPageName={currentPageName} />
     </SidebarProvider>
   );
 }
