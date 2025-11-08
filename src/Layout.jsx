@@ -125,27 +125,58 @@ export default function Layout({ children, currentPageName }) {
           --input: 217 33% 17%;
           --ring: 177 70% 55%;
         }
+        
+        /* Enhanced Sidebar Visibility */
+        [data-sidebar] {
+          background: #1a1a2e !important;
+          opacity: 1 !important;
+          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* Remove any dimming effects */
+        [data-sidebar] * {
+          opacity: 1 !important;
+          filter: none !important;
+        }
+        
+        /* Scrollbar styling */
+        [data-sidebar]::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        [data-sidebar]::-webkit-scrollbar-track {
+          background: #16213e;
+        }
+        
+        [data-sidebar]::-webkit-scrollbar-thumb {
+          background: #0f3460;
+          border-radius: 3px;
+        }
+        
+        [data-sidebar]::-webkit-scrollbar-thumb:hover {
+          background: #667eea;
+        }
       `}</style>
       <div className="min-h-screen flex w-full bg-[#0f1419]">
-        <Sidebar className="border-r border-[#1a2332] bg-[#0f1419]">
-          <SidebarHeader className="border-b border-[#1a2332] p-6">
+        <Sidebar className="border-r-2 border-[#0f3460] bg-[#1a1a2e] shadow-xl">
+          <SidebarHeader className="border-b-2 border-[#0f3460] p-6 bg-[#16213e]">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Shield className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                  <Shield className="w-7 h-7 text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-[#0f1419] animate-pulse" />
+                <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-[#16213e] animate-pulse" />
               </div>
               <div>
                 <h2 className="font-bold text-xl text-white">SafeNest</h2>
-                <p className="text-xs text-cyan-400">AI-Powered Security</p>
+                <p className="text-xs text-cyan-400 font-medium">AI-Powered Security</p>
               </div>
             </div>
           </SidebarHeader>
           
-          <SidebarContent className="p-3">
+          <SidebarContent className="p-3 bg-[#1a1a2e]">
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
+              <SidebarGroupLabel className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-3">
                 Security Center
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -156,17 +187,17 @@ export default function Layout({ children, currentPageName }) {
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton 
                           asChild 
-                          className={`rounded-xl mb-1 transition-all duration-200 ${
+                          className={`rounded-xl mb-1.5 transition-all duration-300 ${
                             isActive 
-                              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 text-white shadow-lg shadow-cyan-500/10 border border-cyan-500/30' 
-                              : 'hover:bg-[#1a2332] text-white hover:text-cyan-400 border border-transparent hover:border-cyan-500/20'
+                              ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30 scale-105' 
+                              : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
                           }`}
                         >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-cyan-400' : ''}`} />
-                            <span className="font-medium">{item.title}</span>
+                          <Link to={item.url} className="flex items-center gap-3 px-4 py-3">
+                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-300'}`} />
+                            <span className="font-semibold text-[15px]">{item.title}</span>
                             {isActive && (
-                              <div className="ml-auto w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                              <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -182,15 +213,15 @@ export default function Layout({ children, currentPageName }) {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <Link to={createPageUrl("Upgrade")}>
-                    <div className="mx-2 p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30 hover:border-purple-500/50 transition-all cursor-pointer">
+                    <div className="mx-2 my-4 p-5 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-xl border-2 border-purple-500/50 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/30 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 mb-2">
-                        <CreditCard className="w-4 h-4 text-purple-400" />
-                        <span className="text-sm font-semibold text-purple-400">Upgrade to Premium</span>
+                        <CreditCard className="w-5 h-5 text-purple-300" />
+                        <span className="text-sm font-bold text-purple-200">Upgrade to Premium</span>
                       </div>
-                      <p className="text-xs text-gray-400 mb-2">
+                      <p className="text-xs text-gray-300 font-medium mb-2">
                         From $9.99/month
                       </p>
-                      <p className="text-xs text-purple-300">
+                      <p className="text-xs text-purple-200 font-semibold">
                         ⚡ Limited: 20% off for first 100 users!
                       </p>
                     </div>
@@ -201,21 +232,21 @@ export default function Layout({ children, currentPageName }) {
 
             {user?.risk_score !== undefined && (
               <SidebarGroup>
-                <SidebarGroupLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
+                <SidebarGroupLabel className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-3">
                   Security Score
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <div className="px-3 py-4 bg-[#1a2332] rounded-xl border border-cyan-500/20 mx-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-300">Your Score</span>
-                      <span className={`text-2xl font-bold ${
+                  <div className="px-4 py-5 bg-[#16213e] rounded-xl border-2 border-[#0f3460] mx-2 shadow-md">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-200">Your Score</span>
+                      <span className={`text-3xl font-bold ${
                         user.risk_score >= 80 ? 'text-green-400' : 
                         user.risk_score >= 60 ? 'text-yellow-400' : 'text-red-400'
                       }`}>
                         {user.risk_score}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden">
+                    <div className="w-full h-3 bg-[#0f1419] rounded-full overflow-hidden border border-[#0f3460]">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
                           user.risk_score >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : 
@@ -225,14 +256,14 @@ export default function Layout({ children, currentPageName }) {
                         style={{ width: `${user.risk_score}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-400">
+                    <div className="flex items-center justify-between mt-3">
+                      <p className="text-xs font-semibold text-gray-300">
                         {isPremium && isActive ? (
                           user.subscription_plan === 'elite' ? '✨ Elite' : '💎 Basic'
                         ) : '🆓 Free'}
                       </p>
                       {isPremium && isActive && user.renewal_date && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 font-medium">
                           Renews {new Date(user.renewal_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
@@ -243,26 +274,26 @@ export default function Layout({ children, currentPageName }) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-[#1a2332] p-4">
+          <SidebarFooter className="border-t-2 border-[#0f3460] p-4 bg-[#16213e]">
             {user && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-semibold text-sm">
+                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md shadow-cyan-500/30">
+                    <span className="text-white font-bold text-base">
                       {user.full_name?.[0]?.toUpperCase() || 'U'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white text-sm truncate">{user.full_name || 'User'}</p>
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                    <p className="font-semibold text-white text-sm truncate">{user.full_name || 'User'}</p>
+                    <p className="text-xs text-gray-300 truncate font-medium">{user.email}</p>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="ml-2 p-2 hover:bg-[#1a2332] rounded-lg transition-colors flex-shrink-0"
+                  className="ml-2 p-2.5 hover:bg-[#0f3460] rounded-lg transition-all flex-shrink-0 hover:scale-110"
                   title="Logout"
                 >
-                  <LogOut className="w-4 h-4 text-gray-400 hover:text-white" />
+                  <LogOut className="w-4 h-4 text-gray-300 hover:text-white" />
                 </button>
               </div>
             )}
@@ -270,9 +301,9 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col bg-[#0f1419]">
-          <header className="bg-[#0f1419] border-b border-[#1a2332] px-6 py-4 flex items-center justify-between">
+          <header className="bg-[#0f1419] border-b-2 border-[#1a2332] px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-4 lg:hidden">
-              <SidebarTrigger className="hover:bg-[#1a2332] p-2 rounded-lg transition-colors text-white" />
+              <SidebarTrigger className="hover:bg-[#1a2332] p-2 rounded-lg transition-colors text-white hover:scale-110" />
               <div className="flex items-center gap-2">
                 <Shield className="w-6 h-6 text-cyan-400" />
                 <h1 className="text-xl font-bold text-white">SafeNest</h1>
