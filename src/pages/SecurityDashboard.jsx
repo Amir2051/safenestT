@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,6 @@ import LiveProtectionStatus from "../components/security/LiveProtectionStatus.js
 
 function SecurityDashboard() {
   const [user, setUser] = useState(null);
-  const [timeRange, setTimeRange] = useState('12weeks');
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -75,37 +74,40 @@ function SecurityDashboard() {
     },
     enabled: !!user,
     initialData: [],
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000
   });
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4" />
-          <p className="text-gray-400">Loading security dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Calculate statistics
-  const totalScans = scans.length;
-  const latestScan = scans[0];
-  const passedScans = scans.filter(s => s.pass_fail_status === 'pass').length;
-  const passRate = totalScans > 0 ? ((passedScans / totalScans) * 100).toFixed(1) : 0;
+  const stats = useMemo(() => {
+    const totalScans = scans.length;
+    const latestScan = scans[0];
+    const passedScans = scans.filter(s => s.pass_fail_status === 'pass').length;
+    const passRate = totalScans > 0 ? ((passedScans / totalScans) * 100).toFixed(1) : 0;
 
-  const openFindings = findings.filter(f => f.status === 'open');
-  const criticalCount = openFindings.filter(f => f.severity === 'CRITICAL').length;
-  const highCount = openFindings.filter(f => f.severity === 'HIGH').length;
-  const mediumCount = openFindings.filter(f => f.severity === 'MEDIUM').length;
-  const lowCount = openFindings.filter(f => f.severity === 'LOW').length;
+    const openFindings = findings.filter(f => f.status === 'open');
+    const criticalCount = openFindings.filter(f => f.severity === 'CRITICAL').length;
+    const highCount = openFindings.filter(f => f.severity === 'HIGH').length;
+    const mediumCount = openFindings.filter(f => f.severity === 'MEDIUM').length;
+    const lowCount = openFindings.filter(f => f.severity === 'LOW').length;
 
-  const blockedThreats = securityEvents.filter(e => e.blocked).length;
-  const criticalEvents = securityEvents.filter(e => e.severity === 'critical').length;
+    const blockedThreats = securityEvents.filter(e => e.blocked).length;
+
+    return {
+      totalScans,
+      latestScan,
+      passedScans,
+      passRate,
+      openFindings,
+      criticalCount,
+      highCount,
+      mediumCount,
+      lowCount,
+      blockedThreats
+    };
+  }, [scans, findings, securityEvents]);
 
   // Prepare trend data
-  const trendData = React.useMemo(() => {
+  const trendData = useMemo(() => {
     const data = [];
     const weeksAgo = 12;
     const now = new Date();
@@ -132,14 +134,25 @@ function SecurityDashboard() {
     return data;
   }, [scans]);
 
-  const severityData = React.useMemo(() => {
+  const severityData = useMemo(() => {
     return [
-      { name: 'Critical', value: criticalCount, color: '#ef4444' },
-      { name: 'High', value: highCount, color: '#f97316' },
-      { name: 'Medium', value: mediumCount, color: '#eab308' },
-      { name: 'Low', value: lowCount, color: '#3b82f6' }
+      { name: 'Critical', value: stats.criticalCount, color: '#ef4444' },
+      { name: 'High', value: stats.highCount, color: '#f97316' },
+      { name: 'Medium', value: stats.mediumCount, color: '#eab308' },
+      { name: 'Low', value: stats.lowCount, color: '#3b82f6' }
     ].filter(item => item.value > 0);
-  }, [criticalCount, highCount, mediumCount, lowCount]);
+  }, [stats.criticalCount, stats.highCount, stats.mediumCount, stats.lowCount]);
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading security dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 space-y-6">
@@ -183,7 +196,7 @@ function SecurityDashboard() {
                 LIVE
               </Badge>
             </div>
-            <p className="text-3xl font-bold text-white">{blockedThreats}</p>
+            <p className="text-3xl font-bold text-white">{stats.blockedThreats}</p>
             <p className="text-sm text-gray-400">Threats Blocked (24h)</p>
           </CardContent>
         </Card>
@@ -192,9 +205,9 @@ function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <Activity className="w-10 h-10 text-cyan-400" />
-              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50">{timeRange}</Badge>
+              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50">12 weeks</Badge>
             </div>
-            <p className="text-3xl font-bold text-white">{totalScans}</p>
+            <p className="text-3xl font-bold text-white">{stats.totalScans}</p>
             <p className="text-sm text-gray-400">Security Scans</p>
           </CardContent>
         </Card>
@@ -203,11 +216,11 @@ function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <AlertTriangle className="w-10 h-10 text-red-400" />
-              <Badge className={`${criticalCount + highCount > 0 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-green-500/20 text-green-400 border-green-500/50'} border`}>
-                {criticalCount + highCount > 0 ? 'Action Required' : 'Safe'}
+              <Badge className={`${stats.criticalCount + stats.highCount > 0 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-green-500/20 text-green-400 border-green-500/50'} border`}>
+                {stats.criticalCount + stats.highCount > 0 ? 'Action Required' : 'Safe'}
               </Badge>
             </div>
-            <p className="text-3xl font-bold text-white">{criticalCount + highCount}</p>
+            <p className="text-3xl font-bold text-white">{stats.criticalCount + stats.highCount}</p>
             <p className="text-sm text-gray-400">Critical/High Findings</p>
           </CardContent>
         </Card>
@@ -243,7 +256,6 @@ function SecurityDashboard() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6 mt-6">
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
               <CardHeader>
@@ -308,8 +320,9 @@ function SecurityDashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center">
+                  <div className="h-[300px] flex items-center justify-center flex-col">
                     <CheckCircle className="w-16 h-16 text-green-400 mb-2" />
+                    <p className="text-gray-400">No open findings</p>
                   </div>
                 )}
               </CardContent>
