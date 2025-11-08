@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -8,13 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Shield, AlertTriangle, TrendingUp, Clock, CheckCircle, 
   XCircle, Activity, BarChart3, RefreshCw, Zap, Scan, 
-  FileSearch, Trash2, ShieldAlert, Loader2
+  FileSearch, Trash2, ShieldAlert, Loader2, Sparkles
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { toast } from "sonner";
 
 import LiveProtectionStatus from "../components/security/LiveProtectionStatus.jsx";
+import ZAPScanResults from "../components/security/ZAPScanResults.jsx";
 
 function SecurityDashboard() {
   const [user, setUser] = useState(null);
@@ -51,6 +53,11 @@ function SecurityDashboard() {
     enabled: !!user,
     initialData: [],
   });
+
+  // Filter ZAP scans
+  const zapScans = useMemo(() => {
+    return scans.filter(scan => scan.tool?.startsWith('zap_'));
+  }, [scans]);
 
   const { data: findings = [] } = useQuery({
     queryKey: ['security-findings'],
@@ -358,7 +365,7 @@ function SecurityDashboard() {
             Security Dashboard
           </h1>
           <p className="text-gray-400 mt-1">
-            Live OWASP protection • Real-time threat detection • Automated defense
+            Live OWASP protection • ZAP weekly scans • Automated defense
           </p>
         </div>
         <div className="flex gap-3">
@@ -389,6 +396,26 @@ function SecurityDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* ZAP Weekly Scan Info Banner */}
+      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
+              <div>
+                <p className="text-white font-bold">🗓️ OWASP ZAP Weekly Scans Active</p>
+                <p className="text-purple-300 text-sm">
+                  Automated scans every Sunday at 2:00 AM • High-severity exploits auto-blocked • Admin alerts enabled
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 px-4 py-2">
+              {zapScans.length} ZAP scans completed
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Scanning Progress */}
       {scanning && (
@@ -604,8 +631,12 @@ function SecurityDashboard() {
             <Zap className="w-4 h-4 mr-2" />
             Live Protection
           </TabsTrigger>
+          <TabsTrigger value="zap-scans" className="data-[state=active]:bg-cyan-500/20">
+            <Sparkles className="w-4 h-4 mr-2" />
+            ZAP Scans
+          </TabsTrigger>
           <TabsTrigger value="scans" className="data-[state=active]:bg-cyan-500/20">
-            Scans & Findings
+            All Scans
           </TabsTrigger>
         </TabsList>
 
@@ -688,6 +719,16 @@ function SecurityDashboard() {
         {/* Live Protection Tab */}
         <TabsContent value="live-protection" className="space-y-6 mt-6">
           <LiveProtectionStatus />
+        </TabsContent>
+
+        {/* ZAP Scans Tab */}
+        <TabsContent value="zap-scans" className="space-y-6 mt-6">
+          <ZAPScanResults 
+            scans={zapScans}
+            onViewDetails={(scan) => {
+              toast.info(`Viewing details for scan: ${scan.scan_id}`);
+            }}
+          />
         </TabsContent>
 
         {/* Scans Tab */}
