@@ -44,9 +44,49 @@ export default function Alerts() {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Alert.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      // Find the alert in the current cache to get its details before update
+      const currentAlerts = queryClient.getQueryData(['alerts']);
+      const alert = currentAlerts ? currentAlerts.find(a => a.id === id) : null;
+      
+      const result = await base44.entities.Alert.update(id, data);
+      
+      // Log alert action
+      if (data.status === 'resolved') {
+        await base44.entities.AuditLog.create({
+          action_type: 'alert_resolved',
+          action_category: 'alert',
+          description: `Resolved alert: ${alert?.title || 'Unknown Alert'}`,
+          metadata: {
+            affected_item: alert?.title || 'Unknown Alert',
+            previous_value: alert?.status || 'unknown',
+            new_value: 'resolved',
+            alert_id: id,
+          },
+          severity: 'info',
+          status: 'success'
+        });
+      } else if (data.status === 'dismissed') {
+        await base44.entities.AuditLog.create({
+          action_type: 'alert_dismissed',
+          action_category: 'alert',
+          description: `Dismissed alert: ${alert?.title || 'Unknown Alert'}`,
+          metadata: {
+            affected_item: alert?.title || 'Unknown Alert',
+            previous_value: alert?.status || 'unknown',
+            new_value: 'dismissed',
+            alert_id: id,
+          },
+          severity: 'info',
+          status: 'success'
+        });
+      }
+      
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs to reflect new entries
       setSelectedAlert(null);
     },
   });
