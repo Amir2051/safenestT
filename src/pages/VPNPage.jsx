@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,18 +19,65 @@ export default function VPNPage() {
   
   const queryClient = useQueryClient();
 
+  // Define servers here so it's accessible within mutationFn and changeServer
+  const servers = [
+    { id: 'us-east', name: 'US East', location: '🇺🇸 New York', ping: '12ms', load: 45 },
+    { id: 'us-west', name: 'US West', location: '🇺🇸 Los Angeles', ping: '28ms', load: 62 },
+    { id: 'uk', name: 'United Kingdom', location: '🇬🇧 London', ping: '45ms', load: 38 },
+    { id: 'germany', name: 'Germany', location: '🇩🇪 Frankfurt', ping: '52ms', load: 41 },
+    { id: 'japan', name: 'Japan', location: '🇯🇵 Tokyo', ping: '89ms', load: 55 },
+    { id: 'singapore', name: 'Singapore', location: '🇸🇬 Singapore', ping: '105ms', load: 48 }
+  ];
+
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
   const updateVPNMutation = useMutation({
-    mutationFn: (enabled) => base44.auth.updateMe({ vpn_enabled: enabled }),
+    mutationFn: async (enabled) => {
+      const result = await base44.auth.updateMe({ vpn_enabled: enabled });
+      
+      // Log the VPN action
+      await base44.entities.AuditLog.create({
+        action_type: enabled ? 'vpn_connected' : 'vpn_disconnected',
+        action_category: 'vpn',
+        description: enabled 
+          ? `VPN connected to ${servers.find(s => s.id === selectedServer)?.name || 'server'}`
+          : 'VPN disconnected',
+        metadata: {
+          server_location: servers.find(s => s.id === selectedServer)?.location,
+          server_id: selectedServer,
+          ip_address: enabled ? '198.51.100.42' : null,
+          device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'
+        },
+        severity: 'info',
+        status: 'success'
+      });
+      
+      return result;
+    },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs on success
       toast.success(updatedUser.vpn_enabled ? 'VPN connected successfully! 🛡️' : 'VPN disconnected');
     },
-    onError: () => {
+    onError: async (error) => {
+      // Log failed attempt
+      console.error("Failed to update VPN status:", error);
+      await base44.entities.AuditLog.create({
+        action_type: 'vpn_connected',
+        action_category: 'vpn',
+        description: 'Failed to connect to VPN',
+        metadata: {
+          error_message: error.message || 'Unknown error',
+          server_id: selectedServer,
+          device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'
+        },
+        severity: 'high',
+        status: 'failed'
+      });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs on error as well
       toast.error('Failed to update VPN status');
     }
   });
@@ -37,6 +85,37 @@ export default function VPNPage() {
   const toggleVPN = () => {
     updateVPNMutation.mutate(!user?.vpn_enabled);
   };
+
+  const changeServer = async (serverId) => {
+    if (isEnabled) {
+      toast.info('Please disconnect VPN before changing server location.');
+      return;
+    }
+    const previousServer = servers.find(s => s.id === selectedServer);
+    const newServer = servers.find(s => s.id === serverId);
+    
+    setSelectedServer(serverId);
+    
+    // Log server change
+    await base44.entities.AuditLog.create({
+      action_type: 'vpn_server_changed',
+      action_category: 'vpn',
+      description: `VPN server changed to ${newServer?.name || 'an unknown server'}`,
+      metadata: {
+        previous_value: previousServer?.location || 'Unknown',
+        new_value: newServer?.location || 'Unknown',
+        previous_server_id: previousServer?.id || 'Unknown',
+        new_server_id: newServer?.id || 'Unknown',
+        device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'
+      },
+      severity: 'info',
+      status: 'success'
+    });
+    
+    queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+    toast.success(`Server changed to ${newServer?.name}`);
+  };
+
 
   if (!user) {
     return (
@@ -52,15 +131,6 @@ export default function VPNPage() {
                    user?.subscription_plan !== null;
   const isActive = user?.payment_status === 'active';
   const hasVPNAccess = isPremium || isActive;
-
-  const servers = [
-    { id: 'us-east', name: 'US East', location: '🇺🇸 New York', ping: '12ms', load: 45 },
-    { id: 'us-west', name: 'US West', location: '🇺🇸 Los Angeles', ping: '28ms', load: 62 },
-    { id: 'uk', name: 'United Kingdom', location: '🇬🇧 London', ping: '45ms', load: 38 },
-    { id: 'germany', name: 'Germany', location: '🇩🇪 Frankfurt', ping: '52ms', load: 41 },
-    { id: 'japan', name: 'Japan', location: '🇯🇵 Tokyo', ping: '89ms', load: 55 },
-    { id: 'singapore', name: 'Singapore', location: '🇸🇬 Singapore', ping: '105ms', load: 48 }
-  ];
 
   const connectionStats = {
     dataTransferred: isEnabled ? '2.4 GB' : '0 GB',
@@ -277,7 +347,7 @@ export default function VPNPage() {
               {servers.map((server) => (
                 <button
                   key={server.id}
-                  onClick={() => setSelectedServer(server.id)}
+                  onClick={() => changeServer(server.id)} // Changed onClick handler
                   disabled={isEnabled}
                   className={`p-4 rounded-xl border-2 transition-all text-left ${
                     selectedServer === server.id
