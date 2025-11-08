@@ -14,6 +14,7 @@ import Onboarding from './pages/Onboarding';
 import Achievements from './pages/Achievements';
 import Referrals from './pages/Referrals';
 import VPNPage from './pages/VPNPage';
+import Activity from './pages/Activity';
 import Layout from './Layout.jsx';
 
 
@@ -34,6 +35,7 @@ export const PAGES = {
     "Achievements": Achievements,
     "Referrals": Referrals,
     "VPNPage": VPNPage,
+    "Activity": Activity,
 }
 
 export const pagesConfig = {
