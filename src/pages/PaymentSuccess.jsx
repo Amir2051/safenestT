@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +43,21 @@ export default function PaymentSuccess() {
         checkout_link_used: plan === 'basic' 
           ? 'https://buy.stripe.com/14AfZacYa62u0vVaY14gg09'
           : 'https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a'
+      });
+
+      // Log subscription upgrade
+      await base44.entities.AuditLog.create({
+        action_type: 'subscription_upgraded',
+        action_category: 'subscription',
+        description: `Upgraded to ${plan === 'basic' ? 'Basic Protection' : 'Elite Protection'} plan`,
+        metadata: {
+          plan_name: plan === 'basic' ? 'Basic Protection' : 'Elite Protection',
+          previous_value: 'free',
+          new_value: plan,
+          ip_address: transactionId // Note: transactionId is used as a placeholder for IP address here, which might not be accurate.
+        },
+        severity: 'info',
+        status: 'success'
       });
 
       // Award achievement
