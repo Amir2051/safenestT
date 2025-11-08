@@ -13,6 +13,7 @@ import StorageOptimizer from './pages/StorageOptimizer';
 import Onboarding from './pages/Onboarding';
 import Achievements from './pages/Achievements';
 import Referrals from './pages/Referrals';
+import VPNPage from './pages/VPNPage';
 import Layout from './Layout.jsx';
 
 
@@ -32,6 +33,7 @@ export const PAGES = {
     "Onboarding": Onboarding,
     "Achievements": Achievements,
     "Referrals": Referrals,
+    "VPNPage": VPNPage,
 }
 
 export const pagesConfig = {
