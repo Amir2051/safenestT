@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +9,7 @@ import {
   Globe, Shield, AlertTriangle, CheckCircle, XCircle, 
   Search, Loader2, Lock, Unlock, ExternalLink, Server,
   User, Code, Network, FileSearch, BarChart3, Eye, Calendar,
-  Mail, Link as LinkIcon, Zap, Database, Cloud, Award, ExternalLinkIcon, Info, Hash,
-  Megaphone, Clock, Briefcase, BookOpen, Fingerprint, RefreshCcw, BellRing
+  Mail, Link as LinkIcon, Zap, Database, Cloud, Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,7 +17,7 @@ export default function WebsiteChecker({ onCheck }) {
   const [url, setUrl] = useState('');
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null);
-  const [scanType, setScanType] = useState('quick'); // 'quick' or 'full'
+  const [scanType, setScanType] = useState('quick');
   const [progress, setProgress] = useState({ step: '', percent: 0 });
 
   const handleCheck = async () => {
@@ -28,7 +26,6 @@ export default function WebsiteChecker({ onCheck }) {
       return;
     }
 
-    // Ensure URL has protocol
     let fullUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       fullUrl = 'https://' + url;
@@ -39,7 +36,6 @@ export default function WebsiteChecker({ onCheck }) {
     setProgress({ step: 'Initializing scan...', percent: 5 });
 
     try {
-      // Call the comprehensive scanner
       const checkResult = await performComprehensiveScan(fullUrl, scanType);
       setResult(checkResult);
       
@@ -54,7 +50,7 @@ export default function WebsiteChecker({ onCheck }) {
       }
     } catch (error) {
       console.error('Website check error:', error);
-      toast.error(`Failed to check website: ${error.message || 'Unknown error'}. Please try again.`);
+      toast.error('Failed to check website. Please try again.');
       setResult({ status: 'error', error: error.message });
     }
 
@@ -95,13 +91,7 @@ Return JSON:
     "external_sample": ["..."],
     "internal_count": 0,
     "external_count": 0
-  },
-  "has_contact_page": true/false,
-  "has_about_page": true/false,
-  "has_privacy_policy": true/false,
-  "has_terms": true/false,
-  "language": "...",
-  "readability_score": 0
+  }
 }`;
 
     const metadata = await base44.integrations.Core.InvokeLLM({
@@ -133,13 +123,7 @@ Return JSON:
               internal_count: { type: "number" },
               external_count: { type: "number" }
             }
-          },
-          has_contact_page: { type: "boolean" },
-          has_about_page: { type: "boolean" },
-          has_privacy_policy: { type: "boolean" },
-          has_terms: { type: "boolean" },
-          language: { type: "string" },
-          readability_score: { type: "number" }
+          }
         }
       }
     });
@@ -161,8 +145,8 @@ Search for:
 Aggregate ALL signals and return confidence score (0-1):
 {
   "estimated_creator": "Name or Unknown",
-  "confidence": 0.0,
-  "sources": ["whois", "meta_author", "about_page"],
+  "confidence": 0.0-1.0,
+  "sources": ["whois", "meta_author", "about_page", etc],
   "contact_email": "...",
   "organization": "...",
   "social_links": {"twitter": "...", "linkedin": "...", "github": "...", "facebook": "..."},
@@ -351,12 +335,20 @@ Return:
 {
   "is_safe": true/false,
   "risk_level": "low/medium/high/critical",
-  "trust_score": 0,
+  "trust_score": 0-100,
   "threats": ["..."],
   "is_phishing": true/false,
   "safety_details": [
     {"source": "...", "status": "safe/unsafe", "malicious": 0, "clean": 0}
   ],
+  "content_analysis": {
+    "has_contact_page": true/false,
+    "has_about_page": true/false,
+    "has_privacy_policy": true/false,
+    "has_terms": true/false,
+    "language": "...",
+    "readability_score": 0-100
+  },
   "recommendation": "...",
   "ai_summary": "Brief 2-3 sentence summary of what this website does and whether it's trustworthy"
 }`;
@@ -384,6 +376,17 @@ Return:
               }
             }
           },
+          content_analysis: {
+            type: "object",
+            properties: {
+              has_contact_page: { type: "boolean" },
+              has_about_page: { type: "boolean" },
+              has_privacy_policy: { type: "boolean" },
+              has_terms: { type: "boolean" },
+              language: { type: "string" },
+              readability_score: { type: "number" }
+            }
+          },
           recommendation: { type: "string" },
           ai_summary: { type: "string" }
         }
@@ -400,7 +403,7 @@ Return:
       url,
       canonical_host: hostname,
       status: safetyInfo.is_safe ? 'safe' : 'unsafe',
-      http_status: 200, // This would ideally come from a real HTTP request
+      http_status: 200,
       is_safe: safetyInfo.is_safe,
       risk_level: safetyInfo.risk_level,
       trust_score: safetyInfo.trust_score,
@@ -413,14 +416,7 @@ Return:
       security_headers: securityInfo.security_headers,
       network_info: securityInfo.network_info,
       vulnerability_flags: securityInfo.vulnerability_flags || [],
-      content_analysis: {
-        has_contact_page: metadata.has_contact_page,
-        has_about_page: metadata.has_about_page,
-        has_privacy_policy: metadata.has_privacy_policy,
-        has_terms: metadata.has_terms,
-        language: metadata.language,
-        readability_score: metadata.readability_score
-      },
+      content_analysis: safetyInfo.content_analysis,
       safety_details: safetyInfo.safety_details || [],
       recommendation: safetyInfo.recommendation,
       ai_summary: safetyInfo.ai_summary,
@@ -463,31 +459,6 @@ Return:
       default: return 'from-gray-500/10 to-gray-600/10 border-gray-500/30';
     }
   };
-
-  const formatWhoisDate = (dateString) => {
-    if (!dateString || dateString === 'N/A' || dateString === 'Unknown') return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (e) {
-      return 'Invalid Date';
-    }
-  };
-
-  const renderBadgeList = (items, prefix = '', bgColor = 'bg-gray-700', textColor = 'text-gray-300') => (
-    items && items.length > 0 ? (
-      <div className="flex flex-wrap gap-1">
-        {items.map((item, idx) => (
-          <Badge key={idx} variant="secondary" className={`${bgColor} ${textColor} border-gray-600`}>
-            {prefix}{item}
-          </Badge>
-        ))}
-      </div>
-    ) : <span className="text-gray-500 text-sm">N/A</span>
-  );
-
-  const renderBooleanStatus = (value) => (
-    value ? <CheckCircle className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />
-  );
 
   return (
     <div className="space-y-6">
@@ -630,16 +601,13 @@ Return:
                   </div>
                   
                   <p className="text-white text-sm mb-3 break-all flex items-center gap-2">
-                    <Globe className="w-4 h-4 flex-shrink-0" />
-                    <span className="break-all">{result.url}</span>
+                    <Globe className="w-4 h-4" />
+                    {result.url}
                     {result.ssl_info?.has_ssl ? (
-                      <Lock className="w-4 h-4 text-green-400 flex-shrink-0" title="HTTPS Secure" />
+                      <Lock className="w-4 h-4 text-green-400" title="HTTPS Secure" />
                     ) : (
-                      <Unlock className="w-4 h-4 text-red-400 flex-shrink-0" title="Not Secure" />
+                      <Unlock className="w-4 h-4 text-red-400" title="Not Secure" />
                     )}
-                    <a href={result.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-cyan-400 hover:text-cyan-300">
-                      <ExternalLinkIcon className="w-4 h-4 flex-shrink-0" />
-                    </a>
                   </p>
 
                   {result.ai_summary && (
@@ -722,241 +690,532 @@ Return:
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-4">
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="mt-6 space-y-4">
               <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
                 <CardHeader>
-                  <CardTitle className="text-white text-lg">Website Overview & Content</CardTitle>
+                  <CardTitle className="text-white">Page Metadata</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 text-sm text-gray-300">
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-400">Title</p>
+                    <p className="text-white font-semibold">{result.metadata?.title || 'Not found'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Description</p>
+                    <p className="text-gray-300 text-sm">{result.metadata?.description || 'Not found'}</p>
+                  </div>
+                  {result.metadata?.meta_author && (
                     <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Info className="w-4 h-4 mr-2 text-cyan-400" />Basic Info</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p><span className="text-gray-400">Title:</span> <span className="font-medium">{result.metadata?.title || 'N/A'}</span></p>
-                        <p><span className="text-gray-400">Description:</span> {result.metadata?.description || 'N/A'}</p>
-                        <p><span className="text-gray-400">Meta Author:</span> {result.metadata?.meta_author || 'N/A'}</p>
-                        <p><span className="text-gray-400">Word Count:</span> {result.metadata?.word_count?.toLocaleString() || 'N/A'}</p>
-                      </div>
+                      <p className="text-sm text-gray-400">Meta Author</p>
+                      <p className="text-white">{result.metadata.meta_author}</p>
                     </div>
-
+                  )}
+                  {result.metadata?.keywords && result.metadata.keywords.length > 0 && (
                     <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Hash className="w-4 h-4 mr-2 text-purple-400" />Headings</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-gray-400">H1s:</p>
-                          {renderBadgeList(result.metadata?.headings?.h1)}
-                        </div>
-                        <div>
-                          <p className="text-gray-400">H2s:</p>
-                          {renderBadgeList(result.metadata?.headings?.h2)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><LinkIcon className="w-4 h-4 mr-2 text-green-400" />Links</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-gray-400">Internal Links ({result.metadata?.links?.internal_count || 0}):</p>
-                          {renderBadgeList(result.metadata?.links?.internal_sample, '', 'bg-green-500/10', 'text-green-300')}
-                        </div>
-                        <div>
-                          <p className="text-gray-400">External Links ({result.metadata?.links?.external_count || 0}):</p>
-                          {renderBadgeList(result.metadata?.links?.external_sample, '', 'bg-blue-500/10', 'text-blue-300')}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Megaphone className="w-4 h-4 mr-2 text-orange-400" />Accessibility & Policies</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Sitemap.xml:</span> {renderBooleanStatus(result.metadata?.has_sitemap)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Robots.txt:</span> {result.metadata?.robots ? <span className="font-medium text-white">{result.metadata.robots}</span> : 'N/A'}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Contact Page:</span> {renderBooleanStatus(result.content_analysis?.has_contact_page)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">About Page:</span> {renderBooleanStatus(result.content_analysis?.has_about_page)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Privacy Policy:</span> {renderBooleanStatus(result.content_analysis?.has_privacy_policy)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Terms & Conditions:</span> {renderBooleanStatus(result.content_analysis?.has_terms)}</p>
-                        <p><span className="text-gray-400">Language:</span> {result.content_analysis?.language || 'N/A'}</p>
-                        <p><span className="text-gray-400">Readability Score:</span> {result.content_analysis?.readability_score || 'N/A'}</p>
-                      </div>
-                    </div>
-
-                    {result.safety_details && result.safety_details.length > 0 && (
-                      <div>
-                        <h4 className="flex items-center font-semibold text-white mb-2"><BellRing className="w-4 h-4 mr-2 text-red-400" />Safety Checks</h4>
-                        {result.safety_details.map((detail, idx) => (
-                          <div key={idx} className="bg-[#0f1419] rounded-lg p-3 border border-gray-700 mb-2">
-                            <h5 className="font-semibold text-white mb-1">{detail.source}</h5>
-                            <p className="text-sm">
-                              <span className="text-gray-400">Status:</span> 
-                              <Badge className={`ml-2 ${
-                                detail.status === 'safe' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
-                                'bg-red-500/20 text-red-400 border-red-500/50'
-                              }`}>{detail.status}</Badge>
-                            </p>
-                            {detail.malicious !== undefined && <p className="text-sm"><span className="text-gray-400">Malicious Detections:</span> <span className="text-red-400 font-bold">{detail.malicious}</span></p>}
-                            {detail.clean !== undefined && <p className="text-sm"><span className="text-gray-400">Clean Detections:</span> <span className="text-green-400 font-bold">{detail.clean}</span></p>}
-                          </div>
+                      <p className="text-sm text-gray-400 mb-2">Keywords</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.metadata.keywords.map((kw, idx) => (
+                          <Badge key={idx} className="bg-cyan-500/20 text-cyan-400">{kw}</Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-400">Word Count</p>
+                      <p className="text-white font-bold">{result.metadata?.word_count?.toLocaleString() || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Sitemap</p>
+                      <p className={result.metadata?.has_sitemap ? 'text-green-400' : 'text-red-400'}>
+                        {result.metadata?.has_sitemap ? '✓ Found' : '✗ Not found'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {result.metadata?.headings && (
+                <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">Headings Structure</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {result.metadata.headings.h1 && result.metadata.headings.h1.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">H1 Headings</p>
+                        <ul className="space-y-1">
+                          {result.metadata.headings.h1.map((h, idx) => (
+                            <li key={idx} className="text-white text-sm">• {h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {result.metadata.headings.h2 && result.metadata.headings.h2.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">H2 Headings (Sample)</p>
+                        <ul className="space-y-1">
+                          {result.metadata.headings.h2.slice(0, 5).map((h, idx) => (
+                            <li key={idx} className="text-gray-300 text-sm">• {h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {result.metadata?.links && (
+                <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">Links Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="p-3 bg-[#0f1419] rounded-lg text-center">
+                        <p className="text-sm text-gray-400">Internal Links</p>
+                        <p className="text-2xl font-bold text-cyan-400">{result.metadata.links.internal_count || 0}</p>
+                      </div>
+                      <div className="p-3 bg-[#0f1419] rounded-lg text-center">
+                        <p className="text-sm text-gray-400">External Links</p>
+                        <p className="text-2xl font-bold text-purple-400">{result.metadata.links.external_count || 0}</p>
+                      </div>
+                    </div>
+                    {result.metadata.links.internal_sample && result.metadata.links.internal_sample.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">Internal Links (Sample)</p>
+                        <ul className="space-y-1">
+                          {result.metadata.links.internal_sample.map((link, idx) => (
+                            <li key={idx} className="text-cyan-400 text-xs truncate">
+                              <LinkIcon className="w-3 h-3 inline mr-1" />{link}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Creator Tab */}
+            <TabsContent value="creator" className="mt-6 space-y-4">
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Estimated Creator/Owner</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg">
+                    <div>
+                      <p className="text-sm text-gray-400">Creator Name</p>
+                      <p className="text-xl font-bold text-white">
+                        {result.creator_info?.estimated_creator || 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-gray-400">Confidence</p>
+                      <p className={`text-2xl font-bold ${
+                        (result.creator_info?.confidence || 0) >= 0.7 ? 'text-green-400' :
+                        (result.creator_info?.confidence || 0) >= 0.4 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {((result.creator_info?.confidence || 0) * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {result.creator_info?.sources && result.creator_info.sources.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Data Sources</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.creator_info.sources.map((source, idx) => (
+                          <Badge key={idx} className="bg-purple-500/20 text-purple-400">
+                            {source.replace(/_/g, ' ')}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.creator_info?.organization && (
+                    <div>
+                      <p className="text-sm text-gray-400">Organization</p>
+                      <p className="text-white font-semibold">{result.creator_info.organization}</p>
+                    </div>
+                  )}
+
+                  {result.creator_info?.contact_email && (
+                    <div>
+                      <p className="text-sm text-gray-400">Contact Email</p>
+                      <p className="text-cyan-400 flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        {result.creator_info.contact_email}
+                      </p>
+                    </div>
+                  )}
+
+                  {result.creator_info?.social_links && Object.keys(result.creator_info.social_links).length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Social Media</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(result.creator_info.social_links).map(([platform, url]) => (
+                          url && (
+                            <a
+                              key={platform}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-2 bg-[#0f1419] rounded-lg hover:bg-cyan-500/10 transition-colors"
+                            >
+                              <ExternalLink className="w-4 h-4 text-cyan-400" />
+                              <span className="text-white text-sm capitalize">{platform}</span>
+                            </a>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {result.whois && (
+                <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">WHOIS Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {result.whois.registrar && (
+                      <div>
+                        <p className="text-sm text-gray-400">Registrar</p>
+                        <p className="text-white font-semibold">{result.whois.registrar}</p>
+                      </div>
+                    )}
+                    {result.whois.registrant && (
+                      <div>
+                        <p className="text-sm text-gray-400">Registrant</p>
+                        <p className="text-white">{result.whois.registrant}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      {result.whois.created_date && (
+                        <div>
+                          <p className="text-sm text-gray-400">Created</p>
+                          <p className="text-white text-sm">{new Date(result.whois.created_date).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                      {result.whois.expires_date && (
+                        <div>
+                          <p className="text-sm text-gray-400">Expires</p>
+                          <p className="text-white text-sm">{new Date(result.whois.expires_date).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                    </div>
+                    {result.whois.privacy_protected !== undefined && (
+                      <div>
+                        <Badge className={result.whois.privacy_protected ? 'bg-gray-500/20 text-gray-400' : 'bg-green-500/20 text-green-400'}>
+                          {result.whois.privacy_protected ? '🔒 Privacy Protected' : '👁️ Public WHOIS'}
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Tech Stack Tab */}
+            <TabsContent value="tech" className="mt-6 space-y-4">
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-blue-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Technology Stack</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {result.tech_stack?.cms && (
+                      <div className="p-4 bg-[#0f1419] rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Database className="w-4 h-4 text-blue-400" />
+                          <p className="text-sm text-gray-400">CMS</p>
+                        </div>
+                        <p className="text-white font-bold">{result.tech_stack.cms}</p>
+                      </div>
+                    )}
+                    {result.tech_stack?.server && (
+                      <div className="p-4 bg-[#0f1419] rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Server className="w-4 h-4 text-cyan-400" />
+                          <p className="text-sm text-gray-400">Server</p>
+                        </div>
+                        <p className="text-white font-bold">{result.tech_stack.server}</p>
+                      </div>
+                    )}
+                    {result.tech_stack?.cdn && (
+                      <div className="p-4 bg-[#0f1419] rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Cloud className="w-4 h-4 text-purple-400" />
+                          <p className="text-sm text-gray-400">CDN</p>
+                        </div>
+                        <p className="text-white font-bold">{result.tech_stack.cdn}</p>
+                      </div>
+                    )}
+                    {result.tech_stack?.hosting_provider && (
+                      <div className="p-4 bg-[#0f1419] rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Server className="w-4 h-4 text-green-400" />
+                          <p className="text-sm text-gray-400">Hosting</p>
+                        </div>
+                        <p className="text-white font-bold">{result.tech_stack.hosting_provider}</p>
+                      </div>
                     )}
                   </div>
+
+                  {result.tech_stack?.programming_languages && result.tech_stack.programming_languages.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Programming Languages</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.tech_stack.programming_languages.map((lang, idx) => (
+                          <Badge key={idx} className="bg-blue-500/20 text-blue-400">{lang}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.tech_stack?.frameworks && result.tech_stack.frameworks.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Frameworks</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.tech_stack.frameworks.map((fw, idx) => (
+                          <Badge key={idx} className="bg-purple-500/20 text-purple-400">{fw}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.tech_stack?.analytics && result.tech_stack.analytics.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Analytics & Tracking</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.tech_stack.analytics.map((tool, idx) => (
+                          <Badge key={idx} className="bg-cyan-500/20 text-cyan-400">
+                            <BarChart3 className="w-3 h-3 mr-1" />
+                            {tool}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="creator" className="mt-4">
-              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+            {/* Security Tab */}
+            <TabsContent value="security" className="mt-6 space-y-4">
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
                 <CardHeader>
-                  <CardTitle className="text-white text-lg">Creator & Ownership</CardTitle>
+                  <CardTitle className="text-white">SSL/TLS Certificate</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 text-sm text-gray-300">
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><User className="w-4 h-4 mr-2 text-purple-400" />Estimated Creator</h4>
-                      <p><span className="text-gray-400">Name:</span> <span className="font-medium text-white">{result.creator_info?.estimated_creator || 'Unknown'}</span></p>
-                      <p><span className="text-gray-400">Confidence:</span> {(result.creator_info?.confidence * 100)?.toFixed(0) || 0}%</p>
-                      <p><span className="text-gray-400">Organization:</span> {result.creator_info?.organization || 'N/A'}</p>
-                      <p className="flex items-center"><Mail className="w-4 h-4 mr-2 text-cyan-400" /><span className="text-gray-400">Contact Email:</span> {result.creator_info?.contact_email || 'N/A'}</p>
-                      <p><span className="text-gray-400">Sources:</span> {renderBadgeList(result.creator_info?.sources)}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Briefcase className="w-4 h-4 mr-2 text-orange-400" />WHOIS Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p><span className="text-gray-400">Registrar:</span> {result.whois?.registrar || 'N/A'}</p>
-                        <p><span className="text-gray-400">Registrant:</span> {result.whois?.registrant || 'N/A'}</p>
-                        <p className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-emerald-400" /><span className="text-gray-400">Created Date:</span> {formatWhoisDate(result.whois?.created_date)}</p>
-                        <p className="flex items-center"><Clock className="w-4 h-4 mr-2 text-red-400" /><span className="text-gray-400">Expires Date:</span> {formatWhoisDate(result.whois?.expires_date)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Privacy Protected:</span> {renderBooleanStatus(result.whois?.privacy_protected)}</p>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {result.ssl_info?.has_ssl ? (
+                        <Lock className="w-8 h-8 text-green-400" />
+                      ) : (
+                        <Unlock className="w-8 h-8 text-red-400" />
+                      )}
+                      <div>
+                        <p className="text-white font-bold">
+                          {result.ssl_info?.has_ssl ? 'HTTPS Enabled' : 'No HTTPS'}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          {result.ssl_info?.issuer || 'No certificate'}
+                        </p>
                       </div>
                     </div>
+                    {result.ssl_info?.grade && (
+                      <Badge className={`text-2xl font-bold ${
+                        result.ssl_info.grade === 'A' || result.ssl_info.grade === 'A+' ? 'bg-green-500/20 text-green-400' :
+                        result.ssl_info.grade === 'B' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {result.ssl_info.grade}
+                      </Badge>
+                    )}
+                  </div>
 
-                    {result.creator_info?.social_links && Object.values(result.creator_info.social_links).some(link => link) && (
+                  {result.ssl_info?.valid_from && result.ssl_info?.valid_until && (
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <h4 className="flex items-center font-semibold text-white mb-2"><ExternalLink className="w-4 h-4 mr-2 text-blue-400" />Social Links</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {result.creator_info.social_links.twitter && <a href={result.creator_info.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Twitter</a>}
-                          {result.creator_info.social_links.linkedin && <a href={result.creator_info.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">LinkedIn</a>}
-                          {result.creator_info.social_links.github && <a href={result.creator_info.social_links.github} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">GitHub</a>}
-                          {result.creator_info.social_links.facebook && <a href={result.creator_info.social_links.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Facebook</a>}
+                        <p className="text-sm text-gray-400">Valid From</p>
+                        <p className="text-white text-sm">{result.ssl_info.valid_from}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Valid Until</p>
+                        <p className="text-white text-sm">{result.ssl_info.valid_until}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Security Headers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {result.security_headers && Object.entries(result.security_headers).map(([key, value]) => (
+                      <div key={key} className={`p-3 rounded-lg border text-center ${
+                        value ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+                      }`}>
+                        {value ? (
+                          <CheckCircle className="w-6 h-6 text-green-400 mx-auto mb-1" />
+                        ) : (
+                          <XCircle className="w-6 h-6 text-red-400 mx-auto mb-1" />
+                        )}
+                        <p className="text-xs text-gray-300 font-semibold uppercase">
+                          {key.replace(/_/g, '-')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {result.vulnerability_flags && result.vulnerability_flags.length > 0 && (
+                <Card className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-red-400 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      Vulnerability Flags
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {result.vulnerability_flags.map((flag, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-red-300 text-sm">
+                          <XCircle className="w-4 h-4" />
+                          {flag}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Network Tab */}
+            <TabsContent value="network" className="mt-6 space-y-4">
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Network Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {result.network_info?.ip_addresses && result.network_info.ip_addresses.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">IP Addresses</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.network_info.ip_addresses.map((ip, idx) => (
+                          <Badge key={idx} className="bg-orange-500/20 text-orange-400 font-mono">
+                            {ip}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.network_info?.geolocation && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Geolocation</p>
+                      <div className="p-4 bg-[#0f1419] rounded-lg space-y-2">
+                        {result.network_info.geolocation.country && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Country</span>
+                            <span className="text-white font-semibold">{result.network_info.geolocation.country}</span>
+                          </div>
+                        )}
+                        {result.network_info.geolocation.city && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">City</span>
+                            <span className="text-white font-semibold">{result.network_info.geolocation.city}</span>
+                          </div>
+                        )}
+                        {result.network_info.geolocation.isp && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">ISP</span>
+                            <span className="text-white font-semibold">{result.network_info.geolocation.isp}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.network_info?.cloudflare_protected !== undefined && (
+                    <div className="p-4 bg-[#0f1419] rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="w-5 h-5 text-orange-400" />
+                          <span className="text-white">Cloudflare Protection</span>
+                        </div>
+                        <Badge className={result.network_info.cloudflare_protected ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}>
+                          {result.network_info.cloudflare_protected ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {result.content_analysis && (
+                <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">Content Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { key: 'has_contact_page', label: 'Contact Page' },
+                        { key: 'has_about_page', label: 'About Page' },
+                        { key: 'has_privacy_policy', label: 'Privacy Policy' },
+                        { key: 'has_terms', label: 'Terms of Service' }
+                      ].map(({ key, label }) => (
+                        <div key={key} className={`p-3 rounded-lg border text-center ${
+                          result.content_analysis[key] ? 'bg-green-500/10 border-green-500/30' : 'bg-gray-500/10 border-gray-500/30'
+                        }`}>
+                          {result.content_analysis[key] ? (
+                            <CheckCircle className="w-6 h-6 text-green-400 mx-auto mb-1" />
+                          ) : (
+                            <XCircle className="w-6 h-6 text-gray-500 mx-auto mb-1" />
+                          )}
+                          <p className="text-xs text-gray-300">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {result.content_analysis.language && (
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-400">Language</p>
+                        <p className="text-white font-semibold">{result.content_analysis.language}</p>
+                      </div>
+                    )}
+
+                    {result.content_analysis.readability_score !== undefined && (
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-400 mb-2">Readability Score</p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-cyan-500 to-blue-600"
+                              style={{ width: `${result.content_analysis.readability_score}%` }}
+                            />
+                          </div>
+                          <span className="text-white font-bold">{result.content_analysis.readability_score}/100</span>
                         </div>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="tech" className="mt-4">
-              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-                <CardHeader>
-                  <CardTitle className="text-white text-lg">Technology Stack</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 text-sm text-gray-300">
-                    <p><span className="text-gray-400">CMS:</span> {result.tech_stack?.cms || 'N/A'}</p>
-                    <p><span className="text-gray-400">Server:</span> {result.tech_stack?.server || 'N/A'}</p>
-                    <p><span className="text-gray-400">Hosting Provider:</span> {result.tech_stack?.hosting_provider || 'N/A'}</p>
-                    <p><span className="text-gray-400">CDN:</span> {result.tech_stack?.cdn || 'N/A'}</p>
-
-                    <div>
-                      <h4 className="font-semibold text-white mb-2">Programming Languages</h4>
-                      {renderBadgeList(result.tech_stack?.programming_languages, '', 'bg-blue-500/10', 'text-blue-300')}
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-white mb-2">Frameworks</h4>
-                      {renderBadgeList(result.tech_stack?.frameworks, '', 'bg-purple-500/10', 'text-purple-300')}
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-white mb-2">Analytics Tools</h4>
-                      {renderBadgeList(result.tech_stack?.analytics, '', 'bg-green-500/10', 'text-green-300')}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="security" className="mt-4">
-              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-                <CardHeader>
-                  <CardTitle className="text-white text-lg">Security Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 text-sm text-gray-300">
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Lock className="w-4 h-4 mr-2 text-green-400" />SSL/TLS Certificate</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Has SSL:</span> {renderBooleanStatus(result.ssl_info?.has_ssl)}</p>
-                        <p><span className="text-gray-400">Issuer:</span> {result.ssl_info?.issuer || 'N/A'}</p>
-                        <p><span className="text-gray-400">Valid From:</span> {formatWhoisDate(result.ssl_info?.valid_from)}</p>
-                        <p><span className="text-gray-400">Valid Until:</span> {formatWhoisDate(result.ssl_info?.valid_until)}</p>
-                        <p><span className="text-gray-400">Grade:</span> {result.ssl_info?.grade || 'N/A'}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Shield className="w-4 h-4 mr-2 text-yellow-400" />Security Headers</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">CSP (Content Security Policy):</span> {renderBooleanStatus(result.security_headers?.csp)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">HSTS (HTTP Strict Transport Security):</span> {renderBooleanStatus(result.security_headers?.hsts)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">X-Frame-Options:</span> {renderBooleanStatus(result.security_headers?.x_frame_options)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">X-Content-Type-Options:</span> {renderBooleanStatus(result.security_headers?.x_content_type_options)}</p>
-                        <p className="flex items-center"><span className="text-gray-400 mr-2">Referrer-Policy:</span> {renderBooleanStatus(result.security_headers?.referrer_policy)}</p>
-                      </div>
-                    </div>
-
-                    {result.vulnerability_flags && result.vulnerability_flags.length > 0 && (
-                      <div>
-                        <h4 className="flex items-center font-semibold text-white mb-2"><AlertTriangle className="w-4 h-4 mr-2 text-red-400" />Vulnerability Flags</h4>
-                        {renderBadgeList(result.vulnerability_flags, '', 'bg-red-500/20', 'text-red-300')}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="network" className="mt-4">
-              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-                <CardHeader>
-                  <CardTitle className="text-white text-lg">Network Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 text-sm text-gray-300">
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Server className="w-4 h-4 mr-2 text-cyan-400" />Server Details</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <p><span className="text-gray-400">Canonical Host:</span> {result.canonical_host || 'N/A'}</p>
-                        <p className="flex items-center"><Cloud className="w-4 h-4 mr-2 text-blue-400" /><span className="text-gray-400 mr-2">Cloudflare Protected:</span> {renderBooleanStatus(result.network_info?.cloudflare_protected)}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="flex items-center font-semibold text-white mb-2"><Database className="w-4 h-4 mr-2 text-emerald-400" />IP Addresses</h4>
-                      {renderBadgeList(result.network_info?.ip_addresses, '', 'bg-green-500/10', 'text-green-300')}
-                    </div>
-
-                    {result.network_info?.geolocation && (
-                      <div>
-                        <h4 className="flex items-center font-semibold text-white mb-2"><Globe className="w-4 h-4 mr-2 text-orange-400" />Geolocation</h4>
-                        <p><span className="text-gray-400">Country:</span> {result.network_info.geolocation.country || 'N/A'}</p>
-                        <p><span className="text-gray-400">City:</span> {result.network_info.geolocation.city || 'N/A'}</p>
-                        <p><span className="text-gray-400">ISP:</span> {result.network_info.geolocation.isp || 'N/A'}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
-
-          <div className="mt-4 text-xs text-gray-500 text-center">
-            Last checked: {new Date(result.checked_at).toLocaleString()}
-            {result.performance?.scan_duration_ms && ` (Scan time: ${result.performance.scan_duration_ms / 1000}s)`}
-          </div>
         </div>
       )}
 
@@ -967,8 +1226,7 @@ Return:
               <XCircle className="w-10 h-10 text-red-400" />
               <div>
                 <h3 className="text-red-400 font-bold text-lg">Scan Failed</h3>
-                <p className="text-gray-300 text-sm">{result.error || 'An unknown error occurred during the scan.'}</p>
-                <p className="text-gray-400 text-xs mt-1">Please ensure the URL is valid and try again.</p>
+                <p className="text-gray-300 text-sm">{result.error || 'An error occurred during the scan'}</p>
               </div>
             </div>
           </CardContent>
