@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -32,6 +33,11 @@ const navigationItems = [
     icon: ShieldCheck,
     badge: "OWASP",
     highlight: true
+  },
+  {
+    title: "Credit Cards",
+    url: createPageUrl("CreditCardMonitor"),
+    icon: CreditCard,
   },
   {
     title: "VPN Protection",
