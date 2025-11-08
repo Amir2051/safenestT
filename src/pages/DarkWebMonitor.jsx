@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -54,10 +55,23 @@ export default function DarkWebMonitor() {
 
     const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
     const isActive = user?.payment_status === 'active';
+    const isTrial = user?.subscription_plan === 'trial' && user?.payment_status === 'trial';
 
-    if (!isPremium || !isActive) {
+    // Trial & Free users have limited checks
+    if (!isPremium && !isTrial) {
       if (dailyChecksRemaining <= 0) {
         toast.error('Daily limit reached. Upgrade to Premium for unlimited checks!');
+        return;
+      }
+    }
+
+    // Check monitor count limit
+    if (!isPremium && !isActive) {
+      const monitorLimit = isTrial ? 2 : 1;
+      const currentMonitors = monitors.filter(m => m.monitor_type === 'email').length;
+      
+      if (currentMonitors >= monitorLimit) {
+        toast.error(`${isTrial ? 'Trial' : 'Free'} plan limit: ${monitorLimit} email${monitorLimit > 1 ? 's' : ''}. Upgrade for more!`);
         return;
       }
     }
@@ -143,7 +157,9 @@ Note: Add a disclaimer that this is a LIMITED check. Premium users get real-time
           await createMonitorMutation.mutateAsync(monitorData);
         }
 
-        setDailyChecksRemaining(prev => prev - 1);
+        if (!isPremium && !isActive) {
+          setDailyChecksRemaining(prev => prev - 1);
+        }
 
         if (response.breached) {
           toast.error(`Limited check: ${response.breaches.length} potential breach${response.breaches.length > 1 ? 'es' : ''} found`);
@@ -265,6 +281,8 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
   
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
+  const isTrial = user?.subscription_plan === 'trial' && user?.payment_status === 'trial';
+  const isTrialExpired = user?.subscription_plan === 'free' && user?.payment_status === 'expired';
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -276,18 +294,45 @@ Based on common breach databases (LinkedIn, Adobe, Yahoo, Dropbox, etc), return 
         <p className="text-gray-400 mt-1">Check if your data has been exposed in breaches</p>
       </div>
 
-      {(!isPremium || !isActive) && (
-        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white font-semibold">🎁 Free Tier: {dailyChecksRemaining} email check remaining today</p>
-              <p className="text-sm text-gray-400">Upgrade to Premium for unlimited monitoring</p>
+      {/* Trial/Free Limits Banner */}
+      {!isPremium && !isActive && !isTrialExpired && (
+        <Card className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-white font-semibold">
+                  {isTrial ? '🎁 Trial Plan' : '🆓 Free Plan'}: {isTrial ? '2 emails' : '1 email'} • {dailyChecksRemaining} check{dailyChecksRemaining !== 1 ? 's' : ''} remaining today
+                </p>
+                <p className="text-sm text-gray-400">
+                  Upgrade to Premium for unlimited monitoring
+                </p>
+              </div>
+              <Link to={createPageUrl("Upgrade")}>
+                <Button className="bg-gradient-to-r from-blue-500 to-cyan-500">
+                  Upgrade
+                </Button>
+              </Link>
             </div>
-            <Link to={createPageUrl("Upgrade")}>
-              <Button className="bg-gradient-to-r from-purple-500 to-pink-500">
-                Upgrade Now
-              </Button>
-            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {isTrialExpired && (
+        <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-white font-semibold">⏰ Trial Expired</p>
+                <p className="text-sm text-red-300">
+                  Upgrade to continue monitoring for breaches
+                </p>
+              </div>
+              <Link to={createPageUrl("Upgrade")}>
+                <Button className="bg-gradient-to-r from-red-500 to-orange-500">
+                  Upgrade Now
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +17,7 @@ import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
+import TrialBanner from "../components/shared/TrialBanner.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -43,6 +43,30 @@ export default function Dashboard() {
   useEffect(() => {
     base44.auth.me().then(async (userData) => {
       setUser(userData);
+      
+      // Check if trial needs initialization
+      if (!userData.trial_start_date && userData.subscription_plan === 'free') {
+        const trialStartDate = new Date();
+        const trialEndDate = new Date(trialStartDate);
+        trialEndDate.setDate(trialEndDate.getDate() + 3);
+
+        await base44.auth.updateMe({
+          subscription_plan: 'trial',
+          payment_status: 'trial',
+          trial_start_date: trialStartDate.toISOString(),
+          trial_end_date: trialEndDate.toISOString(),
+          trial_days_remaining: 3
+        });
+
+        setUser(prev => ({
+          ...prev,
+          subscription_plan: 'trial',
+          payment_status: 'trial',
+          trial_start_date: trialStartDate.toISOString(),
+          trial_end_date: trialEndDate.toISOString(),
+          trial_days_remaining: 3
+        }));
+      }
       
       const today = new Date().toISOString().split('T')[0];
       const lastCheckIn = userData.last_checkin_date;
@@ -81,7 +105,7 @@ export default function Dashboard() {
     
     if (daysSincePrompt > 3) {
       setTimeout(() => {
-        if (user?.subscription_plan === 'free' || !user?.subscription_plan) {
+        if (user?.subscription_plan === 'free' || user?.subscription_plan === 'trial') {
           setShowUpgradePrompt(true);
           localStorage.setItem('lastUpgradePrompt', Date.now().toString());
         }
@@ -229,6 +253,9 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Trial Banner */}
+      <TrialBanner user={user} />
+
       {/* OWASP Protection Banner */}
       <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl" />
@@ -352,7 +379,7 @@ export default function Dashboard() {
       </div>
 
       {/* Upgrade Prompt Modal */}
-      {showUpgradePrompt && !isPremium && (
+      {showUpgradePrompt && (user?.subscription_plan === 'free' || user?.subscription_plan === 'trial') && (
         <UpgradePrompt
           feature="premium protection"
           onClose={() => setShowUpgradePrompt(false)}
