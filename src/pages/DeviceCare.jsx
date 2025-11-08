@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,29 +19,48 @@ export default function DeviceCare() {
   const [user, setUser] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [currentScan, setCurrentScan] = useState(null);
-  const [scanResults, setScanResults] = useState(null);
-  const [autoProtection, setAutoProtection] = useState(false);
+  const [currentScan, setCurrentScan] = useState(null); // Retained for ScanRadar messages
+  const [scanResult, setScanResult] = useState(null); // Renamed from scanResults
+  const [realTimeProtection, setRealTimeProtection] = useState(false); // Renamed from autoProtection, initial value will be set by useEffect
 
   const queryClient = useQueryClient();
 
-  const { data: logs = [] } = useQuery({
+  useEffect(() => {
+    base44.auth.me().then(userData => {
+      setUser(userData);
+      setRealTimeProtection(userData.auto_protection_enabled || false);
+    }).catch(() => {});
+  }, []);
+
+  const { data: deviceLogs = [], isLoading: logsLoading } = useQuery({ // Renamed from logs, added isLoading
     queryKey: ['device-logs'],
     queryFn: () => base44.entities.DeviceProtectionLog.list('-created_date', 10),
     initialData: [],
   });
 
-  useEffect(() => {
-    base44.auth.me().then(userData => {
-      setUser(userData);
-      setAutoProtection(userData.auto_protection_enabled || false);
-    }).catch(() => {});
-  }, []);
-
   const createLogMutation = useMutation({
-    mutationFn: (data) => base44.entities.DeviceProtectionLog.create(data),
+    mutationFn: async (data) => {
+      const result = await base44.entities.DeviceProtectionLog.create(data);
+      
+      // Log device scan completion
+      await base44.entities.AuditLog.create({
+        action_type: 'device_scan_completed',
+        action_category: 'security',
+        description: `Device ${data.scan_type} scan completed - ${data.threats_found} threats found`,
+        metadata: {
+          device_info: `${data.scan_type} scan`,
+          new_value: data.status,
+          affected_item: `${data.threats_found} threats, ${data.junk_cleaned_mb}MB cleaned`
+        },
+        severity: data.threats_found > 0 ? 'medium' : 'info',
+        status: 'success'
+      });
+      
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs as well
     },
   });
 
@@ -51,7 +71,7 @@ export default function DeviceCare() {
   const performScan = async (scanType) => {
     setScanning(true);
     setScanProgress(0);
-    setScanResults(null);
+    setScanResult(null); // Use scanResult
     
     const startTime = Date.now();
 
@@ -130,7 +150,7 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
       await createLogMutation.mutateAsync(results);
       
       setScanProgress(100);
-      setScanResults(results);
+      setScanResult(results); // Use scanResult
       setCurrentScan("Scan complete!");
 
       // Show toast notification
@@ -147,11 +167,11 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
     setScanning(false);
   };
 
-  const toggleAutoProtection = async () => {
-    const newValue = !autoProtection;
-    setAutoProtection(newValue);
-    await updateUserMutation.mutateAsync({ auto_protection_enabled: newValue });
-    toast.success(newValue ? 'Auto-protection enabled' : 'Auto-protection disabled');
+  const toggleRealTimeProtection = async () => { // Renamed function
+    const newValue = !realTimeProtection; // Use realTimeProtection
+    setRealTimeProtection(newValue); // Use setRealTimeProtection
+    await updateUserMutation.mutateAsync({ auto_protection_enabled: newValue }); // API field remains auto_protection_enabled
+    toast.success(newValue ? 'Real-time protection enabled' : 'Real-time protection disabled');
   };
 
   if (!user) {
@@ -162,9 +182,10 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
     );
   }
 
-  const lastScan = logs[0];
-  const totalThreatsBlocked = logs.reduce((sum, log) => sum + (log.threats_found || 0), 0);
-  const totalJunkCleaned = logs.reduce((sum, log) => sum + (log.junk_cleaned_mb || 0), 0);
+  // Use deviceLogs for calculations
+  const lastScan = deviceLogs[0];
+  const totalThreatsBlocked = deviceLogs.reduce((sum, log) => sum + (log.threats_found || 0), 0);
+  const totalJunkCleaned = deviceLogs.reduce((sum, log) => sum + (log.junk_cleaned_mb || 0), 0);
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -205,7 +226,7 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400 mb-1">Total Scans</p>
-                <p className="text-2xl font-bold text-white">{logs.length}</p>
+                <p className="text-2xl font-bold text-white">{deviceLogs.length}</p> {/* Use deviceLogs */}
               </div>
               <Shield className="w-8 h-8 text-green-400" />
             </div>
@@ -260,8 +281,8 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
                 currentScan={currentScan}
               />
               
-              {scanResults && !scanning && (
-                <CleanupResults results={scanResults} />
+              {scanResult && !scanning && ( // Use scanResult
+                <CleanupResults results={scanResult} /> // Use scanResult
               )}
             </CardContent>
           </Card>
@@ -284,17 +305,17 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
                   <p className="text-xs text-gray-400">Daily automatic scans</p>
                 </div>
                 <button
-                  onClick={toggleAutoProtection}
+                  onClick={toggleRealTimeProtection} // Use toggleRealTimeProtection
                   className={`relative w-12 h-6 rounded-full transition-colors ${
-                    autoProtection ? 'bg-green-500' : 'bg-gray-600'
+                    realTimeProtection ? 'bg-green-500' : 'bg-gray-600' // Use realTimeProtection
                   }`}
                 >
                   <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                    autoProtection ? 'translate-x-6' : 'translate-x-0'
+                    realTimeProtection ? 'translate-x-6' : 'translate-x-0' // Use realTimeProtection
                   }`} />
                 </button>
               </div>
-              {autoProtection && (
+              {realTimeProtection && ( // Use realTimeProtection
                 <div className="mt-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <p className="text-xs text-green-400">
                     ✅ Your device is being monitored 24/7
@@ -363,8 +384,8 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
       </div>
 
       {/* Threats List */}
-      {scanResults && scanResults.threats_details && scanResults.threats_details.length > 0 && (
-        <ThreatsList threats={scanResults.threats_details} />
+      {scanResult && scanResult.threats_details && scanResult.threats_details.length > 0 && ( // Use scanResult
+        <ThreatsList threats={scanResult.threats_details} /> // Use scanResult
       )}
 
       {/* Scan History */}
@@ -376,7 +397,7 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {logs.length === 0 ? (
+          {deviceLogs.length === 0 ? ( // Use deviceLogs
             <div className="text-center py-8">
               <Shield className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400 text-sm">No scans yet</p>
@@ -384,7 +405,7 @@ Be encouraging and explain what was done. Sign as "Mia 🤖"`;
             </div>
           ) : (
             <div className="space-y-3">
-              {logs.slice(0, 5).map((log) => (
+              {deviceLogs.slice(0, 5).map((log) => ( // Use deviceLogs
                 <div
                   key={log.id}
                   className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/10 hover:border-cyan-500/30 transition-all"
