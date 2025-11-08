@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,10 +41,75 @@ export default function Settings() {
   }, []);
 
   const updateUserMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
+    mutationFn: async (data) => {
+      const result = await base44.auth.updateMe(data);
+      
+      // Log settings changes
+      const changes = [];
+      if (data.vpn_enabled !== user.vpn_enabled) {
+        changes.push(`VPN ${data.vpn_enabled ? 'enabled' : 'disabled'}`);
+        
+        await base44.entities.AuditLog.create({
+          action_type: data.vpn_enabled ? 'vpn_enabled' : 'vpn_disabled',
+          action_category: 'settings',
+          description: `VPN protection ${data.vpn_enabled ? 'enabled' : 'disabled'} in settings`,
+          metadata: {
+            previous_value: user.vpn_enabled ? 'enabled' : 'disabled',
+            new_value: data.vpn_enabled ? 'enabled' : 'disabled'
+          },
+          severity: 'info',
+          status: 'success'
+        });
+      }
+      
+      if (data.two_factor_enabled !== user.two_factor_enabled) {
+        changes.push(`2FA ${data.two_factor_enabled ? 'enabled' : 'disabled'}`);
+        
+        await base44.entities.AuditLog.create({
+          action_type: data.two_factor_enabled ? '2fa_enabled' : '2fa_disabled',
+          action_category: 'security',
+          description: `Two-factor authentication ${data.two_factor_enabled ? 'enabled' : 'disabled'}`,
+          metadata: {
+            previous_value: user.two_factor_enabled ? 'enabled' : 'disabled',
+            new_value: data.two_factor_enabled ? 'enabled' : 'disabled'
+          },
+          severity: data.two_factor_enabled ? 'low' : 'medium',
+          status: 'success'
+        });
+      }
+      
+      // Check if profile information changed
+      if (data.full_name !== user.full_name || data.phone !== user.phone) {
+        const profileChanges = {};
+        if (data.full_name !== user.full_name) {
+          profileChanges.full_name = {
+            previous: user.full_name,
+            new: data.full_name
+          };
+        }
+        if (data.phone !== user.phone) {
+          profileChanges.phone = {
+            previous: user.phone,
+            new: data.phone
+          };
+        }
+
+        await base44.entities.AuditLog.create({
+          action_type: 'profile_updated',
+          action_category: 'settings',
+          description: 'Profile information updated',
+          metadata: profileChanges, // Store specific changes
+          severity: 'info',
+          status: 'success'
+        });
+      }
+      
+      return result;
+    },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs on successful settings save
       toast.success('Settings saved successfully!');
     },
     onError: () => {
@@ -57,21 +123,50 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const handleEmailAdd = () => {
+  const handleEmailAdd = async () => {
     const email = prompt('Enter email address to monitor:');
     if (email && email.includes('@')) {
+      const newEmails = [...(formData.monitored_emails || []), email];
       setFormData(prev => ({
         ...prev,
-        monitored_emails: [...(prev.monitored_emails || []), email]
+        monitored_emails: newEmails
       }));
+      
+      // Log email monitoring added
+      await base44.entities.AuditLog.create({
+        action_type: 'email_monitoring_added',
+        action_category: 'monitoring',
+        description: `Started monitoring email: ${email}`,
+        metadata: {
+          affected_item: email
+        },
+        severity: 'info',
+        status: 'success'
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs
     }
   };
 
-  const handleEmailRemove = (email) => {
+  const handleEmailRemove = async (email) => {
     setFormData(prev => ({
       ...prev,
       monitored_emails: prev.monitored_emails.filter(e => e !== email)
     }));
+    
+    // Log email monitoring removed
+    await base44.entities.AuditLog.create({
+      action_type: 'email_monitoring_removed',
+      action_category: 'monitoring',
+      description: `Stopped monitoring email: ${email}`,
+      metadata: {
+        affected_item: email
+      },
+      severity: 'info',
+      status: 'success'
+    });
+    
+    queryClient.invalidateQueries({ queryKey: ['audit-logs'] }); // Invalidate audit logs
   };
 
   if (!user) {
