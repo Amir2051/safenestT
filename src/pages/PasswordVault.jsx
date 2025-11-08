@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,9 +27,27 @@ export default function PasswordVault() {
   });
 
   const deletePasswordMutation = useMutation({
-    mutationFn: (id) => base44.entities.Password.delete(id),
+    mutationFn: async (id) => {
+      const password = passwords.find(p => p.id === id);
+      const result = await base44.entities.Password.delete(id);
+      
+      // Log password deletion
+      await base44.entities.AuditLog.create({
+        action_type: 'password_deleted',
+        action_category: 'password',
+        description: `Password deleted for ${password?.site_name || 'site'}`,
+        metadata: {
+          affected_item: password?.site_name
+        },
+        severity: 'info',
+        status: 'success'
+      });
+      
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passwords'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       refetch();
     },
   });
