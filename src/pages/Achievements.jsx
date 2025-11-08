@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Trophy, Star, TrendingUp, Lock, CheckCircle, 
-  Flame, Target, Award, Sparkles, Info, Zap, ArrowRight
+  Flame, Target, Award, Sparkles, Info, Zap, ArrowRight, Play, Shield,
+  Mail, Eye, Smartphone, CreditCard
 } from "lucide-react";
 import {
   Dialog,
@@ -16,19 +17,161 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { createPageUrl } from "@/utils";
+import { useNavigate } from "react-router-dom";
 
 const ACHIEVEMENT_DEFINITIONS = [
-  { id: 'first_login', name: 'Welcome Aboard', desc: 'Complete onboarding', category: 'beginner', icon: '🎯', points: 10, hint: 'Complete the onboarding tutorial' },
-  { id: 'first_scan', name: 'First Scan', desc: 'Complete your first security scan', category: 'beginner', icon: '🔍', points: 15, hint: 'Run a security scan from the dashboard' },
-  { id: 'password_guardian', name: 'Password Guardian', desc: 'Add 5 passwords to vault', category: 'beginner', icon: '🔐', points: 20, hint: 'Add 5 passwords to your vault' },
-  { id: 'breach_detector', name: 'Breach Detector', desc: 'Set up email monitoring', category: 'beginner', icon: '📧', points: 15, hint: 'Check an email for breaches' },
-  { id: 'security_pro', name: 'Security Pro', desc: 'Reach security score of 75', category: 'intermediate', icon: '💪', points: 30, hint: 'Improve security score to 75+' },
-  { id: 'vault_master', name: 'Vault Master', desc: 'Store 20+ items in vault', category: 'intermediate', icon: '🔒', points: 25, hint: 'Add 20 items to your vault' },
-  { id: 'protected_identity', name: 'Protected Identity', desc: 'Monitor 3+ emails', category: 'intermediate', icon: '📱', points: 25, hint: 'Monitor 3 email addresses (Premium)' },
-  { id: 'security_champion', name: 'Security Champion', desc: 'Reach security score of 90', category: 'advanced', icon: '🏆', points: 50, hint: 'Improve security score to 90+' },
-  { id: 'streak_7', name: '7 Day Streak', desc: 'Check security 7 days in a row', category: 'advanced', icon: '🔥', points: 40, hint: 'Visit the app 7 days consecutively' },
-  { id: 'streak_30', name: '30 Day Guardian', desc: 'Maintain high score for 30 days', category: 'advanced', icon: '💎', points: 75, hint: 'Keep score above 75 for 30 days' },
-  { id: 'premium_member', name: 'Premium Member', desc: 'Upgrade to premium', category: 'advanced', icon: '🌟', points: 100, hint: 'Upgrade to Basic or Elite plan' },
+  { 
+    id: 'first_login', 
+    name: 'Welcome Aboard', 
+    desc: 'Complete onboarding', 
+    category: 'beginner', 
+    icon: '🎯', 
+    points: 10, 
+    hint: 'Complete the onboarding tutorial',
+    taskType: 'instant',
+    taskAction: 'mark_complete',
+    autoUnlock: true
+  },
+  { 
+    id: 'first_scan', 
+    name: 'First Scan', 
+    desc: 'Complete your first security scan', 
+    category: 'beginner', 
+    icon: '🔍', 
+    points: 15, 
+    hint: 'Run a security scan from the dashboard',
+    taskType: 'navigate',
+    taskAction: 'dashboard',
+    taskIcon: Shield,
+    taskButton: 'Run Security Scan'
+  },
+  { 
+    id: 'password_guardian', 
+    name: 'Password Guardian', 
+    desc: 'Add 5 passwords to vault', 
+    category: 'beginner', 
+    icon: '🔐', 
+    points: 20, 
+    hint: 'Add 5 passwords to your vault',
+    taskType: 'navigate',
+    taskAction: 'PasswordVault',
+    taskIcon: Lock,
+    taskButton: 'Go to Password Vault'
+  },
+  { 
+    id: 'breach_detector', 
+    name: 'Breach Detector', 
+    desc: 'Set up email monitoring', 
+    category: 'beginner', 
+    icon: '📧', 
+    points: 15, 
+    hint: 'Check an email for breaches',
+    taskType: 'navigate',
+    taskAction: 'DarkWebMonitor',
+    taskIcon: Eye,
+    taskButton: 'Check Email for Breaches'
+  },
+  { 
+    id: 'security_pro', 
+    name: 'Security Pro', 
+    desc: 'Reach security score of 75', 
+    category: 'intermediate', 
+    icon: '💪', 
+    points: 30, 
+    hint: 'Improve security score to 75+',
+    taskType: 'navigate',
+    taskAction: 'Dashboard',
+    taskIcon: Shield,
+    taskButton: 'Improve Security Score'
+  },
+  { 
+    id: 'vault_master', 
+    name: 'Vault Master', 
+    desc: 'Store 20+ items in vault', 
+    category: 'intermediate', 
+    icon: '🔒', 
+    points: 25, 
+    hint: 'Add 20 items to your vault',
+    taskType: 'navigate',
+    taskAction: 'PasswordVault',
+    taskIcon: Lock,
+    taskButton: 'Add More Passwords'
+  },
+  { 
+    id: 'protected_identity', 
+    name: 'Protected Identity', 
+    desc: 'Monitor 3+ emails', 
+    category: 'intermediate', 
+    icon: '📱', 
+    points: 25, 
+    hint: 'Monitor 3 email addresses (Premium)',
+    taskType: 'navigate',
+    taskAction: 'DarkWebMonitor',
+    taskIcon: Eye,
+    taskButton: 'Add Email Monitoring'
+  },
+  { 
+    id: 'security_champion', 
+    name: 'Security Champion', 
+    desc: 'Reach security score of 90', 
+    category: 'advanced', 
+    icon: '🏆', 
+    points: 50, 
+    hint: 'Improve security score to 90+',
+    taskType: 'navigate',
+    taskAction: 'Dashboard',
+    taskIcon: Shield,
+    taskButton: 'Run Security Scan'
+  },
+  { 
+    id: 'streak_7', 
+    name: '7 Day Streak', 
+    desc: 'Check security 7 days in a row', 
+    category: 'advanced', 
+    icon: '🔥', 
+    points: 40, 
+    hint: 'Visit the app 7 days consecutively',
+    taskType: 'wait',
+    taskButton: 'Keep Coming Back'
+  },
+  { 
+    id: 'streak_30', 
+    name: '30 Day Guardian', 
+    desc: 'Maintain high score for 30 days', 
+    category: 'advanced', 
+    icon: '💎', 
+    points: 75, 
+    hint: 'Keep score above 75 for 30 days',
+    taskType: 'wait',
+    taskButton: 'Keep Using SafeNest'
+  },
+  { 
+    id: 'premium_member', 
+    name: 'Premium Member', 
+    desc: 'Upgrade to premium', 
+    category: 'advanced', 
+    icon: '🌟', 
+    points: 100, 
+    hint: 'Upgrade to Basic or Elite plan',
+    taskType: 'navigate',
+    taskAction: 'Upgrade',
+    taskIcon: CreditCard,
+    taskButton: 'Upgrade Now'
+  },
+  {
+    id: 'device_cleaner',
+    name: 'Device Cleaner',
+    desc: 'Clean browser data',
+    category: 'beginner',
+    icon: '🧹',
+    points: 15,
+    hint: 'Run a device scan and clean junk files',
+    taskType: 'navigate',
+    taskAction: 'DeviceCare',
+    taskIcon: Smartphone,
+    taskButton: 'Clean Device'
+  }
 ];
 
 export default function Achievements() {
@@ -37,7 +180,9 @@ export default function Achievements() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebratingAchievement, setCelebratingAchievement] = useState(null);
+  const [completingTask, setCompletingTask] = useState(false);
 
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -147,6 +292,51 @@ export default function Achievements() {
     }
   };
 
+  const handleTaskAction = async (achievementDef) => {
+    setCompletingTask(true);
+
+    try {
+      const progress = getProgress(achievementDef.id);
+      
+      // If the requirements are already met, directly unlock
+      if (progress.percentage >= 100) {
+        await unlockAchievement(achievementDef);
+        setCompletingTask(false);
+        return;
+      }
+
+      // Handle different task types
+      switch (achievementDef.taskType) {
+        case 'instant':
+          // Auto-unlock for instant achievements that don't require external navigation
+          await unlockAchievement(achievementDef);
+          break;
+
+        case 'navigate':
+          // Navigate to the page and close dialog
+          setSelectedAchievement(null);
+          navigate(createPageUrl(achievementDef.taskAction));
+          toast.info(`Complete the task to unlock ${achievementDef.name}`, { duration: 3000 });
+          break;
+
+        case 'wait':
+          // Achievements that require time/consistency are passive
+          toast.info(achievementDef.hint, { duration: 3000 });
+          setSelectedAchievement(null);
+          break;
+
+        default:
+          toast.info('Complete the required action to unlock this achievement');
+          setSelectedAchievement(null);
+      }
+    } catch (error) {
+      console.error('Error handling task:', error);
+      toast.error('Failed to process task');
+    }
+
+    setCompletingTask(false);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -202,6 +392,15 @@ export default function Achievements() {
         return { current: user?.current_streak || 0, target: 7, percentage: Math.min(((user?.current_streak || 0) / 7) * 100, 100) };
       case 'streak_30':
         return { current: user?.current_streak || 0, target: 30, percentage: Math.min(((user?.current_streak || 0) / 30) * 100, 100) };
+      case 'premium_member':
+        const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
+        return { current: isPremium ? 1 : 0, target: 1, percentage: isPremium ? 100 : 0 };
+      case 'first_login': // This is usually auto-unlocked
+      case 'first_scan': // Scan state is usually external, assume 0/1 for now
+      case 'device_cleaner': // Device care state is external, assume 0/1 for now
+        // For simple instant/navigate achievements, assume progress is binary for display if not unlocked.
+        // The actual unlock logic happens on task completion or navigation.
+        return { current: 0, target: 1, percentage: 0 };
       default:
         return { current: 0, target: 1, percentage: 0 };
     }
@@ -441,22 +640,45 @@ export default function Achievements() {
                   </div>
 
                   <Button
-                    onClick={() => unlockAchievement(selectedAchievement)}
-                    disabled={createAchievementMutation.isPending}
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 py-6 text-lg font-semibold"
+                    onClick={() => handleTaskAction(selectedAchievement)}
+                    disabled={completingTask}
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 py-6 text-lg font-semibold"
                   >
-                    {createAchievementMutation.isPending ? (
+                    {completingTask ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                        Unlocking...
+                        Processing...
                       </>
                     ) : (
                       <>
-                        <Zap className="w-5 h-5 mr-2" />
-                        Complete Achievement
+                        {selectedAchievement.taskIcon && <selectedAchievement.taskIcon className="w-5 h-5 mr-2" />}
+                        {/* Fallback Play icon if no specific taskIcon */}
+                        {!selectedAchievement.taskIcon && <Play className="w-5 h-5 mr-2" />} 
+                        {selectedAchievement.taskButton || 'Start Task'}
                       </>
                     )}
                   </Button>
+
+                  {/* New: Claim Achievement button if progress is 100% but not yet unlocked */}
+                  {getProgress(selectedAchievement.id).percentage >= 100 && (
+                    <Button
+                      onClick={() => unlockAchievement(selectedAchievement)}
+                      disabled={createAchievementMutation.isPending}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 py-6 text-lg font-semibold"
+                    >
+                      {createAchievementMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                          Unlocking...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-5 h-5 mr-2" />
+                          Claim Achievement
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </>
               ) : (
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-6">
