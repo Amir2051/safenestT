@@ -15,6 +15,7 @@ import Achievements from './pages/Achievements';
 import Referrals from './pages/Referrals';
 import VPNPage from './pages/VPNPage';
 import Activity from './pages/Activity';
+import SecurityDashboard from './pages/SecurityDashboard';
 import Layout from './Layout.jsx';
 
 
@@ -36,6 +37,7 @@ export const PAGES = {
     "Referrals": Referrals,
     "VPNPage": VPNPage,
     "Activity": Activity,
+    "SecurityDashboard": SecurityDashboard,
 }
 
 export const pagesConfig = {
