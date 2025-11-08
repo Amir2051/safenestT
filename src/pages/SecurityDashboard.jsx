@@ -6,37 +6,68 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Shield, AlertTriangle, TrendingUp, Clock, CheckCircle, 
-  XCircle, Activity, BarChart3, Download, RefreshCw, ExternalLink
+  XCircle, Activity, BarChart3, RefreshCw, ExternalLink
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 
-export default function SecurityDashboard() {
+function SecurityDashboard() {
   const [user, setUser] = useState(null);
   const [timeRange, setTimeRange] = useState('12weeks');
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    const loadUser = async () => {
+      try {
+        const userData = await base44.auth.me();
+        setUser(userData);
+      } catch (error) {
+        console.error('Failed to load user:', error);
+      }
+    };
+    
+    loadUser();
   }, []);
 
   // Fetch scans
   const { data: scans = [], isLoading: scansLoading, refetch } = useQuery({
     queryKey: ['security-scans'],
-    queryFn: () => base44.entities.SecurityScan.list('-created_date', 50),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.SecurityScan.list('-created_date', 50);
+        return result || [];
+      } catch (error) {
+        console.error('Failed to load scans:', error);
+        return [];
+      }
+    },
+    enabled: !!user,
     initialData: [],
   });
 
   // Fetch findings
   const { data: findings = [], isLoading: findingsLoading } = useQuery({
     queryKey: ['security-findings'],
-    queryFn: () => base44.entities.SecurityFinding.list('-created_date', 200),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.SecurityFinding.list('-created_date', 200);
+        return result || [];
+      } catch (error) {
+        console.error('Failed to load findings:', error);
+        return [];
+      }
+    },
+    enabled: !!user,
     initialData: [],
   });
 
+  // Loading state
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
+      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading security dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -54,44 +85,50 @@ export default function SecurityDashboard() {
   const lowCount = openFindings.filter(f => f.severity === 'LOW').length;
 
   // Prepare trend data (last 12 weeks)
-  const trendData = [];
-  const weeksAgo = 12;
-  const now = new Date();
-  
-  for (let i = weeksAgo - 1; i >= 0; i--) {
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - (i * 7));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
+  const trendData = React.useMemo(() => {
+    const data = [];
+    const weeksAgo = 12;
+    const now = new Date();
+    
+    for (let i = weeksAgo - 1; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - (i * 7));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
 
-    const weekScans = scans.filter(s => {
-      const scanDate = new Date(s.created_date);
-      return scanDate >= weekStart && scanDate < weekEnd;
-    });
+      const weekScans = scans.filter(s => {
+        const scanDate = new Date(s.created_date);
+        return scanDate >= weekStart && scanDate < weekEnd;
+      });
 
-    const weekFindings = weekScans.reduce((sum, scan) => {
-      return sum + (scan.findings_summary?.critical || 0) + (scan.findings_summary?.high || 0);
-    }, 0);
+      const weekFindings = weekScans.reduce((sum, scan) => {
+        return sum + (scan.findings_summary?.critical || 0) + (scan.findings_summary?.high || 0);
+      }, 0);
 
-    trendData.push({
-      week: format(weekStart, 'MMM d'),
-      scans: weekScans.length,
-      findings: weekFindings,
-      critical: weekScans.reduce((sum, s) => sum + (s.findings_summary?.critical || 0), 0),
-      high: weekScans.reduce((sum, s) => sum + (s.findings_summary?.high || 0), 0)
-    });
-  }
+      data.push({
+        week: format(weekStart, 'MMM d'),
+        scans: weekScans.length,
+        findings: weekFindings,
+        critical: weekScans.reduce((sum, s) => sum + (s.findings_summary?.critical || 0), 0),
+        high: weekScans.reduce((sum, s) => sum + (s.findings_summary?.high || 0), 0)
+      });
+    }
+    
+    return data;
+  }, [scans]);
 
   // Pie chart data
-  const severityData = [
-    { name: 'Critical', value: criticalCount, color: '#ef4444' },
-    { name: 'High', value: highCount, color: '#f97316' },
-    { name: 'Medium', value: mediumCount, color: '#eab308' },
-    { name: 'Low', value: lowCount, color: '#3b82f6' }
-  ].filter(item => item.value > 0);
+  const severityData = React.useMemo(() => {
+    return [
+      { name: 'Critical', value: criticalCount, color: '#ef4444' },
+      { name: 'High', value: highCount, color: '#f97316' },
+      { name: 'Medium', value: mediumCount, color: '#eab308' },
+      { name: 'Low', value: lowCount, color: '#3b82f6' }
+    ].filter(item => item.value > 0);
+  }, [criticalCount, highCount, mediumCount, lowCount]);
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
@@ -107,14 +144,14 @@ export default function SecurityDashboard() {
           <Button
             onClick={() => refetch()}
             variant="outline"
-            className="border-cyan-500/20 text-cyan-400"
+            className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
           <Button
-            onClick={() => window.open('/docs/security/runbook.md')}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600"
+            onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/runbook.md', '_blank')}
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             Security Runbook
@@ -128,7 +165,7 @@ export default function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <Activity className="w-10 h-10 text-cyan-400" />
-              <Badge className="bg-cyan-500/20 text-cyan-400">{timeRange}</Badge>
+              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50">{timeRange}</Badge>
             </div>
             <p className="text-3xl font-bold text-white">{totalScans}</p>
             <p className="text-sm text-gray-400">Total Scans</p>
@@ -139,7 +176,7 @@ export default function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <AlertTriangle className="w-10 h-10 text-red-400" />
-              <Badge className={`${criticalCount + highCount > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+              <Badge className={`${criticalCount + highCount > 0 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-green-500/20 text-green-400 border-green-500/50'} border`}>
                 {criticalCount + highCount > 0 ? 'Action Required' : 'Safe'}
               </Badge>
             </div>
@@ -152,7 +189,7 @@ export default function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <TrendingUp className="w-10 h-10 text-green-400" />
-              <Badge className={`${passRate >= 80 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+              <Badge className={`${passRate >= 80 ? 'bg-green-500/20 text-green-400 border-green-500/50' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'} border`}>
                 {passRate}%
               </Badge>
             </div>
@@ -165,7 +202,7 @@ export default function SecurityDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <Clock className="w-10 h-10 text-purple-400" />
-              <Badge className="bg-purple-500/20 text-purple-400">Latest</Badge>
+              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">Latest</Badge>
             </div>
             <p className="text-3xl font-bold text-white">
               {latestScan ? format(new Date(latestScan.created_date), 'MMM d') : 'N/A'}
@@ -186,21 +223,27 @@ export default function SecurityDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="week" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
-                  labelStyle={{ color: '#fff' }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} name="Critical" />
-                <Line type="monotone" dataKey="high" stroke="#f97316" strokeWidth={2} name="High" />
-                <Line type="monotone" dataKey="scans" stroke="#06b6d4" strokeWidth={2} name="Scans" />
-              </LineChart>
-            </ResponsiveContainer>
+            {trendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="week" stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} name="Critical" />
+                  <Line type="monotone" dataKey="high" stroke="#f97316" strokeWidth={2} name="High" />
+                  <Line type="monotone" dataKey="scans" stroke="#06b6d4" strokeWidth={2} name="Scans" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">No scan data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -213,27 +256,33 @@ export default function SecurityDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={severityData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {severityData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {severityData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={severityData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {severityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">No open findings</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -247,35 +296,42 @@ export default function SecurityDashboard() {
           {scansLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto" />
+              <p className="text-gray-400 mt-2">Loading scans...</p>
             </div>
           ) : scans.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="text-center py-12">
               <Shield className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No scans yet</p>
-              <p className="text-sm text-gray-500 mt-1">Run your first security scan to see results here</p>
+              <p className="text-white font-semibold text-lg">No scans yet</p>
+              <p className="text-sm text-gray-400 mt-1">Run your first security scan to see results here</p>
+              <Button
+                onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/runbook.md', '_blank')}
+                className="mt-4 bg-gradient-to-r from-cyan-500 to-blue-600"
+              >
+                View Scanning Guide
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-4 text-gray-400 text-sm">Date</th>
-                    <th className="text-left py-3 px-4 text-gray-400 text-sm">Type</th>
-                    <th className="text-left py-3 px-4 text-gray-400 text-sm">Target</th>
-                    <th className="text-center py-3 px-4 text-gray-400 text-sm">Critical</th>
-                    <th className="text-center py-3 px-4 text-gray-400 text-sm">High</th>
-                    <th className="text-center py-3 px-4 text-gray-400 text-sm">Medium</th>
-                    <th className="text-center py-3 px-4 text-gray-400 text-sm">Status</th>
+                    <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Date</th>
+                    <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Type</th>
+                    <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Target</th>
+                    <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Critical</th>
+                    <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">High</th>
+                    <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Medium</th>
+                    <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scans.slice(0, 10).map((scan) => (
-                    <tr key={scan.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    <tr key={scan.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
                       <td className="py-3 px-4 text-white text-sm">
                         {format(new Date(scan.created_date), 'MMM d, HH:mm')}
                       </td>
                       <td className="py-3 px-4">
-                        <Badge className="bg-gray-500/20 text-gray-300 text-xs">
+                        <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/50 text-xs">
                           {scan.scan_type}
                         </Badge>
                       </td>
@@ -320,21 +376,32 @@ export default function SecurityDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <a href="/docs/security/runbook.md" target="_blank" className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all">
+            <button 
+              onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/runbook.md', '_blank')}
+              className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all text-left"
+            >
               <h4 className="text-white font-semibold mb-2">📖 Security Runbook</h4>
               <p className="text-sm text-gray-400">Step-by-step guide to running scans and triaging findings</p>
-            </a>
-            <a href="/docs/security/owasp-top10-playbook.md" target="_blank" className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all">
+            </button>
+            <button 
+              onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/owasp-top10-playbook.md', '_blank')}
+              className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all text-left"
+            >
               <h4 className="text-white font-semibold mb-2">🛠️ OWASP Playbook</h4>
               <p className="text-sm text-gray-400">Code snippets and fixes for common vulnerabilities</p>
-            </a>
-            <a href="/docs/security/mstg-mapping.md" target="_blank" className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all">
+            </button>
+            <button 
+              onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/mstg-mapping.md', '_blank')}
+              className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all text-left"
+            >
               <h4 className="text-white font-semibold mb-2">📱 Mobile Security (MSTG)</h4>
               <p className="text-sm text-gray-400">Android & iOS security testing guide</p>
-            </a>
+            </button>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+export default SecurityDashboard;
