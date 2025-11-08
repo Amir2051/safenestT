@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,16 @@ import { toast } from "sonner";
 import ReferralStats from "../components/referrals/ReferralStats.jsx";
 import ShareButtons from "../components/referrals/ShareButtons.jsx";
 import ReferralLeaderboard from "../components/referrals/ReferralLeaderboard.jsx";
+
+// Helper function for page URLs (assuming hash-based routing for specific pages)
+const createPageUrl = (pageName) => {
+  switch (pageName) {
+    case "ReferralLanding":
+      return "/referral-landing"; // or however your app maps 'ReferralLanding' to a path
+    default:
+      return "/";
+  }
+};
 
 export default function Referrals() {
   const [user, setUser] = useState(null);
@@ -69,9 +80,9 @@ export default function Referrals() {
         setUser(prev => ({ ...prev, referral_code: code }));
       }
       
-      // Generate referral link
+      // Generate referral link - use ReferralLanding page
       const appUrl = window.location.origin;
-      const link = `${appUrl}/signup?ref=${userData.referral_code || ''}`;
+      const link = `${appUrl}/#${createPageUrl("ReferralLanding")}?ref=${userData.referral_code || ''}`;
       setReferralLink(link);
       
     }).catch(() => {});
@@ -88,6 +99,11 @@ export default function Referrals() {
       navigator.clipboard.writeText(user.referral_code);
       toast.success('Referral code copied!');
     }
+  };
+
+  const copyReferralLink = () => {
+    navigator.clipboard.writeText(referralLink);
+    toast.success('Referral link copied to clipboard!');
   };
 
   const getStatusIcon = (status) => {
@@ -168,7 +184,7 @@ export default function Referrals() {
               </div>
               <h4 className="text-white font-semibold mb-1">They Sign Up</h4>
               <p className="text-sm text-gray-400">
-                Your friend creates an account and verifies their email
+                Your friend creates an account and starts their free trial
               </p>
             </div>
             <div className="text-center">
@@ -177,7 +193,7 @@ export default function Referrals() {
               </div>
               <h4 className="text-white font-semibold mb-1">You Both Win!</h4>
               <p className="text-sm text-gray-400">
-                You get 1 month premium, they get 3 days free trial
+                You get 1 month premium automatically, they get 3 days free trial
               </p>
             </div>
           </div>
@@ -190,7 +206,7 @@ export default function Referrals() {
       {/* Referral Code & Share */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
-          <CardTitle className="text-white">Your Referral Code</CardTitle>
+          <CardTitle className="text-white">Your Referral Code & Link</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Referral Code */}
@@ -207,7 +223,7 @@ export default function Referrals() {
                 className="bg-cyan-500 hover:bg-cyan-600"
               >
                 <Copy className="w-4 h-4 mr-2" />
-                Copy
+                Copy Code
               </Button>
             </div>
           </div>
@@ -215,8 +231,17 @@ export default function Referrals() {
           {/* Referral Link */}
           <div>
             <label className="text-gray-400 text-sm mb-2 block">Referral Link</label>
-            <div className="p-3 bg-[#0f1419] border border-cyan-500/20 rounded-lg">
-              <p className="text-cyan-400 text-sm break-all font-mono">{referralLink}</p>
+            <div className="flex gap-3">
+              <div className="flex-1 p-3 bg-[#0f1419] border border-cyan-500/20 rounded-lg">
+                <p className="text-cyan-400 text-sm break-all font-mono">{referralLink}</p>
+              </div>
+              <Button
+                onClick={copyReferralLink}
+                className="bg-cyan-500 hover:bg-cyan-600"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Link
+              </Button>
             </div>
           </div>
 
@@ -308,7 +333,7 @@ export default function Referrals() {
           <h3 className="text-white font-bold text-sm mb-3">Terms & Conditions</h3>
           <ul className="space-y-2 text-xs text-gray-400">
             <li>• Each successful referral earns you 1 month of premium access</li>
-            <li>• Referred user must verify their email and complete first login</li>
+            <li>• Referred user must complete registration and activate their account</li>
             <li>• Bonuses are stackable - refer multiple friends to extend your premium</li>
             <li>• Self-referrals and fraudulent signups are automatically detected and invalidated</li>
             <li>• Premium bonuses expire after the awarded duration unless extended</li>

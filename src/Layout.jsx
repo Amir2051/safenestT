@@ -20,6 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
+import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 
 const navigationItems = [
   {
@@ -135,6 +136,9 @@ function LayoutContent({ children, currentPageName }) {
 
   return (
     <>
+      {/* Add referral code handler */}
+      <ReferralCodeHandler />
+      
       <style>{`
         :root {
           --background: 222 12% 8%;
