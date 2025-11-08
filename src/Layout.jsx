@@ -153,8 +153,8 @@ export default function Layout({ children, currentPageName }) {
                           asChild 
                           className={`rounded-xl mb-1 transition-all duration-200 ${
                             isActive 
-                              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 text-cyan-400 shadow-lg shadow-cyan-500/10' 
-                              : 'hover:bg-[#1a2332] text-gray-300'
+                              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 text-cyan-400 shadow-lg shadow-cyan-500/10 border border-cyan-500/30' 
+                              : 'hover:bg-[#1a2332] text-white hover:text-cyan-400 border border-transparent hover:border-cyan-500/20'
                           }`}
                         >
                           <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
