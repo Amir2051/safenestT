@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -32,12 +33,27 @@ export default function AddPasswordDialog({ open, onClose }) {
   const createPasswordMutation = useMutation({
     mutationFn: async (data) => {
       const result = await base44.entities.Password.create(data);
+      
+      // Log password added
+      await base44.entities.AuditLog.create({
+        action_type: 'password_added',
+        action_category: 'password',
+        description: `Password added for ${data.site_name}`,
+        metadata: {
+          affected_item: data.site_name,
+          new_value: data.password_strength
+        },
+        severity: 'info',
+        status: 'success'
+      });
+      
       return result;
     },
     onSuccess: async () => {
       // Invalidate and refetch immediately
       await queryClient.invalidateQueries({ queryKey: ['passwords'] });
       await queryClient.refetchQueries({ queryKey: ['passwords'] });
+      await queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       
       toast.success('Password added successfully! 🔒');
       
