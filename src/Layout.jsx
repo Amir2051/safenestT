@@ -127,14 +127,14 @@ export default function Layout({ children, currentPageName }) {
         }
       `}</style>
       <div className="min-h-screen flex w-full bg-[#0f1419]">
-        <Sidebar className="border-r border-gray-800 bg-black">
-          <SidebarHeader className="border-b border-gray-800 p-6">
+        <Sidebar className="border-r border-[#1a2332] bg-[#0f1419]">
+          <SidebarHeader className="border-b border-[#1a2332] p-6">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-black animate-pulse" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-[#0f1419] animate-pulse" />
               </div>
               <div>
                 <h2 className="font-bold text-xl text-white">SafeNest</h2>
@@ -159,7 +159,7 @@ export default function Layout({ children, currentPageName }) {
                           className={`rounded-xl mb-1 transition-all duration-200 ${
                             isActive 
                               ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 text-white shadow-lg shadow-cyan-500/10 border border-cyan-500/30' 
-                              : 'hover:bg-gray-900 text-white hover:text-cyan-400 border border-transparent hover:border-cyan-500/20'
+                              : 'hover:bg-[#1a2332] text-white hover:text-cyan-400 border border-transparent hover:border-cyan-500/20'
                           }`}
                         >
                           <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
@@ -205,7 +205,7 @@ export default function Layout({ children, currentPageName }) {
                   Security Score
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <div className="px-3 py-4 bg-gray-900 rounded-xl border border-gray-800 mx-2">
+                  <div className="px-3 py-4 bg-[#1a2332] rounded-xl border border-cyan-500/20 mx-2">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-300">Your Score</span>
                       <span className={`text-2xl font-bold ${
@@ -215,7 +215,7 @@ export default function Layout({ children, currentPageName }) {
                         {user.risk_score}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
                           user.risk_score >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : 
@@ -243,7 +243,7 @@ export default function Layout({ children, currentPageName }) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-gray-800 p-4">
+          <SidebarFooter className="border-t border-[#1a2332] p-4">
             {user && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -259,7 +259,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="ml-2 p-2 hover:bg-gray-900 rounded-lg transition-colors flex-shrink-0"
+                  className="ml-2 p-2 hover:bg-[#1a2332] rounded-lg transition-colors flex-shrink-0"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4 text-gray-400 hover:text-white" />
