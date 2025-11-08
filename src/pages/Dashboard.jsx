@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -239,10 +240,10 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white mb-1">
-                  🛡️ OWASP Top 10 Protection Active
+                  🛡️ OWASP Top 10 + MSTG Protection Active
                 </h3>
                 <p className="text-green-300 text-sm">
-                  Real-time defense against all major vulnerabilities • 100% coverage • 0 threats blocked today
+                  Backend & Mobile security • Real-time defense • 100% coverage • 0 threats blocked today
                 </p>
               </div>
             </div>
