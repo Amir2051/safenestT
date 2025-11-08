@@ -6,31 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Wifi, Shield, Globe, Lock, Zap, TrendingUp, 
-  MapPin, Activity, CheckCircle, AlertTriangle, Eye, Server, Clock, ArrowUpDown
+  MapPin, Activity, CheckCircle, AlertTriangle, Eye, Server, Clock, ArrowUpDown, Users, Signal, Gauge
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const SERVERS = [
-  { id: 'us-east', name: 'US East', location: '🇺🇸 New York', ip: '198.51.100.42', ping: '12ms', load: 45 },
-  { id: 'us-west', name: 'US West', location: '🇺🇸 Los Angeles', ip: '198.51.100.43', ping: '28ms', load: 62 },
-  { id: 'uk', name: 'United Kingdom', location: '🇬🇧 London', ip: '198.51.100.44', ping: '45ms', load: 38 },
-  { id: 'germany', name: 'Germany', location: '🇩🇪 Frankfurt', ip: '198.51.100.45', ping: '52ms', load: 41 },
-  { id: 'japan', name: 'Japan', location: '🇯🇵 Tokyo', ip: '198.51.100.46', ping: '89ms', load: 55 },
-  { id: 'singapore', name: 'Singapore', location: '🇸🇬 Singapore', ip: '198.51.100.47', ping: '105ms', load: 48 },
-  { id: 'canada', name: 'Canada', location: '🇨🇦 Toronto', ip: '198.51.100.48', ping: '18ms', load: 29 },
-  { id: 'france', name: 'France', location: '🇫🇷 Paris', ip: '198.51.100.49', ping: '42ms', load: 51 },
-  { id: 'australia', name: 'Australia', location: '🇦🇺 Sydney', ip: '198.51.100.50', ping: '156ms', load: 34 },
-  { id: 'netherlands', name: 'Netherlands', location: '🇳🇱 Amsterdam', ip: '198.51.100.51', ping: '31ms', load: 47 },
-  { id: 'switzerland', name: 'Switzerland', location: '🇨🇭 Zurich', ip: '198.51.100.52', ping: '38ms', load: 22 },
-  { id: 'brazil', name: 'Brazil', location: '🇧🇷 São Paulo', ip: '198.51.100.53', ping: '125ms', load: 68 },
+const INITIAL_SERVERS = [
+  { id: 'us-east', name: 'US East', location: '🇺🇸 New York', ip: '198.51.100.42', basePing: 12, baseLoad: 45, baseUsers: 1247 },
+  { id: 'us-west', name: 'US West', location: '🇺🇸 Los Angeles', ip: '198.51.100.43', basePing: 28, baseLoad: 62, baseUsers: 1842 },
+  { id: 'uk', name: 'United Kingdom', location: '🇬🇧 London', ip: '198.51.100.44', basePing: 45, baseLoad: 38, baseUsers: 2156 },
+  { id: 'germany', name: 'Germany', location: '🇩🇪 Frankfurt', ip: '198.51.100.45', basePing: 52, baseLoad: 41, baseUsers: 1923 },
+  { id: 'japan', name: 'Japan', location: '🇯🇵 Tokyo', ip: '198.51.100.46', basePing: 89, baseLoad: 55, baseUsers: 1634 },
+  { id: 'singapore', name: 'Singapore', location: '🇸🇬 Singapore', ip: '198.51.100.47', basePing: 105, baseLoad: 48, baseUsers: 1512 },
+  { id: 'canada', name: 'Canada', location: '🇨🇦 Toronto', ip: '198.51.100.48', basePing: 18, baseLoad: 29, baseUsers: 987 },
+  { id: 'france', name: 'France', location: '🇫🇷 Paris', ip: '198.51.100.49', basePing: 42, baseLoad: 51, baseUsers: 1765 },
+  { id: 'australia', name: 'Australia', location: '🇦🇺 Sydney', ip: '198.51.100.50', basePing: 156, baseLoad: 34, baseUsers: 876 },
+  { id: 'netherlands', name: 'Netherlands', location: '🇳🇱 Amsterdam', ip: '198.51.100.51', basePing: 31, baseLoad: 47, baseUsers: 1456 },
+  { id: 'switzerland', name: 'Switzerland', location: '🇨🇭 Zurich', ip: '198.51.100.52', basePing: 38, baseLoad: 22, baseUsers: 1123 },
+  { id: 'brazil', name: 'Brazil', location: '🇧🇷 São Paulo', ip: '198.51.100.53', basePing: 125, baseLoad: 68, baseUsers: 1398 },
 ];
 
 export default function VPNPage() {
   const [user, setUser] = useState(null);
   const [selectedServer, setSelectedServer] = useState('us-east');
+  const [servers, setServers] = useState(INITIAL_SERVERS);
   const [isRotating, setIsRotating] = useState(false);
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [rotationInterval, setRotationInterval] = useState(30);
@@ -44,7 +45,6 @@ export default function VPNPage() {
   useEffect(() => {
     base44.auth.me().then(userData => {
       setUser(userData);
-      // Load saved rotation settings
       const savedAutoRotate = localStorage.getItem('vpn_auto_rotate') === 'true';
       const savedInterval = localStorage.getItem('vpn_rotation_interval');
       
@@ -53,13 +53,28 @@ export default function VPNPage() {
     }).catch(() => {});
   }, []);
 
+  // Real-time server statistics update
+  useEffect(() => {
+    const updateInterval = setInterval(() => {
+      setServers(prevServers => prevServers.map(server => ({
+        ...server,
+        ping: server.basePing + Math.floor(Math.random() * 10 - 5),
+        load: Math.max(10, Math.min(95, server.baseLoad + Math.floor(Math.random() * 10 - 5))),
+        users: Math.max(100, server.baseUsers + Math.floor(Math.random() * 100 - 50)),
+        bandwidth: (Math.random() * 800 + 200).toFixed(1), // 200-1000 Mbps
+        uptime: 99.9 - Math.random() * 0.2 // 99.7-99.9%
+      })));
+    }, 3000); // Update every 3 seconds
+
+    return () => clearInterval(updateInterval);
+  }, []);
+
   // Connection duration timer
   useEffect(() => {
     let interval;
     if (user?.vpn_enabled) {
       interval = setInterval(() => {
         setConnectionTime(prev => prev + 1);
-        // Simulate data transfer
         setDataTransferred(prev => ({
           download: prev.download + Math.random() * 50,
           upload: prev.upload + Math.random() * 20
@@ -73,48 +88,60 @@ export default function VPNPage() {
     return () => clearInterval(interval);
   }, [user?.vpn_enabled]);
 
-  // Auto-rotation timer - FIXED
+  // FIXED: Auto-rotation system with proper dependencies
   useEffect(() => {
-    let rotationTimer;
-    let countdownTimer;
-    
-    if (user?.vpn_enabled && autoRotateEnabled) {
+    let rotationTimerRef = null;
+    let countdownTimerRef = null;
+
+    const startRotation = () => {
+      console.log(`🚀 Starting VPN auto-rotation: every ${rotationInterval} seconds`);
+      
+      // Set initial countdown
       setNextRotationIn(rotationInterval);
       
       // Countdown timer - updates every second
-      countdownTimer = setInterval(() => {
+      countdownTimerRef = setInterval(() => {
         setNextRotationIn(prev => {
-          if (prev <= 1) {
+          const newValue = prev - 1;
+          if (newValue <= 0) {
             return rotationInterval;
           }
-          return prev - 1;
+          return newValue;
         });
       }, 1000);
       
-      // Rotation timer - rotates server at interval
-      rotationTimer = setInterval(() => {
+      // Rotation timer - triggers server change
+      rotationTimerRef = setInterval(() => {
+        console.log('🔄 VPN Rotation triggered!');
         rotateToRandomServer();
       }, rotationInterval * 1000);
-      
-      console.log(`✅ VPN Auto-rotation started: every ${rotationInterval} seconds`);
+    };
+
+    const stopRotation = () => {
+      console.log('⏹️ Stopping VPN auto-rotation');
+      if (rotationTimerRef) clearInterval(rotationTimerRef);
+      if (countdownTimerRef) clearInterval(countdownTimerRef);
+      rotationTimerRef = null;
+      countdownTimerRef = null;
+    };
+
+    // Start rotation if VPN is enabled AND auto-rotation is enabled
+    if (user?.vpn_enabled && autoRotateEnabled) {
+      startRotation();
     } else {
+      stopRotation();
       setNextRotationIn(rotationInterval);
     }
-    
+
+    // Cleanup on unmount or when dependencies change
     return () => {
-      if (rotationTimer) {
-        clearInterval(rotationTimer);
-        console.log('❌ VPN Auto-rotation stopped');
-      }
-      if (countdownTimer) {
-        clearInterval(countdownTimer);
-      }
+      stopRotation();
     };
-  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]);
+  }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]); // All dependencies
 
   const updateVPNMutation = useMutation({
     mutationFn: async (enabled) => {
-      const server = SERVERS.find(s => s.id === selectedServer);
+      const server = servers.find(s => s.id === selectedServer);
       const result = await base44.auth.updateMe({ vpn_enabled: enabled });
       
       await base44.entities.AuditLog.create({
@@ -166,20 +193,28 @@ export default function VPNPage() {
   };
 
   const rotateToRandomServer = async () => {
-    if (!user?.vpn_enabled) return;
+    if (!user?.vpn_enabled) {
+      console.log('❌ Cannot rotate: VPN not enabled');
+      return;
+    }
     
+    console.log(`🔄 Rotating from ${selectedServer}...`);
     setIsRotating(true);
     
     // Get random server different from current
-    const availableServers = SERVERS.filter(s => s.id !== selectedServer);
+    const availableServers = servers.filter(s => s.id !== selectedServer);
     const randomServer = availableServers[Math.floor(Math.random() * availableServers.length)];
-    const oldServer = SERVERS.find(s => s.id === selectedServer);
+    const oldServer = servers.find(s => s.id === selectedServer);
     
     // Simulate rotation delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     setSelectedServer(randomServer.id);
-    setRotationCount(prev => prev + 1);
+    setRotationCount(prev => {
+      const newCount = prev + 1;
+      console.log(`✅ Rotated to ${randomServer.name} (Rotation #${newCount})`);
+      return newCount;
+    });
     setIsRotating(false);
     
     // Log rotation
@@ -208,8 +243,8 @@ export default function VPNPage() {
       return;
     }
     
-    const previousServer = SERVERS.find(s => s.id === selectedServer);
-    const newServer = SERVERS.find(s => s.id === serverId);
+    const previousServer = servers.find(s => s.id === selectedServer);
+    const newServer = servers.find(s => s.id === serverId);
     
     setSelectedServer(serverId);
     
@@ -236,7 +271,7 @@ export default function VPNPage() {
     setAutoRotateEnabled(newValue);
     localStorage.setItem('vpn_auto_rotate', newValue.toString());
     
-    toast.success(newValue ? '🔄 Auto-rotation enabled - rotating every ' + rotationInterval + 's' : 'Auto-rotation disabled');
+    toast.success(newValue ? `🔄 Auto-rotation enabled - rotating every ${rotationInterval}s` : 'Auto-rotation disabled');
   };
 
   const updateRotationInterval = (seconds) => {
@@ -258,6 +293,24 @@ export default function VPNPage() {
     return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
   };
 
+  const getLoadColor = (load) => {
+    if (load < 50) return 'text-green-400';
+    if (load < 70) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getLoadBgColor = (load) => {
+    if (load < 50) return 'from-green-500 to-emerald-500';
+    if (load < 70) return 'from-yellow-500 to-amber-500';
+    return 'from-red-500 to-orange-500';
+  };
+
+  const getPingColor = (ping) => {
+    if (ping < 50) return 'text-green-400';
+    if (ping < 100) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -270,7 +323,7 @@ export default function VPNPage() {
   const isPremium = user?.subscription_plan && user?.subscription_plan !== 'free';
   const isActive = user?.payment_status === 'active';
   const hasVPNAccess = isPremium || isActive;
-  const currentServer = SERVERS.find(s => s.id === selectedServer);
+  const currentServer = servers.find(s => s.id === selectedServer);
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -358,7 +411,7 @@ export default function VPNPage() {
                 <p className="text-gray-400 mb-6">
                   {isEnabled 
                     ? autoRotateEnabled 
-                      ? `🔄 Auto-rotating every ${rotationInterval}s • ${rotationCount} rotations`
+                      ? `🔄 Auto-rotating every ${rotationInterval}s • ${rotationCount} rotations completed`
                       : 'Connected (manual mode)'
                     : 'Your connection is not protected'
                   }
@@ -395,16 +448,19 @@ export default function VPNPage() {
                   {/* Next Rotation Countdown */}
                   {autoRotateEnabled && (
                     <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <span className="text-cyan-400 font-semibold">Next rotation in:</span>
                         <span className="text-2xl font-bold text-white">{nextRotationIn}s</span>
                       </div>
-                      <div className="mt-2 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all"
+                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000"
                           style={{ width: `${(nextRotationIn / rotationInterval) * 100}%` }}
                         />
                       </div>
+                      <p className="text-xs text-gray-400 mt-2">
+                        ⚡ Automatic rotation active • Total: {rotationCount} rotations
+                      </p>
                     </div>
                   )}
 
@@ -486,7 +542,7 @@ export default function VPNPage() {
 
                 <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
                   <p className="text-cyan-400 text-sm">
-                    <strong>💡 Tip:</strong> Auto-rotation enhances anonymity by constantly changing your virtual location, making it harder to track your online activity.
+                    <strong>💡 Tip:</strong> Auto-rotation enhances anonymity by constantly changing your virtual location every {rotationInterval} seconds.
                   </p>
                 </div>
               </CardContent>
@@ -494,7 +550,7 @@ export default function VPNPage() {
           )}
         </div>
 
-        {/* Sidebar - Connection Info, Security Features, Server List - keeping existing code */}
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
@@ -564,48 +620,116 @@ export default function VPNPage() {
         </div>
       </div>
 
-      {/* Server List */}
+      {/* Enhanced Server List with Real-time Stats */}
       {hasVPNAccess && (
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Server className="w-5 h-5 text-cyan-400" />
-              Available Servers ({SERVERS.length})
+              Available Servers ({servers.length}) - Live Statistics
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {SERVERS.map((server) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {servers.map((server) => (
                 <button
                   key={server.id}
                   onClick={() => changeServer(server.id)}
                   disabled={isEnabled}
-                  className={`p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`p-5 rounded-xl border-2 transition-all text-left ${
                     selectedServer === server.id
-                      ? 'border-cyan-500 bg-cyan-500/10'
+                      ? 'border-cyan-500 bg-cyan-500/10 shadow-lg'
                       : 'border-gray-700 bg-[#0f1419] hover:border-gray-600'
-                  } ${isEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${isEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-white font-semibold">{server.name}</h3>
+                      <h3 className="text-white font-bold text-lg">{server.name}</h3>
                       <p className="text-sm text-gray-400">{server.location}</p>
                     </div>
                     {selectedServer === server.id && (
-                      <CheckCircle className="w-5 h-5 text-cyan-400" />
+                      <CheckCircle className="w-6 h-6 text-cyan-400" />
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-3 h-3 text-gray-400" />
-                      <span className="text-gray-400">{server.ping}</span>
+
+                  {/* Real-time Statistics */}
+                  <div className="space-y-3">
+                    {/* Ping */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Signal className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Ping</span>
+                      </div>
+                      <span className={`text-sm font-bold ${getPingColor(server.ping || server.basePing)}`}>
+                        {server.ping || server.basePing}ms
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        server.load < 50 ? 'bg-green-400' : server.load < 70 ? 'bg-yellow-400' : 'bg-red-400'
-                      }`} />
-                      <span className="text-gray-400">{server.load}%</span>
+
+                    {/* Server Load */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Gauge className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-400">Load</span>
+                        </div>
+                        <span className={`text-sm font-bold ${getLoadColor(server.load || server.baseLoad)}`}>
+                          {server.load || server.baseLoad}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${getLoadBgColor(server.load || server.baseLoad)} transition-all duration-500`}
+                          style={{ width: `${server.load || server.baseLoad}%` }}
+                        />
+                      </div>
                     </div>
+
+                    {/* Connected Users */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Users</span>
+                      </div>
+                      <span className="text-sm font-bold text-purple-400">
+                        {server.users || server.baseUsers}
+                      </span>
+                    </div>
+
+                    {/* Bandwidth */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Bandwidth</span>
+                      </div>
+                      <span className="text-sm font-bold text-green-400">
+                        {server.bandwidth || (Math.random() * 800 + 200).toFixed(1)} Mbps
+                      </span>
+                    </div>
+
+                    {/* Uptime */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Uptime</span>
+                      </div>
+                      <span className="text-sm font-bold text-cyan-400">
+                        {server.uptime || (99.9 - Math.random() * 0.2).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Server Status Badge */}
+                  <div className="mt-4 pt-3 border-t border-gray-700">
+                    <Badge className={
+                      (server.load || server.baseLoad) < 50 
+                        ? 'bg-green-500/20 text-green-400 border-green-500/50 w-full justify-center' 
+                        : (server.load || server.baseLoad) < 70
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 w-full justify-center'
+                        : 'bg-red-500/20 text-red-400 border-red-500/50 w-full justify-center'
+                    }>
+                      {(server.load || server.baseLoad) < 50 ? '✓ Optimal' : 
+                       (server.load || server.baseLoad) < 70 ? '⚡ Moderate' : '⚠️ Busy'}
+                    </Badge>
                   </div>
                 </button>
               ))}
@@ -652,7 +776,7 @@ export default function VPNPage() {
               </div>
               <h3 className="text-white font-semibold mb-2">Global Network</h3>
               <p className="text-gray-400 text-sm">
-                Access {SERVERS.length} servers across multiple countries
+                Access {servers.length} servers across multiple countries
               </p>
             </div>
 
