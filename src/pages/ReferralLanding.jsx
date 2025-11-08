@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -12,51 +12,67 @@ import { createPageUrl } from "@/utils";
 
 export default function ReferralLanding() {
   const [referralCode, setReferralCode] = useState('');
-  const [referrerInfo, setReferrerInfo] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const init = async () => {
       try {
-        const authenticated = await base44.auth.isAuthenticated();
-        setIsAuthenticated(authenticated);
+        // Get referral code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const refCode = urlParams.get('ref');
 
-        if (authenticated) {
-          // User already logged in, redirect to dashboard
-          navigate(createPageUrl("Dashboard"));
-          return;
+        console.log('Referral code from URL:', refCode);
+
+        if (refCode) {
+          setReferralCode(refCode);
+          // Store in localStorage for signup process
+          localStorage.setItem('pending_referral_code', refCode);
+          localStorage.setItem('referral_code_timestamp', Date.now().toString());
+          console.log('✅ Referral code stored:', refCode);
         }
+
+        // Check if user is already authenticated
+        try {
+          const authenticated = await base44.auth.isAuthenticated();
+          
+          if (authenticated) {
+            console.log('User already authenticated, redirecting to dashboard');
+            navigate(createPageUrl("Dashboard"));
+            return;
+          }
+        } catch (error) {
+          // Not authenticated, continue to show landing page
+          console.log('User not authenticated, showing landing page');
+        }
+
+        setIsLoading(false);
       } catch (error) {
-        setIsAuthenticated(false);
+        console.error('Init error:', error);
+        setIsLoading(false);
       }
     };
 
-    // Get referral code from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const refCode = urlParams.get('ref');
-
-    if (refCode) {
-      setReferralCode(refCode);
-      // Store in localStorage for signup process
-      localStorage.setItem('pending_referral_code', refCode);
-      localStorage.setItem('referral_code_timestamp', Date.now().toString());
-
-      // Simulate getting referrer info (in production, fetch from API)
-      setReferrerInfo({
-        code: refCode,
-        message: 'Your friend invited you to SafeNest!'
-      });
-    }
-
-    checkAuth();
+    init();
   }, [navigate]);
 
   const handleSignup = () => {
-    // Redirect to Base44 login/signup with referral code stored
+    // Redirect to Base44 login/signup
     const nextUrl = createPageUrl("Dashboard");
+    console.log('Redirecting to login with next URL:', nextUrl);
     base44.auth.redirectToLogin(nextUrl);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0f1419] via-[#1a1a2e] to-[#0f1419] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f1419] via-[#1a1a2e] to-[#0f1419] flex items-center justify-center p-6">
@@ -73,8 +89,8 @@ export default function ReferralLanding() {
             </div>
           </div>
 
-          {referrerInfo && (
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-3 rounded-full border border-purple-500/30 mb-4">
+          {referralCode && (
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-3 rounded-full border border-purple-500/30 mb-4 animate-pulse">
               <Gift className="w-5 h-5 text-purple-400" />
               <span className="text-white font-semibold">You've Been Invited!</span>
               <Badge className="bg-purple-500/30 text-purple-300 ml-2">
@@ -84,7 +100,7 @@ export default function ReferralLanding() {
           )}
 
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            {referrerInfo 
+            {referralCode 
               ? "Join SafeNest & Get 3 Days Free!"
               : "Welcome to SafeNest"
             }
@@ -95,7 +111,7 @@ export default function ReferralLanding() {
         </div>
 
         {/* Special Offer */}
-        {referrerInfo && (
+        {referralCode && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -115,7 +131,7 @@ export default function ReferralLanding() {
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-6 h-6 text-white" />
@@ -127,7 +143,7 @@ export default function ReferralLanding() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20 hover:border-purple-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Eye className="w-6 h-6 text-white" />
@@ -139,7 +155,7 @@ export default function ReferralLanding() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20 hover:border-green-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Lock className="w-6 h-6 text-white" />
@@ -151,7 +167,7 @@ export default function ReferralLanding() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-blue-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-blue-500/20 hover:border-blue-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Zap className="w-6 h-6 text-white" />
@@ -163,7 +179,7 @@ export default function ReferralLanding() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-yellow-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-yellow-500/20 hover:border-yellow-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="w-6 h-6 text-white" />
@@ -175,7 +191,7 @@ export default function ReferralLanding() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-pink-500/20">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-pink-500/20 hover:border-pink-500/40 transition-all">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-6 h-6 text-white" />
@@ -192,10 +208,10 @@ export default function ReferralLanding() {
         <Card className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/40">
           <CardContent className="p-8 text-center">
             <h3 className="text-2xl font-bold text-white mb-2">
-              {referrerInfo ? "Accept Your Invitation" : "Get Started Today"}
+              {referralCode ? "Accept Your Invitation" : "Get Started Today"}
             </h3>
             <p className="text-purple-300 mb-6">
-              {referrerInfo 
+              {referralCode 
                 ? "Start your 3-day free trial and experience complete security protection"
                 : "Join thousands of protected users worldwide"
               }
@@ -204,9 +220,9 @@ export default function ReferralLanding() {
             <Button
               onClick={handleSignup}
               size="lg"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-6 text-lg"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-6 text-lg shadow-lg shadow-purple-500/30"
             >
-              {referrerInfo ? (
+              {referralCode ? (
                 <>
                   <Gift className="w-5 h-5 mr-2" />
                   Claim Your 3-Day Trial
@@ -221,7 +237,7 @@ export default function ReferralLanding() {
               )}
             </Button>
 
-            {referrerInfo && (
+            {referralCode && (
               <p className="text-sm text-gray-400 mt-4">
                 Using referral code: <strong className="text-purple-400">{referralCode}</strong>
               </p>

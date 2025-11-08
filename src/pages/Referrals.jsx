@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,20 +10,11 @@ import {
   Copy, TrendingUp, Award, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
+import { createPageUrl } from "@/utils";
 
 import ReferralStats from "../components/referrals/ReferralStats.jsx";
 import ShareButtons from "../components/referrals/ShareButtons.jsx";
 import ReferralLeaderboard from "../components/referrals/ReferralLeaderboard.jsx";
-
-// Helper function for page URLs (assuming hash-based routing for specific pages)
-const createPageUrl = (pageName) => {
-  switch (pageName) {
-    case "ReferralLanding":
-      return "/referral-landing"; // or however your app maps 'ReferralLanding' to a path
-    default:
-      return "/";
-  }
-};
 
 export default function Referrals() {
   const [user, setUser] = useState(null);
@@ -42,8 +32,7 @@ export default function Referrals() {
   const { data: leaderboard = [] } = useQuery({
     queryKey: ['referral-leaderboard'],
     queryFn: async () => {
-      // Simulate leaderboard - in production, implement backend endpoint
-      const users = []; // await base44.entities.User.list();
+      const users = [];
       return users
         .filter(u => u.referral_stats?.completed_referrals > 0)
         .map(u => ({
@@ -80,16 +69,19 @@ export default function Referrals() {
         setUser(prev => ({ ...prev, referral_code: code }));
       }
       
-      // Generate referral link - use ReferralLanding page
+      // Generate referral link - FIXED: Use proper hash routing
       const appUrl = window.location.origin;
-      const link = `${appUrl}/#${createPageUrl("ReferralLanding")}?ref=${userData.referral_code || ''}`;
+      const referralPath = createPageUrl("ReferralLanding");
+      const link = `${appUrl}/#${referralPath}?ref=${userData.referral_code || ''}`;
       setReferralLink(link);
+      
+      console.log('Generated referral link:', link);
       
     }).catch(() => {});
   }, []);
 
   const generateReferralCode = (email) => {
-    const emailPart = email.substring(0, 4).toUpperCase();
+    const emailPart = email.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X');
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `${emailPart}${randomPart}`;
   };
@@ -104,6 +96,12 @@ export default function Referrals() {
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
     toast.success('Referral link copied to clipboard!');
+  };
+
+  const testReferralLink = () => {
+    // Open in new tab to test
+    window.open(referralLink, '_blank');
+    toast.success('Opening referral link in new tab...');
   };
 
   const getStatusIcon = (status) => {
@@ -150,7 +148,6 @@ export default function Referrals() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <Gift className="w-8 h-8 text-purple-400" />
@@ -161,7 +158,6 @@ export default function Referrals() {
         </p>
       </div>
 
-      {/* How It Works */}
       <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
         <CardContent className="p-6">
           <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
@@ -200,16 +196,13 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
       <ReferralStats user={user} referrals={myReferrals} />
 
-      {/* Referral Code & Share */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
           <CardTitle className="text-white">Your Referral Code & Link</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Referral Code */}
           <div>
             <label className="text-gray-400 text-sm mb-2 block">Referral Code</label>
             <div className="flex gap-3">
@@ -228,24 +221,31 @@ export default function Referrals() {
             </div>
           </div>
 
-          {/* Referral Link */}
           <div>
             <label className="text-gray-400 text-sm mb-2 block">Referral Link</label>
             <div className="flex gap-3">
-              <div className="flex-1 p-3 bg-[#0f1419] border border-cyan-500/20 rounded-lg">
+              <div className="flex-1 p-3 bg-[#0f1419] border border-cyan-500/20 rounded-lg overflow-hidden">
                 <p className="text-cyan-400 text-sm break-all font-mono">{referralLink}</p>
               </div>
-              <Button
-                onClick={copyReferralLink}
-                className="bg-cyan-500 hover:bg-cyan-600"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Link
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={copyReferralLink}
+                  className="bg-cyan-500 hover:bg-cyan-600"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy
+                </Button>
+                <Button
+                  onClick={testReferralLink}
+                  variant="outline"
+                  className="border-purple-500/20 text-purple-400 hover:bg-purple-500/10"
+                >
+                  Test Link
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Share Buttons */}
           <div>
             <label className="text-gray-400 text-sm mb-2 block">Share via</label>
             <ShareButtons 
@@ -256,7 +256,6 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      {/* Referral History */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center justify-between">
@@ -324,10 +323,8 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      {/* Leaderboard */}
       <ReferralLeaderboard leaderboard={leaderboard} currentUser={user} />
 
-      {/* Terms */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardContent className="p-6">
           <h3 className="text-white font-bold text-sm mb-3">Terms & Conditions</h3>
