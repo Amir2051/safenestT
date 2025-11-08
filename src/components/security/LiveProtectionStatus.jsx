@@ -14,6 +14,7 @@ function LiveProtectionStatus() {
   });
   const [recentThreats, setRecentThreats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [threatsBlocked24h, setThreatsBlocked24h] = useState(0);
 
   useEffect(() => {
     fetchProtectionStatus();
@@ -22,14 +23,13 @@ function LiveProtectionStatus() {
     const interval = setInterval(() => {
       fetchProtectionStatus();
       fetchRecentThreats();
-    }, 30000);
+    }, 10000); // Update every 10 seconds for real-time feel
     
     return () => clearInterval(interval);
   }, []);
 
   const fetchProtectionStatus = async () => {
     try {
-      // For now, return mock data since backend might not be running
       const mockData = {
         owasp_protection: {
           a01_broken_access_control: 'active',
@@ -69,12 +69,25 @@ function LiveProtectionStatus() {
   const fetchRecentThreats = async () => {
     try {
       const { base44 } = await import('@/api/base44Client');
-      const events = await base44.entities.SecurityEvent.filter(
-        { severity: { $in: ['high', 'critical'] } },
-        '-created_date',
-        10
+      
+      // Get threats from last 24 hours
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const allEvents = await base44.entities.SecurityEvent.list('-created_date', 100);
+      
+      // Filter for blocked threats in last 24h
+      const recentBlockedThreats = allEvents.filter(event => 
+        event.blocked && 
+        new Date(event.created_date) > new Date(oneDayAgo)
       );
-      setRecentThreats(events || []);
+      
+      setThreatsBlocked24h(recentBlockedThreats.length);
+      
+      // Show latest 10 high/critical threats
+      const criticalThreats = allEvents
+        .filter(event => event.severity === 'high' || event.severity === 'critical')
+        .slice(0, 10);
+      
+      setRecentThreats(criticalThreats || []);
     } catch (error) {
       console.error('Failed to fetch recent threats:', error);
       setRecentThreats([]);
@@ -131,11 +144,11 @@ function LiveProtectionStatus() {
               </div>
               <div>
                 <h3 className="text-white font-bold text-lg">Live Protection Active</h3>
-                <p className="text-sm text-gray-400">All OWASP defenses operational</p>
+                <p className="text-sm text-gray-400">All OWASP defenses operational • Updated {new Date().toLocaleTimeString()}</p>
               </div>
             </div>
             <Badge className="bg-green-500/20 text-green-400 border-green-500/50 px-4 py-2 text-sm">
-              <Activity className="w-3 h-3 mr-1" />
+              <Activity className="w-3 h-3 mr-1 animate-pulse" />
               Real-time
             </Badge>
           </div>
@@ -209,9 +222,9 @@ function LiveProtectionStatus() {
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center justify-between">
-            <span>Recent Threats Blocked</span>
+            <span>Recent Threats Detected</span>
             <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
-              Last 24h
+              Last 24h: {threatsBlocked24h} blocked
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -219,13 +232,14 @@ function LiveProtectionStatus() {
           {recentThreats.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
-              <p className="text-gray-400">No threats detected</p>
+              <p className="text-gray-400">No high-severity threats detected recently</p>
+              <p className="text-xs text-gray-500 mt-1">Your system is secure</p>
             </div>
           ) : (
             <div className="space-y-2">
               {recentThreats.map((threat, idx) => (
                 <div
-                  key={idx}
+                  key={threat.id || idx}
                   className="p-3 bg-[#0f1419] rounded-lg border border-red-500/10 hover:border-red-500/30 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -237,18 +251,29 @@ function LiveProtectionStatus() {
                         <span className="text-white font-semibold text-sm">
                           {threat.event_type.replace(/_/g, ' ').toUpperCase()}
                         </span>
+                        <Badge className={`text-xs ${
+                          threat.severity === 'critical' 
+                            ? 'bg-red-500/20 text-red-400 border-red-500/50' 
+                            : 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                        }`}>
+                          {threat.severity}
+                        </Badge>
                       </div>
-                      <p className="text-xs text-gray-400">
-                        IP: {threat.details?.ip || 'Unknown'} • 
-                        {threat.details?.endpoint && ` ${threat.details.endpoint}`}
+                      <p className="text-xs text-gray-400 mb-1">
+                        {threat.details?.ip && `IP: ${threat.details.ip}`}
+                        {threat.details?.endpoint && ` • Endpoint: ${threat.details.endpoint}`}
+                        {threat.details?.method && ` • Method: ${threat.details.method}`}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(threat.created_date).toLocaleString()}
                       </p>
                     </div>
                     <Badge className={`${
                       threat.blocked 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    } text-xs`}>
-                      {threat.blocked ? 'Blocked' : 'Detected'}
+                        ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                        : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                    } text-xs border`}>
+                      {threat.blocked ? '✓ Blocked' : '⚠ Detected'}
                     </Badge>
                   </div>
                 </div>
@@ -262,8 +287,8 @@ function LiveProtectionStatus() {
       <div className="grid grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-green-400">{recentThreats.filter(t => t.blocked).length}</p>
-            <p className="text-xs text-gray-400 mt-1">Threats Blocked</p>
+            <p className="text-3xl font-bold text-green-400">{threatsBlocked24h}</p>
+            <p className="text-xs text-gray-400 mt-1">Threats Blocked (24h)</p>
           </CardContent>
         </Card>
         

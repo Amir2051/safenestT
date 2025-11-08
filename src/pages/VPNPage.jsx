@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +28,37 @@ const INITIAL_SERVERS = [
   { id: 'netherlands', name: 'Netherlands', location: '🇳🇱 Amsterdam', ip: '198.51.100.51', basePing: 31, baseLoad: 47, baseUsers: 1456 },
   { id: 'switzerland', name: 'Switzerland', location: '🇨🇭 Zurich', ip: '198.51.100.52', basePing: 38, baseLoad: 22, baseUsers: 1123 },
   { id: 'brazil', name: 'Brazil', location: '🇧🇷 São Paulo', ip: '198.51.100.53', basePing: 125, baseLoad: 68, baseUsers: 1398 },
+  { id: 'india', name: 'India', location: '🇮🇳 Mumbai', ip: '198.51.100.54', basePing: 142, baseLoad: 73, baseUsers: 2341 },
+  { id: 'south-korea', name: 'South Korea', location: '🇰🇷 Seoul', ip: '198.51.100.55', basePing: 95, baseLoad: 59, baseUsers: 1789 },
+  { id: 'spain', name: 'Spain', location: '🇪🇸 Madrid', ip: '198.51.100.56', basePing: 48, baseLoad: 44, baseUsers: 1456 },
+  { id: 'italy', name: 'Italy', location: '🇮🇹 Milan', ip: '198.51.100.57', basePing: 50, baseLoad: 52, baseUsers: 1298 },
+  { id: 'sweden', name: 'Sweden', location: '🇸🇪 Stockholm', ip: '198.51.100.58', basePing: 35, baseLoad: 33, baseUsers: 892 },
+  { id: 'norway', name: 'Norway', location: '🇳🇴 Oslo', ip: '198.51.100.59', basePing: 40, baseLoad: 28, baseUsers: 654 },
+  { id: 'denmark', name: 'Denmark', location: '🇩🇰 Copenhagen', ip: '198.51.100.60', basePing: 37, baseLoad: 31, baseUsers: 723 },
+  { id: 'belgium', name: 'Belgium', location: '🇧🇪 Brussels', ip: '198.51.100.61', basePing: 43, baseLoad: 46, baseUsers: 987 },
+  { id: 'ireland', name: 'Ireland', location: '🇮🇪 Dublin', ip: '198.51.100.62', basePing: 41, baseLoad: 39, baseUsers: 1123 },
+  { id: 'poland', name: 'Poland', location: '🇵🇱 Warsaw', ip: '198.51.100.63', basePing: 55, baseLoad: 57, baseUsers: 1456 },
+  { id: 'austria', name: 'Austria', location: '🇦🇹 Vienna', ip: '198.51.100.64', basePing: 46, baseLoad: 42, baseUsers: 876 },
+  { id: 'portugal', name: 'Portugal', location: '🇵🇹 Lisbon', ip: '198.51.100.65', basePing: 51, baseLoad: 49, baseUsers: 765 },
+  { id: 'greece', name: 'Greece', location: '🇬🇷 Athens', ip: '198.51.100.66', basePing: 60, baseLoad: 54, baseUsers: 654 },
+  { id: 'czech', name: 'Czech Republic', location: '🇨🇿 Prague', ip: '198.51.100.67', basePing: 49, baseLoad: 45, baseUsers: 934 },
+  { id: 'romania', name: 'Romania', location: '🇷🇴 Bucharest', ip: '198.51.100.68', basePing: 58, baseLoad: 61, baseUsers: 1087 },
+  { id: 'finland', name: 'Finland', location: '🇫🇮 Helsinki', ip: '198.51.100.69', basePing: 44, baseLoad: 36, baseUsers: 723 },
+  { id: 'new-zealand', name: 'New Zealand', location: '🇳🇿 Auckland', ip: '198.51.100.70', basePing: 178, baseLoad: 41, baseUsers: 543 },
+  { id: 'south-africa', name: 'South Africa', location: '🇿🇦 Johannesburg', ip: '198.51.100.71', basePing: 168, baseLoad: 65, baseUsers: 987 },
+  { id: 'argentina', name: 'Argentina', location: '🇦🇷 Buenos Aires', ip: '198.51.100.72', basePing: 138, baseLoad: 58, baseUsers: 876 },
+  { id: 'chile', name: 'Chile', location: '🇨🇱 Santiago', ip: '198.51.100.73', basePing: 145, baseLoad: 53, baseUsers: 765 },
+  { id: 'mexico', name: 'Mexico', location: '🇲🇽 Mexico City', ip: '198.51.100.74', basePing: 68, baseLoad: 71, baseUsers: 1654 },
+  { id: 'turkey', name: 'Turkey', location: '🇹🇷 Istanbul', ip: '198.51.100.75', basePing: 72, baseLoad: 67, baseUsers: 1876 },
+  { id: 'uae', name: 'UAE', location: '🇦🇪 Dubai', ip: '198.51.100.76', basePing: 118, baseLoad: 63, baseUsers: 1234 },
+  { id: 'israel', name: 'Israel', location: '🇮🇱 Tel Aviv', ip: '198.51.100.77', basePing: 85, baseLoad: 56, baseUsers: 987 },
+  { id: 'hong-kong', name: 'Hong Kong', location: '🇭🇰 Hong Kong', ip: '198.51.100.78', basePing: 98, baseLoad: 69, baseUsers: 2156 },
+  { id: 'taiwan', name: 'Taiwan', location: '🇹🇼 Taipei', ip: '198.51.100.79', basePing: 102, baseLoad: 64, baseUsers: 1543 },
+  { id: 'thailand', name: 'Thailand', location: '🇹🇭 Bangkok', ip: '198.51.100.80', basePing: 128, baseLoad: 72, baseUsers: 1876 },
+  { id: 'malaysia', name: 'Malaysia', location: '🇲🇾 Kuala Lumpur', ip: '198.51.100.81', basePing: 115, baseLoad: 66, baseUsers: 1456 },
+  { id: 'indonesia', name: 'Indonesia', location: '🇮🇩 Jakarta', ip: '198.51.100.82', basePing: 135, baseLoad: 75, baseUsers: 1987 },
+  { id: 'vietnam', name: 'Vietnam', location: '🇻🇳 Hanoi', ip: '198.51.100.83', basePing: 132, baseLoad: 70, baseUsers: 1654 },
+  { id: 'philippines', name: 'Philippines', location: '🇵🇭 Manila', ip: '198.51.100.84', basePing: 140, baseLoad: 74, baseUsers: 1543 },
 ];
 
 export default function VPNPage() {
@@ -814,7 +846,7 @@ export default function VPNPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sortedServers.map((server) => {
               const isBest = server.id === bestServer.id;
               const isOverloaded = (server.load || server.baseLoad) >= 85;
@@ -972,7 +1004,7 @@ export default function VPNPage() {
               </div>
               <h3 className="text-white font-semibold mb-2">Global Network</h3>
               <p className="text-gray-400 text-sm">
-                {servers.length} servers • Real-time monitoring • Load balancing
+                {servers.length} servers across 43 countries • Real-time monitoring • Load balancing
               </p>
             </div>
 
