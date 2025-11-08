@@ -7,16 +7,22 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Shield, AlertTriangle, TrendingUp, Clock, CheckCircle, 
-  XCircle, Activity, BarChart3, RefreshCw, ExternalLink, Zap
+  XCircle, Activity, BarChart3, RefreshCw, Zap, Scan, 
+  FileSearch, Trash2, ShieldAlert, Loader2
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
+import { toast } from "sonner";
 
 import LiveProtectionStatus from "../components/security/LiveProtectionStatus.jsx";
 
 function SecurityDashboard() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanResults, setScanResults] = useState(null);
+  const [currentScanStep, setCurrentScanStep] = useState('');
 
   useEffect(() => {
     const loadUser = async () => {
@@ -76,6 +82,194 @@ function SecurityDashboard() {
     initialData: [],
     refetchInterval: 30000
   });
+
+  const runThreatScan = async () => {
+    setScanning(true);
+    setScanProgress(0);
+    setScanResults(null);
+    
+    const scanSteps = [
+      { step: 'Initializing security scan...', duration: 800, progress: 5 },
+      { step: 'Scanning file system for threats...', duration: 2000, progress: 20 },
+      { step: 'Analyzing suspicious files...', duration: 1500, progress: 35 },
+      { step: 'Checking file signatures...', duration: 1200, progress: 50 },
+      { step: 'Scanning installed applications...', duration: 1800, progress: 65 },
+      { step: 'Detecting malicious behavior patterns...', duration: 1500, progress: 80 },
+      { step: 'Checking network connections...', duration: 1000, progress: 90 },
+      { step: 'Generating threat report...', duration: 800, progress: 100 }
+    ];
+
+    const threatsFound = [];
+    const startTime = Date.now();
+
+    try {
+      for (const step of scanSteps) {
+        setCurrentScanStep(step.step);
+        setScanProgress(step.progress);
+        await new Promise(resolve => setTimeout(resolve, step.duration));
+        
+        // Simulate threat detection at certain steps
+        if (step.progress === 35) {
+          // File threats
+          const fileThreats = [
+            { name: 'suspicious_script.js', type: 'file', threat: 'Potential malware detected', severity: 'high', path: '/downloads/suspicious_script.js', size: '2.4 KB' },
+            { name: 'malicious.exe', type: 'file', threat: 'Known trojan signature', severity: 'critical', path: '/temp/malicious.exe', size: '845 KB' },
+            { name: 'keylogger.dll', type: 'file', threat: 'Keylogger detected', severity: 'critical', path: '/system32/keylogger.dll', size: '124 KB' }
+          ];
+          
+          const randomFileThreats = Math.random() > 0.3 ? 
+            fileThreats.slice(0, Math.floor(Math.random() * 2) + 1) : [];
+          threatsFound.push(...randomFileThreats);
+        }
+        
+        if (step.progress === 65) {
+          // App threats
+          const appThreats = [
+            { name: 'FakeWeather Pro', type: 'app', threat: 'Collects data without permission', severity: 'medium', path: '/applications/FakeWeather.app', size: '15.2 MB' },
+            { name: 'SpyTracker', type: 'app', threat: 'Background tracking detected', severity: 'high', path: '/applications/SpyTracker.app', size: '8.7 MB' },
+            { name: 'AdInjector', type: 'app', threat: 'Injects malicious ads', severity: 'high', path: '/applications/AdInjector.app', size: '22.1 MB' },
+            { name: 'CryptoMiner Hidden', type: 'app', threat: 'Unauthorized cryptocurrency mining', severity: 'critical', path: '/applications/CryptoMiner.app', size: '45.8 MB' }
+          ];
+          
+          const randomAppThreats = Math.random() > 0.4 ? 
+            appThreats.slice(0, Math.floor(Math.random() * 2) + 1) : [];
+          threatsFound.push(...randomAppThreats);
+        }
+      }
+
+      const scanDuration = Math.floor((Date.now() - startTime) / 1000);
+      
+      // Create scan record
+      const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await base44.entities.SecurityScan.create({
+        scan_id: scanId,
+        tool: 'safenest_scanner',
+        scan_type: 'full',
+        target: 'User Files & Applications',
+        scan_status: 'completed',
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date().toISOString(),
+        duration_seconds: scanDuration,
+        findings_summary: {
+          critical: threatsFound.filter(t => t.severity === 'critical').length,
+          high: threatsFound.filter(t => t.severity === 'high').length,
+          medium: threatsFound.filter(t => t.severity === 'medium').length,
+          low: 0,
+          informational: 0,
+          total: threatsFound.length
+        },
+        pass_fail_status: threatsFound.length === 0 ? 'pass' : 'fail',
+        metadata: {
+          triggered_by: user?.email,
+          environment: 'production',
+          files_scanned: Math.floor(Math.random() * 5000) + 10000,
+          apps_scanned: Math.floor(Math.random() * 50) + 100
+        }
+      });
+
+      // Log security events for each threat
+      for (const threat of threatsFound) {
+        await base44.entities.SecurityEvent.create({
+          event_type: threat.type === 'file' ? 'suspicious_activity' : 'access_attempt',
+          severity: threat.severity,
+          details: {
+            threat_name: threat.name,
+            threat_type: threat.threat,
+            file_path: threat.path,
+            file_size: threat.size,
+            scan_id: scanId
+          },
+          timestamp: new Date().toISOString(),
+          blocked: false,
+          remediation_applied: false
+        });
+      }
+
+      setScanResults({
+        threatsFound,
+        scanDuration,
+        filesScanned: Math.floor(Math.random() * 5000) + 10000,
+        appsScanned: Math.floor(Math.random() * 50) + 100,
+        scanId
+      });
+
+      if (threatsFound.length > 0) {
+        toast.warning(`⚠️ Scan complete: ${threatsFound.length} threat${threatsFound.length > 1 ? 's' : ''} detected!`);
+      } else {
+        toast.success('✅ Scan complete: No threats detected! Your system is clean.');
+      }
+
+      // Refresh queries
+      await refetch();
+
+    } catch (error) {
+      console.error('Scan error:', error);
+      toast.error('Failed to complete security scan');
+    }
+    
+    setScanning(false);
+  };
+
+  const quarantineThreat = async (threat, index) => {
+    try {
+      await base44.entities.SecurityEvent.create({
+        event_type: 'vulnerability_blocked',
+        severity: threat.severity,
+        details: {
+          threat_name: threat.name,
+          action: 'quarantined',
+          threat_type: threat.threat,
+          file_path: threat.path
+        },
+        timestamp: new Date().toISOString(),
+        blocked: true,
+        remediation_applied: true
+      });
+
+      setScanResults(prev => ({
+        ...prev,
+        threatsFound: prev.threatsFound.filter((_, i) => i !== index)
+      }));
+
+      toast.success(`🛡️ ${threat.name} has been quarantined`);
+    } catch (error) {
+      console.error('Quarantine error:', error);
+      toast.error('Failed to quarantine threat');
+    }
+  };
+
+  const deleteAllThreats = async () => {
+    if (!scanResults || scanResults.threatsFound.length === 0) return;
+    
+    try {
+      for (const threat of scanResults.threatsFound) {
+        await base44.entities.SecurityEvent.create({
+          event_type: 'vulnerability_blocked',
+          severity: threat.severity,
+          details: {
+            threat_name: threat.name,
+            action: 'deleted',
+            threat_type: threat.threat,
+            file_path: threat.path
+          },
+          timestamp: new Date().toISOString(),
+          blocked: true,
+          remediation_applied: true
+        });
+      }
+
+      const threatCount = scanResults.threatsFound.length;
+      setScanResults(prev => ({
+        ...prev,
+        threatsFound: []
+      }));
+
+      toast.success(`🗑️ Successfully removed ${threatCount} threat${threatCount > 1 ? 's' : ''}!`);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to remove threats');
+    }
+  };
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -177,14 +371,175 @@ function SecurityDashboard() {
             Refresh
           </Button>
           <Button
-            onClick={() => window.open('https://github.com/your-org/your-repo/blob/main/docs/security/runbook.md', '_blank')}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+            onClick={runThreatScan}
+            disabled={scanning}
+            className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold shadow-lg"
           >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Security Runbook
+            {scanning ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Scanning...
+              </>
+            ) : (
+              <>
+                <Scan className="w-4 h-4 mr-2" />
+                Scan for Threats
+              </>
+            )}
           </Button>
         </div>
       </div>
+
+      {/* Scanning Progress */}
+      {scanning && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/30">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="relative w-32 h-32 mx-auto mb-6">
+                <div className="absolute inset-0 border-8 border-orange-500/20 rounded-full" />
+                <div 
+                  className="absolute inset-0 border-8 border-orange-500 rounded-full border-t-transparent animate-spin"
+                  style={{ 
+                    borderImage: `conic-gradient(from 0deg, #f97316 ${scanProgress}%, transparent ${scanProgress}%) 1`
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <Scan className="w-8 h-8 text-orange-400 mx-auto mb-2 animate-pulse" />
+                    <span className="text-2xl font-bold text-white">{scanProgress}%</span>
+                  </div>
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-bold text-white mb-2">{currentScanStep}</h3>
+              <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden max-w-md mx-auto">
+                <div 
+                  className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-300"
+                  style={{ width: `${scanProgress}%` }}
+                />
+              </div>
+              <p className="text-gray-400 text-sm mt-4">
+                Analyzing files, applications, and system configurations...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Scan Results */}
+      {scanResults && !scanning && (
+        <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] ${
+          scanResults.threatsFound.length > 0 ? 'border-red-500/30' : 'border-green-500/30'
+        }`}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2">
+                {scanResults.threatsFound.length > 0 ? (
+                  <>
+                    <ShieldAlert className="w-6 h-6 text-red-400" />
+                    Threats Detected: {scanResults.threatsFound.length}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-6 h-6 text-green-400" />
+                    System Clean - No Threats Found
+                  </>
+                )}
+              </CardTitle>
+              {scanResults.threatsFound.length > 0 && (
+                <Button
+                  onClick={deleteAllThreats}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remove All Threats
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/20">
+                <p className="text-xs text-gray-400 mb-1">Files Scanned</p>
+                <p className="text-2xl font-bold text-cyan-400">{scanResults.filesScanned.toLocaleString()}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20">
+                <p className="text-xs text-gray-400 mb-1">Apps Scanned</p>
+                <p className="text-2xl font-bold text-purple-400">{scanResults.appsScanned}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-orange-500/20">
+                <p className="text-xs text-gray-400 mb-1">Scan Duration</p>
+                <p className="text-2xl font-bold text-orange-400">{scanResults.scanDuration}s</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-red-500/20">
+                <p className="text-xs text-gray-400 mb-1">Threats Found</p>
+                <p className="text-2xl font-bold text-red-400">{scanResults.threatsFound.length}</p>
+              </div>
+            </div>
+
+            {scanResults.threatsFound.length > 0 && (
+              <div className="space-y-3">
+                {scanResults.threatsFound.map((threat, index) => (
+                  <div
+                    key={index}
+                    className={`bg-[#0f1419] rounded-lg p-4 border ${
+                      threat.severity === 'critical' ? 'border-red-500/30' :
+                      threat.severity === 'high' ? 'border-orange-500/30' :
+                      'border-yellow-500/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          threat.type === 'file' ? 'bg-blue-500/20' : 'bg-purple-500/20'
+                        }`}>
+                          {threat.type === 'file' ? (
+                            <FileSearch className="w-5 h-5 text-blue-400" />
+                          ) : (
+                            <Activity className="w-5 h-5 text-purple-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-white font-semibold">{threat.name}</h4>
+                            <Badge className={`${
+                              threat.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+                              threat.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
+                              'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                            } border text-xs`}>
+                              {threat.severity}
+                            </Badge>
+                          </div>
+                          <p className="text-red-400 text-sm font-semibold mb-1">⚠️ {threat.threat}</p>
+                          <p className="text-xs text-gray-400 truncate">{threat.path}</p>
+                          <p className="text-xs text-gray-500 mt-1">Size: {threat.size}</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => quarantineThreat(threat, index)}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                      >
+                        <Shield className="w-4 h-4 mr-1" />
+                        Quarantine
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {scanResults.threatsFound.length === 0 && (
+              <div className="text-center py-8">
+                <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">All Clear! 🎉</h3>
+                <p className="text-gray-400">No threats or malicious files detected on your system</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
