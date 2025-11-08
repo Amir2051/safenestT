@@ -42,14 +42,15 @@ export default function VPNPage() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-    
-    // Load saved rotation settings
-    const savedAutoRotate = localStorage.getItem('vpn_auto_rotate') === 'true';
-    const savedInterval = localStorage.getItem('vpn_rotation_interval');
-    
-    setAutoRotateEnabled(savedAutoRotate);
-    if (savedInterval) setRotationInterval(parseInt(savedInterval));
+    base44.auth.me().then(userData => {
+      setUser(userData);
+      // Load saved rotation settings
+      const savedAutoRotate = localStorage.getItem('vpn_auto_rotate') === 'true';
+      const savedInterval = localStorage.getItem('vpn_rotation_interval');
+      
+      setAutoRotateEnabled(savedAutoRotate);
+      if (savedInterval) setRotationInterval(parseInt(savedInterval));
+    }).catch(() => {});
   }, []);
 
   // Connection duration timer
@@ -67,11 +68,12 @@ export default function VPNPage() {
     } else {
       setConnectionTime(0);
       setDataTransferred({ download: 0, upload: 0 });
+      setRotationCount(0);
     }
     return () => clearInterval(interval);
   }, [user?.vpn_enabled]);
 
-  // Auto-rotation timer
+  // Auto-rotation timer - FIXED
   useEffect(() => {
     let rotationTimer;
     let countdownTimer;
@@ -79,25 +81,34 @@ export default function VPNPage() {
     if (user?.vpn_enabled && autoRotateEnabled) {
       setNextRotationIn(rotationInterval);
       
-      // Countdown timer
+      // Countdown timer - updates every second
       countdownTimer = setInterval(() => {
         setNextRotationIn(prev => {
-          if (prev <= 1) return rotationInterval;
+          if (prev <= 1) {
+            return rotationInterval;
+          }
           return prev - 1;
         });
       }, 1000);
       
-      // Rotation timer
+      // Rotation timer - rotates server at interval
       rotationTimer = setInterval(() => {
         rotateToRandomServer();
       }, rotationInterval * 1000);
+      
+      console.log(`✅ VPN Auto-rotation started: every ${rotationInterval} seconds`);
     } else {
       setNextRotationIn(rotationInterval);
     }
     
     return () => {
-      clearInterval(rotationTimer);
-      clearInterval(countdownTimer);
+      if (rotationTimer) {
+        clearInterval(rotationTimer);
+        console.log('❌ VPN Auto-rotation stopped');
+      }
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+      }
     };
   }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]);
 
@@ -225,7 +236,7 @@ export default function VPNPage() {
     setAutoRotateEnabled(newValue);
     localStorage.setItem('vpn_auto_rotate', newValue.toString());
     
-    toast.success(newValue ? '🔄 Auto-rotation enabled' : 'Auto-rotation disabled');
+    toast.success(newValue ? '🔄 Auto-rotation enabled - rotating every ' + rotationInterval + 's' : 'Auto-rotation disabled');
   };
 
   const updateRotationInterval = (seconds) => {
@@ -269,7 +280,7 @@ export default function VPNPage() {
           <Wifi className="w-8 h-8 text-cyan-400" />
           Auto-Rotating VPN Protection
         </h1>
-        <p className="text-gray-400 mt-1">Maximum anonymity with automatic server rotation</p>
+        <p className="text-gray-400 mt-1">Maximum anonymity with automatic server rotation every {rotationInterval}s</p>
       </div>
 
       {/* Premium Gate */}
@@ -289,7 +300,7 @@ export default function VPNPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
-                    Auto-rotation every 30 seconds
+                    Auto-rotation every {rotationInterval} seconds
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
@@ -483,9 +494,8 @@ export default function VPNPage() {
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar - Connection Info, Security Features, Server List - keeping existing code */}
         <div className="space-y-6">
-          {/* Current Connection Info */}
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
@@ -527,7 +537,6 @@ export default function VPNPage() {
             </CardContent>
           </Card>
 
-          {/* Security Features */}
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
