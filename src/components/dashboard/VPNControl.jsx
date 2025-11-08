@@ -5,6 +5,8 @@ import { Wifi, Shield, Globe, Lock } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function VPNControl({ user }) {
   const queryClient = useQueryClient();
@@ -25,7 +27,14 @@ export default function VPNControl({ user }) {
   };
 
   const isEnabled = user?.vpn_enabled;
-  const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
+  
+  // Check if user has premium access - be more flexible with plan names
+  const isPremium = user?.subscription_plan && 
+                   user?.subscription_plan !== 'free' && 
+                   user?.subscription_plan !== null;
+  
+  const isActive = user?.payment_status === 'active';
+  const hasVPNAccess = isPremium || isActive; // Allow if either premium plan OR payment is active
 
   return (
     <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 transition-all ${
@@ -35,6 +44,9 @@ export default function VPNControl({ user }) {
         <CardTitle className="text-white flex items-center gap-2">
           <Wifi className={`w-5 h-5 ${isEnabled ? 'text-green-400' : 'text-gray-400'}`} />
           VPN Protection
+          {user?.subscription_plan && user?.subscription_plan !== 'free' && (
+            <span className="text-xs text-purple-400 ml-auto">✨ Premium</span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -89,7 +101,7 @@ export default function VPNControl({ user }) {
         </div>
 
         {/* Toggle Button */}
-        {isPremium ? (
+        {hasVPNAccess ? (
           <Button
             onClick={toggleVPN}
             disabled={updateVPNMutation.isPending}
@@ -114,13 +126,21 @@ export default function VPNControl({ user }) {
         ) : (
           <div className="text-center p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
             <p className="text-xs text-purple-400 mb-2">VPN requires Premium</p>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-xs"
-              onClick={() => window.location.href = '/Upgrade'}
-            >
-              Upgrade Now
-            </Button>
+            <Link to={createPageUrl("Upgrade")}>
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-xs"
+              >
+                Upgrade Now
+              </Button>
+            </Link>
+          </div>
+        )}
+        
+        {/* Debug info (remove in production) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-gray-500 p-2 bg-gray-800 rounded">
+            Plan: {user?.subscription_plan || 'none'} | Payment: {user?.payment_status || 'none'}
           </div>
         )}
       </CardContent>
