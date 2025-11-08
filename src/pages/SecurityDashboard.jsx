@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Shield, AlertTriangle, TrendingUp, Clock, CheckCircle, 
   XCircle, Activity, BarChart3, RefreshCw, Zap, Scan, 
-  FileSearch, Trash2, ShieldAlert, Loader2, Sparkles
+  FileSearch, Trash2, ShieldAlert, Loader2, Sparkles, Smartphone
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
@@ -17,6 +17,9 @@ import { toast } from "sonner";
 
 import LiveProtectionStatus from "../components/security/LiveProtectionStatus.jsx";
 import ZAPScanResults from "../components/security/ZAPScanResults.jsx";
+import OWASPComplianceWidget from "../components/security/OWASPComplianceWidget.jsx";
+import MSTGComplianceWidget from "../components/security/MSTGComplianceWidget.jsx";
+import HIBPChecker from "../components/security/HIBPChecker.jsx";
 
 function SecurityDashboard() {
   const [user, setUser] = useState(null);
@@ -365,7 +368,7 @@ function SecurityDashboard() {
             Security Dashboard
           </h1>
           <p className="text-gray-400 mt-1">
-            Live OWASP protection • ZAP weekly scans • Automated defense
+            Complete OWASP protection • ZAP scanning • HIBP monitoring • Automated defense
           </p>
         </div>
         <div className="flex gap-3">
@@ -377,196 +380,8 @@ function SecurityDashboard() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button
-            onClick={runThreatScan}
-            disabled={scanning}
-            className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold shadow-lg"
-          >
-            {scanning ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Scanning...
-              </>
-            ) : (
-              <>
-                <Scan className="w-4 h-4 mr-2" />
-                Scan for Threats
-              </>
-            )}
-          </Button>
         </div>
       </div>
-
-      {/* ZAP Weekly Scan Info Banner */}
-      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
-              <div>
-                <p className="text-white font-bold">🗓️ OWASP ZAP Weekly Scans Active</p>
-                <p className="text-purple-300 text-sm">
-                  Automated scans every Sunday at 2:00 AM • High-severity exploits auto-blocked • Admin alerts enabled
-                </p>
-              </div>
-            </div>
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 px-4 py-2">
-              {zapScans.length} ZAP scans completed
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Scanning Progress */}
-      {scanning && (
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/30">
-          <CardContent className="p-8">
-            <div className="text-center">
-              <div className="relative w-32 h-32 mx-auto mb-6">
-                <div className="absolute inset-0 border-8 border-orange-500/20 rounded-full" />
-                <div 
-                  className="absolute inset-0 border-8 border-orange-500 rounded-full border-t-transparent animate-spin"
-                  style={{ 
-                    borderImage: `conic-gradient(from 0deg, #f97316 ${scanProgress}%, transparent ${scanProgress}%) 1`
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Scan className="w-8 h-8 text-orange-400 mx-auto mb-2 animate-pulse" />
-                    <span className="text-2xl font-bold text-white">{scanProgress}%</span>
-                  </div>
-                </div>
-              </div>
-              
-              <h3 className="text-xl font-bold text-white mb-2">{currentScanStep}</h3>
-              <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden max-w-md mx-auto">
-                <div 
-                  className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-300"
-                  style={{ width: `${scanProgress}%` }}
-                />
-              </div>
-              <p className="text-gray-400 text-sm mt-4">
-                Analyzing files, applications, and system configurations...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Scan Results */}
-      {scanResults && !scanning && (
-        <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] ${
-          scanResults.threatsFound.length > 0 ? 'border-red-500/30' : 'border-green-500/30'
-        }`}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                {scanResults.threatsFound.length > 0 ? (
-                  <>
-                    <ShieldAlert className="w-6 h-6 text-red-400" />
-                    Threats Detected: {scanResults.threatsFound.length}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-6 h-6 text-green-400" />
-                    System Clean - No Threats Found
-                  </>
-                )}
-              </CardTitle>
-              {scanResults.threatsFound.length > 0 && (
-                <Button
-                  onClick={deleteAllThreats}
-                  className="bg-red-500 hover:bg-red-600 text-white"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Remove All Threats
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/20">
-                <p className="text-xs text-gray-400 mb-1">Files Scanned</p>
-                <p className="text-2xl font-bold text-cyan-400">{scanResults.filesScanned.toLocaleString()}</p>
-              </div>
-              <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20">
-                <p className="text-xs text-gray-400 mb-1">Apps Scanned</p>
-                <p className="text-2xl font-bold text-purple-400">{scanResults.appsScanned}</p>
-              </div>
-              <div className="bg-[#0f1419] rounded-lg p-4 border border-orange-500/20">
-                <p className="text-xs text-gray-400 mb-1">Scan Duration</p>
-                <p className="text-2xl font-bold text-orange-400">{scanResults.scanDuration}s</p>
-              </div>
-              <div className="bg-[#0f1419] rounded-lg p-4 border border-red-500/20">
-                <p className="text-xs text-gray-400 mb-1">Threats Found</p>
-                <p className="text-2xl font-bold text-red-400">{scanResults.threatsFound.length}</p>
-              </div>
-            </div>
-
-            {scanResults.threatsFound.length > 0 && (
-              <div className="space-y-3">
-                {scanResults.threatsFound.map((threat, index) => (
-                  <div
-                    key={index}
-                    className={`bg-[#0f1419] rounded-lg p-4 border ${
-                      threat.severity === 'critical' ? 'border-red-500/30' :
-                      threat.severity === 'high' ? 'border-orange-500/30' :
-                      'border-yellow-500/30'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          threat.type === 'file' ? 'bg-blue-500/20' : 'bg-purple-500/20'
-                        }`}>
-                          {threat.type === 'file' ? (
-                            <FileSearch className="w-5 h-5 text-blue-400" />
-                          ) : (
-                            <Activity className="w-5 h-5 text-purple-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-white font-semibold">{threat.name}</h4>
-                            <Badge className={`${
-                              threat.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-                              threat.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
-                              'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
-                            } border text-xs`}>
-                              {threat.severity}
-                            </Badge>
-                          </div>
-                          <p className="text-red-400 text-sm font-semibold mb-1">⚠️ {threat.threat}</p>
-                          <p className="text-xs text-gray-400 truncate">{threat.path}</p>
-                          <p className="text-xs text-gray-500 mt-1">Size: {threat.size}</p>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => quarantineThreat(threat, index)}
-                        size="sm"
-                        variant="outline"
-                        className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-                      >
-                        <Shield className="w-4 h-4 mr-1" />
-                        Quarantine
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {scanResults.threatsFound.length === 0 && (
-              <div className="text-center py-8">
-                <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">All Clear! 🎉</h3>
-                <p className="text-gray-400">No threats or malicious files detected on your system</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -627,16 +442,24 @@ function SecurityDashboard() {
           <TabsTrigger value="overview" className="data-[state=active]:bg-cyan-500/20">
             Overview
           </TabsTrigger>
-          <TabsTrigger value="live-protection" className="data-[state=active]:bg-cyan-500/20">
-            <Zap className="w-4 h-4 mr-2" />
-            Live Protection
+          <TabsTrigger value="owasp-top10" className="data-[state=active]:bg-cyan-500/20">
+            <Shield className="w-4 h-4 mr-2" />
+            OWASP Top 10
+          </TabsTrigger>
+          <TabsTrigger value="mstg-mobile" className="data-[state=active]:bg-cyan-500/20">
+            <Smartphone className="w-4 h-4 mr-2" />
+            Mobile (MSTG)
+          </TabsTrigger>
+          <TabsTrigger value="hibp" className="data-[state=active]:bg-cyan-500/20">
+            🔍 HIBP
           </TabsTrigger>
           <TabsTrigger value="zap-scans" className="data-[state=active]:bg-cyan-500/20">
             <Sparkles className="w-4 h-4 mr-2" />
             ZAP Scans
           </TabsTrigger>
-          <TabsTrigger value="scans" className="data-[state=active]:bg-cyan-500/20">
-            All Scans
+          <TabsTrigger value="live-protection" className="data-[state=active]:bg-cyan-500/20">
+            <Zap className="w-4 h-4 mr-2" />
+            Live Protection
           </TabsTrigger>
         </TabsList>
 
@@ -716,6 +539,115 @@ function SecurityDashboard() {
           </div>
         </TabsContent>
 
+        {/* OWASP Top 10 Tab */}
+        <TabsContent value="owasp-top10" className="space-y-6 mt-6">
+          <OWASPComplianceWidget />
+
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+            <CardHeader>
+              <CardTitle className="text-white">Active Protections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { name: 'Rate Limiting', value: '100 req/15min', icon: '⏱️' },
+                  { name: 'Brute Force Prevention', value: '5 attempts/15min', icon: '🛡️' },
+                  { name: 'Input Sanitization', value: 'All endpoints', icon: '🧹' },
+                  { name: 'XSS Protection', value: 'Active', icon: '🔒' },
+                  { name: 'CSRF Protection', value: 'Token-based', icon: '🎫' },
+                  { name: 'SQL Injection Block', value: 'Pattern matching', icon: '🚫' },
+                  { name: 'Security Headers', value: '12 headers', icon: '📋' },
+                  { name: 'Session Security', value: '30min timeout', icon: '⏰' },
+                  { name: 'HTTPS/TLS 1.3', value: 'Enforced', icon: '🔐' },
+                  { name: 'HSTS', value: '1 year max-age', icon: '📌' },
+                  { name: 'File Upload Security', value: '10MB limit', icon: '📁' },
+                  { name: 'IP Blocking', value: 'Auto-block', icon: '🚷' }
+                ].map((protection, idx) => (
+                  <div key={idx} className="bg-[#0f1419] rounded-lg p-4 border border-green-500/10">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{protection.icon}</span>
+                      <div>
+                        <p className="text-white font-semibold text-sm">{protection.name}</p>
+                        <p className="text-xs text-green-400">{protection.value}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MSTG Mobile Tab */}
+        <TabsContent value="mstg-mobile" className="space-y-6 mt-6">
+          <MSTGComplianceWidget />
+
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="text-white">Mobile Security Implementation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  {
+                    category: 'Data Storage',
+                    features: [
+                      'EncryptedSharedPreferences (Android)',
+                      'Keychain Services (iOS)',
+                      'Encrypted SQLite database',
+                      'No sensitive data in cache'
+                    ]
+                  },
+                  {
+                    category: 'Network Security',
+                    features: [
+                      'SSL Certificate Pinning',
+                      'TLS 1.3 enforcement',
+                      'No cleartext traffic',
+                      'Certificate validation'
+                    ]
+                  },
+                  {
+                    category: 'Runtime Protection',
+                    features: [
+                      'Root/Jailbreak detection',
+                      'Anti-debugging measures',
+                      'Emulator detection',
+                      'Code integrity verification'
+                    ]
+                  },
+                  {
+                    category: 'UI Protection',
+                    features: [
+                      'Screenshot blocking (FLAG_SECURE)',
+                      'Screen recording prevention',
+                      'Overlay attack detection',
+                      'Tapjacking prevention'
+                    ]
+                  }
+                ].map((section, idx) => (
+                  <div key={idx} className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/10">
+                    <h4 className="text-white font-bold mb-3">{section.category}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {section.features.map((feature, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-gray-300">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* HIBP Tab */}
+        <TabsContent value="hibp" className="space-y-6 mt-6">
+          <HIBPChecker />
+        </TabsContent>
+
         {/* Live Protection Tab */}
         <TabsContent value="live-protection" className="space-y-6 mt-6">
           <LiveProtectionStatus />
@@ -729,83 +661,6 @@ function SecurityDashboard() {
               toast.info(`Viewing details for scan: ${scan.scan_id}`);
             }}
           />
-        </TabsContent>
-
-        {/* Scans Tab */}
-        <TabsContent value="scans" className="space-y-6 mt-6">
-          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-            <CardHeader>
-              <CardTitle className="text-white">Recent Security Scans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {scansLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto" />
-                </div>
-              ) : scans.length === 0 ? (
-                <div className="text-center py-12">
-                  <Shield className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                  <p className="text-white font-semibold text-lg">No scans yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Run your first security scan</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-700">
-                        <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Date</th>
-                        <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Type</th>
-                        <th className="text-left py-3 px-4 text-gray-400 text-sm font-semibold">Target</th>
-                        <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Critical</th>
-                        <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">High</th>
-                        <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Medium</th>
-                        <th className="text-center py-3 px-4 text-gray-400 text-sm font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scans.slice(0, 10).map((scan) => (
-                        <tr key={scan.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                          <td className="py-3 px-4 text-white text-sm">
-                            {format(new Date(scan.created_date), 'MMM d, HH:mm')}
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/50 text-xs">
-                              {scan.scan_type}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-gray-300 text-sm truncate max-w-xs">
-                            {scan.target}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`font-bold ${scan.findings_summary?.critical > 0 ? 'text-red-400' : 'text-gray-500'}`}>
-                              {scan.findings_summary?.critical || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`font-bold ${scan.findings_summary?.high > 0 ? 'text-orange-400' : 'text-gray-500'}`}>
-                              {scan.findings_summary?.high || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`font-bold ${scan.findings_summary?.medium > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
-                              {scan.findings_summary?.medium || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            {scan.pass_fail_status === 'pass' ? (
-                              <CheckCircle className="w-5 h-5 text-green-400 mx-auto" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-red-400 mx-auto" />
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>
