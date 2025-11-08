@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,16 +17,19 @@ export default function PasswordVault() {
   
   const queryClient = useQueryClient();
 
-  const { data: passwords = [], isLoading } = useQuery({
+  const { data: passwords = [], isLoading, refetch } = useQuery({
     queryKey: ['passwords'],
-    queryFn: () => base44.entities.Password.list('-created_date'),
-    initialData: [],
+    queryFn: async () => {
+      const result = await base44.entities.Password.list('-created_date');
+      return result || [];
+    },
   });
 
   const deletePasswordMutation = useMutation({
     mutationFn: (id) => base44.entities.Password.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passwords'] });
+      refetch();
     },
   });
 
