@@ -7,10 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
   Gift, Users, CheckCircle, Clock, XCircle, AlertTriangle, 
-  Copy, TrendingUp, Award, Sparkles
+  Copy, TrendingUp, Award, Sparkles, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
-import { createPageUrl } from "@/utils";
 
 import ReferralStats from "../components/referrals/ReferralStats.jsx";
 import ShareButtons from "../components/referrals/ShareButtons.jsx";
@@ -53,7 +52,6 @@ export default function Referrals() {
     base44.auth.me().then(async (userData) => {
       setUser(userData);
       
-      // Generate referral code if not exists
       if (!userData.referral_code) {
         const code = generateReferralCode(userData.email);
         await base44.auth.updateMe({ 
@@ -69,13 +67,12 @@ export default function Referrals() {
         setUser(prev => ({ ...prev, referral_code: code }));
       }
       
-      // Generate referral link - FIXED: Use proper hash routing
-      const appUrl = window.location.origin;
-      const referralPath = createPageUrl("ReferralLanding");
-      const link = `${appUrl}/#${referralPath}?ref=${userData.referral_code || ''}`;
+      // FIXED: Simple referral link that just opens the app with ref parameter
+      const appUrl = window.location.origin + window.location.pathname;
+      const link = `${appUrl}?ref=${userData.referral_code || ''}`;
       setReferralLink(link);
       
-      console.log('Generated referral link:', link);
+      console.log('✅ Generated referral link:', link);
       
     }).catch(() => {});
   }, []);
@@ -89,19 +86,18 @@ export default function Referrals() {
   const copyReferralCode = () => {
     if (user?.referral_code) {
       navigator.clipboard.writeText(user.referral_code);
-      toast.success('Referral code copied!');
+      toast.success('✅ Referral code copied!');
     }
   };
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
-    toast.success('Referral link copied to clipboard!');
+    toast.success('✅ Referral link copied to clipboard!');
   };
 
   const testReferralLink = () => {
-    // Open in new tab to test
     window.open(referralLink, '_blank');
-    toast.success('Opening referral link in new tab...');
+    toast.success('🚀 Opening referral link in new tab...');
   };
 
   const getStatusIcon = (status) => {
@@ -171,7 +167,7 @@ export default function Referrals() {
               </div>
               <h4 className="text-white font-semibold mb-1">Share Your Link</h4>
               <p className="text-sm text-gray-400">
-                Send your unique referral code to friends via email, SMS, or social media
+                Send your unique referral link to friends
               </p>
             </div>
             <div className="text-center">
@@ -180,7 +176,7 @@ export default function Referrals() {
               </div>
               <h4 className="text-white font-semibold mb-1">They Sign Up</h4>
               <p className="text-sm text-gray-400">
-                Your friend creates an account and starts their free trial
+                Friend clicks link and creates account
               </p>
             </div>
             <div className="text-center">
@@ -189,7 +185,7 @@ export default function Referrals() {
               </div>
               <h4 className="text-white font-semibold mb-1">You Both Win!</h4>
               <p className="text-sm text-gray-400">
-                You get 1 month premium automatically, they get 3 days free trial
+                You get 1 month premium, they get 3 days free
               </p>
             </div>
           </div>
@@ -200,20 +196,31 @@ export default function Referrals() {
 
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
-          <CardTitle className="text-white">Your Referral Code & Link</CardTitle>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Gift className="w-5 h-5 text-purple-400" />
+            Your Referral Code & Link
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Referral Code */}
           <div>
-            <label className="text-gray-400 text-sm mb-2 block">Referral Code</label>
+            <label className="text-gray-300 text-sm mb-2 block font-semibold">Referral Code</label>
             <div className="flex gap-3">
-              <Input
-                value={user.referral_code || 'Generating...'}
-                readOnly
-                className="bg-[#0f1419] border-cyan-500/20 text-white text-lg font-mono text-center"
-              />
+              <div className="flex-1 relative">
+                <Input
+                  value={user.referral_code || 'Generating...'}
+                  readOnly
+                  className="bg-[#0f1419] border-cyan-500/20 text-white text-xl font-mono text-center tracking-wider"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">
+                    Unique
+                  </Badge>
+                </div>
+              </div>
               <Button
                 onClick={copyReferralCode}
-                className="bg-cyan-500 hover:bg-cyan-600"
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
               >
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Code
@@ -221,33 +228,41 @@ export default function Referrals() {
             </div>
           </div>
 
+          {/* Referral Link */}
           <div>
-            <label className="text-gray-400 text-sm mb-2 block">Referral Link</label>
-            <div className="flex gap-3">
-              <div className="flex-1 p-3 bg-[#0f1419] border border-cyan-500/20 rounded-lg overflow-hidden">
-                <p className="text-cyan-400 text-sm break-all font-mono">{referralLink}</p>
+            <label className="text-gray-300 text-sm mb-2 block font-semibold">Shareable Link</label>
+            <div className="space-y-3">
+              <div className="p-4 bg-[#0f1419] border-2 border-cyan-500/30 rounded-lg">
+                <p className="text-cyan-400 text-sm break-all font-mono mb-3">{referralLink}</p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={copyReferralLink}
+                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </Button>
+                  <Button
+                    onClick={testReferralLink}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Test Link
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={copyReferralLink}
-                  className="bg-cyan-500 hover:bg-cyan-600"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-                <Button
-                  onClick={testReferralLink}
-                  variant="outline"
-                  className="border-purple-500/20 text-purple-400 hover:bg-purple-500/10"
-                >
-                  Test Link
-                </Button>
+              
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-green-400 text-xs">
+                  ✅ <strong>Link is ready!</strong> When friends click it, they'll see a welcome message and get 3 days free trial.
+                </p>
               </div>
             </div>
           </div>
 
+          {/* Share Buttons */}
           <div>
-            <label className="text-gray-400 text-sm mb-2 block">Share via</label>
+            <label className="text-gray-300 text-sm mb-2 block font-semibold">Quick Share</label>
             <ShareButtons 
               referralCode={user.referral_code} 
               referralLink={referralLink} 
