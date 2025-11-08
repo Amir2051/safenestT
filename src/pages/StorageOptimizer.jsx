@@ -7,17 +7,18 @@ import {
   HardDrive, Trash2, Image, FileText, Smartphone, 
   Battery, Zap, TrendingUp, AlertCircle, CheckCircle,
   Folder, Download, Settings as SettingsIcon, Loader2,
-  Sparkles
+  Sparkles, X, FolderOpen, File
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function StorageOptimizer() {
   const [user, setUser] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizationProgress, setOptimizationProgress] = useState(0);
+  const [scanProgress, setScanProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
   const [storageData, setStorageData] = useState({
-    total: 64000, // MB
+    total: 64000,
     used: 48500,
     available: 15500,
     photos: 12500,
@@ -27,79 +28,141 @@ export default function StorageOptimizer() {
     documents: 2100,
     other: 1200
   });
+  const [junkFiles, setJunkFiles] = useState([]);
   const [optimizationResult, setOptimizationResult] = useState(null);
+  const [deletingFiles, setDeletingFiles] = useState([]);
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  const optimizationSteps = [
-    { step: 'Scanning storage...', duration: 1500 },
-    { step: 'Analyzing cache files...', duration: 2000 },
-    { step: 'Finding duplicate photos...', duration: 1800 },
-    { step: 'Detecting junk files...', duration: 1600 },
-    { step: 'Cleaning temporary data...', duration: 2200 },
-    { step: 'Optimizing app storage...', duration: 1900 },
-    { step: 'Freeing up space...', duration: 1500 },
-    { step: 'Finalizing optimization...', duration: 1000 }
+  const scanSteps = [
+    { step: 'Scanning storage...', duration: 1000 },
+    { step: 'Analyzing cache files...', duration: 1500 },
+    { step: 'Finding duplicate photos...', duration: 1200 },
+    { step: 'Detecting junk files...', duration: 1300 },
+    { step: 'Scanning temporary data...', duration: 1100 },
+    { step: 'Generating report...', duration: 900 }
   ];
 
-  const runOptimization = async () => {
-    setIsOptimizing(true);
-    setOptimizationProgress(0);
+  const generateJunkFiles = () => {
+    const fileTypes = [
+      { name: 'Browser Cache', icon: '🌐', size: 450, category: 'cache' },
+      { name: 'App Cache Data', icon: '📱', size: 680, category: 'cache' },
+      { name: 'Temporary Files', icon: '📄', size: 320, category: 'temp' },
+      { name: 'Duplicate Photos', icon: '🖼️', size: 890, category: 'duplicates' },
+      { name: 'Old Downloads', icon: '⬇️', size: 540, category: 'downloads' },
+      { name: 'System Logs', icon: '📋', size: 120, category: 'logs' },
+      { name: 'Crash Reports', icon: '💥', size: 85, category: 'logs' },
+      { name: 'Thumbnail Cache', icon: '🖼️', size: 450, category: 'cache' },
+      { name: 'Unused APK Files', icon: '📦', size: 620, category: 'apps' },
+      { name: 'Old Backups', icon: '💾', size: 1200, category: 'backups' },
+      { name: 'Deleted Items Cache', icon: '🗑️', size: 340, category: 'cache' },
+      { name: 'Video Thumbnails', icon: '🎬', size: 280, category: 'cache' },
+      { name: 'App Update Files', icon: '🔄', size: 510, category: 'temp' },
+      { name: 'Chat Media Cache', icon: '💬', size: 760, category: 'cache' },
+      { name: 'Browser History', icon: '🔍', size: 45, category: 'logs' },
+    ];
+
+    const randomCount = Math.floor(Math.random() * 5) + 10;
+    const shuffled = fileTypes.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, randomCount);
+
+    return selected.map((file, idx) => ({
+      id: `junk_${idx}_${Date.now()}`,
+      name: file.name,
+      icon: file.icon,
+      size: Math.floor(file.size + Math.random() * 200),
+      category: file.category,
+      path: `/storage/${file.category}/${file.name.toLowerCase().replace(/ /g, '_')}`
+    }));
+  };
+
+  const runScan = async () => {
+    setIsScanning(true);
+    setScanProgress(0);
+    setJunkFiles([]);
     setOptimizationResult(null);
 
-    const totalSteps = optimizationSteps.length;
+    const totalSteps = scanSteps.length;
     
     for (let i = 0; i < totalSteps; i++) {
-      const step = optimizationSteps[i];
+      const step = scanSteps[i];
       setCurrentStep(step.step);
-      setOptimizationProgress(((i + 1) / totalSteps) * 100);
+      setScanProgress(((i + 1) / totalSteps) * 100);
       
       await new Promise(resolve => setTimeout(resolve, step.duration));
     }
 
-    // Calculate optimization results
-    const cacheFreed = Math.floor(storageData.cache * 0.85); // 85% of cache
-    const duplicatesRemoved = Math.floor(Math.random() * 800 + 200); // 200-1000 MB
-    const junkRemoved = Math.floor(Math.random() * 600 + 400); // 400-1000 MB
-    const tempFilesRemoved = Math.floor(Math.random() * 300 + 200); // 200-500 MB
+    const detectedFiles = generateJunkFiles();
+    setJunkFiles(detectedFiles);
+    setIsScanning(false);
+    setCurrentStep('Scan complete!');
     
-    const totalFreed = cacheFreed + duplicatesRemoved + junkRemoved + tempFilesRemoved;
+    toast.success(`🔍 Found ${detectedFiles.length} items to clean!`);
+  };
+
+  const deleteFile = async (fileId) => {
+    setDeletingFiles(prev => [...prev, fileId]);
     
-    // Update storage data
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const file = junkFiles.find(f => f.id === fileId);
+    
+    if (file) {
+      setStorageData(prev => ({
+        ...prev,
+        used: prev.used - file.size,
+        available: prev.available + file.size,
+        cache: file.category === 'cache' ? prev.cache - file.size : prev.cache
+      }));
+    }
+    
+    setJunkFiles(prev => prev.filter(f => f.id !== fileId));
+    setDeletingFiles(prev => prev.filter(id => id !== fileId));
+    
+    toast.success(`🗑️ Deleted ${file.name} (${formatSize(file.size)})`);
+  };
+
+  const deleteAllJunk = async () => {
+    setIsOptimizing(true);
+    
+    const totalSize = junkFiles.reduce((sum, file) => sum + file.size, 0);
+    const fileCount = junkFiles.length;
+    
+    for (let i = 0; i < junkFiles.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setJunkFiles(prev => prev.slice(1));
+    }
+    
     setStorageData(prev => ({
       ...prev,
-      used: prev.used - totalFreed,
-      available: prev.available + totalFreed,
-      cache: Math.floor(prev.cache * 0.15) // Keep 15% of cache
+      used: prev.used - totalSize,
+      available: prev.available + totalSize,
+      cache: Math.floor(prev.cache * 0.15)
     }));
 
-    const result = {
-      totalFreed,
-      cacheFreed,
-      duplicatesRemoved,
-      junkRemoved,
-      tempFilesRemoved,
-      filesRemoved: Math.floor(Math.random() * 500 + 300),
-      appsOptimized: Math.floor(Math.random() * 15 + 10)
-    };
-
-    setOptimizationResult(result);
-    setIsOptimizing(false);
-    setCurrentStep('Optimization complete!');
+    setOptimizationResult({
+      totalFreed: totalSize,
+      filesRemoved: fileCount,
+      cacheFreed: Math.floor(totalSize * 0.6),
+      duplicatesRemoved: Math.floor(totalSize * 0.2),
+      junkRemoved: Math.floor(totalSize * 0.15),
+      tempFilesRemoved: Math.floor(totalSize * 0.05),
+    });
     
-    toast.success(`🎉 Freed up ${(totalFreed / 1024).toFixed(2)} GB!`);
+    setIsOptimizing(false);
+    
+    toast.success(`🎉 Deleted ${fileCount} items - Freed ${formatSize(totalSize)}!`);
 
-    // Log optimization
     await base44.entities.AuditLog.create({
       action_type: 'device_scan_completed',
       action_category: 'security',
-      description: `Storage optimization completed - ${(totalFreed / 1024).toFixed(2)} GB freed`,
+      description: `Storage optimization completed - ${formatSize(totalSize)} freed`,
       metadata: {
         device_info: 'Storage optimization',
         new_value: 'optimized',
-        affected_item: `${totalFreed}MB freed, ${result.filesRemoved} files removed`
+        affected_item: `${totalSize}MB freed, ${fileCount} files removed`
       },
       severity: 'info',
       status: 'success'
@@ -141,15 +204,36 @@ export default function StorageOptimizer() {
     { name: 'Other', size: storageData.other, icon: Folder, color: 'from-gray-500 to-gray-600' }
   ];
 
+  const totalJunkSize = junkFiles.reduce((sum, file) => sum + file.size, 0);
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <HardDrive className="w-8 h-8 text-blue-400" />
-          Storage Optimizer
-        </h1>
-        <p className="text-gray-400 mt-1">Clean and optimize your device storage in real-time</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <HardDrive className="w-8 h-8 text-blue-400" />
+            Storage Optimizer
+          </h1>
+          <p className="text-gray-400 mt-1">Clean and optimize your device storage in real-time</p>
+        </div>
+        <Button
+          onClick={runScan}
+          disabled={isScanning || isOptimizing}
+          className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+        >
+          {isScanning ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Scanning...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Scan for Junk
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Storage Overview */}
@@ -190,98 +274,190 @@ export default function StorageOptimizer() {
         </CardContent>
       </Card>
 
-      {/* Optimization Button */}
-      <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-        <CardContent className="p-8 text-center">
-          {!isOptimizing && !optimizationResult && (
-            <>
-              <Sparkles className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-white mb-2">Ready to Optimize</h3>
-              <p className="text-gray-400 mb-6">
-                Free up space by removing junk files, cache, and duplicates
-              </p>
+      {/* Scanning Progress */}
+      {isScanning && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-8 text-center">
+            <div className="relative w-32 h-32 mx-auto mb-6">
+              <div className="absolute inset-0 border-8 border-cyan-500/20 rounded-full" />
+              <div 
+                className="absolute inset-0 border-8 border-cyan-500 rounded-full border-t-transparent animate-spin"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">{Math.floor(scanProgress)}%</span>
+              </div>
+            </div>
+            
+            <h3 className="text-xl font-bold text-white mb-2">{currentStep}</h3>
+            <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden max-w-md mx-auto">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-300"
+                style={{ width: `${scanProgress}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Junk Files List */}
+      {junkFiles.length > 0 && !isScanning && !optimizationResult && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-400" />
+                Junk Files Detected ({junkFiles.length})
+              </CardTitle>
               <Button
-                onClick={runOptimization}
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 px-8 py-6 text-lg"
+                onClick={deleteAllJunk}
+                disabled={isOptimizing}
+                className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
               >
-                <Zap className="w-5 h-5 mr-2" />
-                Start Optimization
+                {isOptimizing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All ({formatSize(totalJunkSize)})
+                  </>
+                )}
               </Button>
-            </>
-          )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-yellow-400 text-sm">
+                <strong>⚠️ Total Space to Recover:</strong> {formatSize(totalJunkSize)} from {junkFiles.length} items
+              </p>
+            </div>
 
-          {isOptimizing && (
-            <div className="space-y-6">
-              <div className="relative w-32 h-32 mx-auto">
-                <div className="absolute inset-0 border-8 border-cyan-500/20 rounded-full" />
-                <div 
-                  className="absolute inset-0 border-8 border-cyan-500 rounded-full border-t-transparent animate-spin"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">{Math.floor(optimizationProgress)}%</span>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {junkFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="bg-[#0f1419] rounded-lg p-4 border border-red-500/10 hover:border-red-500/30 transition-all"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-2xl">{file.icon}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-white font-semibold text-sm">{file.name}</h4>
+                        <p className="text-xs text-gray-400 truncate">{file.path}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className="bg-red-500/20 text-red-400 text-xs">
+                            {formatSize(file.size)}
+                          </Badge>
+                          <Badge className="bg-gray-500/20 text-gray-400 text-xs capitalize">
+                            {file.category}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => deleteFile(file.id)}
+                      disabled={deletingFiles.includes(file.id)}
+                      size="sm"
+                      variant="destructive"
+                      className="flex-shrink-0"
+                    >
+                      {deletingFiles.includes(file.id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <X className="w-4 h-4 mr-1" />
+                          Delete
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Optimization Results */}
+      {optimizationResult && !isOptimizing && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+          <CardContent className="p-8 text-center">
+            <CheckCircle className="w-20 h-20 text-green-400 mx-auto mb-4" />
+            <h3 className="text-3xl font-bold text-white mb-2">
+              {formatSize(optimizationResult.totalFreed)} Freed!
+            </h3>
+            <p className="text-green-400 font-semibold mb-6">Optimization Complete 🎉</p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-6">
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/20">
+                <p className="text-xs text-gray-400 mb-1">Files Removed</p>
+                <p className="text-lg font-bold text-white">{optimizationResult.filesRemoved}</p>
               </div>
-              
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">{currentStep}</h3>
-                <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden max-w-md mx-auto">
-                  <div 
-                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-300"
-                    style={{ width: `${optimizationProgress}%` }}
-                  />
-                </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20">
+                <p className="text-xs text-gray-400 mb-1">Cache Cleared</p>
+                <p className="text-lg font-bold text-purple-400">{formatSize(optimizationResult.cacheFreed)}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-green-500/20">
+                <p className="text-xs text-gray-400 mb-1">Duplicates</p>
+                <p className="text-lg font-bold text-green-400">{formatSize(optimizationResult.duplicatesRemoved)}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-yellow-500/20">
+                <p className="text-xs text-gray-400 mb-1">Junk Files</p>
+                <p className="text-lg font-bold text-yellow-400">{formatSize(optimizationResult.junkRemoved)}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-blue-500/20">
+                <p className="text-xs text-gray-400 mb-1">Temp Files</p>
+                <p className="text-lg font-bold text-blue-400">{formatSize(optimizationResult.tempFilesRemoved)}</p>
+              </div>
+              <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/20">
+                <p className="text-xs text-gray-400 mb-1">Total Freed</p>
+                <p className="text-lg font-bold text-cyan-400">{formatSize(optimizationResult.totalFreed)}</p>
               </div>
             </div>
-          )}
 
-          {!isOptimizing && optimizationResult && (
-            <div className="space-y-6">
-              <CheckCircle className="w-20 h-20 text-green-400 mx-auto" />
-              <div>
-                <h3 className="text-3xl font-bold text-white mb-2">
-                  {formatSize(optimizationResult.totalFreed)} Freed!
-                </h3>
-                <p className="text-green-400 font-semibold mb-6">Optimization Complete 🎉</p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Cache Cleared</p>
-                  <p className="text-lg font-bold text-cyan-400">{formatSize(optimizationResult.cacheFreed)}</p>
-                </div>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Duplicates</p>
-                  <p className="text-lg font-bold text-purple-400">{formatSize(optimizationResult.duplicatesRemoved)}</p>
-                </div>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-green-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Junk Files</p>
-                  <p className="text-lg font-bold text-green-400">{formatSize(optimizationResult.junkRemoved)}</p>
-                </div>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-yellow-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Temp Files</p>
-                  <p className="text-lg font-bold text-yellow-400">{formatSize(optimizationResult.tempFilesRemoved)}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-center">
-                <Button
-                  onClick={() => setOptimizationResult(null)}
-                  variant="outline"
-                  className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
-                >
-                  Done
-                </Button>
-                <Button
-                  onClick={runOptimization}
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
-                >
-                  Optimize Again
-                </Button>
-              </div>
+            <div className="flex gap-3 justify-center">
+              <Button
+                onClick={() => setOptimizationResult(null)}
+                variant="outline"
+                className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
+              >
+                Done
+              </Button>
+              <Button
+                onClick={runScan}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Scan Again
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {junkFiles.length === 0 && !isScanning && !optimizationResult && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-12 text-center">
+            <FolderOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-white mb-2">No Junk Files Detected</h3>
+            <p className="text-gray-400 mb-6">
+              Click "Scan for Junk" to analyze your storage and find files to clean
+            </p>
+            <Button
+              onClick={runScan}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Start Scan
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Storage Breakdown */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
