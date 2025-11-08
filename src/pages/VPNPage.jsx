@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Wifi, Shield, Globe, Lock, Zap, TrendingUp, 
-  MapPin, Activity, CheckCircle, AlertTriangle, Eye, Server, Clock, ArrowUpDown, Users, Signal, Gauge
+  MapPin, Activity, CheckCircle, AlertTriangle, Eye, Server, Clock, ArrowUpDown, Users, Signal, Gauge, Star, Award
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -100,7 +100,6 @@ export default function VPNPage() {
       rotationInterval
     });
 
-    // Clear any existing timers
     if (rotationTimerRef.current) {
       console.log('🧹 Clearing existing rotation timer');
       clearInterval(rotationTimerRef.current);
@@ -112,14 +111,11 @@ export default function VPNPage() {
       countdownTimerRef.current = null;
     }
 
-    // Only start if VPN is enabled AND auto-rotation is enabled
     if (user?.vpn_enabled && autoRotateEnabled) {
       console.log(`🚀 Starting auto-rotation: every ${rotationInterval} seconds`);
       
-      // Reset countdown
       setNextRotationIn(rotationInterval);
       
-      // Countdown timer - updates every second
       countdownTimerRef.current = setInterval(() => {
         setNextRotationIn(prev => {
           const next = prev - 1;
@@ -128,7 +124,6 @@ export default function VPNPage() {
         });
       }, 1000);
       
-      // Rotation timer - triggers server rotation
       rotationTimerRef.current = setInterval(() => {
         console.log('⏰ ROTATION TIMER FIRED!', new Date().toLocaleTimeString());
         rotateToRandomServer();
@@ -140,7 +135,6 @@ export default function VPNPage() {
       setNextRotationIn(rotationInterval);
     }
 
-    // Cleanup function
     return () => {
       console.log('🧹 Cleaning up rotation timers');
       if (rotationTimerRef.current) {
@@ -154,23 +148,108 @@ export default function VPNPage() {
     };
   }, [user?.vpn_enabled, autoRotateEnabled, rotationInterval]);
 
+  // Calculate server performance score (lower is better)
+  const calculateServerScore = (server) => {
+    const load = server.load || server.baseLoad;
+    const ping = server.ping || server.basePing;
+    
+    // Weighted score: load is more important than ping
+    // Lower score = better performance
+    const loadWeight = 0.7;
+    const pingWeight = 0.3;
+    
+    return (load * loadWeight) + (ping * pingWeight);
+  };
+
+  // Get best server based on load and ping
+  const getBestServer = () => {
+    const scoredServers = servers.map(server => ({
+      ...server,
+      score: calculateServerScore(server)
+    }));
+    
+    scoredServers.sort((a, b) => a.score - b.score);
+    
+    console.log('🎯 Best server selected:', scoredServers[0].name, 'Score:', scoredServers[0].score.toFixed(2));
+    return scoredServers[0];
+  };
+
+  // Get smart random server (avoid overloaded servers)
+  const getSmartRandomServer = () => {
+    // Filter out current server and critically overloaded servers (>85% load)
+    const availableServers = servers.filter(s => 
+      s.id !== selectedServer && 
+      (s.load || s.baseLoad) < 85
+    );
+    
+    if (availableServers.length === 0) {
+      console.log('⚠️ All servers overloaded, using any available server');
+      return servers.filter(s => s.id !== selectedServer)[0];
+    }
+    
+    // Prioritize servers with lower load
+    const scoredServers = availableServers.map(server => ({
+      ...server,
+      score: calculateServerScore(server)
+    }));
+    
+    scoredServers.sort((a, b) => a.score - b.score);
+    
+    // Select from top 50% performers randomly
+    const topHalf = scoredServers.slice(0, Math.ceil(scoredServers.length / 2));
+    const selected = topHalf[Math.floor(Math.random() * topHalf.length)];
+    
+    console.log('🎲 Smart random server:', selected.name, 'Load:', selected.load || selected.baseLoad);
+    return selected;
+  };
+
+  // Get server status based on performance
+  const getServerStatus = (server) => {
+    const load = server.load || server.baseLoad;
+    const ping = server.ping || server.basePing;
+    
+    if (load < 40 && ping < 50) {
+      return { label: '⭐ Excellent', color: 'bg-green-500/20 text-green-400 border-green-500/50', priority: 1 };
+    } else if (load < 60 && ping < 80) {
+      return { label: '✓ Optimal', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50', priority: 2 };
+    } else if (load < 75) {
+      return { label: '⚡ Moderate', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50', priority: 3 };
+    } else {
+      return { label: '⚠️ Busy', color: 'bg-red-500/20 text-red-400 border-red-500/50', priority: 4 };
+    }
+  };
+
   const updateVPNMutation = useMutation({
     mutationFn: async (enabled) => {
-      const server = servers.find(s => s.id === selectedServer);
+      let serverToConnect = servers.find(s => s.id === selectedServer);
+      
+      // Smart server selection when connecting without auto-rotation
+      if (enabled && !autoRotateEnabled) {
+        const bestServer = getBestServer();
+        setSelectedServer(bestServer.id);
+        serverToConnect = bestServer;
+        
+        toast.success(`🎯 Auto-selected best server: ${bestServer.name}`, { duration: 3000 });
+        console.log('✅ Intelligent server selection:', bestServer.name);
+      }
+      
       const result = await base44.auth.updateMe({ vpn_enabled: enabled });
       
       await base44.entities.AuditLog.create({
         action_type: enabled ? 'vpn_connected' : 'vpn_disconnected',
         action_category: 'vpn',
         description: enabled 
-          ? `VPN connected to ${server.name} with auto-rotation ${autoRotateEnabled ? 'enabled' : 'disabled'}`
+          ? `VPN connected to ${serverToConnect.name} (Auto-selected: ${!autoRotateEnabled}) with auto-rotation ${autoRotateEnabled ? 'enabled' : 'disabled'}`
           : 'VPN disconnected',
         metadata: {
-          server: server.location,
-          ip_address: enabled ? server.ip : null,
+          server: serverToConnect.location,
+          ip_address: enabled ? serverToConnect.ip : null,
           device_info: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
           auto_rotation: autoRotateEnabled ? 'enabled' : 'disabled',
-          rotation_interval: autoRotateEnabled ? `${rotationInterval}s` : 'N/A'
+          rotation_interval: autoRotateEnabled ? `${rotationInterval}s` : 'N/A',
+          server_load: enabled ? `${serverToConnect.load || serverToConnect.baseLoad}%` : null,
+          server_ping: enabled ? `${serverToConnect.ping || serverToConnect.basePing}ms` : null,
+          selection_method: enabled ? (autoRotateEnabled ? 'auto-rotation' : 'intelligent-load-balancing') : null
         },
         severity: 'info',
         status: 'success'
@@ -184,7 +263,7 @@ export default function VPNPage() {
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       
       if (updatedUser.vpn_enabled) {
-        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? `(Auto-rotating every ${rotationInterval}s)` : ''}`);
+        toast.success(`🛡️ VPN Connected ${autoRotateEnabled ? `(Auto-rotating every ${rotationInterval}s)` : '(Best server selected)'}`);
         setRotationCount(0);
       } else {
         toast.success('VPN disconnected');
@@ -217,15 +296,14 @@ export default function VPNPage() {
     
     setIsRotating(true);
     
-    const availableServers = servers.filter(s => s.id !== selectedServer);
-    const randomServer = availableServers[Math.floor(Math.random() * availableServers.length)];
     const oldServer = servers.find(s => s.id === selectedServer);
+    const newServer = getSmartRandomServer();
     
-    console.log(`🔄 Rotating: ${oldServer?.name} → ${randomServer.name}`);
+    console.log(`🔄 Smart rotation: ${oldServer?.name} (${oldServer?.load || oldServer?.baseLoad}%) → ${newServer.name} (${newServer.load || newServer.baseLoad}%)`);
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    setSelectedServer(randomServer.id);
+    setSelectedServer(newServer.id);
     setRotationCount(prev => {
       const newCount = prev + 1;
       console.log(`✅ Rotation #${newCount} complete`);
@@ -237,20 +315,23 @@ export default function VPNPage() {
     await base44.entities.AuditLog.create({
       action_type: 'vpn_server_changed',
       action_category: 'vpn',
-      description: `VPN auto-rotated from ${oldServer.name} to ${randomServer.name}`,
+      description: `VPN auto-rotated from ${oldServer.name} to ${newServer.name} (Smart selection)`,
       metadata: {
         previous_value: oldServer.location,
-        new_value: randomServer.location,
-        server: randomServer.location,
+        new_value: newServer.location,
+        server: newServer.location,
         rotation_type: 'automatic',
-        rotation_count: rotationCount + 1
+        rotation_count: rotationCount + 1,
+        server_load: `${newServer.load || newServer.baseLoad}%`,
+        server_ping: `${newServer.ping || newServer.basePing}ms`,
+        selection_reason: 'intelligent-load-balancing'
       },
       severity: 'info',
       status: 'success'
     });
     
     queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-    toast.success(`🔄 Rotated to ${randomServer.name}`, { duration: 2000 });
+    toast.success(`🔄 Rotated to ${newServer.name} (${newServer.load || newServer.baseLoad}% load)`, { duration: 2000 });
   };
 
   const changeServer = async (serverId) => {
@@ -288,7 +369,7 @@ export default function VPNPage() {
     localStorage.setItem('vpn_auto_rotate', newValue.toString());
     
     console.log(`🔄 Auto-rotation ${newValue ? 'ENABLED' : 'DISABLED'}`);
-    toast.success(newValue ? `🔄 Auto-rotation enabled - rotating every ${rotationInterval}s` : 'Auto-rotation disabled');
+    toast.success(newValue ? `🔄 Auto-rotation enabled - rotating every ${rotationInterval}s` : 'Auto-rotation disabled - will use intelligent server selection');
   };
 
   const updateRotationInterval = (seconds) => {
@@ -339,6 +420,14 @@ export default function VPNPage() {
 
   const isEnabled = user.vpn_enabled;
   const currentServer = servers.find(s => s.id === selectedServer);
+  const bestServer = getBestServer();
+
+  // Sort servers by performance for display
+  const sortedServers = [...servers].map(server => ({
+    ...server,
+    status: getServerStatus(server),
+    score: calculateServerScore(server)
+  })).sort((a, b) => a.status.priority - b.status.priority);
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -349,7 +438,7 @@ export default function VPNPage() {
             <Wifi className="w-8 h-8 text-cyan-400" />
             Auto-Rotating VPN Protection
           </h1>
-          <p className="text-gray-400 mt-1">Maximum anonymity with automatic server rotation • Free for all users 🎉</p>
+          <p className="text-gray-400 mt-1">Intelligent load balancing • Free for all users 🎉</p>
         </div>
 
         {/* Prominent Auto-Rotation Toggle */}
@@ -369,7 +458,7 @@ export default function VPNPage() {
                 <div>
                   <h3 className="text-white font-bold text-sm">Auto-Rotation</h3>
                   <p className="text-xs text-gray-400">
-                    {autoRotateEnabled ? `Every ${rotationInterval}s` : 'Disabled'}
+                    {autoRotateEnabled ? `Every ${rotationInterval}s` : 'Smart Selection'}
                   </p>
                 </div>
               </div>
@@ -383,65 +472,67 @@ export default function VPNPage() {
         </Card>
       </div>
 
-      {/* Status Banner */}
-      <Card className={`border-2 transition-all ${
-        autoRotateEnabled && isEnabled
-          ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/50'
-          : autoRotateEnabled
-          ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/50'
-          : 'bg-gradient-to-r from-gray-500/10 to-gray-600/10 border-gray-700'
-      }`}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
+      {/* Intelligent Selection Info Banner */}
+      {!autoRotateEnabled && (
+        <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              {autoRotateEnabled ? (
-                isEnabled ? (
-                  <>
-                    <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
-                      <ArrowUpDown className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white font-bold">🔄 Auto-Rotation Active</p>
-                      <p className="text-purple-300 text-sm">
-                        Rotating every {rotationInterval}s • Next rotation in {nextRotationIn}s
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
-                      <AlertTriangle className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white font-bold">⚠️ Auto-Rotation Enabled</p>
-                      <p className="text-yellow-300 text-sm">Connect VPN to start automatic rotation</p>
-                    </div>
-                  </>
-                )
-              ) : (
-                <>
-                  <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold">🔒 Manual Mode</p>
-                    <p className="text-gray-400 text-sm">Enable auto-rotation above for maximum anonymity</p>
-                  </div>
-                </>
-              )}
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
+                <Star className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold">🧠 Intelligent Server Selection Active</p>
+                <p className="text-cyan-300 text-sm">
+                  We'll automatically connect you to the best server based on load and ping • Current best: {bestServer.name} ({bestServer.baseLoad}% load, {bestServer.basePing}ms)
+                </p>
+              </div>
             </div>
-            {!autoRotateEnabled && (
-              <Button
-                onClick={toggleAutoRotation}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              >
-                <ArrowUpDown className="w-4 h-4 mr-2" />
-                Enable Auto-Rotation
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status Banner */}
+      {autoRotateEnabled && (
+        <Card className={`border-2 transition-all ${
+          autoRotateEnabled && isEnabled
+            ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/50'
+            : autoRotateEnabled
+            ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/50'
+            : 'bg-gradient-to-r from-gray-500/10 to-gray-600/10 border-gray-700'
+        }`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                {autoRotateEnabled ? (
+                  isEnabled ? (
+                    <>
+                      <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                        <ArrowUpDown className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold">🔄 Auto-Rotation Active</p>
+                        <p className="text-purple-300 text-sm">
+                          Smart rotation every {rotationInterval}s • Avoiding overloaded servers • Next in {nextRotationIn}s
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold">⚠️ Auto-Rotation Enabled</p>
+                        <p className="text-yellow-300 text-sm">Connect VPN to start intelligent automatic rotation</p>
+                      </div>
+                    </>
+                  )
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main VPN Control */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -466,6 +557,11 @@ export default function VPNPage() {
                       <ArrowUpDown className="w-4 h-4 text-white" />
                     </div>
                   )}
+                  {isEnabled && !autoRotateEnabled && (
+                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
                 
                 <h2 className={`text-3xl font-bold mb-2 ${isEnabled ? 'text-green-400' : 'text-gray-400'}`}>
@@ -477,15 +573,25 @@ export default function VPNPage() {
                     <p className="text-4xl mb-2">{currentServer.location.split(' ')[0]}</p>
                     <p className="text-xl text-white">{currentServer.name}</p>
                     <p className="text-sm text-gray-400">IP: {currentServer.ip}</p>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      <Badge className={getServerStatus(currentServer).color}>
+                        {getServerStatus(currentServer).label}
+                      </Badge>
+                      <Badge className="bg-gray-500/20 text-gray-400">
+                        {currentServer.load || currentServer.baseLoad}% load
+                      </Badge>
+                    </div>
                   </div>
                 )}
                 
                 <p className="text-gray-400 mb-6">
                   {isEnabled 
                     ? autoRotateEnabled 
-                      ? `🔄 Auto-rotating every ${rotationInterval}s • ${rotationCount} rotations completed`
-                      : 'Connected (manual mode - enable auto-rotation above)'
-                    : 'Your connection is not protected'
+                      ? `🔄 Smart rotation every ${rotationInterval}s • ${rotationCount} rotations`
+                      : '🎯 Optimal server selected • Manual mode'
+                    : autoRotateEnabled
+                    ? 'Connect to start smart auto-rotation'
+                    : 'Connect to use intelligent server selection'
                   }
                 </p>
 
@@ -506,7 +612,7 @@ export default function VPNPage() {
                     </>
                   ) : (
                     <>
-                      {isEnabled ? 'Disconnect VPN' : 'Connect VPN'}
+                      {isEnabled ? 'Disconnect VPN' : autoRotateEnabled ? 'Connect & Auto-Rotate' : 'Connect to Best Server'}
                       <Wifi className="w-5 h-5 ml-2" />
                     </>
                   )}
@@ -515,7 +621,6 @@ export default function VPNPage() {
 
               {isEnabled && (
                 <>
-                  {/* Next Rotation Countdown */}
                   {autoRotateEnabled && (
                     <div className="mb-6 p-5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-cyan-500/30 rounded-xl">
                       <div className="flex items-center justify-between mb-3">
@@ -532,7 +637,7 @@ export default function VPNPage() {
                         />
                       </div>
                       <p className="text-xs text-gray-400 mt-3 text-center">
-                        ⚡ Automatic rotation active • Total: {rotationCount} rotations
+                        ⚡ Intelligent rotation • Avoiding servers over 85% load • {rotationCount} rotations
                       </p>
                     </div>
                   )}
@@ -598,7 +703,10 @@ export default function VPNPage() {
 
               <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
                 <p className="text-cyan-400 text-sm">
-                  <strong>💡 Tip:</strong> Auto-rotation enhances anonymity by constantly changing your virtual location. Use the toggle at the top to enable/disable it anytime!
+                  <strong>💡 Smart Selection:</strong> {autoRotateEnabled 
+                    ? `Auto-rotation avoids servers over 85% load and prioritizes optimal performance.`
+                    : `When connecting, we automatically select the best server based on load and ping.`
+                  }
                 </p>
               </div>
             </CardContent>
@@ -634,6 +742,12 @@ export default function VPNPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-[#0f1419] rounded-lg">
+                <span className="text-sm text-gray-400">Selection</span>
+                <Badge className={autoRotateEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-cyan-500/20 text-cyan-400'}>
+                  {autoRotateEnabled ? 'Auto-Rotating' : 'Intelligent'}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-[#0f1419] rounded-lg">
                 <span className="text-sm text-gray-400">Protocol</span>
                 <span className="text-green-400 text-sm font-semibold">
                   {isEnabled ? 'OpenVPN' : 'N/A'}
@@ -644,12 +758,6 @@ export default function VPNPage() {
                 <span className="text-green-400 text-sm font-semibold">
                   {isEnabled ? 'AES-256' : 'N/A'}
                 </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-[#0f1419] rounded-lg">
-                <span className="text-sm text-gray-400">Auto-Rotation</span>
-                <Badge className={autoRotateEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}>
-                  {autoRotateEnabled ? 'Enabled' : 'Disabled'}
-                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -666,7 +774,8 @@ export default function VPNPage() {
                 { icon: Shield, text: 'Military-grade encryption', active: isEnabled },
                 { icon: Eye, text: 'No-logs policy', active: isEnabled },
                 { icon: Globe, text: 'Anonymous browsing', active: isEnabled },
-                { icon: ArrowUpDown, text: 'Auto-rotation active', active: isEnabled && autoRotateEnabled },
+                { icon: Star, text: 'Intelligent load balancing', active: true },
+                { icon: ArrowUpDown, text: 'Auto-rotation', active: isEnabled && autoRotateEnabled },
                 { icon: Lock, text: 'Kill switch protection', active: isEnabled }
               ].map((feature, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2">
@@ -674,7 +783,7 @@ export default function VPNPage() {
                   <span className={`text-sm ${feature.active ? 'text-gray-300' : 'text-gray-500'}`}>
                     {feature.text}
                   </span>
-                  {feature.text === 'Auto-rotation active' && feature.active && (
+                  {feature.text === 'Auto-rotation' && feature.active && (
                     <Badge className="ml-auto bg-purple-500/20 text-purple-400 text-xs animate-pulse">
                       Every {rotationInterval}s
                     </Badge>
@@ -698,107 +807,129 @@ export default function VPNPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+            <p className="text-cyan-400 text-sm">
+              <strong>🎯 Recommended Server:</strong> {bestServer.name} - {bestServer.location} 
+              <span className="text-gray-400"> • {bestServer.baseLoad}% load, {bestServer.basePing}ms ping</span>
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {servers.map((server) => (
-              <button
-                key={server.id}
-                onClick={() => changeServer(server.id)}
-                disabled={isEnabled}
-                className={`p-5 rounded-xl border-2 transition-all text-left ${
-                  selectedServer === server.id
-                    ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20'
-                    : 'border-gray-700 bg-[#0f1419] hover:border-gray-600'
-                } ${isEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                      {server.name}
-                      {selectedServer === server.id && isEnabled && (
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                      )}
-                    </h3>
-                    <p className="text-sm text-gray-400">{server.location}</p>
-                  </div>
-                  {selectedServer === server.id && (
-                    <CheckCircle className="w-6 h-6 text-cyan-400" />
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Signal className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Ping</span>
+            {sortedServers.map((server) => {
+              const isBest = server.id === bestServer.id;
+              const isOverloaded = (server.load || server.baseLoad) >= 85;
+              
+              return (
+                <button
+                  key={server.id}
+                  onClick={() => changeServer(server.id)}
+                  disabled={isEnabled}
+                  className={`p-5 rounded-xl border-2 transition-all text-left relative ${
+                    selectedServer === server.id
+                      ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20'
+                      : isBest && !isEnabled
+                      ? 'border-green-500/50 bg-green-500/5'
+                      : isOverloaded
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : 'border-gray-700 bg-[#0f1419] hover:border-gray-600'
+                  } ${isEnabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
+                >
+                  {/* Best Server Badge */}
+                  {isBest && !isEnabled && (
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                      <Star className="w-4 h-4 text-white" />
                     </div>
-                    <span className={`text-sm font-bold ${getPingColor(server.ping || server.basePing)}`}>
-                      {server.ping || server.basePing}ms
-                    </span>
+                  )}
+
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                        {server.name}
+                        {selectedServer === server.id && isEnabled && (
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        )}
+                      </h3>
+                      <p className="text-sm text-gray-400">{server.location}</p>
+                      {isBest && !isEnabled && (
+                        <p className="text-xs text-green-400 font-semibold mt-1">⭐ Best Performance</p>
+                      )}
+                    </div>
+                    {selectedServer === server.id && (
+                      <CheckCircle className="w-6 h-6 text-cyan-400" />
+                    )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Gauge className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-400">Load</span>
+                        <Signal className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Ping</span>
                       </div>
-                      <span className={`text-sm font-bold ${getLoadColor(server.load || server.baseLoad)}`}>
-                        {server.load || server.baseLoad}%
+                      <span className={`text-sm font-bold ${getPingColor(server.ping || server.basePing)}`}>
+                        {server.ping || server.basePing}ms
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r ${getLoadBgColor(server.load || server.baseLoad)} transition-all duration-500`}
-                        style={{ width: `${server.load || server.baseLoad}%` }}
-                      />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Gauge className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-400">Load</span>
+                        </div>
+                        <span className={`text-sm font-bold ${getLoadColor(server.load || server.baseLoad)}`}>
+                          {server.load || server.baseLoad}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${getLoadBgColor(server.load || server.baseLoad)} transition-all duration-500`}
+                          style={{ width: `${server.load || server.baseLoad}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Users</span>
+                      </div>
+                      <span className="text-sm font-bold text-purple-400">
+                        {(server.users || server.baseUsers).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Bandwidth</span>
+                      </div>
+                      <span className="text-sm font-bold text-green-400">
+                        {server.bandwidth || (Math.random() * 800 + 200).toFixed(1)} Mbps
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Uptime</span>
+                      </div>
+                      <span className="text-sm font-bold text-cyan-400">
+                        {server.uptime || (99.9 - Math.random() * 0.2).toFixed(1)}%
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Users</span>
-                    </div>
-                    <span className="text-sm font-bold text-purple-400">
-                      {(server.users || server.baseUsers).toLocaleString()}
-                    </span>
+                  <div className="mt-4 pt-3 border-t border-gray-700">
+                    <Badge className={`${server.status.color} border w-full justify-center`}>
+                      {server.status.label}
+                    </Badge>
+                    {isOverloaded && (
+                      <p className="text-xs text-red-400 text-center mt-2">⚠️ Skipped in auto-rotation</p>
+                    )}
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Bandwidth</span>
-                    </div>
-                    <span className="text-sm font-bold text-green-400">
-                      {server.bandwidth || (Math.random() * 800 + 200).toFixed(1)} Mbps
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Uptime</span>
-                    </div>
-                    <span className="text-sm font-bold text-cyan-400">
-                      {server.uptime || (99.9 - Math.random() * 0.2).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-700">
-                  <Badge className={
-                    (server.load || server.baseLoad) < 50 
-                      ? 'bg-green-500/20 text-green-400 border-green-500/50 w-full justify-center' 
-                      : (server.load || server.baseLoad) < 70
-                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 w-full justify-center'
-                      : 'bg-red-500/20 text-red-400 border-red-500/50 w-full justify-center'
-                  }>
-                    {(server.load || server.baseLoad) < 50 ? '✓ Optimal' : 
-                     (server.load || server.baseLoad) < 70 ? '⚡ Moderate' : '⚠️ Busy'}
-                  </Badge>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
           {isEnabled && (
             <p className="text-yellow-400 text-sm mt-4 text-center">
@@ -811,17 +942,17 @@ export default function VPNPage() {
       {/* Info Section */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
-          <CardTitle className="text-white">How Auto-Rotation Works</CardTitle>
+          <CardTitle className="text-white">Intelligent VPN Technology</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center p-6">
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-6 h-6 text-white" />
+                <Star className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-white font-semibold mb-2">Encrypted</h3>
+              <h3 className="text-white font-semibold mb-2">Smart Selection</h3>
               <p className="text-gray-400 text-sm">
-                Military-grade AES-256 encryption protects all your traffic
+                Automatically connects to the best server based on load and latency
               </p>
             </div>
 
@@ -829,9 +960,9 @@ export default function VPNPage() {
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <ArrowUpDown className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-white font-semibold mb-2">Auto-Rotating</h3>
+              <h3 className="text-white font-semibold mb-2">Smart Rotation</h3>
               <p className="text-gray-400 text-sm">
-                Toggle on/off anytime • Automatically switches servers every {rotationInterval} seconds
+                Avoids overloaded servers (85%+) and prioritizes optimal performance
               </p>
             </div>
 
@@ -841,17 +972,17 @@ export default function VPNPage() {
               </div>
               <h3 className="text-white font-semibold mb-2">Global Network</h3>
               <p className="text-gray-400 text-sm">
-                Access {servers.length} servers across multiple countries
+                {servers.length} servers • Real-time monitoring • Load balancing
               </p>
             </div>
 
             <div className="text-center p-6">
               <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Eye className="w-6 h-6 text-white" />
+                <Shield className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-white font-semibold mb-2">Free Forever</h3>
               <p className="text-gray-400 text-sm">
-                No subscription required - full VPN access for all users
+                No subscription required - full VPN access with intelligent routing
               </p>
             </div>
           </div>
