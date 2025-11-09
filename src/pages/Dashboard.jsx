@@ -51,7 +51,7 @@ export default function Dashboard() {
   // Add title protection query
   const { data: properties = [] } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.filter({ property_owner: user?.email }),
+    queryFn: () => base44.entities.Property.list('-created_date'), // Changed queryFn here
     enabled: !!user,
     initialData: [],
   });

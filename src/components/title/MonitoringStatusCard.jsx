@@ -1,3 +1,4 @@
+
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Activity, CheckCircle, AlertTriangle, Clock, RefreshCw, Loader2
+  Activity, CheckCircle, AlertTriangle, Clock, RefreshCw, Loader2, XCircle, Shield
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 
-export default function MonitoringStatusCard({ properties, isPremium }) {
+export default function MonitoringStatusCard({ properties }) { // isPremium prop removed
   const queryClient = useQueryClient();
 
   const { data: latestScans = [] } = useQuery({
@@ -108,22 +109,24 @@ export default function MonitoringStatusCard({ properties, isPremium }) {
   return (
     <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
       <CardHeader>
-        <CardTitle className="text-white flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-cyan-400" />
-            Monitoring Status
-          </span>
-          <Badge className={`${
-            engineStatus === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
-            engineStatus === 'scanning' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50 animate-pulse' :
-            engineStatus === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-            'bg-orange-500/20 text-orange-400 border-orange-500/50'
-          } border`}>
-            {statusIcon} {statusText}
+        <CardTitle className="text-white flex items-center gap-2">
+          <Activity className="w-5 h-5 text-cyan-400" />
+          Monitoring Engine
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border text-xs animate-pulse">
+            FREE DAILY SCANS
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Status Badge */}
+        <Badge className={`${
+            engineStatus === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+            engineStatus === 'scanning' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50 animate-pulse' :
+            engineStatus === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+            'bg-orange-500/20 text-orange-400 border-orange-500/50'
+          } border w-full justify-center`}>
+            {statusIcon} {statusText}
+        </Badge>
         {/* Last Scan Info */}
         {latestScan && (
           <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
@@ -160,6 +163,16 @@ export default function MonitoringStatusCard({ properties, isPremium }) {
           </div>
         )}
 
+        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+          <p className="text-xs text-cyan-300 flex items-center gap-2 mb-2">
+            <Shield className="w-4 h-4" />
+            <strong>100% Free Service:</strong>
+          </p>
+          <p className="text-xs text-gray-300">
+            Daily automated scans for all properties • Real-time alerts • AI threat detection • No credit card required
+          </p>
+        </div>
+
         {/* Next Scan Countdown */}
         <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -173,7 +186,7 @@ export default function MonitoringStatusCard({ properties, isPremium }) {
             {format(nextScanTime, 'MMM dd, HH:mm')} EST
           </p>
           <p className="text-xs text-purple-300 mt-2">
-            {isPremium ? '⚡ Daily scans (Premium)' : '📅 Weekly scans (Free)'}
+            ⚡ Daily scans for all users
           </p>
         </div>
 

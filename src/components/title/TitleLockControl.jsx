@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function TitleLockControl({ property, isPremium, user }) {
+export default function TitleLockControl({ property, user }) {
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [unlockCode, setUnlockCode] = useState('');
@@ -33,7 +34,7 @@ export default function TitleLockControl({ property, isPremium, user }) {
 
   const queryClient = useQueryClient();
   const isAdmin = user?.role === 'admin';
-  const hasFullAccess = isPremium || isAdmin;
+  const hasFullAccess = true; // Title Lock is FREE for everyone!
 
   const { data: locks = [] } = useQuery({
     queryKey: ['title-locks', property.id],
@@ -312,44 +313,8 @@ Return JSON with status.`,
   });
 
   if (!hasFullAccess) {
-    return (
-      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-              <Lock className="w-6 h-6 text-purple-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-white font-bold mb-1 flex items-center gap-2">
-                🔒 Title Lock (Premium Feature)
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4 text-purple-400" />
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-[#1a2332] border-purple-500/30 text-white max-w-sm">
-                      <p className="font-semibold mb-2">What is Title Lock?</p>
-                      <p className="text-sm text-gray-300 mb-2">
-                        Title Lock digitally protects your property by preventing unauthorized ownership changes, liens, or transfers without your explicit verification.
-                      </p>
-                      <p className="text-sm text-gray-300">
-                        Connected to NYC ACRIS public records for real-time validation and monitoring.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </h3>
-              <p className="text-sm text-purple-300">
-                Digitally lock your property to prevent unauthorized changes. Requires email verification to unlock.
-              </p>
-            </div>
-            <Button className="bg-gradient-to-r from-purple-500 to-pink-500">
-              Upgrade
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    // This should never show now since everyone has access
+    return null;
   }
 
   return (
@@ -366,6 +331,9 @@ Return JSON with status.`,
                 <Unlock className="w-5 h-5 text-gray-400" />
               )}
               Title Lock
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border text-xs">
+                FREE
+              </Badge>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
@@ -385,7 +353,7 @@ Return JSON with status.`,
                       <strong>NYC ACRIS Integration:</strong> We validate your lock against NYC public records in real-time.
                     </p>
                     <p className="text-sm text-cyan-400">
-                      Unlocking requires email OTP + reason verification.
+                      Unlocking requires email OTP + reason verification. 100% FREE for all users!
                     </p>
                   </TooltipContent>
                 </Tooltip>

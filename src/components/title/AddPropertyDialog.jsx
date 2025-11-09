@@ -10,7 +10,7 @@ import { Loader2, Upload, Plus, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium, isAdmin }) {
+export default function AddPropertyDialog({ open, onClose, isAdmin }) {
   const [formData, setFormData] = useState({
     address: '',
     city: 'New York',
@@ -44,16 +44,18 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
         setUploading(false);
       }
 
+      const currentUser = await base44.auth.me();
+      
       const property = await base44.entities.Property.create({
         ...propertyData,
-        property_owner: (await base44.auth.me()).email,
+        property_owner: currentUser.email,
         deed_file_url: deedFileUrl,
         verification_status: !!deedFileUrl,
         verification_method: deedFileUrl ? 'deed_upload' : 'pending',
         monitoring_enabled: true,
         last_checked: new Date().toISOString(),
-        is_premium: !canAddFree && isPremium,
-        scan_frequency: (isPremium || isAdmin) ? 'daily' : 'weekly'
+        is_premium: false, // Everything is free now!
+        scan_frequency: 'daily' // Everyone gets daily scans!
       });
 
       await base44.entities.AuditLog.create({
@@ -74,7 +76,7 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
-      toast.success('✅ Property added successfully! Monitoring started.');
+      toast.success('✅ Property added successfully! Daily monitoring started.');
       onClose();
       setFormData({
         address: '',
@@ -99,12 +101,6 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
 
     if (!formData.address || !formData.borough || !formData.borough_block_lot) {
       toast.error('Please fill in all required fields');
-      return;
-    }
-
-    // Admin bypass subscription check
-    if (!canAddFree && !isPremium && !isAdmin) {
-      toast.error('Upgrade to Premium to add more properties');
       return;
     }
 
@@ -142,6 +138,9 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
         <DialogHeader>
           <DialogTitle className="text-white text-xl flex items-center gap-2">
             Add Property for Monitoring
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/50 animate-pulse">
+              FREE
+            </Badge>
             {isAdmin && (
               <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
                 <Shield className="w-3 h-3 mr-1" />
@@ -301,10 +300,16 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
             </p>
           </div>
 
+          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <p className="text-sm text-green-300">
+              <strong>✨ 100% FREE:</strong> Unlimited properties, daily scans, Title Lock, and all features included at no cost!
+            </p>
+          </div>
+
           {isAdmin && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
               <p className="text-sm text-red-300">
-                <strong>👑 Admin Access:</strong> You have unlimited property slots and all premium features enabled.
+                <strong>👑 Admin Access:</strong> Full administrative privileges enabled.
               </p>
             </div>
           )}
@@ -332,7 +337,7 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
               ) : (
                 <>
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Property
+                  Add Property (FREE)
                 </>
               )}
             </Button>

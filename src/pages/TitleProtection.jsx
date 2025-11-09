@@ -27,7 +27,7 @@ export default function TitleProtection() {
 
   const { data: properties = [], isLoading: propertiesLoading } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.filter({ property_owner: user?.email }, '-created_date'),
+    queryFn: () => base44.entities.Property.list('-created_date'),
     enabled: !!user,
     initialData: [],
   });
@@ -43,13 +43,8 @@ export default function TitleProtection() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  // Admin has full access regardless of subscription
+  // Title Protection is FREE for everyone!
   const isAdmin = user?.role === 'admin';
-  const isPremium = isAdmin || user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
-  const isActive = isAdmin || user?.payment_status === 'active';
-  const freePropertyCount = properties.filter(p => !p.is_premium).length;
-  const canAddFreeProperty = freePropertyCount < 1;
-  const canAddProperty = isAdmin || canAddFreeProperty || (isPremium && isActive);
 
   const verifiedProperties = properties.filter(p => p.verification_status).length;
   const monitoredProperties = properties.filter(p => p.monitoring_enabled).length;
@@ -82,20 +77,41 @@ export default function TitleProtection() {
                 ADMIN
               </Badge>
             )}
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border animate-pulse">
+              100% FREE
+            </Badge>
           </h1>
           <p className="text-gray-400 mt-1">
-            AI-powered property monitoring with real-time threat detection
+            AI-powered property monitoring with real-time threat detection • Free for everyone!
           </p>
         </div>
         <Button
           onClick={() => setShowAddDialog(true)}
-          disabled={!canAddProperty}
           className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Property
         </Button>
       </div>
+
+      {/* Free Features Banner */}
+      <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center">
+              <Shield className="w-8 h-8 text-green-400 animate-pulse" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white mb-1">
+                🎉 Title Protection - Completely FREE!
+              </h3>
+              <p className="text-green-300 text-sm">
+                Unlimited properties • Daily scans • Title Lock • AI threat detection • No credit card required
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 2FA Requirement Banner - Not for admins */}
       {!user?.two_factor_enabled && properties.length > 0 && !isAdmin && (
@@ -114,27 +130,6 @@ export default function TitleProtection() {
               <Link to={createPageUrl("Settings")}>
                 <Button className="bg-orange-500 hover:bg-orange-600">
                   Enable 2FA
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Free Tier Limit - Not for admins */}
-      {!isPremium && freePropertyCount >= 1 && !isAdmin && (
-        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-white font-semibold">🎁 Upgrade to Premium for Real-Time Protection</p>
-                <p className="text-purple-300 text-sm">
-                  Get daily scans, Title Lock, AI threat detection, and unlimited properties
-                </p>
-              </div>
-              <Link to={createPageUrl("Upgrade")}>
-                <Button className="bg-gradient-to-r from-purple-500 to-pink-500">
-                  Upgrade Now
                 </Button>
               </Link>
             </div>
@@ -229,12 +224,12 @@ export default function TitleProtection() {
       {/* Monitoring Status + Property Detail Side by Side - Always show if properties exist */}
       {properties.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <MonitoringStatusCard properties={properties} isPremium={isPremium && isActive} />
+          <MonitoringStatusCard properties={properties} />
           
           {selectedProperty ? (
             <>
               <TitleSecurityScore property={selectedProperty} />
-              <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} user={user} />
+              <TitleLockControl property={selectedProperty} user={user} />
             </>
           ) : (
             <div className="lg:col-span-2">
@@ -258,14 +253,14 @@ export default function TitleProtection() {
           <div className="flex items-start gap-3">
             <Shield className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
             <div>
-              <h3 className="text-white font-bold mb-2">🤖 AI-Powered Title Protection</h3>
+              <h3 className="text-white font-bold mb-2">🤖 AI-Powered Title Protection - 100% FREE</h3>
               <ul className="space-y-1 text-sm text-cyan-300">
-                <li>• <strong>Real-Time Monitoring:</strong> {isPremium && isActive ? 'Daily' : 'Weekly'} scans of NYC ACRIS database</li>
+                <li>• <strong>Real-Time Monitoring:</strong> Daily scans of NYC ACRIS database for all users</li>
                 <li>• <strong>AI Threat Detection:</strong> Identifies irregular ownership changes and suspicious filings</li>
                 <li>• <strong>Title Security Score:</strong> 0-100 score updated after each scan</li>
-                <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes{!isPremium && !isAdmin && ' (Premium)'}</li>
+                <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes (FREE!)</li>
                 <li>• <strong>Auto-Lock Timer:</strong> Set lock duration from 7 days to permanent</li>
-                <li>• <strong>Referral Bonus:</strong> Lock + refer = +1 month premium FREE!</li>
+                <li>• <strong>Unlimited Properties:</strong> Add as many properties as you need</li>
                 <li>• <strong>Legal Support:</strong> Auto-generated reports with attorney contacts</li>
                 <li>• <strong>Instant Alerts:</strong> Email + push notifications for any suspicious activity</li>
               </ul>
@@ -304,7 +299,7 @@ export default function TitleProtection() {
               <Home className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-white font-semibold text-lg">No Properties Added Yet</p>
               <p className="text-gray-400 text-sm mt-1 mb-6">
-                Start protecting your property with AI-powered monitoring
+                Start protecting your property with AI-powered monitoring - completely FREE!
               </p>
               <Button
                 onClick={() => setShowAddDialog(true)}
@@ -343,6 +338,9 @@ export default function TitleProtection() {
             <p className="text-sm text-gray-400">
               Machine learning identifies suspicious patterns and ownership irregularities
             </p>
+            <Badge className="mt-3 bg-green-500/20 text-green-400 border-green-500/50 border">
+              FREE
+            </Badge>
           </CardContent>
         </Card>
 
@@ -355,6 +353,9 @@ export default function TitleProtection() {
             <p className="text-sm text-gray-400">
               Digitally lock your property with auto-expiry options from 7 days to permanent
             </p>
+            <Badge className="mt-3 bg-green-500/20 text-green-400 border-green-500/50 border">
+              FREE
+            </Badge>
           </CardContent>
         </Card>
 
@@ -367,6 +368,9 @@ export default function TitleProtection() {
             <p className="text-sm text-gray-400">
               Auto-generated reports with verified attorney contacts
             </p>
+            <Badge className="mt-3 bg-green-500/20 text-green-400 border-green-500/50 border">
+              FREE
+            </Badge>
           </CardContent>
         </Card>
       </div>
@@ -375,8 +379,6 @@ export default function TitleProtection() {
       <AddPropertyDialog
         open={showAddDialog}
         onClose={() => setShowAddDialog(false)}
-        canAddFree={canAddFreeProperty}
-        isPremium={isPremium && isActive}
         isAdmin={isAdmin}
       />
     </div>
