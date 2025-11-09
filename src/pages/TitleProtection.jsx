@@ -229,7 +229,7 @@ export default function TitleProtection() {
           {selectedProperty && (
             <>
               <TitleSecurityScore property={selectedProperty} />
-              <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} />
+              <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} user={user} />
             </>
           )}
         </div>
@@ -247,6 +247,8 @@ export default function TitleProtection() {
                 <li>• <strong>AI Threat Detection:</strong> Identifies irregular ownership changes and suspicious filings</li>
                 <li>• <strong>Title Security Score:</strong> 0-100 score updated after each scan</li>
                 <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes (Premium)</li>
+                <li>• <strong>Auto-Lock Timer:</strong> Set lock duration from 7 days to permanent</li>
+                <li>• <strong>Referral Bonus:</strong> Lock + refer = +1 month premium FREE!</li>
                 <li>• <strong>Legal Support:</strong> Auto-generated reports with attorney contacts</li>
                 <li>• <strong>Instant Alerts:</strong> Email + push notifications for any suspicious activity</li>
               </ul>
@@ -326,9 +328,9 @@ export default function TitleProtection() {
             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Lock className="w-6 h-6 text-green-400" />
             </div>
-            <h3 className="text-white font-bold mb-2">Title Lock</h3>
+            <h3 className="text-white font-bold mb-2">Title Lock with Timer</h3>
             <p className="text-sm text-gray-400">
-              Digitally lock your property with email OTP verification (Premium)
+              Digitally lock your property with auto-expiry options from 7 days to permanent
             </p>
           </CardContent>
         </Card>
