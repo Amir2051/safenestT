@@ -19,6 +19,7 @@ import SecurityDashboard from './pages/SecurityDashboard';
 import CreditCardMonitor from './pages/CreditCardMonitor';
 import ReferralLanding from './pages/ReferralLanding';
 import AdminReferrals from './pages/AdminReferrals';
+import VPNAnalytics from './pages/VPNAnalytics';
 import Layout from './Layout.jsx';
 
 
@@ -44,6 +45,7 @@ export const PAGES = {
     "CreditCardMonitor": CreditCardMonitor,
     "ReferralLanding": ReferralLanding,
     "AdminReferrals": AdminReferrals,
+    "VPNAnalytics": VPNAnalytics,
 }
 
 export const pagesConfig = {

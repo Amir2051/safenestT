@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -44,6 +44,11 @@ const navigationItems = [
     title: "VPN Protection",
     url: createPageUrl("VPNPage"),
     icon: Wifi,
+  },
+  {
+    title: "VPN Analytics",
+    url: createPageUrl("VPNAnalytics"),
+    icon: BarChart3,
   },
   {
     title: "Device Care",
