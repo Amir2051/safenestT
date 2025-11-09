@@ -17,6 +17,7 @@ import AddPropertyDialog from "../components/title/AddPropertyDialog.jsx";
 import PropertyCard from "../components/title/PropertyCard.jsx";
 import TitleSecurityScore from "../components/title/TitleSecurityScore.jsx";
 import TitleLockControl from "../components/title/TitleLockControl.jsx";
+import MonitoringStatusCard from "../components/title/MonitoringStatusCard.jsx";
 
 export default function TitleProtection() {
   const [user, setUser] = useState(null);
@@ -220,11 +221,17 @@ export default function TitleProtection() {
         </Card>
       )}
 
-      {/* Property Detail View */}
-      {selectedProperty && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TitleSecurityScore property={selectedProperty} />
-          <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} />
+      {/* Monitoring Status + Property Detail Side by Side */}
+      {properties.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <MonitoringStatusCard properties={properties} isPremium={isPremium && isActive} />
+          
+          {selectedProperty && (
+            <>
+              <TitleSecurityScore property={selectedProperty} />
+              <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} />
+            </>
+          )}
         </div>
       )}
 

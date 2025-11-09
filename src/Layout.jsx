@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -39,7 +39,7 @@ const navigationItems = [
     title: "Title Protection",
     url: createPageUrl("TitleProtection"),
     icon: Home,
-    badge: "NEW",
+    badge: "AI",
   },
   {
     title: "Credit Cards",
@@ -118,6 +118,16 @@ const navigationItems = [
   },
 ];
 
+const adminNavigationItems = [
+  {
+    title: "Monitoring Engine",
+    url: createPageUrl("AdminMonitoringDashboard"),
+    icon: Server,
+    badge: "ADMIN",
+    adminOnly: true
+  }
+];
+
 function LayoutContent({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,6 +154,10 @@ function LayoutContent({ children, currentPageName }) {
 
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
+
+  const allNavigationItems = user?.is_admin
+    ? [...navigationItems, ...adminNavigationItems]
+    : navigationItems;
 
   return (
     <>
@@ -233,7 +247,7 @@ function LayoutContent({ children, currentPageName }) {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navigationItems.map((item) => {
+                  {allNavigationItems.map((item) => {
                     const isActive = location.pathname === item.url;
                     return (
                       <SidebarMenuItem key={item.title}>
@@ -257,6 +271,8 @@ function LayoutContent({ children, currentPageName }) {
                                 ? 'text-white' 
                                 : item.highlight 
                                 ? 'text-green-400' 
+                                : item.adminOnly 
+                                ? 'text-red-400' // Example for admin-only icon color
                                 : 'text-gray-300'
                             }`} />
                             <span className="font-semibold text-[15px] flex-1">{item.title}</span>
@@ -264,6 +280,10 @@ function LayoutContent({ children, currentPageName }) {
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                 item.highlight 
                                   ? 'bg-green-500/20 text-green-400 border border-green-500/50 owasp-highlight' 
+                                  : item.adminOnly 
+                                  ? 'bg-red-500/20 text-red-400 border border-red-500/50' // Example for admin-only badge
+                                  : item.badge === "AI" 
+                                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' // Specific style for AI badge
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}

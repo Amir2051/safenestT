@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp,
-  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck, Gift, Users
+  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck, Gift, Users, Home
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -41,10 +41,24 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  // Add referrals query
   const { data: referrals = [] } = useQuery({
     queryKey: ['referrals'],
     queryFn: () => base44.entities.Referral.list('-created_date'),
+    enabled: !!user,
+    initialData: [],
+  });
+
+  // Add title protection query
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties'],
+    queryFn: () => base44.entities.Property.filter({ property_owner: user?.email }),
+    enabled: !!user,
+    initialData: [],
+  });
+
+  const { data: titleAlerts = [] } = useQuery({
+    queryKey: ['title-alerts'],
+    queryFn: () => base44.entities.TitleAlert.filter({ property_owner: user?.email, status: 'new' }),
     enabled: !!user,
     initialData: [],
   });
@@ -232,6 +246,10 @@ export default function Dashboard() {
   const pendingReferrals = myReferrals.filter(r => r.status === 'pending').length;
   const bonusMonthsEarned = user?.referral_stats?.bonus_months_earned || 0;
 
+  // Title protection metrics
+  const criticalTitleAlerts = titleAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
+  const atRiskProperties = properties.filter(p => (p.title_security_score || 100) < 70).length;
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
@@ -298,6 +316,38 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Title Protection Alert */}
+      {properties.length > 0 && (criticalTitleAlerts > 0 || atRiskProperties > 0) && (
+        <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                  <Home className="w-6 h-6 text-orange-400 animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">
+                    🏠 Title Protection: {criticalTitleAlerts > 0 
+                      ? `${criticalTitleAlerts} Critical Alert${criticalTitleAlerts > 1 ? 's' : ''}`
+                      : `${atRiskProperties} Propert${atRiskProperties > 1 ? 'ies' : 'y'} At Risk`}
+                  </p>
+                  <p className="text-orange-300 text-sm">
+                    {criticalTitleAlerts > 0 
+                      ? 'Suspicious property filings detected'
+                      : 'Low Title Security Score - review recommended'}
+                  </p>
+                </div>
+              </div>
+              <Link to={createPageUrl(criticalTitleAlerts > 0 ? "ViewAlerts" : "TitleProtection")}>
+                <Button className="bg-orange-500 hover:bg-orange-600">
+                  {criticalTitleAlerts > 0 ? 'View Alerts' : 'Review Properties'}
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Premium Welcome */}
       {isPremium && isActive && new URLSearchParams(window.location.search).get('upgraded') === 'true' && (

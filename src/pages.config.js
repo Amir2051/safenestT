@@ -22,6 +22,7 @@ import AdminReferrals from './pages/AdminReferrals';
 import VPNAnalytics from './pages/VPNAnalytics';
 import TitleProtection from './pages/TitleProtection';
 import ViewAlerts from './pages/ViewAlerts';
+import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
 import Layout from './Layout.jsx';
 
 
@@ -50,6 +51,7 @@ export const PAGES = {
     "VPNAnalytics": VPNAnalytics,
     "TitleProtection": TitleProtection,
     "ViewAlerts": ViewAlerts,
+    "AdminMonitoringDashboard": AdminMonitoringDashboard,
 }
 
 export const pagesConfig = {
