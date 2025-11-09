@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -40,6 +40,13 @@ const navigationItems = [
     url: createPageUrl("TitleProtection"),
     icon: Home,
     badge: "AI",
+  },
+  {
+    title: "Legal Support",
+    url: createPageUrl("LegalSupport"),
+    icon: Scale,
+    badge: "NEW",
+    highlight: true
   },
   {
     title: "Credit Cards",
@@ -284,6 +291,8 @@ function LayoutContent({ children, currentPageName }) {
                                   ? 'bg-red-500/20 text-red-400 border border-red-500/50' // Example for admin-only badge
                                   : item.badge === "AI" 
                                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' // Specific style for AI badge
+                                  : item.badge === "NEW"
+                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}

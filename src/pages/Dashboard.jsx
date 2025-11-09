@@ -58,7 +58,7 @@ export default function Dashboard() {
 
   const { data: titleAlerts = [] } = useQuery({
     queryKey: ['title-alerts'],
-    queryFn: () => base44.entities.TitleAlert.filter({ property_owner: user?.email, status: 'new' }),
+    queryFn: () => base44.entities.TitleAlert.list('-alert_date', 10),
     enabled: !!user,
     initialData: [],
   });

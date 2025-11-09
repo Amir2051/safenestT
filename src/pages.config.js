@@ -23,6 +23,7 @@ import VPNAnalytics from './pages/VPNAnalytics';
 import TitleProtection from './pages/TitleProtection';
 import ViewAlerts from './pages/ViewAlerts';
 import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
+import LegalSupport from './pages/LegalSupport';
 import Layout from './Layout.jsx';
 
 
@@ -52,6 +53,7 @@ export const PAGES = {
     "TitleProtection": TitleProtection,
     "ViewAlerts": ViewAlerts,
     "AdminMonitoringDashboard": AdminMonitoringDashboard,
+    "LegalSupport": LegalSupport,
 }
 
 export const pagesConfig = {
