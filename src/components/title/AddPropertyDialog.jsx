@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tantml:react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload, Plus } from "lucide-react";
+import { Loader2, Upload, Plus, Shield } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium }) {
+export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium, isAdmin }) {
   const [formData, setFormData] = useState({
     address: '',
     city: 'New York',
@@ -51,11 +52,12 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
         verification_method: deedFileUrl ? 'deed_upload' : 'pending',
         monitoring_enabled: true,
         last_checked: new Date().toISOString(),
-        is_premium: !canAddFree && isPremium
+        is_premium: !canAddFree && isPremium,
+        scan_frequency: (isPremium || isAdmin) ? 'daily' : 'weekly'
       });
 
       await base44.entities.AuditLog.create({
-        action_type: 'property_added',
+        action_type: 'settings_updated',
         action_category: 'monitoring',
         description: `Property added for title protection monitoring: ${propertyData.address}`,
         metadata: {
@@ -100,7 +102,8 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
       return;
     }
 
-    if (!canAddFree && !isPremium) {
+    // Admin bypass subscription check
+    if (!canAddFree && !isPremium && !isAdmin) {
       toast.error('Upgrade to Premium to add more properties');
       return;
     }
@@ -137,7 +140,15 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white text-xl">Add Property for Monitoring</DialogTitle>
+          <DialogTitle className="text-white text-xl flex items-center gap-2">
+            Add Property for Monitoring
+            {isAdmin && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
+                <Shield className="w-3 h-3 mr-1" />
+                ADMIN
+              </Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -289,6 +300,14 @@ export default function AddPropertyDialog({ open, onClose, canAddFree, isPremium
               Only you can access it. We use your BBL to monitor NYC ACRIS for any suspicious filings.
             </p>
           </div>
+
+          {isAdmin && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-300">
+                <strong>👑 Admin Access:</strong> You have unlimited property slots and all premium features enabled.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3">

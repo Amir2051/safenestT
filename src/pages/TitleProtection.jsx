@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,11 +43,13 @@ export default function TitleProtection() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
-  const isActive = user?.payment_status === 'active';
+  // Admin has full access regardless of subscription
+  const isAdmin = user?.role === 'admin';
+  const isPremium = isAdmin || user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
+  const isActive = isAdmin || user?.payment_status === 'active';
   const freePropertyCount = properties.filter(p => !p.is_premium).length;
   const canAddFreeProperty = freePropertyCount < 1;
-  const canAddProperty = canAddFreeProperty || (isPremium && isActive);
+  const canAddProperty = isAdmin || canAddFreeProperty || (isPremium && isActive);
 
   const verifiedProperties = properties.filter(p => p.verification_status).length;
   const monitoredProperties = properties.filter(p => p.monitoring_enabled).length;
@@ -56,7 +57,6 @@ export default function TitleProtection() {
   const newAlerts = alerts.filter(a => a.status === 'new').length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
   
-  // Calculate average security score
   const avgScore = properties.length > 0
     ? Math.round(properties.reduce((sum, p) => sum + (p.title_security_score || 100), 0) / properties.length)
     : 100;
@@ -77,6 +77,11 @@ export default function TitleProtection() {
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Home className="w-8 h-8 text-cyan-400" />
             Title Protection
+            {isAdmin && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/50 border">
+                ADMIN
+              </Badge>
+            )}
           </h1>
           <p className="text-gray-400 mt-1">
             AI-powered property monitoring with real-time threat detection
@@ -92,8 +97,8 @@ export default function TitleProtection() {
         </Button>
       </div>
 
-      {/* 2FA Requirement Banner */}
-      {!user?.two_factor_enabled && properties.length > 0 && (
+      {/* 2FA Requirement Banner - Not for admins */}
+      {!user?.two_factor_enabled && properties.length > 0 && !isAdmin && (
         <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30">
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
@@ -116,8 +121,8 @@ export default function TitleProtection() {
         </Card>
       )}
 
-      {/* Free Tier Limit */}
-      {!isPremium && freePropertyCount >= 1 && (
+      {/* Free Tier Limit - Not for admins */}
+      {!isPremium && freePropertyCount >= 1 && !isAdmin && (
         <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
@@ -221,16 +226,28 @@ export default function TitleProtection() {
         </Card>
       )}
 
-      {/* Monitoring Status + Property Detail Side by Side */}
+      {/* Monitoring Status + Property Detail Side by Side - Always show if properties exist */}
       {properties.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <MonitoringStatusCard properties={properties} isPremium={isPremium && isActive} />
           
-          {selectedProperty && (
+          {selectedProperty ? (
             <>
               <TitleSecurityScore property={selectedProperty} />
               <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} user={user} />
             </>
+          ) : (
+            <div className="lg:col-span-2">
+              <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+                <CardContent className="p-12 text-center">
+                  <Lock className="w-16 h-16 text-cyan-400 mx-auto mb-4 opacity-50" />
+                  <p className="text-white font-semibold text-lg">Select a Property</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Click on any property card below to view security score and Title Lock controls
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       )}
@@ -246,7 +263,7 @@ export default function TitleProtection() {
                 <li>• <strong>Real-Time Monitoring:</strong> {isPremium && isActive ? 'Daily' : 'Weekly'} scans of NYC ACRIS database</li>
                 <li>• <strong>AI Threat Detection:</strong> Identifies irregular ownership changes and suspicious filings</li>
                 <li>• <strong>Title Security Score:</strong> 0-100 score updated after each scan</li>
-                <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes (Premium)</li>
+                <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes{!isPremium && !isAdmin && ' (Premium)'}</li>
                 <li>• <strong>Auto-Lock Timer:</strong> Set lock duration from 7 days to permanent</li>
                 <li>• <strong>Referral Bonus:</strong> Lock + refer = +1 month premium FREE!</li>
                 <li>• <strong>Legal Support:</strong> Auto-generated reports with attorney contacts</li>
@@ -300,7 +317,13 @@ export default function TitleProtection() {
           ) : (
             <div className="space-y-4">
               {properties.map((property) => (
-                <div key={property.id} onClick={() => setSelectedProperty(property)} className="cursor-pointer">
+                <div 
+                  key={property.id} 
+                  onClick={() => setSelectedProperty(property)} 
+                  className={`cursor-pointer transition-all ${
+                    selectedProperty?.id === property.id ? 'ring-2 ring-cyan-500/50 rounded-lg' : ''
+                  }`}
+                >
                   <PropertyCard property={property} alerts={alerts} />
                 </div>
               ))}
@@ -311,7 +334,7 @@ export default function TitleProtection() {
 
       {/* Features Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Shield className="w-6 h-6 text-cyan-400" />
@@ -323,7 +346,7 @@ export default function TitleProtection() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20 hover:border-green-500/40 transition-all">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Lock className="w-6 h-6 text-green-400" />
@@ -335,7 +358,7 @@ export default function TitleProtection() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20 hover:border-purple-500/40 transition-all">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <FileText className="w-6 h-6 text-purple-400" />
@@ -354,6 +377,7 @@ export default function TitleProtection() {
         onClose={() => setShowAddDialog(false)}
         canAddFree={canAddFreeProperty}
         isPremium={isPremium && isActive}
+        isAdmin={isAdmin}
       />
     </div>
   );
