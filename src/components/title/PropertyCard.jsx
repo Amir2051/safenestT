@@ -2,7 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  Home, CheckCircle, Clock, AlertTriangle, Eye, MapPin, FileText
+  Home, CheckCircle, Clock, AlertTriangle, Eye, MapPin, FileText, Lock, Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -12,6 +12,14 @@ export default function PropertyCard({ property, alerts }) {
   const propertyAlerts = alerts.filter(a => a.property_id === property.id);
   const newAlerts = propertyAlerts.filter(a => a.status === 'new').length;
   const criticalAlerts = propertyAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
+  
+  const score = property.title_security_score || 100;
+  const getScoreColor = (score) => {
+    if (score >= 90) return 'text-green-400';
+    if (score >= 70) return 'text-cyan-400';
+    if (score >= 50) return 'text-yellow-400';
+    return 'text-red-400';
+  };
 
   return (
     <div className={`bg-[#0f1419] rounded-lg p-6 border-2 ${
@@ -51,9 +59,43 @@ export default function PropertyCard({ property, alerts }) {
               {property.monitoring_enabled && (
                 <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border">
                   <Eye className="w-3 h-3 mr-1" />
-                  Monitored
+                  {property.scan_frequency === 'daily' ? 'Daily Scan' : 'Weekly Scan'}
                 </Badge>
               )}
+              {property.is_locked && (
+                <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border animate-pulse">
+                  <Lock className="w-3 h-3 mr-1" />
+                  Locked
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Security Score */}
+          <div className="mb-4 p-4 bg-[#1a2332] rounded-lg border border-cyan-500/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="w-8 h-8 text-cyan-400" />
+                <div>
+                  <p className="text-xs text-gray-400">Title Security Score</p>
+                  <p className={`text-3xl font-bold ${getScoreColor(score)}`}>{score}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge className={`${
+                  score >= 90 ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+                  score >= 70 ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' :
+                  score >= 50 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' :
+                  'bg-red-500/20 text-red-400 border-red-500/50'
+                } border text-sm px-3 py-1`}>
+                  {score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'At Risk'}
+                </Badge>
+                {property.score_last_updated && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Updated {format(new Date(property.score_last_updated), 'MMM dd')}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

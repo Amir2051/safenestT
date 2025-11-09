@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,10 +15,13 @@ import { toast } from "sonner";
 
 import AddPropertyDialog from "../components/title/AddPropertyDialog.jsx";
 import PropertyCard from "../components/title/PropertyCard.jsx";
+import TitleSecurityScore from "../components/title/TitleSecurityScore.jsx";
+import TitleLockControl from "../components/title/TitleLockControl.jsx";
 
 export default function TitleProtection() {
   const [user, setUser] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -47,8 +51,14 @@ export default function TitleProtection() {
 
   const verifiedProperties = properties.filter(p => p.verification_status).length;
   const monitoredProperties = properties.filter(p => p.monitoring_enabled).length;
+  const lockedProperties = properties.filter(p => p.is_locked).length;
   const newAlerts = alerts.filter(a => a.status === 'new').length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
+  
+  // Calculate average security score
+  const avgScore = properties.length > 0
+    ? Math.round(properties.reduce((sum, p) => sum + (p.title_security_score || 100), 0) / properties.length)
+    : 100;
 
   if (!user) {
     return (
@@ -68,7 +78,7 @@ export default function TitleProtection() {
             Title Protection
           </h1>
           <p className="text-gray-400 mt-1">
-            Monitor your property for suspicious filings and protect against title fraud
+            AI-powered property monitoring with real-time threat detection
           </p>
         </div>
         <Button
@@ -111,9 +121,9 @@ export default function TitleProtection() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-white font-semibold">📌 Free Plan: 1 Property Limit Reached</p>
+                <p className="text-white font-semibold">🎁 Upgrade to Premium for Real-Time Protection</p>
                 <p className="text-purple-300 text-sm">
-                  Upgrade to Premium to monitor unlimited properties with advanced features
+                  Get daily scans, Title Lock, AI threat detection, and unlimited properties
                 </p>
               </div>
               <Link to={createPageUrl("Upgrade")}>
@@ -126,8 +136,8 @@ export default function TitleProtection() {
         </Card>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
@@ -141,19 +151,29 @@ export default function TitleProtection() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="w-8 h-8 text-green-400" />
+              <Shield className="w-8 h-8 text-green-400" />
             </div>
-            <p className="text-3xl font-bold text-green-400">{verifiedProperties}</p>
-            <p className="text-sm text-gray-400">Verified</p>
+            <p className="text-3xl font-bold text-green-400">{avgScore}</p>
+            <p className="text-sm text-gray-400">Avg Security Score</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <Eye className="w-8 h-8 text-purple-400" />
+              <Lock className="w-8 h-8 text-purple-400" />
             </div>
-            <p className="text-3xl font-bold text-purple-400">{monitoredProperties}</p>
+            <p className="text-3xl font-bold text-purple-400">{lockedProperties}</p>
+            <p className="text-sm text-gray-400">Title Locked</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Eye className="w-8 h-8 text-cyan-400" />
+            </div>
+            <p className="text-3xl font-bold text-cyan-400">{monitoredProperties}</p>
             <p className="text-sm text-gray-400">Monitored</p>
           </CardContent>
         </Card>
@@ -200,19 +220,28 @@ export default function TitleProtection() {
         </Card>
       )}
 
+      {/* Property Detail View */}
+      {selectedProperty && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TitleSecurityScore property={selectedProperty} />
+          <TitleLockControl property={selectedProperty} isPremium={isPremium && isActive} />
+        </div>
+      )}
+
       {/* Info Banner */}
       <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <Shield className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
             <div>
-              <h3 className="text-white font-bold mb-2">🛡️ How Title Protection Works</h3>
+              <h3 className="text-white font-bold mb-2">🤖 AI-Powered Title Protection</h3>
               <ul className="space-y-1 text-sm text-cyan-300">
-                <li>• <strong>Register Your Property:</strong> Add your address and BBL (Borough-Block-Lot)</li>
-                <li>• <strong>Upload Deed (Optional):</strong> Store your deed securely with AES-256 encryption</li>
-                <li>• <strong>Daily Monitoring:</strong> We check NYC ACRIS database every 24 hours</li>
-                <li>• <strong>Instant Alerts:</strong> Get notified of any new filings, liens, or ownership changes</li>
-                <li>• <strong>Fraud Protection:</strong> Report suspicious activity directly to authorities</li>
+                <li>• <strong>Real-Time Monitoring:</strong> {isPremium && isActive ? 'Daily' : 'Weekly'} scans of NYC ACRIS database</li>
+                <li>• <strong>AI Threat Detection:</strong> Identifies irregular ownership changes and suspicious filings</li>
+                <li>• <strong>Title Security Score:</strong> 0-100 score updated after each scan</li>
+                <li>• <strong>Title Lock:</strong> Digitally lock property to prevent unauthorized changes (Premium)</li>
+                <li>• <strong>Legal Support:</strong> Auto-generated reports with attorney contacts</li>
+                <li>• <strong>Instant Alerts:</strong> Email + push notifications for any suspicious activity</li>
               </ul>
             </div>
           </div>
@@ -249,7 +278,7 @@ export default function TitleProtection() {
               <Home className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-white font-semibold text-lg">No Properties Added Yet</p>
               <p className="text-gray-400 text-sm mt-1 mb-6">
-                Start protecting your property by adding your first address
+                Start protecting your property with AI-powered monitoring
               </p>
               <Button
                 onClick={() => setShowAddDialog(true)}
@@ -262,7 +291,9 @@ export default function TitleProtection() {
           ) : (
             <div className="space-y-4">
               {properties.map((property) => (
-                <PropertyCard key={property.id} property={property} alerts={alerts} />
+                <div key={property.id} onClick={() => setSelectedProperty(property)} className="cursor-pointer">
+                  <PropertyCard property={property} alerts={alerts} />
+                </div>
               ))}
             </div>
           )}
@@ -276,9 +307,9 @@ export default function TitleProtection() {
             <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Shield className="w-6 h-6 text-cyan-400" />
             </div>
-            <h3 className="text-white font-bold mb-2">24/7 Monitoring</h3>
+            <h3 className="text-white font-bold mb-2">AI Threat Detection</h3>
             <p className="text-sm text-gray-400">
-              Continuous scanning of NYC ACRIS database for your properties
+              Machine learning identifies suspicious patterns and ownership irregularities
             </p>
           </CardContent>
         </Card>
@@ -286,11 +317,11 @@ export default function TitleProtection() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Bell className="w-6 h-6 text-green-400" />
+              <Lock className="w-6 h-6 text-green-400" />
             </div>
-            <h3 className="text-white font-bold mb-2">Instant Alerts</h3>
+            <h3 className="text-white font-bold mb-2">Title Lock</h3>
             <p className="text-sm text-gray-400">
-              Get notified immediately when suspicious filings are detected
+              Digitally lock your property with email OTP verification (Premium)
             </p>
           </CardContent>
         </Card>
@@ -300,9 +331,9 @@ export default function TitleProtection() {
             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <FileText className="w-6 h-6 text-purple-400" />
             </div>
-            <h3 className="text-white font-bold mb-2">Document Access</h3>
+            <h3 className="text-white font-bold mb-2">Legal Support</h3>
             <p className="text-sm text-gray-400">
-              Direct links to ACRIS documents and secure deed storage
+              Auto-generated reports with verified attorney contacts
             </p>
           </CardContent>
         </Card>
