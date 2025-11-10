@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,17 +46,36 @@ export default function WorkspaceChat({ workspace, currentUser }) {
         last_activity: new Date().toISOString()
       });
 
-      // Send email notification to other party
+      // Determine recipient
       const recipient = workspace.owner_email === currentUser.email 
         ? workspace.attorney_email 
         : workspace.owner_email;
 
-      if (recipient) {
-        await base44.integrations.Core.SendEmail({
-          to: recipient,
-          subject: `💬 New Message in ${workspace.workspace_name}`,
-          body: `${currentUser.full_name} sent you a message:\n\n"${messageData.content}"\n\nView and reply: [App URL]/collaboration/${workspace.id}\n\nSafeNest Legal Collaboration`
-        });
+      // TRIGGER WORKFLOW: Attorney sent message - notify user
+      const isAttorney = workspace.attorney_email === currentUser.email;
+      if (isAttorney) {
+        try {
+          await base44.functions.invoke('workflowAutomation', {
+            trigger_type: 'attorney_message_sent',
+            trigger_data: {
+              workspace_id: workspace.id,
+              entity_type: 'ChatMessage',
+              entity_id: msg.id,
+              attorney_email: currentUser.email
+            }
+          });
+        } catch (error) {
+          console.error('Failed to trigger notification workflow:', error);
+        }
+      } else {
+        // Regular email notification for user messages
+        if (recipient) {
+          await base44.integrations.Core.SendEmail({
+            to: recipient,
+            subject: `💬 New Message in ${workspace.workspace_name}`,
+            body: `${currentUser.full_name} sent you a message:\n\n"${messageData.content}"\n\nView and reply: [App URL]/collaboration/${workspace.id}\n\nSafeNest Legal Collaboration`
+          });
+        }
       }
 
       return msg;

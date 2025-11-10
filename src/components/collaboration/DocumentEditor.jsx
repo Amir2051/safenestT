@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, Save, Users, Lock, Unlock, History, 
+import {
+  FileText, Save, Users, Lock, Unlock, History,
   Download, Eye, EyeOff, MessageSquare
 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import 'react-quill/dist/quill.snow.css';
 export default function DocumentEditor({ document, workspace, currentUser, onClose }) {
   const [content, setContent] = useState(document?.content || '');
   const [title, setTitle] = useState(document?.document_name || '');
+  const [status, setStatus] = useState(document?.status || 'draft');
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
@@ -24,10 +26,12 @@ export default function DocumentEditor({ document, workspace, currentUser, onClo
 
   const saveDocumentMutation = useMutation({
     mutationFn: async () => {
+      const previousStatus = document?.status;
       const docData = {
         workspace_id: workspace.id,
         document_name: title,
         content: content,
+        status: status,
         last_edited_by: currentUser.email,
         last_edited_at: new Date().toISOString(),
         version: (document?.version || 0) + 1,
@@ -55,13 +59,47 @@ export default function DocumentEditor({ document, workspace, currentUser, onClo
         });
       }
 
+      // TRIGGER WORKFLOW: Status changed to "in_review"
+      if (status === 'in_review' && previousStatus !== 'in_review') {
+        try {
+          await base44.functions.invoke('workflowAutomation', {
+            trigger_type: 'document_status_changed',
+            trigger_data: {
+              document_id: savedDoc.id,
+              new_status: status,
+              workspace_id: workspace.id
+            }
+          });
+        } catch (error) {
+          console.error('Failed to trigger workflow:', error);
+        }
+      }
+
+      // TRIGGER WORKFLOW: Attorney updated document - notify user
+      const isAttorney = workspace.attorney_email === currentUser.email;
+      if (isAttorney && document?.id) {
+        try {
+          await base44.functions.invoke('workflowAutomation', {
+            trigger_type: 'attorney_document_updated',
+            trigger_data: {
+              workspace_id: workspace.id,
+              entity_type: 'CollaborativeDocument',
+              entity_id: savedDoc.id,
+              attorney_email: currentUser.email
+            }
+          });
+        } catch (error) {
+          console.error('Failed to trigger notification workflow:', error);
+        }
+      }
+
       // Notify other users via chat
       await base44.entities.ChatMessage.create({
         workspace_id: workspace.id,
         sender_email: currentUser.email,
         sender_name: currentUser.full_name,
         sender_role: workspace.owner_email === currentUser.email ? 'owner' : 'attorney',
-        message_content: `Updated document: ${title}`,
+        message_content: `Updated document: ${title}${status === 'in_review' ? ' (Status: In Review)' : ''}`,
         message_type: 'edit_notification',
         timestamp: new Date().toISOString()
       });
@@ -156,6 +194,18 @@ export default function DocumentEditor({ document, workspace, currentUser, onClo
             />
           </div>
           <div className="flex items-center gap-2">
+            {/* Status selector */}
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="bg-[#0f1419] border border-cyan-500/20 text-white rounded px-3 py-1 text-sm"
+            >
+              <option value="draft">Draft</option>
+              <option value="in_review">In Review</option>
+              <option value="approved">Approved</option>
+              <option value="final">Final</option>
+            </select>
+
             {document?.currently_editing?.length > 0 && (
               <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
                 <Users className="w-3 h-3 mr-1" />
@@ -171,16 +221,25 @@ export default function DocumentEditor({ document, workspace, currentUser, onClo
         </CardTitle>
       </CardHeader>
 
+      {/* Status change warning */}
+      {status === 'in_review' && document?.status !== 'in_review' && (
+        <div className="mx-4 mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <p className="text-yellow-300 text-sm">
+            ⚠️ Setting status to "In Review" will automatically assign a task to your attorney for review.
+          </p>
+        </div>
+      )}
+
       <CardContent className="flex-1 p-4 overflow-hidden flex flex-col">
         {/* Active users */}
         {document?.currently_editing?.length > 0 && (
           <div className="mb-3 flex items-center gap-2 flex-wrap">
             {document.currently_editing.map(user => (
-              <Badge 
+              <Badge
                 key={user.email}
                 className="bg-green-500/20 text-green-400 border-green-500/50"
               >
-                <div 
+                <div
                   className="w-2 h-2 rounded-full mr-1 animate-pulse"
                   style={{ backgroundColor: user.color }}
                 />

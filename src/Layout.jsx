@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -54,6 +54,12 @@ const navigationItems = [
     icon: Users,
     badge: "LIVE",
     highlight: true
+  },
+  {
+    title: "Attorney Tasks",
+    url: createPageUrl("AttorneyTasks"),
+    icon: CheckSquare,
+    badge: "AUTO",
   },
   {
     title: "Credit Cards",
@@ -309,6 +315,8 @@ function LayoutContent({ children, currentPageName }) {
                                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                   : item.badge === "LIVE" // Specific style for LIVE badge
                                   ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                  : item.badge === "AUTO" // Specific style for AUTO badge
+                                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}

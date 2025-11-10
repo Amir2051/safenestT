@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,22 +9,61 @@ import { AlertTriangle, FileText, Download, ExternalLink, CheckCircle, Clock } f
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-export default function LegalAlerts({ alerts, properties, selectedProperty }) {
+export default function LegalAlerts({ property, user }) {
   const [generating, setGenerating] = useState(null);
   const queryClient = useQueryClient();
+
+  const createAlertMutation = useMutation({
+    mutationFn: async (alertData) => {
+      const alert = await base44.entities.TitleAlert.create({
+        property_id: property.id,
+        property_address: property.address,
+        property_owner: property.property_owner,
+        ...alertData,
+        alert_date: new Date().toISOString(),
+        status: 'new'
+      });
+
+      // TRIGGER WORKFLOW: If critical, auto-generate dispute notice
+      if (alertData.severity === 'critical' || alertData.severity === 'high') {
+        try {
+          await base44.functions.invoke('workflowAutomation', {
+            trigger_type: 'critical_alert_detected',
+            trigger_data: {
+              alert_id: alert.id,
+              property_id: property.id,
+              property_owner: property.property_owner
+            }
+          });
+        } catch (error) {
+          console.error('Failed to trigger workflow:', error);
+        }
+      }
+
+      return alert;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['title-alerts'] });
+      toast.success('Alert created successfully');
+    },
+    onError: (error) => {
+        toast.error(`Failed to create alert: ${error.message}`);
+    }
+  });
 
   const generateLegalReportMutation = useMutation({
     mutationFn: async (alert) => {
       setGenerating(alert.id);
 
-      const property = properties.find(p => p.id === alert.property_id);
+      // Assuming 'property' prop is the relevant property for this component
+      const currentProperty = property; 
       
       // Generate AI legal analysis
       const legalAnalysis = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a NYC real estate attorney analyzing a property title alert.
 
-Property: ${property.address}
-BBL: ${property.borough_block_lot}
+Property: ${currentProperty.address}
+BBL: ${currentProperty.borough_block_lot}
 Filing Type: ${alert.filing_type}
 Filed By: ${alert.filing_party}
 Filing Date: ${alert.filing_date}
@@ -98,7 +138,7 @@ Return JSON array.`,
         property_owner: alert.property_owner,
         report_type: 'legal_summary',
         generated_at: new Date().toISOString(),
-        property_address: property.address,
+        property_address: currentProperty.address, 
         document_id: alert.document_id,
         filing_date: alert.filing_date,
         suspected_issue: `${alert.filing_type} filed by ${alert.filing_party}`,
@@ -123,12 +163,12 @@ Return JSON array.`,
 
       // Log audit
       await base44.entities.AuditLog.create({
-        action_type: 'settings_updated',
+        action_type: 'legal_report_generated', 
         action_category: 'security',
-        description: `Legal report generated for property alert: ${property.address}`,
+        description: `Legal report generated for property alert: ${currentProperty.address}`, 
         metadata: {
           alert_id: alert.id,
-          property_id: property.id,
+          property_id: currentProperty.id, 
           report_id: report.id
         },
         severity: 'high',
@@ -142,9 +182,9 @@ Return JSON array.`,
       queryClient.invalidateQueries({ queryKey: ['title-alert-reports'] });
       toast.success('✅ Legal report generated with attorney contacts!');
     },
-    onError: () => {
+    onError: (error) => {
       setGenerating(null);
-      toast.error('Failed to generate legal report');
+      toast.error(`Failed to generate legal report: ${error.message}`);
     }
   });
 
@@ -161,9 +201,8 @@ Return JSON array.`,
     }
   };
 
-  const filteredAlerts = selectedProperty 
-    ? alerts.filter(a => a.property_id === selectedProperty.id)
-    : alerts;
+  // Adjusted: alerts are now expected to be on the 'property' object
+  const filteredAlerts = property?.alerts || [];
 
   return (
     <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
@@ -190,7 +229,8 @@ Return JSON array.`,
         ) : (
           <div className="space-y-4">
             {filteredAlerts.map(alert => {
-              const property = properties.find(p => p.id === alert.property_id);
+              // Adjusted: Use the 'property' prop directly as the context is for this property
+              const currentProperty = property;
               
               return (
                 <div
@@ -203,8 +243,9 @@ Return JSON array.`,
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertTriangle className="w-5 h-5 text-red-400" />
+                        {/* Adjusted: Use currentProperty for address */}
                         <h3 className="text-white font-bold">
-                          {property?.address || 'Unknown Property'}
+                          {currentProperty?.address || 'Unknown Property'}
                         </h3>
                         <Badge className={`${getSeverityColor(alert.severity)} border text-xs`}>
                           {alert.severity}
