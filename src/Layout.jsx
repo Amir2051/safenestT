@@ -132,6 +132,13 @@ const adminNavigationItems = [
     icon: Server,
     badge: "ADMIN",
     adminOnly: true
+  },
+  {
+    title: "Referral Analytics",
+    url: createPageUrl("AdminReferralDashboard"),
+    icon: BarChart3,
+    badge: "ADMIN",
+    adminOnly: true
   }
 ];
 

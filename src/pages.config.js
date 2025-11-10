@@ -24,6 +24,7 @@ import TitleProtection from './pages/TitleProtection';
 import ViewAlerts from './pages/ViewAlerts';
 import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
 import LegalSupport from './pages/LegalSupport';
+import AdminReferralDashboard from './pages/AdminReferralDashboard';
 import Layout from './Layout.jsx';
 
 
@@ -54,6 +55,7 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "AdminMonitoringDashboard": AdminMonitoringDashboard,
     "LegalSupport": LegalSupport,
+    "AdminReferralDashboard": AdminReferralDashboard,
 }
 
 export const pagesConfig = {

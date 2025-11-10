@@ -7,12 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { Gift, X, CheckCircle, Home, Users } from "lucide-react";
 import { toast } from "sonner";
 
+// Generate device fingerprint
+const getDeviceFingerprint = () => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillText('fingerprint', 2, 2);
+  const fingerprint = canvas.toDataURL();
+  return btoa(fingerprint + navigator.userAgent + navigator.language).slice(0, 32);
+};
+
 export default function ReferralCodeHandler() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
   const [referralSource, setReferralSource] = useState('general');
+  const [referrerName, setReferrerName] = useState('');
 
   useEffect(() => {
     const checkReferral = async () => {
@@ -27,33 +39,100 @@ export default function ReferralCodeHandler() {
         const urlReferralCode = urlParams.get('ref');
         
         if (urlReferralCode) {
-          localStorage.setItem('pending_referral_code', urlReferralCode);
-          
-          // Determine source from URL path
+          // Track click
+          const deviceId = getDeviceFingerprint();
           const path = window.location.pathname;
-          if (path.includes('title-protection')) {
-            setReferralSource('title_protection');
-            localStorage.setItem('referral_source', 'title_protection');
-          } else if (path.includes('legal-support')) {
-            setReferralSource('legal_support');
-            localStorage.setItem('referral_source', 'legal_support');
-          }
+          let source = 'general';
           
-          setReferralCode(urlReferralCode);
+          if (path.includes('title-protection')) source = 'title_protection';
+          else if (path.includes('legal-support')) source = 'legal_support';
+          else if (path.includes('vpn')) source = 'vpn';
+          else if (path.includes('password')) source = 'password_vault';
+
+          // Find referrer
+          try {
+            const referrers = await base44.entities.User.filter({ referral_code: urlReferralCode.toUpperCase() });
+            
+            if (referrers.length > 0) {
+              const referrer = referrers[0];
+              setReferrerName(referrer.full_name);
+
+              // Check for fraud - same device/IP recently
+              const recentClicks = await base44.entities.ReferralClick.filter({
+                visitor_device_id: deviceId,
+                referral_code: urlReferralCode.toUpperCase()
+              });
+
+              const fraudFlags = [];
+              let fraudScore = 0;
+
+              // Detect repeated clicks from same device
+              if (recentClicks.length > 3) {
+                fraudFlags.push('multiple_clicks_same_device');
+                fraudScore += 40;
+              }
+
+              // Self-referral detection
+              if (referrer.email === user.email) {
+                fraudFlags.push('self_referral');
+                fraudScore = 100;
+              }
+
+              // Track click
+              await base44.entities.ReferralClick.create({
+                referral_code: urlReferralCode.toUpperCase(),
+                referrer_email: referrer.email,
+                click_timestamp: new Date().toISOString(),
+                visitor_ip: 'hidden',
+                visitor_device_id: deviceId,
+                visitor_user_agent: navigator.userAgent,
+                referral_source: source,
+                utm_source: urlParams.get('utm_source'),
+                utm_medium: urlParams.get('utm_medium'),
+                utm_campaign: urlParams.get('utm_campaign'),
+                fraud_score: fraudScore,
+                fraud_flags: fraudFlags
+              });
+
+              localStorage.setItem('pending_referral_code', urlReferralCode.toUpperCase());
+              localStorage.setItem('referral_source', source);
+              localStorage.setItem('referral_device_id', deviceId);
+              
+              setReferralCode(urlReferralCode.toUpperCase());
+              setReferralSource(source);
+            }
+          } catch (error) {
+            console.error('Failed to track referral click:', error);
+          }
         }
 
-        // Check if user is new (created within last 24 hours) and has pending code
+        // Check if user is new and has pending code
         const isNewUser = new Date() - new Date(user.created_date) < 24 * 60 * 60 * 1000;
         const pendingCode = localStorage.getItem('pending_referral_code');
         const pendingSource = localStorage.getItem('referral_source') || 'general';
         
         if (isNewUser && (urlReferralCode || pendingCode)) {
-          setReferralCode(urlReferralCode || pendingCode);
+          setReferralCode(urlReferralCode?.toUpperCase() || pendingCode);
           setReferralSource(pendingSource);
           setShowPrompt(true);
         }
       } catch (error) {
-        // User not logged in
+        // User not logged in - still track click
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlReferralCode = urlParams.get('ref');
+        
+        if (urlReferralCode) {
+          const deviceId = getDeviceFingerprint();
+          const path = window.location.pathname;
+          let source = 'general';
+          
+          if (path.includes('title-protection')) source = 'title_protection';
+          else if (path.includes('legal-support')) source = 'legal_support';
+
+          localStorage.setItem('pending_referral_code', urlReferralCode.toUpperCase());
+          localStorage.setItem('referral_source', source);
+          localStorage.setItem('referral_device_id', deviceId);
+        }
       }
     };
 
@@ -70,6 +149,7 @@ export default function ReferralCodeHandler() {
 
     try {
       const user = await base44.auth.me();
+      const deviceId = localStorage.getItem('referral_device_id') || getDeviceFingerprint();
 
       // Find referrer by code
       const referrers = await base44.entities.User.filter({ referral_code: referralCode.toUpperCase() });
@@ -88,8 +168,29 @@ export default function ReferralCodeHandler() {
         return;
       }
 
+      // Fraud detection
+      const existingReferrals = await base44.entities.Referral.filter({
+        referred_email: user.email
+      });
+
+      if (existingReferrals.length > 0) {
+        toast.error('You already have a referral applied');
+        setApplying(false);
+        return;
+      }
+
+      // Check device fingerprint abuse
+      const sameDeviceReferrals = await base44.entities.Referral.filter({
+        signup_device_id: deviceId
+      });
+
+      const fraudFlags = [];
+      if (sameDeviceReferrals.length > 2) {
+        fraudFlags.push('device_reuse');
+      }
+
       // Create referral record
-      await base44.entities.Referral.create({
+      const referral = await base44.entities.Referral.create({
         referrer_email: referrer.email,
         referrer_code: referralCode.toUpperCase(),
         referred_email: user.email,
@@ -99,8 +200,29 @@ export default function ReferralCodeHandler() {
         signup_date: new Date().toISOString(),
         verified_date: new Date().toISOString(),
         referral_link_clicked: true,
-        link_click_date: new Date().toISOString()
+        link_click_date: new Date().toISOString(),
+        signup_device_id: deviceId,
+        fraud_flags: fraudFlags
       });
+
+      // Update click record with conversion
+      const clicks = await base44.entities.ReferralClick.filter({
+        referral_code: referralCode.toUpperCase(),
+        visitor_device_id: deviceId,
+        converted: false
+      });
+
+      if (clicks.length > 0) {
+        const click = clicks[clicks.length - 1];
+        const conversionTime = (new Date() - new Date(click.click_timestamp)) / (1000 * 60 * 60);
+        
+        await base44.entities.ReferralClick.update(click.id, {
+          converted: true,
+          converted_email: user.email,
+          conversion_date: new Date().toISOString(),
+          conversion_time_hours: conversionTime
+        });
+      }
 
       // Update referrer stats
       const currentStats = referrer.referral_stats || {};
@@ -123,12 +245,24 @@ export default function ReferralCodeHandler() {
         }\n\nThey're verified! You'll earn your reward once they complete their first action.\n\nSafeNest Referral Program`
       });
 
+      // Log audit
+      await base44.entities.AuditLog.create({
+        action_type: 'settings_updated',
+        action_category: 'settings',
+        description: `Referral code applied: ${referralCode}`,
+        metadata: {
+          referrer_email: referrer.email,
+          referral_source: referralSource,
+          fraud_flags: fraudFlags
+        },
+        severity: 'info',
+        status: 'success'
+      });
+
       localStorage.setItem('referral_applied', 'true');
-      localStorage.removeItem('pending_referral_code');
-      localStorage.removeItem('referral_source');
       setApplied(true);
       
-      toast.success('✅ Referral code applied! Complete an action to earn rewards for your referrer.', { duration: 5000 });
+      toast.success(`✅ Referral from ${referrer.full_name} applied! Complete an action to earn them rewards.`, { duration: 5000 });
       
       setTimeout(() => setShowPrompt(false), 3000);
     } catch (error) {
@@ -184,7 +318,9 @@ export default function ReferralCodeHandler() {
             <div className="flex items-center gap-3">
               {getServiceIcon()}
               <div>
-                <h3 className="text-white font-bold text-lg">Referral Code Detected!</h3>
+                <h3 className="text-white font-bold text-lg">
+                  {referrerName ? `Referred by ${referrerName}!` : 'Referral Code Detected!'}
+                </h3>
                 {getServiceBadge()}
               </div>
             </div>
@@ -214,25 +350,28 @@ export default function ReferralCodeHandler() {
             <>
               <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                 <p className="text-purple-300 text-sm">
-                  <strong>🎁 Referral Benefits:</strong>
+                  <strong>🎁 {referrerName ? `${referrerName} invited you!` : 'Referral Benefits:'}</strong>
                 </p>
                 <ul className="text-xs text-gray-300 mt-2 space-y-1">
                   {referralSource === 'title_protection' && (
                     <>
-                      <li>✓ Your friend earns 30 credits when you add a property</li>
-                      <li>✓ You get free Title Protection forever</li>
+                      <li>✓ Help {referrerName || 'your friend'} earn 30 credits when you add a property</li>
+                      <li>✓ Get free Title Protection forever</li>
+                      <li>✓ AI monitoring + Legal Support included</li>
                     </>
                   )}
                   {referralSource === 'legal_support' && (
                     <>
-                      <li>✓ Your friend earns 50 credits when you request legal help</li>
-                      <li>✓ You get free Legal Support access</li>
+                      <li>✓ Help {referrerName || 'your friend'} earn 50 credits when you get legal help</li>
+                      <li>✓ Free attorney consultation (30 min)</li>
+                      <li>✓ Document templates + secure storage</li>
                     </>
                   )}
                   {referralSource === 'general' && (
                     <>
-                      <li>✓ Your friend earns rewards on your first action</li>
-                      <li>✓ You get full SafeNest access</li>
+                      <li>✓ Help {referrerName || 'your friend'} earn rewards on your first action</li>
+                      <li>✓ Full SafeNest access - 100% FREE</li>
+                      <li>✓ All security features included</li>
                     </>
                   )}
                 </ul>

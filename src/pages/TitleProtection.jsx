@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Home, Shield, AlertTriangle, Plus, FileText, 
-  CheckCircle, Clock, MapPin, Bell, Eye, Lock
+import {
+  Home, Shield, AlertTriangle, Plus, FileText,
+  CheckCircle, Clock, MapPin, Bell, Eye, Lock, Users, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -17,11 +18,13 @@ import PropertyCard from "../components/title/PropertyCard.jsx";
 import TitleSecurityScore from "../components/title/TitleSecurityScore.jsx";
 import TitleLockControl from "../components/title/TitleLockControl.jsx";
 import MonitoringStatusCard from "../components/title/MonitoringStatusCard.jsx";
+import ReferralShareWidget from "../components/referrals/ReferralShareWidget.jsx";
 
 export default function TitleProtection() {
   const [user, setUser] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [referrerName, setReferrerName] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -40,7 +43,28 @@ export default function TitleProtection() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    base44.auth.me().then(async (userData) => {
+      setUser(userData);
+
+      // Check for referral in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+
+      if (refCode) {
+        // Find referrer to show welcome message
+        try {
+          const referrers = await base44.entities.User.filter({ referral_code: refCode.toUpperCase() });
+          if (referrers.length > 0) {
+            setReferrerName(referrers[0].full_name);
+          }
+        } catch (error) {
+          console.error("Failed to fetch referrer:", error);
+        }
+      }
+    }).catch((error) => {
+      console.error("Failed to fetch user data:", error);
+      // Handle authentication error, e.g., redirect to login or show a message
+    });
   }, []);
 
   // Title Protection is FREE for everyone!
@@ -51,7 +75,7 @@ export default function TitleProtection() {
   const lockedProperties = properties.filter(p => p.is_locked).length;
   const newAlerts = alerts.filter(a => a.status === 'new').length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
-  
+
   const avgScore = properties.length > 0
     ? Math.round(properties.reduce((sum, p) => sum + (p.title_security_score || 100), 0) / properties.length)
     : 100;
@@ -66,6 +90,40 @@ export default function TitleProtection() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {/* Referral Welcome Banner */}
+      {referrerName && (
+        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl" />
+          <CardContent className="p-6 relative">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                  🎉 Welcome! You were referred by {referrerName}
+                  <Sparkles className="w-6 h-6 text-yellow-400" />
+                </h2>
+                <p className="text-purple-300 mb-3">
+                  Add your first property to unlock Title Protection and help {referrerName} earn rewards!
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                  <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border">
+                    🏠 FREE Title Protection
+                  </Badge>
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border">
+                    ⚖️ FREE Legal Support
+                  </Badge>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border">
+                    🤖 AI Monitoring
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
@@ -112,6 +170,11 @@ export default function TitleProtection() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Share Your Referral Link - Show after user has properties */}
+      {properties.length > 0 && (
+        <ReferralShareWidget user={user} />
+      )}
 
       {/* 2FA Requirement Banner - Not for admins */}
       {!user?.two_factor_enabled && properties.length > 0 && !isAdmin && (
@@ -225,7 +288,7 @@ export default function TitleProtection() {
       {properties.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <MonitoringStatusCard properties={properties} />
-          
+
           {selectedProperty ? (
             <>
               <TitleSecurityScore property={selectedProperty} />
@@ -312,9 +375,9 @@ export default function TitleProtection() {
           ) : (
             <div className="space-y-4">
               {properties.map((property) => (
-                <div 
-                  key={property.id} 
-                  onClick={() => setSelectedProperty(property)} 
+                <div
+                  key={property.id}
+                  onClick={() => setSelectedProperty(property)}
                   className={`cursor-pointer transition-all ${
                     selectedProperty?.id === property.id ? 'ring-2 ring-cyan-500/50 rounded-lg' : ''
                   }`}

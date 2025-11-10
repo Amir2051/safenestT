@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Scale, FileText, Shield, Users, AlertTriangle, 
   Download, Upload, Clock, CheckCircle, Phone, Home,
-  Award, Lock, ExternalLink, Calendar, DollarSign
+  Award, Lock, ExternalLink, Calendar, DollarSign, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,10 +20,12 @@ import DocumentTemplates from "../components/legal/DocumentTemplates.jsx";
 import DocumentStorage from "../components/legal/DocumentStorage.jsx";
 import AttorneyConsultations from "../components/legal/AttorneyConsultations.jsx";
 import LegalAuditTrail from "../components/legal/LegalAuditTrail.jsx";
+import ReferralShareWidget from "../components/referrals/ReferralShareWidget.jsx";
 
 export default function LegalSupport() {
   const [user, setUser] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [referrerName, setReferrerName] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -62,7 +65,20 @@ export default function LegalSupport() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    base44.auth.me().then(async (userData) => {
+      setUser(userData);
+
+      // Check for referral in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      
+      if (refCode) {
+        const referrers = await base44.entities.User.filter({ referral_code: refCode.toUpperCase() });
+        if (referrers.length > 0) {
+          setReferrerName(referrers[0].full_name);
+        }
+      }
+    }).catch(() => {});
   }, []);
 
   if (!user) {
@@ -107,6 +123,40 @@ export default function LegalSupport() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {/* Referral Welcome Banner */}
+      {referrerName && (
+        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl" />
+          <CardContent className="p-6 relative">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                  🎉 {referrerName} invited you to Legal Support!
+                  <Sparkles className="w-6 h-6 text-yellow-400" />
+                </h2>
+                <p className="text-purple-300 mb-3">
+                  Request a free attorney consultation to unlock Legal Support and help {referrerName} earn 50 premium credits!
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border">
+                    ⚖️ Free Attorney Access
+                  </Badge>
+                  <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border">
+                    📄 Legal Templates
+                  </Badge>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border">
+                    🔒 Secure Storage
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -144,6 +194,11 @@ export default function LegalSupport() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Share Widget - Show if user has consulted */}
+      {consultations.length > 0 && (
+        <ReferralShareWidget user={user} />
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
