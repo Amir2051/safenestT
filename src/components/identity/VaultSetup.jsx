@@ -21,6 +21,8 @@ export default function VaultSetup({ user, onComplete }) {
 
   const setupVaultMutation = useMutation({
     mutationFn: async () => {
+      console.log('Starting vault setup mutation...');
+      
       if (pin !== confirmPin) {
         throw new Error('PINs do not match');
       }
@@ -30,7 +32,8 @@ export default function VaultSetup({ user, onComplete }) {
       }
 
       // Generate salt (client-side)
-      const salt = btoa(crypto.getRandomValues(new Uint8Array(32)).join(','));
+      const saltArray = crypto.getRandomValues(new Uint8Array(32));
+      const salt = btoa(String.fromCharCode(...saltArray));
       
       // Hash PIN (client-side - in production use Argon2)
       const encoder = new TextEncoder();
@@ -39,8 +42,10 @@ export default function VaultSetup({ user, onComplete }) {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const vault_pin_hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      console.log('Setting up vault...', { 
-        vault_salt: salt.substring(0, 20) + '...', 
+      console.log('Calling vaultService.setup...', { 
+        user_email: user.email,
+        salt_length: salt.length,
+        hash_length: vault_pin_hash.length,
         biometric_enabled: biometricEnabled,
         session_timeout_minutes: sessionTimeout 
       });
@@ -54,33 +59,55 @@ export default function VaultSetup({ user, onComplete }) {
         session_timeout_minutes: sessionTimeout
       });
 
-      console.log('Vault setup response:', response);
+      console.log('Vault service raw response:', response);
 
-      if (!response.data || response.data.error) {
-        throw new Error(response.data?.error || 'Failed to create vault');
+      // Check for errors in response
+      if (response.status && response.status >= 400) {
+        throw new Error(response.data?.error || `Server error: ${response.status}`);
+      }
+
+      if (!response.data) {
+        throw new Error('Empty response from server');
+      }
+
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+
+      if (!response.data.success) {
+        throw new Error('Vault creation failed');
       }
 
       return response.data;
     },
     onSuccess: (data) => {
-      console.log('Vault created successfully:', data);
-      queryClient.invalidateQueries({ queryKey: ['vault'] });
-      toast.success('🔒 Privacy Vault created successfully!');
+      console.log('✅ Vault created successfully:', data);
+      toast.success('🔒 Privacy Vault created successfully!', { duration: 4000 });
+      
+      // Clear form
       setPin('');
       setConfirmPin('');
       setStep(1);
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['vault'] });
+      
+      // Call completion callback after a delay
       if (onComplete) {
-        setTimeout(() => onComplete(), 500);
+        setTimeout(() => {
+          console.log('Calling onComplete callback...');
+          onComplete();
+        }, 500);
       }
     },
     onError: (error) => {
-      console.error('Vault setup error:', error);
-      toast.error(error.message || 'Failed to create vault. Please try again.');
+      console.error('❌ Vault setup error:', error);
+      toast.error(error.message || 'Failed to create vault. Please try again.', { duration: 5000 });
     }
   });
 
   const handleSubmit = () => {
-    console.log('Submitting vault setup...');
+    console.log('Submit button clicked, starting mutation...');
     setupVaultMutation.mutate();
   };
 
@@ -176,6 +203,7 @@ export default function VaultSetup({ user, onComplete }) {
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="Enter 6-digit PIN"
                   maxLength={8}
+                  autoFocus
                   className="bg-[#0f1419] border-purple-500/20 text-white text-center text-2xl tracking-widest h-14 mt-2"
                 />
               </div>
@@ -193,7 +221,7 @@ export default function VaultSetup({ user, onComplete }) {
               </div>
 
               {pin && confirmPin && (
-                <div className={`text-sm ${pin === confirmPin ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-sm font-semibold ${pin === confirmPin ? 'text-green-400' : 'text-red-400'}`}>
                   {pin === confirmPin ? '✓ PINs match' : '✗ PINs do not match'}
                 </div>
               )}
@@ -226,7 +254,7 @@ export default function VaultSetup({ user, onComplete }) {
                   <Fingerprint className="w-6 h-6 text-purple-400" />
                   <div>
                     <p className="text-white font-semibold">Biometric Unlock</p>
-                    <p className="text-xs text-gray-400">Use fingerprint or Face ID</p>
+                    <p className="text-xs text-gray-400">Use fingerprint or Face ID (future)</p>
                   </div>
                 </div>
                 <Switch

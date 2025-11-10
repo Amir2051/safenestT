@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield, Lock, Unlock, TrendingUp, Eye, EyeOff,
-  AlertTriangle, Clock, Settings, Download, FileText
+  AlertTriangle, Clock, Settings, Download, FileText, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,14 +19,22 @@ export default function IdentityMonitor() {
   const [user, setUser] = useState(null);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [loadingUser, setLoadingUser] = useState(true);
 
   const queryClient = useQueryClient();
 
-  const { data: vault } = useQuery({
+  const { data: vault, isLoading: vaultLoading, refetch: refetchVault } = useQuery({
     queryKey: ['vault', user?.email],
     queryFn: async () => {
-      const vaults = await base44.entities.Vault.filter({ user_id: user.email });
-      return vaults[0] || null;
+      console.log('Fetching vault for user:', user?.email);
+      try {
+        const vaults = await base44.entities.Vault.filter({ user_id: user.email });
+        console.log('Vault fetch result:', vaults);
+        return vaults[0] || null;
+      } catch (error) {
+        console.error('Error fetching vault:', error);
+        return null;
+      }
     },
     enabled: !!user,
     refetchInterval: 30000 // Check every 30s for auto-lock
@@ -40,7 +48,17 @@ export default function IdentityMonitor() {
   });
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    console.log('Loading user...');
+    base44.auth.me()
+      .then(userData => {
+        console.log('User loaded:', userData.email);
+        setUser(userData);
+        setLoadingUser(false);
+      })
+      .catch(error => {
+        console.error('Failed to load user:', error);
+        setLoadingUser(false);
+      });
   }, []);
 
   const lockVaultMutation = useMutation({
@@ -53,6 +71,9 @@ export default function IdentityMonitor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault'] });
       toast.success('🔒 Vault locked');
+    },
+    onError: (error) => {
+      toast.error('Failed to lock vault: ' + error.message);
     }
   });
 
@@ -66,13 +87,39 @@ export default function IdentityMonitor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault'] });
       toast.success('🚨 Emergency lock activated');
+    },
+    onError: (error) => {
+      toast.error('Failed to emergency lock: ' + error.message);
     }
   });
+
+  const handleVaultSetupComplete = () => {
+    console.log('Vault setup completed, refetching vault...');
+    queryClient.invalidateQueries({ queryKey: ['vault'] });
+    setTimeout(() => {
+      refetchVault();
+    }, 1000);
+  };
+
+  if (loadingUser || (user && vaultLoading === undefined)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading Identity Monitor...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <p className="text-white font-bold text-xl mb-2">Authentication Required</p>
+          <p className="text-gray-400">Please log in to access Identity Monitor</p>
+        </div>
       </div>
     );
   }
@@ -81,6 +128,8 @@ export default function IdentityMonitor() {
   const vaultUnlocked = vault?.is_unlocked && 
                         vault?.token_expires_at && 
                         new Date(vault.token_expires_at) > new Date();
+
+  console.log('Render state:', { vaultExists, vaultUnlocked, vault });
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -118,20 +167,29 @@ export default function IdentityMonitor() {
               </div>
               <div>
                 <h3 className="text-white font-bold text-xl mb-1">
-                  Privacy Vault {vaultUnlocked ? 'Unlocked' : 'Locked'}
+                  Privacy Vault {vaultLoading ? '...' : vaultUnlocked ? 'Unlocked' : 'Locked'}
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  {!vaultExists && 'Set up vault to encrypt your identity data'}
-                  {vaultExists && vaultUnlocked && `Auto-locks in ${Math.floor((new Date(vault.token_expires_at) - new Date()) / 60000)} minutes`}
-                  {vaultExists && !vaultUnlocked && 'Unlock to view raw PII and export data'}
+                  {vaultLoading && 'Loading vault status...'}
+                  {!vaultLoading && !vaultExists && 'Set up vault to encrypt your identity data'}
+                  {!vaultLoading && vaultExists && vaultUnlocked && `Auto-locks in ${Math.floor((new Date(vault.token_expires_at) - new Date()) / 60000)} minutes`}
+                  {!vaultLoading && vaultExists && !vaultUnlocked && 'Unlock to view raw PII and export data'}
                 </p>
               </div>
             </div>
 
             <div className="flex gap-2">
-              {!vaultExists ? (
+              {vaultLoading ? (
+                <Button disabled className="bg-gray-600">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading...
+                </Button>
+              ) : !vaultExists ? (
                 <Button
-                  onClick={() => setActiveTab('setup')}
+                  onClick={() => {
+                    // Don't use tabs, just show setup directly
+                    console.log('Set Up Vault clicked');
+                  }}
                   className="bg-gradient-to-r from-purple-500 to-pink-500"
                 >
                   <Shield className="w-4 h-4 mr-2" />
@@ -143,6 +201,7 @@ export default function IdentityMonitor() {
                     onClick={() => lockVaultMutation.mutate()}
                     variant="outline"
                     className="border-orange-500/20 text-orange-400"
+                    disabled={lockVaultMutation.isPending}
                   >
                     <Lock className="w-4 h-4 mr-2" />
                     Lock Now
@@ -151,6 +210,7 @@ export default function IdentityMonitor() {
                     onClick={() => emergencyLockMutation.mutate()}
                     variant="outline"
                     className="border-red-500/20 text-red-400"
+                    disabled={emergencyLockMutation.isPending}
                   >
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Emergency Lock
@@ -179,12 +239,17 @@ export default function IdentityMonitor() {
       </Card>
 
       {/* Main Content */}
-      {!vaultExists ? (
+      {vaultLoading ? (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-12 text-center">
+            <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">Loading vault data...</p>
+          </CardContent>
+        </Card>
+      ) : !vaultExists ? (
         <VaultSetup 
           user={user} 
-          onComplete={() => {
-            queryClient.invalidateQueries({ queryKey: ['vault'] });
-          }} 
+          onComplete={handleVaultSetupComplete} 
         />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
