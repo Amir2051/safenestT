@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -63,7 +64,8 @@ const navigationStructure = [
       { title: 'Identity Monitor', url: createPageUrl('IdentityMonitor'), icon: Shield, badge: 'VAULT', highlight: true },
       { title: 'Signal Watch', url: createPageUrl('SignalWatch'), icon: Radio, badge: 'BETA', highlight: true },
       { title: 'Dark Web Monitor', url: createPageUrl('DarkWebMonitor'), icon: Eye },
-      { title: 'Credit Cards', url: createPageUrl('CreditCardMonitor'), icon: CreditCard }
+      { title: 'Credit Monitor', url: createPageUrl('CreditMonitor'), icon: CreditCard },
+      { title: 'Family Protection', url: createPageUrl('FamilyProtection'), icon: Users, badge: 'NEW', highlight: true }
     ]
   },
   {

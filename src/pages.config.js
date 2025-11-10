@@ -31,6 +31,8 @@ import LegalAssistant from './pages/LegalAssistant';
 import IdentityMonitor from './pages/IdentityMonitor';
 import SignalWatch from './pages/SignalWatch';
 import CreditMonitor from './pages/CreditMonitor';
+import FamilyProtection from './pages/FamilyProtection';
+import FamilyInvite from './pages/FamilyInvite';
 import Layout from './Layout.jsx';
 
 
@@ -68,6 +70,8 @@ export const PAGES = {
     "IdentityMonitor": IdentityMonitor,
     "SignalWatch": SignalWatch,
     "CreditMonitor": CreditMonitor,
+    "FamilyProtection": FamilyProtection,
+    "FamilyInvite": FamilyInvite,
 }
 
 export const pagesConfig = {
