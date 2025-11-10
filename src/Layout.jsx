@@ -49,6 +49,13 @@ const navigationItems = [
     highlight: true
   },
   {
+    title: "Collaboration",
+    url: createPageUrl("Collaboration"),
+    icon: Users,
+    badge: "LIVE",
+    highlight: true
+  },
+  {
     title: "Credit Cards",
     url: createPageUrl("CreditCardMonitor"),
     icon: CreditCard,
@@ -300,6 +307,8 @@ function LayoutContent({ children, currentPageName }) {
                                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' // Specific style for AI badge
                                   : item.badge === "NEW"
                                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                  : item.badge === "LIVE" // Specific style for LIVE badge
+                                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}
