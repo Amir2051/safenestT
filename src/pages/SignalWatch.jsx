@@ -24,6 +24,7 @@ export default function SignalWatch() {
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [towers, setTowers] = useState([]);
   const [fetchingTowers, setFetchingTowers] = useState(false);
+  const [monitoringActive, setMonitoringActive] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -39,7 +40,7 @@ export default function SignalWatch() {
           throw new Error('Stats fetch failed');
         }
         
-        return response.data || {
+        const data = response.data || {
           monitoring_active: false,
           health_score: 100,
           total_towers_seen: 0,
@@ -48,6 +49,11 @@ export default function SignalWatch() {
           current_tower: null,
           signal_history: []
         };
+        
+        // Update monitoring state
+        setMonitoringActive(data.monitoring_active || false);
+        
+        return data;
       } catch (error) {
         console.error('Failed to fetch signal watch stats:', error);
         return {
@@ -62,7 +68,7 @@ export default function SignalWatch() {
       }
     },
     enabled: !!user,
-    refetchInterval: stats?.monitoring_active ? 5000 : false,
+    refetchInterval: monitoringActive ? 5000 : false,
     retry: 1
   });
 
@@ -199,7 +205,7 @@ export default function SignalWatch() {
     );
   }
 
-  const monitoring = stats?.monitoring_active || false;
+  const monitoring = monitoringActive;
   const healthScore = stats?.health_score || 100;
   const totalTowers = towers.length || stats?.total_towers_seen || 0;
   const suspiciousTowers = towers.filter(t => t.warning_level !== 'none').length || stats?.suspicious_towers_count || 0;
@@ -242,6 +248,23 @@ export default function SignalWatch() {
                 <MapPin className="w-4 h-4 mr-2" />
                 Enable Location
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fetching Location Spinner */}
+      {fetchingLocation && (
+        <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+              <div>
+                <p className="text-white font-semibold">Detecting Location...</p>
+                <p className="text-cyan-300 text-sm">
+                  Please allow location access when prompted
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
