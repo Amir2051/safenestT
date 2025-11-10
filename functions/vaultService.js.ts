@@ -14,49 +14,77 @@ Deno.serve(async (req) => {
     if (endpoint === 'setup') {
       const { vault_salt, vault_pin_hash, biometric_enabled, session_timeout_minutes } = params;
 
+      console.log('Vault setup request received:', { 
+        user_id: user.email, 
+        biometric_enabled, 
+        session_timeout_minutes 
+      });
+
       // Check if vault already exists
       const existing = await base44.entities.Vault.filter({ user_id: user.email });
       if (existing.length > 0) {
+        console.log('Vault already exists for user:', user.email);
         return Response.json({ error: 'Vault already exists' }, { status: 400 });
       }
 
+      // Validate inputs
+      if (!vault_salt || !vault_pin_hash) {
+        return Response.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+
       // Create vault verifier (server-side hash for unlock verification)
-      // In production, use Argon2 or BCrypt
       const vault_verifier_hash = vault_pin_hash; // Client sends pre-hashed PIN
 
       // Generate wrapped key (for server-side key recovery)
       const vault_key_wrapped = `wrapped_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-      const vault = await base44.entities.Vault.create({
-        user_id: user.email,
-        vault_salt,
-        vault_key_wrapped,
-        vault_verifier_hash,
-        is_unlocked: false,
-        failed_attempts: 0,
-        is_locked_out: false,
-        biometric_enabled: biometric_enabled || false,
-        session_timeout_minutes: session_timeout_minutes || 5,
-        setup_completed_at: new Date().toISOString()
-      });
+      console.log('Creating vault entity...');
 
-      // Log setup
-      await base44.entities.VaultAudit.create({
-        audit_id: `AUDIT_${Date.now()}`,
-        user_id: user.email,
-        action: 'vault_setup',
-        actor_id: user.email,
-        timestamp: new Date().toISOString(),
-        summary: 'Vault setup completed',
-        metadata: { biometric_enabled },
-        success: true
-      });
+      try {
+        const vault = await base44.entities.Vault.create({
+          user_id: user.email,
+          vault_salt,
+          vault_key_wrapped,
+          vault_verifier_hash,
+          is_unlocked: false,
+          failed_attempts: 0,
+          is_locked_out: false,
+          biometric_enabled: biometric_enabled || false,
+          session_timeout_minutes: session_timeout_minutes || 5,
+          setup_completed_at: new Date().toISOString()
+        });
 
-      return Response.json({
-        success: true,
-        message: 'Vault created successfully',
-        vault_id: vault.id
-      });
+        console.log('Vault created successfully:', vault.id);
+
+        // Log setup
+        try {
+          await base44.entities.VaultAudit.create({
+            audit_id: `AUDIT_${Date.now()}`,
+            user_id: user.email,
+            action: 'vault_setup',
+            actor_id: user.email,
+            timestamp: new Date().toISOString(),
+            summary: 'Vault setup completed',
+            metadata: { biometric_enabled: biometric_enabled || false },
+            success: true
+          });
+          console.log('Audit log created');
+        } catch (auditError) {
+          console.error('Failed to create audit log:', auditError);
+          // Don't fail the whole request if audit fails
+        }
+
+        return Response.json({
+          success: true,
+          message: 'Vault created successfully',
+          vault_id: vault.id
+        });
+      } catch (createError) {
+        console.error('Failed to create vault:', createError);
+        return Response.json({ 
+          error: 'Failed to create vault: ' + createError.message 
+        }, { status: 500 });
+      }
     }
 
     // POST /vault/unlock
@@ -82,7 +110,7 @@ Deno.serve(async (req) => {
             timestamp: new Date().toISOString(),
             summary: 'Unlock attempt during lockout',
             success: false
-          });
+          }).catch(() => {});
 
           return Response.json({ 
             error: 'Vault is locked. Please contact support.',
@@ -119,7 +147,7 @@ Deno.serve(async (req) => {
           timestamp: new Date().toISOString(),
           summary: `Failed unlock attempt (${newFailedAttempts}/5)`,
           success: false
-        });
+        }).catch(() => {});
 
         return Response.json({ 
           error: 'Invalid PIN',
@@ -150,7 +178,7 @@ Deno.serve(async (req) => {
         summary: 'Vault unlocked successfully',
         metadata: { expires_in: expiresIn },
         success: true
-      });
+      }).catch(() => {});
 
       return Response.json({
         user_id: user.email,
@@ -183,7 +211,7 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString(),
         summary: 'Vault locked manually',
         success: true
-      });
+      }).catch(() => {});
 
       return Response.json({
         success: true,
@@ -227,14 +255,18 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString(),
         summary: `Emergency lock triggered by ${user.email}`,
         success: true
-      });
+      }).catch(() => {});
 
       // Send notification email
-      await base44.integrations.Core.SendEmail({
-        to: targetUserId,
-        subject: '🚨 Emergency Vault Lock Activated',
-        body: `Your SafeNest Privacy Vault has been locked due to an emergency lock request.\n\nInitiated by: ${user.email}\nTime: ${new Date().toLocaleString()}\n\nYour vault will remain locked for 1 hour. Contact support if you did not request this.\n\nSafeNest Security Team`
-      });
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: targetUserId,
+          subject: '🚨 Emergency Vault Lock Activated',
+          body: `Your SafeNest Privacy Vault has been locked due to an emergency lock request.\n\nInitiated by: ${user.email}\nTime: ${new Date().toLocaleString()}\n\nYour vault will remain locked for 1 hour. Contact support if you did not request this.\n\nSafeNest Security Team`
+        });
+      } catch (emailError) {
+        console.error('Failed to send email:', emailError);
+      }
 
       return Response.json({
         success: true,

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Shield, Key, Fingerprint, CheckCircle, AlertTriangle } from "lucide-react";
+import { Lock, Shield, Key, Fingerprint, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function VaultSetup({ user, onComplete }) {
@@ -39,6 +39,12 @@ export default function VaultSetup({ user, onComplete }) {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const vault_pin_hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
+      console.log('Setting up vault...', { 
+        vault_salt: salt.substring(0, 20) + '...', 
+        biometric_enabled: biometricEnabled,
+        session_timeout_minutes: sessionTimeout 
+      });
+
       // Call vault service
       const response = await base44.functions.invoke('vaultService', {
         endpoint: 'setup',
@@ -48,17 +54,35 @@ export default function VaultSetup({ user, onComplete }) {
         session_timeout_minutes: sessionTimeout
       });
 
+      console.log('Vault setup response:', response);
+
+      if (!response.data || response.data.error) {
+        throw new Error(response.data?.error || 'Failed to create vault');
+      }
+
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Vault created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['vault'] });
       toast.success('🔒 Privacy Vault created successfully!');
-      if (onComplete) onComplete();
+      setPin('');
+      setConfirmPin('');
+      setStep(1);
+      if (onComplete) {
+        setTimeout(() => onComplete(), 500);
+      }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create vault');
+      console.error('Vault setup error:', error);
+      toast.error(error.message || 'Failed to create vault. Please try again.');
     }
   });
+
+  const handleSubmit = () => {
+    console.log('Submitting vault setup...');
+    setupVaultMutation.mutate();
+  };
 
   return (
     <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20 max-w-2xl mx-auto">
@@ -241,17 +265,18 @@ export default function VaultSetup({ user, onComplete }) {
                 onClick={() => setStep(2)}
                 variant="outline"
                 className="flex-1 border-gray-500/20"
+                disabled={setupVaultMutation.isPending}
               >
                 Back
               </Button>
               <Button
-                onClick={() => setupVaultMutation.mutate()}
+                onClick={handleSubmit}
                 disabled={setupVaultMutation.isPending}
                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 h-12"
               >
                 {setupVaultMutation.isPending ? (
                   <>
-                    <Lock className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Creating Vault...
                   </>
                 ) : (
