@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Radio, Shield, AlertTriangle, TrendingUp, MapPin, 
-  Loader2, RefreshCw, Map as MapIcon
+  Loader2, RefreshCw, Plus
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,11 +15,13 @@ import TowerList from "../components/signal/TowerList.jsx";
 import ActivityFeed from "../components/signal/ActivityFeed.jsx";
 import ReportTowerDialog from "../components/signal/ReportTowerDialog.jsx";
 import SignalSettings from "../components/signal/SignalSettings.jsx";
+import ManualTowerLogger from "../components/signal/ManualTowerLogger.jsx";
 
 export default function SignalWatch() {
   const [user, setUser] = useState(null);
   const [reportTower, setReportTower] = useState(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showManualLogger, setShowManualLogger] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [towers, setTowers] = useState([]);
@@ -32,9 +34,12 @@ export default function SignalWatch() {
     queryKey: ['signal-watch-stats'],
     queryFn: async () => {
       try {
+        console.log('Fetching signal watch stats...');
         const response = await base44.functions.invoke('signalWatchService', {
           endpoint: 'stats'
         });
+        
+        console.log('Stats response:', response);
         
         if (response.status >= 400) {
           throw new Error('Stats fetch failed');
@@ -49,6 +54,8 @@ export default function SignalWatch() {
           current_tower: null,
           signal_history: []
         };
+        
+        console.log('Stats data:', data);
         
         // Update monitoring state
         setMonitoringActive(data.monitoring_active || false);
@@ -108,7 +115,7 @@ export default function SignalWatch() {
         setFetchingLocation(false);
         
         if (error.code === error.PERMISSION_DENIED) {
-          toast.error('Location permission denied. Please enable location access.');
+          toast.error('Location permission denied. Please enable location access in your browser settings.', { duration: 6000 });
         } else if (error.code === error.POSITION_UNAVAILABLE) {
           toast.error('Location information unavailable');
         } else if (error.code === error.TIMEOUT) {
@@ -134,6 +141,8 @@ export default function SignalWatch() {
     setFetchingTowers(true);
     
     try {
+      console.log('Fetching nearby towers:', location);
+      
       const response = await base44.functions.invoke('signalWatchService', {
         endpoint: 'fetch-towers',
         lat: location.lat,
@@ -141,11 +150,15 @@ export default function SignalWatch() {
         range: 5000 // 5km radius
       });
 
+      console.log('Fetch towers response:', response);
+
       if (response.status >= 400 || response.data.error) {
         throw new Error(response.data?.error || 'Failed to fetch towers');
       }
 
       const fetchedTowers = response.data.towers || [];
+      console.log('Fetched towers:', fetchedTowers.length, fetchedTowers);
+      
       setTowers(fetchedTowers);
       
       const unverifiedCount = response.data.unverified || 0;
@@ -155,15 +168,17 @@ export default function SignalWatch() {
         toast.error(`⚠️ ${criticalCount} unverified tower(s) detected nearby!`, { duration: 5000 });
       } else if (unverifiedCount > 0) {
         toast.warning(`${unverifiedCount} tower(s) with low verification found`, { duration: 4000 });
-      } else {
+      } else if (fetchedTowers.length > 0) {
         toast.success(`✅ Scanned ${fetchedTowers.length} towers - All verified!`);
+      } else {
+        toast.info('No towers found in this area. Try a different location or add towers manually.');
       }
 
       // Invalidate stats to update UI
       queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
     } catch (error) {
       console.error('Fetch towers error:', error);
-      toast.error(error.message || 'Failed to fetch nearby towers');
+      toast.error(error.message || 'Failed to fetch nearby towers', { duration: 5000 });
     } finally {
       setFetchingTowers(false);
     }
@@ -190,7 +205,7 @@ export default function SignalWatch() {
             <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
             <p className="text-white font-bold text-xl mb-2">Service Unavailable</p>
             <p className="text-gray-400 mb-6">
-              Signal Watch service is temporarily unavailable. Please try again later.
+              Signal Watch service is temporarily unavailable. Please check that OPENCELLID_TOKEN is configured.
             </p>
             <Button
               onClick={() => queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] })}
@@ -214,17 +229,27 @@ export default function SignalWatch() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Radio className="w-8 h-8 text-sky-400" />
-          Signal Watch
-          <Badge className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white border-none animate-pulse">
-            BETA
-          </Badge>
-        </h1>
-        <p className="text-gray-400 mt-1">
-          Monitor cellular towers for suspicious activity • Powered by OpenCelliD
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Radio className="w-8 h-8 text-sky-400" />
+            Signal Watch
+            <Badge className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white border-none animate-pulse">
+              BETA
+            </Badge>
+          </h1>
+          <p className="text-gray-400 mt-1">
+            Monitor cellular towers for suspicious activity • Powered by OpenCelliD
+          </p>
+        </div>
+
+        <Button
+          onClick={() => setShowManualLogger(true)}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Log Tower Manually
+        </Button>
       </div>
 
       {/* Location Banner */}
@@ -369,8 +394,9 @@ export default function SignalWatch() {
                 <li>• <strong>Location Detection:</strong> Uses your device location to find nearby cell towers</li>
                 <li>• <strong>OpenCelliD Database:</strong> Compares towers against 40+ million verified cell tower records</li>
                 <li>• <strong>Threat Detection:</strong> Flags towers with low verification samples (&lt;5 reports)</li>
+                <li>• <strong>Manual Logging:</strong> Can't get tower info from browser? Log towers manually from dialer codes</li>
                 <li>• <strong>Community Reports:</strong> Help others by reporting suspicious towers anonymously</li>
-                <li>• <strong>Real-Time Alerts:</strong> Get notified of potential IMSI catchers or rogue towers</li>
+                <li>• <strong>Real-Time Monitoring:</strong> Enable monitoring to continuously track signal changes</li>
               </ul>
             </div>
           </div>
@@ -403,7 +429,7 @@ export default function SignalWatch() {
         </div>
       </div>
 
-      {/* Report Dialog */}
+      {/* Dialogs */}
       {reportTower && (
         <ReportTowerDialog
           tower={reportTower}
@@ -415,6 +441,15 @@ export default function SignalWatch() {
           user={user}
         />
       )}
+
+      <ManualTowerLogger
+        open={showManualLogger}
+        onClose={() => {
+          setShowManualLogger(false);
+          queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
+        }}
+        user={user}
+      />
     </div>
   );
 }
