@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -73,6 +73,13 @@ const navigationItems = [
     url: createPageUrl("IdentityMonitor"),
     icon: Shield,
     badge: "VAULT",
+    highlight: true
+  },
+  {
+    title: "Signal Watch",
+    url: createPageUrl("SignalWatch"),
+    icon: Radio,
+    badge: "BETA",
     highlight: true
   },
   {
@@ -333,6 +340,8 @@ function LayoutContent({ children, currentPageName }) {
                                   ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
                                   : item.badge === "VAULT" // Specific style for VAULT badge
                                   ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50' // New VAULT badge style
+                                  : item.badge === "BETA" // Specific style for BETA badge
+                                  ? 'bg-sky-500/20 text-sky-400 border border-sky-500/50' // New BETA badge style
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}
