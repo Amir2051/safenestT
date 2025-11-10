@@ -4,13 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import {
-  Radio, Shield, AlertTriangle, MapPin, Activity,
-  Clock, Signal, Loader2, Flag, Info, Eye, Settings as SettingsIcon
+import { 
+  Radio, Shield, AlertTriangle, TrendingUp, MapPin, 
+  Loader2, RefreshCw, Map as MapIcon
 } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import SignalMonitoringControl from "../components/signal/SignalMonitoringControl.jsx";
 import TowerList from "../components/signal/TowerList.jsx";
@@ -20,15 +18,16 @@ import SignalSettings from "../components/signal/SignalSettings.jsx";
 
 export default function SignalWatch() {
   const [user, setUser] = useState(null);
+  const [reportTower, setReportTower] = useState(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showInfoDialog, setShowInfoDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [showAlertDialog, setShowAlertDialog] = useState(false);
-  const [currentAlert, setCurrentAlert] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [towers, setTowers] = useState([]);
+  const [fetchingTowers, setFetchingTowers] = useState(false);
 
   const queryClient = useQueryClient();
 
-  const { data: stats, isLoading, error } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['signal-watch-stats'],
     queryFn: async () => {
       try {
@@ -37,15 +36,21 @@ export default function SignalWatch() {
         });
         
         if (response.status >= 400) {
-          throw new Error(response.data?.error || 'Failed to fetch stats');
+          throw new Error('Stats fetch failed');
         }
         
-        return response.data;
-      } catch (err) {
-        console.error('Failed to fetch signal watch stats:', err);
-        // Return default data instead of throwing
+        return response.data || {
+          monitoring_active: false,
+          health_score: 100,
+          total_towers_seen: 0,
+          suspicious_towers_count: 0,
+          recent_anomalies: [],
+          current_tower: null,
+          signal_history: []
+        };
+      } catch (error) {
+        console.error('Failed to fetch signal watch stats:', error);
         return {
-          session_exists: false,
           monitoring_active: false,
           health_score: 100,
           total_towers_seen: 0,
@@ -57,7 +62,7 @@ export default function SignalWatch() {
       }
     },
     enabled: !!user,
-    refetchInterval: (data) => data?.monitoring_active ? 5000 : false, // Only refresh when monitoring
+    refetchInterval: stats?.monitoring_active ? 5000 : false,
     retry: 1
   });
 
@@ -65,75 +70,127 @@ export default function SignalWatch() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  // Check for new alerts
+  // Get user location automatically on mount
   useEffect(() => {
-    if (stats?.recent_anomalies?.length > 0 && stats.monitoring_active) {
-      const latestAnomaly = stats.recent_anomalies[0];
-      const alertTimestamp = new Date(latestAnomaly.timestamp).getTime();
-      const now = new Date().getTime();
-      
-      // Show alert if it's within last 30 seconds
-      if (now - alertTimestamp < 30000 && latestAnomaly.severity === 'high') {
-        setCurrentAlert(latestAnomaly);
-        setShowAlertDialog(true);
-      }
+    if (user && !userLocation && !fetchingLocation) {
+      getUserLocation();
     }
-  }, [stats]);
+  }, [user]);
 
-  // Simulate tower logging (in production, use actual device APIs)
-  useEffect(() => {
-    if (stats?.monitoring_active && user) {
-      const interval = setInterval(async () => {
-        try {
-          // Simulate random tower data
-          const connectionTypes = ['4G', '5G', '4G', '5G', '2G']; // 2G less common
-          const randomType = connectionTypes[Math.floor(Math.random() * connectionTypes.length)];
-          
-          await base44.functions.invoke('signalWatchService', {
-            endpoint: 'log-tower',
-            cell_id: `TOWER_${Math.floor(Math.random() * 1000)}`,
-            mcc: '310',
-            mnc: Math.random() > 0.8 ? '999' : '120', // 20% chance of unknown tower
-            lac: `LAC_${Math.floor(Math.random() * 100)}`,
-            rssi: -50 - Math.floor(Math.random() * 60), // -50 to -110 dBm
-            connection_type: randomType,
-            carrier_name: 'Verizon',
-            latitude: 40.7128 + (Math.random() - 0.5) * 0.1,
-            longitude: -74.0060 + (Math.random() - 0.5) * 0.1
-          });
-          
-          queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
-        } catch (err) {
-          console.error('Failed to log tower:', err);
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setFetchingLocation(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
+        };
+        setUserLocation(location);
+        setFetchingLocation(false);
+        toast.success('📍 Location detected!');
+        // Auto-fetch towers after getting location
+        fetchNearbyTowers(location);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setFetchingLocation(false);
+        
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error('Location permission denied. Please enable location access.');
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          toast.error('Location information unavailable');
+        } else if (error.code === error.TIMEOUT) {
+          toast.error('Location request timed out');
+        } else {
+          toast.error('Failed to get location');
         }
-      }, 10000); // Every 10 seconds
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
 
-      return () => clearInterval(interval);
+  const fetchNearbyTowers = async (location = userLocation) => {
+    if (!location) {
+      toast.error('Location required to scan for towers');
+      return;
     }
-  }, [stats?.monitoring_active, user]);
+
+    setFetchingTowers(true);
+    
+    try {
+      const response = await base44.functions.invoke('signalWatchService', {
+        endpoint: 'fetch-towers',
+        lat: location.lat,
+        lon: location.lon,
+        range: 5000 // 5km radius
+      });
+
+      if (response.status >= 400 || response.data.error) {
+        throw new Error(response.data?.error || 'Failed to fetch towers');
+      }
+
+      const fetchedTowers = response.data.towers || [];
+      setTowers(fetchedTowers);
+      
+      const unverifiedCount = response.data.unverified || 0;
+      const criticalCount = response.data.critical || 0;
+
+      if (criticalCount > 0) {
+        toast.error(`⚠️ ${criticalCount} unverified tower(s) detected nearby!`, { duration: 5000 });
+      } else if (unverifiedCount > 0) {
+        toast.warning(`${unverifiedCount} tower(s) with low verification found`, { duration: 4000 });
+      } else {
+        toast.success(`✅ Scanned ${fetchedTowers.length} towers - All verified!`);
+      }
+
+      // Invalidate stats to update UI
+      queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
+    } catch (error) {
+      console.error('Fetch towers error:', error);
+      toast.error(error.message || 'Failed to fetch nearby towers');
+    } finally {
+      setFetchingTowers(false);
+    }
+  };
+
+  const handleReport = (tower) => {
+    setReportTower(tower);
+    setShowReportDialog(true);
+  };
 
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
       </div>
     );
   }
 
-  if (error && !stats) {
+  if (statsError) {
     return (
       <div className="p-6 lg:p-8">
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/30">
+        <Card className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/30">
           <CardContent className="p-12 text-center">
             <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Service Unavailable</h2>
-            <p className="text-gray-400 mb-4">
+            <p className="text-white font-bold text-xl mb-2">Service Unavailable</p>
+            <p className="text-gray-400 mb-6">
               Signal Watch service is temporarily unavailable. Please try again later.
             </p>
             <Button
               onClick={() => queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] })}
-              className="bg-cyan-500 hover:bg-cyan-600"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600"
             >
+              <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
           </CardContent>
@@ -142,255 +199,198 @@ export default function SignalWatch() {
     );
   }
 
-  const monitoringActive = stats?.monitoring_active || false;
+  const monitoring = stats?.monitoring_active || false;
   const healthScore = stats?.health_score || 100;
-  const getHealthColor = (score) => {
-    if (score >= 80) return 'text-green-400';
-    if (score >= 60) return 'text-yellow-400';
-    if (score >= 40) return 'text-orange-400';
-    return 'text-red-400';
-  };
+  const totalTowers = towers.length || stats?.total_towers_seen || 0;
+  const suspiciousTowers = towers.filter(t => t.warning_level !== 'none').length || stats?.suspicious_towers_count || 0;
+  const recentAnomalies = stats?.recent_anomalies || [];
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Radio className="w-8 h-8 text-cyan-400" />
-            Signal Watch
-            <Badge className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-none">
-              Beta
-            </Badge>
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Detect suspicious cell tower activity and IMSI catchers
-          </p>
+      <div>
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <Radio className="w-8 h-8 text-sky-400" />
+          Signal Watch
+          <Badge className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white border-none animate-pulse">
+            BETA
+          </Badge>
+        </h1>
+        <p className="text-gray-400 mt-1">
+          Monitor cellular towers for suspicious activity • Powered by OpenCelliD
+        </p>
+      </div>
+
+      {/* Location Banner */}
+      {!userLocation && !fetchingLocation && (
+        <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-6 h-6 text-orange-400" />
+                <div>
+                  <p className="text-white font-semibold">Location Required</p>
+                  <p className="text-orange-300 text-sm">
+                    Enable location access to scan for nearby cell towers
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={getUserLocation}
+                className="bg-gradient-to-r from-orange-500 to-red-500"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Enable Location
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Location Detected Banner */}
+      {userLocation && (
+        <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-6 h-6 text-green-400" />
+                <div>
+                  <p className="text-white font-semibold">Location Enabled</p>
+                  <p className="text-green-300 text-sm">
+                    📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • 
+                    <button 
+                      onClick={() => fetchNearbyTowers()}
+                      className="ml-2 underline hover:text-white"
+                      disabled={fetchingTowers}
+                    >
+                      {fetchingTowers ? 'Scanning...' : 'Scan for Towers'}
+                    </button>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Critical Alerts Banner */}
+      {suspiciousTowers > 0 && (
+        <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-10 h-10 text-red-400 animate-pulse" />
+              <div>
+                <p className="text-white font-semibold">
+                  ⚠️ {suspiciousTowers} Suspicious Tower{suspiciousTowers > 1 ? 's' : ''} Detected
+                </p>
+                <p className="text-red-300 text-sm">
+                  Unverified towers nearby. Avoid sensitive transactions and enable VPN.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <MapPin className="w-8 h-8 text-cyan-400" />
+            </div>
+            <p className="text-3xl font-bold text-cyan-400">{totalTowers}</p>
+            <p className="text-sm text-gray-400">Towers Scanned</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <AlertTriangle className="w-8 h-8 text-red-400" />
+            </div>
+            <p className="text-3xl font-bold text-red-400">{suspiciousTowers}</p>
+            <p className="text-sm text-gray-400">Suspicious</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Shield className="w-8 h-8 text-green-400" />
+            </div>
+            <p className="text-3xl font-bold text-green-400">{healthScore}</p>
+            <p className="text-sm text-gray-400">Health Score</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="w-8 h-8 text-purple-400" />
+            </div>
+            <p className="text-3xl font-bold text-purple-400">{recentAnomalies.length}</p>
+            <p className="text-sm text-gray-400">Anomalies</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Info Banner */}
+      <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-white font-bold mb-2">How Signal Watch Works</h3>
+              <ul className="space-y-1 text-sm text-cyan-300">
+                <li>• <strong>Location Detection:</strong> Uses your device location to find nearby cell towers</li>
+                <li>• <strong>OpenCelliD Database:</strong> Compares towers against 40+ million verified cell tower records</li>
+                <li>• <strong>Threat Detection:</strong> Flags towers with low verification samples (&lt;5 reports)</li>
+                <li>• <strong>Community Reports:</strong> Help others by reporting suspicious towers anonymously</li>
+                <li>• <strong>Real-Time Alerts:</strong> Get notified of potential IMSI catchers or rogue towers</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <SignalMonitoringControl 
+            monitoring={monitoring}
+            healthScore={healthScore}
+            user={user}
+          />
+          
+          <TowerList 
+            towers={towers}
+            onReport={handleReport}
+            onRefresh={() => fetchNearbyTowers()}
+            loading={fetchingTowers}
+          />
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setShowInfoDialog(true)}
-            variant="outline"
-            className="border-cyan-500/20 text-cyan-400"
-          >
-            <Info className="w-4 h-4 mr-2" />
-            How It Works
-          </Button>
-          <Button
-            onClick={() => setShowSettingsDialog(true)}
-            variant="outline"
-            className="border-purple-500/20 text-purple-400"
-          >
-            <SettingsIcon className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
+
+        <div className="space-y-6">
+          <ActivityFeed 
+            anomalies={recentAnomalies}
+            signalHistory={stats?.signal_history || []}
+          />
+          <SignalSettings user={user} />
         </div>
       </div>
 
-      {isLoading ? (
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-          <CardContent className="p-12 text-center">
-            <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
-            <p className="text-gray-400">Loading Signal Watch...</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Status Indicator Card */}
-          <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 ${
-            monitoringActive ? 'border-green-500/30' : 'border-gray-500/20'
-          }`}>
-            <CardContent className="p-6">
-              <SignalMonitoringControl 
-                monitoringActive={monitoringActive}
-                healthScore={healthScore}
-                stats={stats}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Activity className="w-8 h-8 text-cyan-400" />
-                  <div>
-                    <p className="text-xs text-gray-400">Signal Health</p>
-                    <p className={`text-2xl font-bold ${getHealthColor(healthScore)}`}>
-                      {healthScore}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <MapPin className="w-8 h-8 text-green-400" />
-                  <div>
-                    <p className="text-xs text-gray-400">Towers Seen</p>
-                    <p className="text-2xl font-bold text-green-400">
-                      {stats?.total_towers_seen || 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <AlertTriangle className="w-8 h-8 text-red-400" />
-                  <div>
-                    <p className="text-xs text-gray-400">Suspicious</p>
-                    <p className="text-2xl font-bold text-red-400">
-                      {stats?.suspicious_towers_count || 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Signal className="w-8 h-8 text-purple-400" />
-                  <div>
-                    <p className="text-xs text-gray-400">Network</p>
-                    <p className="text-lg font-bold text-purple-400">
-                      {stats?.current_tower?.connection_type || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Tower Map/List */}
-            <TowerList 
-              currentTower={stats?.current_tower}
-              signalHistory={stats?.signal_history || []}
-              onReport={() => setShowReportDialog(true)}
-            />
-
-            {/* Activity Feed */}
-            <ActivityFeed 
-              anomalies={stats?.recent_anomalies || []}
-              signalHistory={stats?.signal_history || []}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Report Tower Dialog */}
-      <ReportTowerDialog
-        open={showReportDialog}
-        onClose={() => setShowReportDialog(false)}
-        currentTower={stats?.current_tower}
-      />
-
-      {/* Settings Dialog */}
-      <SignalSettings
-        open={showSettingsDialog}
-        onClose={() => setShowSettingsDialog(false)}
-        stats={stats}
-      />
-
-      {/* Info Dialog */}
-      <Dialog open={showInfoDialog} onOpenChange={setShowInfoDialog}>
-        <DialogContent className="bg-[#1a2332] border-cyan-500/30 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Info className="w-6 h-6 text-cyan-400" />
-              How Signal Watch Protects You
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-              <h3 className="text-cyan-300 font-bold mb-2">What It Does:</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li>• <strong>Monitors cell tower connections</strong> in real-time</li>
-                <li>• <strong>Detects forced 2G downgrades</strong> (common IMSI catcher tactic)</li>
-                <li>• <strong>Identifies unknown tower IDs</strong> not in carrier databases</li>
-                <li>• <strong>Tracks signal strength anomalies</strong></li>
-                <li>• <strong>Community threat reporting</strong> to protect all users</li>
-              </ul>
-            </div>
-
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <h3 className="text-yellow-300 font-bold mb-2">What It Doesn't Do:</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li>• <strong>Cannot block networks:</strong> SafeNest alerts you but doesn't interfere with connections</li>
-                <li>• <strong>Not 100% accurate:</strong> Temporary towers may trigger false alerts</li>
-                <li>• <strong>Simulated data:</strong> Currently using demo data (real device APIs coming soon)</li>
-              </ul>
-            </div>
-
-            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <h3 className="text-green-300 font-bold mb-2">Privacy Guarantee:</h3>
-              <p className="text-sm text-gray-300">
-                All monitoring happens <strong>locally on your device</strong>. We never see your tower data 
-                unless you explicitly submit a report. Anonymous reporting is enabled by default.
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Alert Dialog */}
-      {currentAlert && (
-        <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
-          <DialogContent className="bg-[#1a2332] border-red-500/50 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-white flex items-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
-                Suspicious Tower Detected
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-300 font-semibold mb-2">
-                  {currentAlert.description}
-                </p>
-                <p className="text-sm text-gray-300">
-                  <strong>Tower ID:</strong> {currentAlert.cell_id}
-                </p>
-                <p className="text-sm text-gray-300">
-                  <strong>Detected:</strong> {new Date(currentAlert.timestamp).toLocaleString()}
-                </p>
-              </div>
-
-              <p className="text-sm text-gray-400">
-                This could be a temporary tower or a potential IMSI catcher. Your connection remains 
-                private within SafeNest, but you may want to avoid sensitive activities.
-              </p>
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => {
-                    setShowAlertDialog(false);
-                    setShowReportDialog(true);
-                  }}
-                  className="flex-1 bg-red-500 hover:bg-red-600"
-                >
-                  <Flag className="w-4 h-4 mr-2" />
-                  Report to SafeNest
-                </Button>
-                <Button
-                  onClick={() => setShowAlertDialog(false)}
-                  variant="outline"
-                  className="flex-1 border-gray-500/20"
-                >
-                  Dismiss
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Report Dialog */}
+      {reportTower && (
+        <ReportTowerDialog
+          tower={reportTower}
+          open={showReportDialog}
+          onClose={() => {
+            setShowReportDialog(false);
+            setReportTower(null);
+          }}
+          user={user}
+        />
       )}
     </div>
   );

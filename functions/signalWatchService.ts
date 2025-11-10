@@ -49,6 +49,115 @@ Deno.serve(async (req) => {
 
     console.log('Signal Watch request:', { endpoint, user: user.email });
 
+    // POST /signal-watch/fetch-towers (NEW - OpenCelliD Integration)
+    if (endpoint === 'fetch-towers') {
+      try {
+        const { lat, lon, range } = params;
+
+        if (!lat || !lon) {
+          return Response.json({ 
+            error: 'Missing latitude or longitude' 
+          }, { status: 400 });
+        }
+
+        console.log('Fetching towers from OpenCelliD:', { lat, lon, range: range || 5000 });
+
+        const apiKey = Deno.env.get('OPENCELLID_TOKEN');
+        if (!apiKey) {
+          return Response.json({ 
+            error: 'OpenCelliD API key not configured' 
+          }, { status: 500 });
+        }
+
+        // Fetch towers from OpenCelliD API
+        const url = `https://opencellid.org/cell/getInArea?key=${apiKey}&lat=${lat}&lon=${lon}&radius=${range || 5000}&format=json&limit=50`;
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`OpenCelliD API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('OpenCelliD response:', data);
+
+        // Process towers
+        const towers = (data.cells || []).map(cell => {
+          const samples = cell.samples || 0;
+          const isUnverified = samples < 5;
+          const mccMnc = `${cell.mcc}${cell.mnc}`;
+          const isKnownCarrier = Object.values(KNOWN_TOWERS).flat().includes(mccMnc);
+
+          return {
+            cell_id: cell.cell || cell.cellid || `${cell.lac}-${cell.cid}`,
+            mcc: cell.mcc,
+            mnc: cell.mnc,
+            lac: cell.lac,
+            cid: cell.cid,
+            signal: cell.averageSignal || cell.signal || -85,
+            radio: cell.radio || '4G',
+            latitude: cell.lat,
+            longitude: cell.lon,
+            samples: samples,
+            range: cell.range || 1000,
+            changeable: cell.changeable || 0,
+            created: cell.created || 0,
+            updated: cell.updated || 0,
+            is_unverified: isUnverified,
+            is_known_carrier: isKnownCarrier,
+            warning_level: isUnverified && !isKnownCarrier ? 'critical' : 
+                           isUnverified ? 'high' : 
+                           !isKnownCarrier ? 'medium' : 'none'
+          };
+        });
+
+        // Update session with tower data
+        const sessions = await base44.entities.SignalWatch.filter({ 
+          created_by: user.email 
+        });
+
+        if (sessions.length > 0) {
+          const session = sessions[0];
+          const unverifiedCount = towers.filter(t => t.is_unverified).length;
+          const criticalCount = towers.filter(t => t.warning_level === 'critical').length;
+
+          await base44.entities.SignalWatch.update(session.id, {
+            tower_data: towers.length > 0 ? towers[0] : null,
+            total_towers_seen: towers.length,
+            suspicious_towers_count: unverifiedCount
+          });
+
+          // Create alert if critical towers found
+          if (criticalCount > 0) {
+            const criticalTowers = towers.filter(t => t.warning_level === 'critical');
+            await base44.entities.Alert.create({
+              alert_type: 'phishing', // Using existing type
+              severity: 'high',
+              title: '⚠️ Unverified Cell Towers Detected',
+              message: `Found ${criticalCount} unverified tower(s) nearby. These could be rogue towers. Cell IDs: ${criticalTowers.slice(0, 3).map(t => t.cell_id).join(', ')}`,
+              status: 'active',
+              affected_item: `${lat},${lon}`,
+              recommendation: 'Avoid sensitive transactions. Enable VPN. Report suspicious towers.'
+            });
+          }
+        }
+
+        return Response.json({
+          success: true,
+          towers,
+          total: towers.length,
+          unverified: towers.filter(t => t.is_unverified).length,
+          critical: towers.filter(t => t.warning_level === 'critical').length,
+          location: { lat, lon, range: range || 5000 }
+        });
+      } catch (error) {
+        console.error('Fetch towers error:', error);
+        return Response.json({ 
+          error: 'Failed to fetch towers: ' + error.message 
+        }, { status: 500 });
+      }
+    }
+
     // POST /signal-watch/start
     if (endpoint === 'start') {
       try {
@@ -214,7 +323,7 @@ Deno.serve(async (req) => {
 
         const updatedHistory = [...history, newHistoryEntry].slice(-100); // Keep last 100
         const updatedAnomalies = newAnomaly ? [...anomalies, newAnomaly] : anomalies;
-        const newHealthScore = Math.max(0, Math.min(100, session.signal_health_score + healthImpact));
+        const newHealthScore = Math.max(0, Math.min(100, (session.signal_health_score || 100) + healthImpact));
 
         await base44.entities.SignalWatch.update(session.id, {
           tower_data: {
