@@ -49,6 +49,13 @@ const navigationItems = [
     highlight: true
   },
   {
+    title: "Lex AI Assistant",
+    url: createPageUrl("LegalAssistant"),
+    icon: Bot,
+    badge: "AI",
+    highlight: true
+  },
+  {
     title: "Collaboration",
     url: createPageUrl("Collaboration"),
     icon: Users,

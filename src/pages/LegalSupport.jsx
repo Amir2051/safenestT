@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Scale, FileText, Shield, Users, AlertTriangle, 
   Download, Upload, Clock, CheckCircle, Phone, Home,
-  Award, Lock, ExternalLink, Calendar, DollarSign, Sparkles
+  Award, Lock, ExternalLink, Calendar, DollarSign, Sparkles,
+  MessageSquare, Activity // Added MessageSquare and Activity
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -21,11 +22,13 @@ import DocumentStorage from "../components/legal/DocumentStorage.jsx";
 import AttorneyConsultations from "../components/legal/AttorneyConsultations.jsx";
 import LegalAuditTrail from "../components/legal/LegalAuditTrail.jsx";
 import ReferralShareWidget from "../components/referrals/ReferralShareWidget.jsx";
+import LegalChatbot from "../components/legal/LegalChatbot.jsx"; // New import
 
 export default function LegalSupport() {
   const [user, setUser] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [referrerName, setReferrerName] = useState(null);
+  const [activeTab, setActiveTab] = useState('alerts'); // New state for active tab
 
   const queryClient = useQueryClient();
 
@@ -158,18 +161,51 @@ export default function LegalSupport() {
       )}
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Scale className="w-8 h-8 text-purple-400" />
-          Legal Support Center
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/50 border animate-pulse">
-            FREE
-          </Badge>
-        </h1>
-        <p className="text-gray-400 mt-1">
-          Comprehensive legal protection for your property titles • Integrated with NYC ACRIS monitoring
-        </p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Scale className="w-8 h-8 text-purple-400" />
+            Legal Support
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/50 animate-pulse">
+              100% FREE
+            </Badge>
+          </h1>
+          <p className="text-gray-400 mt-1">
+            AI-powered legal assistance with licensed attorney access
+          </p>
+        </div>
+        <Link to={createPageUrl("LegalAssistant")}>
+          <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Ask Lex AI
+          </Button>
+        </Link>
       </div>
+
+      {/* AI Assistant Quick Access */}
+      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <Scale className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold">🤖 Lex - AI Legal Assistant</p>
+                <p className="text-purple-300 text-sm">
+                  Get instant answers to legal questions • 24/7 availability • NYC law expert
+                </p>
+              </div>
+            </div>
+            <Link to={createPageUrl("LegalAssistant")}>
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-500">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Chat Now
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Info Banner */}
       <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
@@ -284,70 +320,110 @@ export default function LegalSupport() {
       )}
 
       {/* Main Tabs */}
-      <Tabs defaultValue="alerts" className="w-full">
-        <TabsList className="bg-[#1a2332] border border-cyan-500/20 grid grid-cols-5 w-full lg:w-auto">
-          <TabsTrigger value="alerts" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-white">
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Alerts
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white">
-            <FileText className="w-4 h-4 mr-2" />
-            Templates
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-white">
-            <Upload className="w-4 h-4 mr-2" />
-            Documents
-          </TabsTrigger>
-          <TabsTrigger value="attorneys" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-white">
-            <Users className="w-4 h-4 mr-2" />
-            Attorneys
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-white">
-            <Lock className="w-4 h-4 mr-2" />
-            Audit Trail
-          </TabsTrigger>
-        </TabsList>
+      <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+        <CardHeader>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={() => setActiveTab('alerts')}
+              variant={activeTab === 'alerts' ? 'default' : 'outline'}
+              className={activeTab === 'alerts' ? 'bg-red-500' : 'border-red-500/20 text-red-400'}
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Legal Alerts ({propertyAlerts.length})
+            </Button>
+            <Button
+              onClick={() => setActiveTab('ai-chat')}
+              variant={activeTab === 'ai-chat' ? 'default' : 'outline'}
+              className={activeTab === 'ai-chat' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'border-purple-500/20 text-purple-400'}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI Assistant
+            </Button>
+            <Button
+              onClick={() => setActiveTab('templates')}
+              variant={activeTab === 'templates' ? 'default' : 'outline'}
+              className={activeTab === 'templates' ? 'bg-cyan-500' : 'border-cyan-500/20 text-cyan-400'}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Document Templates
+            </Button>
+            <Button
+              onClick={() => setActiveTab('documents')}
+              variant={activeTab === 'documents' ? 'default' : 'outline'}
+              className={activeTab === 'documents' ? 'bg-blue-500' : 'border-blue-500/20 text-blue-400'}
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Document Storage ({totalDocuments})
+            </Button>
+            <Button
+              onClick={() => setActiveTab('attorneys')}
+              variant={activeTab === 'attorneys' ? 'default' : 'outline'}
+              className={activeTab === 'attorneys' ? 'bg-green-500' : 'border-green-500/20 text-green-400'}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Attorney Consultations ({consultations.length})
+            </Button>
+            <Button
+              onClick={() => setActiveTab('audit')}
+              variant={activeTab === 'audit' ? 'default' : 'outline'}
+              className={activeTab === 'audit' ? 'bg-purple-500' : 'border-purple-500/20 text-purple-400'}
+            >
+              <Activity className="w-4 h-4 mr-2" />
+              Audit Trail ({legalActions.length})
+            </Button>
+          </div>
+        </CardHeader>
 
-        <TabsContent value="alerts" className="mt-6">
-          <LegalAlerts 
-            alerts={propertyAlerts} 
-            properties={properties}
-            selectedProperty={selectedProperty}
-          />
-        </TabsContent>
-
-        <TabsContent value="templates" className="mt-6">
-          <DocumentTemplates 
-            properties={properties}
-            alerts={titleAlerts}
-            selectedProperty={selectedProperty}
-          />
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-6">
-          <DocumentStorage 
-            documents={propertyDocuments}
-            properties={properties}
-            selectedProperty={selectedProperty}
-          />
-        </TabsContent>
-
-        <TabsContent value="attorneys" className="mt-6">
-          <AttorneyConsultations 
-            consultations={propertyConsultations}
-            properties={properties}
-            selectedProperty={selectedProperty}
-          />
-        </TabsContent>
-
-        <TabsContent value="audit" className="mt-6">
-          <LegalAuditTrail 
-            actions={propertyActions}
-            properties={properties}
-            selectedProperty={selectedProperty}
-          />
-        </TabsContent>
-      </Tabs>
+        <CardContent className="p-6">
+          {activeTab === 'alerts' && 
+            <LegalAlerts 
+              alerts={propertyAlerts} 
+              properties={properties}
+              selectedProperty={selectedProperty}
+              user={user}
+            />
+          }
+          {activeTab === 'ai-chat' && 
+            <LegalChatbot 
+              user={user} 
+              properties={properties} 
+              alerts={propertyAlerts} 
+            />
+          }
+          {activeTab === 'templates' && 
+            <DocumentTemplates 
+              properties={properties}
+              alerts={titleAlerts}
+              selectedProperty={selectedProperty}
+              user={user}
+            />
+          }
+          {activeTab === 'documents' && 
+            <DocumentStorage 
+              documents={propertyDocuments}
+              properties={properties}
+              selectedProperty={selectedProperty}
+              user={user}
+            />
+          }
+          {activeTab === 'attorneys' && 
+            <AttorneyConsultations 
+              consultations={propertyConsultations}
+              properties={properties}
+              selectedProperty={selectedProperty}
+              user={user}
+            />
+          }
+          {activeTab === 'audit' && 
+            <LegalAuditTrail 
+              actions={propertyActions}
+              properties={properties}
+              selectedProperty={selectedProperty}
+              user={user}
+            />
+          }
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">

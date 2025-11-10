@@ -27,6 +27,7 @@ import LegalSupport from './pages/LegalSupport';
 import AdminReferralDashboard from './pages/AdminReferralDashboard';
 import Collaboration from './pages/Collaboration';
 import AttorneyTasks from './pages/AttorneyTasks';
+import LegalAssistant from './pages/LegalAssistant';
 import Layout from './Layout.jsx';
 
 
@@ -60,6 +61,7 @@ export const PAGES = {
     "AdminReferralDashboard": AdminReferralDashboard,
     "Collaboration": Collaboration,
     "AttorneyTasks": AttorneyTasks,
+    "LegalAssistant": LegalAssistant,
 }
 
 export const pagesConfig = {
