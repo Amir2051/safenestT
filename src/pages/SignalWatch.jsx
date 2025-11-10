@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Radio, Shield, AlertTriangle, TrendingUp, MapPin, 
-  Loader2, RefreshCw, Plus, TestTube
+  Loader2, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,19 +15,16 @@ import TowerList from "../components/signal/TowerList.jsx";
 import ActivityFeed from "../components/signal/ActivityFeed.jsx";
 import ReportTowerDialog from "../components/signal/ReportTowerDialog.jsx";
 import SignalSettings from "../components/signal/SignalSettings.jsx";
-import ManualTowerLogger from "../components/signal/ManualTowerLogger.jsx";
 
 export default function SignalWatch() {
   const [user, setUser] = useState(null);
   const [reportTower, setReportTower] = useState(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showManualLogger, setShowManualLogger] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [towers, setTowers] = useState([]);
   const [fetchingTowers, setFetchingTowers] = useState(false);
   const [monitoringActive, setMonitoringActive] = useState(false);
-  const [dataSource, setDataSource] = useState('unknown');
 
   const queryClient = useQueryClient();
 
@@ -109,7 +106,7 @@ export default function SignalWatch() {
         setFetchingLocation(false);
         toast.success('📍 Location detected!');
         // Auto-fetch towers after getting location
-        fetchNearbyTowers(location, false);
+        fetchNearbyTowers(location);
       },
       (error) => {
         console.error('Geolocation error:', error);
@@ -133,7 +130,7 @@ export default function SignalWatch() {
     );
   };
 
-  const fetchNearbyTowers = async (location = userLocation, useMock = false) => {
+  const fetchNearbyTowers = async (location = userLocation) => {
     if (!location) {
       toast.error('Location required to scan for towers');
       return;
@@ -142,49 +139,39 @@ export default function SignalWatch() {
     setFetchingTowers(true);
     
     try {
-      console.log('Fetching nearby towers:', { location, useMock });
+      console.log('Fetching nearby towers:', location);
       
       const response = await base44.functions.invoke('signalWatchService', {
         endpoint: 'fetch-towers',
         lat: location.lat,
         lon: location.lon,
-        range: 5000, // 5km radius
-        use_mock: useMock
+        range: 5000 // 5km radius
       });
 
       console.log('Fetch towers response:', response);
 
-      if (response.status >= 400 && !response.data?.towers) {
+      if (response.status >= 400) {
         throw new Error(response.data?.error || 'Failed to fetch towers');
       }
 
       const fetchedTowers = response.data.towers || [];
-      const source = response.data.data_source || 'unknown';
-      const note = response.data.note;
       
-      console.log('Fetched towers:', fetchedTowers.length, 'Source:', source);
+      console.log('Fetched towers:', fetchedTowers.length);
       
       setTowers(fetchedTowers);
-      setDataSource(source);
       
       const unverifiedCount = response.data.unverified || 0;
       const criticalCount = response.data.critical || 0;
 
-      // Show appropriate toast based on data source
-      if (source === 'mock') {
-        if (note) {
-          toast.info(note, { duration: 6000 });
-        } else {
-          toast.info('📊 Using demo data. Configure OPENCELLID_TOKEN for real cell tower data.', { duration: 6000 });
-        }
+      // Show appropriate toast based on results
+      if (fetchedTowers.length === 0) {
+        toast.info('No towers found in this area. Try a different location.');
       } else if (criticalCount > 0) {
         toast.error(`⚠️ ${criticalCount} unverified tower(s) detected nearby!`, { duration: 5000 });
       } else if (unverifiedCount > 0) {
         toast.warning(`${unverifiedCount} tower(s) with low verification found`, { duration: 4000 });
-      } else if (fetchedTowers.length > 0) {
-        toast.success(`✅ Scanned ${fetchedTowers.length} towers - All verified!`);
       } else {
-        toast.info('No towers found in this area. Try a different location or add towers manually.');
+        toast.success(`✅ Scanned ${fetchedTowers.length} towers - All verified!`);
       }
 
       // Invalidate stats to update UI
@@ -250,57 +237,28 @@ export default function SignalWatch() {
             <Badge className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white border-none animate-pulse">
               BETA
             </Badge>
-            {dataSource === 'mock' && (
-              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 border">
-                DEMO DATA
-              </Badge>
-            )}
           </h1>
           <p className="text-gray-400 mt-1">
-            Monitor cellular towers for suspicious activity • Powered by OpenCelliD
+            Real-time cell tower monitoring • Powered by OpenCelliD
           </p>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setShowManualLogger(true)}
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Log Tower Manually
-          </Button>
-          
-          {userLocation && (
-            <Button
-              onClick={() => fetchNearbyTowers(userLocation, true)}
-              variant="outline"
-              className="border-yellow-500/20 text-yellow-400"
-              disabled={fetchingTowers}
-            >
-              <TestTube className="w-4 h-4 mr-2" />
-              Test with Demo Data
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Data Source Info Banner */}
-      {dataSource === 'mock' && (
-        <Card className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <TestTube className="w-6 h-6 text-yellow-400 mt-0.5" />
-              <div>
-                <p className="text-white font-semibold mb-1">Using Demo Data</p>
-                <p className="text-yellow-300 text-sm">
-                  You're viewing simulated cell tower data for demonstration purposes. 
-                  To scan real towers, ensure OPENCELLID_TOKEN is properly configured in your environment settings.
-                </p>
-              </div>
+      {/* API Token Info Banner */}
+      <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-6 h-6 text-cyan-400 mt-0.5" />
+            <div>
+              <p className="text-white font-semibold mb-1">Real OpenCelliD Data</p>
+              <p className="text-cyan-300 text-sm">
+                Connected to OpenCelliD API with 40+ million verified cell tower records worldwide. 
+                All tower data is fetched in real-time from the OpenCelliD database.
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Location Banner */}
       {!userLocation && !fetchingLocation && (
@@ -444,10 +402,9 @@ export default function SignalWatch() {
                 <li>• <strong>Location Detection:</strong> Uses your device location to find nearby cell towers</li>
                 <li>• <strong>OpenCelliD Database:</strong> Compares towers against 40+ million verified cell tower records</li>
                 <li>• <strong>Threat Detection:</strong> Flags towers with low verification samples (&lt;5 reports)</li>
-                <li>• <strong>Manual Logging:</strong> Can't get tower info from browser? Log towers manually from dialer codes</li>
+                <li>• <strong>Carrier Verification:</strong> Checks if towers belong to known carriers (Verizon, AT&T, T-Mobile)</li>
                 <li>• <strong>Community Reports:</strong> Help others by reporting suspicious towers anonymously</li>
                 <li>• <strong>Real-Time Monitoring:</strong> Enable monitoring to continuously track signal changes</li>
-                <li>• <strong>Demo Mode:</strong> Test the feature with simulated data using "Test with Demo Data" button</li>
               </ul>
             </div>
           </div>
@@ -480,7 +437,7 @@ export default function SignalWatch() {
         </div>
       </div>
 
-      {/* Dialogs */}
+      {/* Report Dialog */}
       {reportTower && (
         <ReportTowerDialog
           tower={reportTower}
@@ -492,15 +449,6 @@ export default function SignalWatch() {
           user={user}
         />
       )}
-
-      <ManualTowerLogger
-        open={showManualLogger}
-        onClose={() => {
-          setShowManualLogger(false);
-          queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
-        }}
-        user={user}
-      />
     </div>
   );
 }
