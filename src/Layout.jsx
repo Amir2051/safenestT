@@ -69,6 +69,13 @@ const navigationItems = [
     badge: "AUTO",
   },
   {
+    title: "Identity Monitor",
+    url: createPageUrl("IdentityMonitor"),
+    icon: Shield,
+    badge: "VAULT",
+    highlight: true
+  },
+  {
     title: "Credit Cards",
     url: createPageUrl("CreditCardMonitor"),
     icon: CreditCard,
@@ -324,6 +331,8 @@ function LayoutContent({ children, currentPageName }) {
                                   ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                                   : item.badge === "AUTO" // Specific style for AUTO badge
                                   ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
+                                  : item.badge === "VAULT" // Specific style for VAULT badge
+                                  ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50' // New VAULT badge style
                                   : 'bg-purple-500/20 text-purple-400'
                               }`}>
                                 {item.badge}
