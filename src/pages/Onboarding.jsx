@@ -1,292 +1,367 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, CheckCircle, Sparkles, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Shield, CheckCircle, Loader2, Gift, Users, Sparkles, ArrowRight
+} from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 
 export default function Onboarding() {
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    full_name: '',
-    phone: '',
-    monitored_emails: []
-  });
+  const [referralCode, setReferralCode] = useState('');
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [codeValid, setCodeValid] = useState(null);
+  const [referrerName, setReferrerName] = useState('');
+
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    base44.auth.me().then(async (userData) => {
+    base44.auth.me().then(userData => {
       setUser(userData);
       
-      // Initialize trial if not already set
-      if (!userData.trial_start_date) {
-        const trialStartDate = new Date();
-        const trialEndDate = new Date(trialStartDate);
-        trialEndDate.setDate(trialEndDate.getDate() + 3); // 3-day trial
-
-        await base44.auth.updateMe({
-          subscription_plan: 'trial',
-          payment_status: 'trial',
-          trial_start_date: trialStartDate.toISOString(),
-          trial_end_date: trialEndDate.toISOString(),
-          trial_days_remaining: 3
-        });
-
-        console.log('🎁 3-day trial initialized');
-        
-        // Create audit log
-        await base44.entities.AuditLog.create({
-          action_type: 'profile_updated',
-          action_category: 'settings',
-          description: '3-day trial activated',
-          metadata: {
-            trial_end_date: trialEndDate.toISOString()
-          },
-          severity: 'info',
-          status: 'success'
-        });
+      // Skip onboarding if already completed
+      if (userData.onboarding_completed) {
+        navigate(createPageUrl('Dashboard'));
       }
-    }).catch(() => {});
+      
+      // Check URL for referral code
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      if (refCode) {
+        setReferralCode(refCode.toUpperCase());
+        validateReferralCode(refCode);
+      }
+    }).catch(() => {
+      // Not authenticated, redirect to login
+      base44.auth.redirectToLogin(window.location.pathname);
+    });
   }, []);
 
-  const handleNext = async () => {
-    setLoading(true);
+  const validateReferralCode = async (code) => {
+    if (!code || code.length < 4) {
+      setCodeValid(null);
+      setReferrerName('');
+      return;
+    }
+
+    setValidatingCode(true);
     
     try {
-      if (step === 1) {
-        if (!formData.full_name) {
-          toast.error('Please enter your name');
-          setLoading(false);
-          return;
-        }
-        setStep(2);
-      } else if (step === 2) {
-        await base44.auth.updateMe({
-          full_name: formData.full_name,
-          phone: formData.phone,
-          monitored_emails: formData.monitored_emails
-        });
+      const response = await base44.functions.invoke('referralService', {
+        endpoint: 'validate-code',
+        code: code.toUpperCase()
+      });
 
-        await base44.entities.AuditLog.create({
-          action_type: 'profile_updated',
-          action_category: 'settings',
-          description: 'Onboarding completed',
-          severity: 'info',
-          status: 'success'
-        });
-
-        toast.success('🎉 Welcome to SafeNest! Your 3-day trial has started.');
-        navigate(createPageUrl("Dashboard"));
+      if (response.data.valid) {
+        setCodeValid(true);
+        setReferrerName(response.data.referrer_name);
+        toast.success(`✅ Valid referral code from ${response.data.referrer_name}!`);
+      } else {
+        setCodeValid(false);
+        setReferrerName('');
+        toast.error(response.data.error || 'Invalid referral code');
       }
     } catch (error) {
-      console.error('Onboarding error:', error);
-      toast.error('Failed to complete onboarding');
+      setCodeValid(false);
+      setReferrerName('');
+      console.error('Validate code error:', error);
+    } finally {
+      setValidatingCode(false);
     }
-    
-    setLoading(false);
   };
 
-  const addEmail = () => {
-    const email = prompt('Enter email address to monitor:');
-    if (email && email.includes('@')) {
-      setFormData(prev => ({
-        ...prev,
-        monitored_emails: [...prev.monitored_emails, email]
-      }));
+  const applyReferralMutation = useMutation({
+    mutationFn: async () => {
+      if (!referralCode) {
+        return { success: true, skipped: true };
+      }
+
+      const response = await base44.functions.invoke('referralService', {
+        endpoint: 'apply-signup',
+        referral_code: referralCode.toUpperCase()
+      });
+
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.skipped) {
+        // No referral code
+        completeOnboarding();
+      } else {
+        // Referral applied
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+        toast.success('🎁 ' + data.message, { duration: 8000 });
+        setStep(3); // Success step
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to apply referral: ' + error.message);
     }
+  });
+
+  const completeOnboarding = async () => {
+    try {
+      await base44.auth.updateMe({
+        onboarding_completed: true
+      });
+      
+      toast.success('Welcome to SafeNest! 🎉');
+      navigate(createPageUrl('Dashboard'));
+    } catch (error) {
+      console.error('Complete onboarding error:', error);
+      toast.error('Failed to complete onboarding');
+    }
+  };
+
+  const handleNext = () => {
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      applyReferralMutation.mutate();
+    }
+  };
+
+  const handleSkip = () => {
+    applyReferralMutation.mutate();
   };
 
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
+        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
       </div>
     );
   }
 
+  const progress = (step / 3) * 100;
+
   return (
     <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-6">
-      <div className="max-w-2xl w-full">
-        {/* Trial Banner */}
-        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 mb-6">
-          <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-purple-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              🎁 Welcome! Your 3-Day Premium Trial Starts Now
-            </h2>
-            <p className="text-purple-300 mb-4">
-              Get full access to all premium features for 3 days, completely free!
-            </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-              <Clock className="w-4 h-4" />
-              <span>Trial ends in 3 days • No credit card required</span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-cyan-500/30">
+            <Shield className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to SafeNest!
+          </h1>
+          <p className="text-gray-400">
+            Let's get you started with world-class security
+          </p>
+        </div>
 
-        {/* Onboarding Steps */}
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-          <CardContent className="p-8">
-            {/* Progress */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                step >= 1 ? 'bg-cyan-500' : 'bg-gray-700'
-              }`}>
-                {step > 1 ? (
-                  <CheckCircle className="w-6 h-6 text-white" />
-                ) : (
-                  <span className="text-white font-bold">1</span>
-                )}
-              </div>
-              <div className={`h-1 w-20 ${step >= 2 ? 'bg-cyan-500' : 'bg-gray-700'}`} />
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                step >= 2 ? 'bg-cyan-500' : 'bg-gray-700'
-              }`}>
-                <span className="text-white font-bold">2</span>
-              </div>
-            </div>
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between mt-2 text-xs text-gray-400">
+            <span className={step >= 1 ? 'text-cyan-400' : ''}>Welcome</span>
+            <span className={step >= 2 ? 'text-cyan-400' : ''}>Referral Code</span>
+            <span className={step >= 3 ? 'text-cyan-400' : ''}>Complete</span>
+          </div>
+        </div>
 
-            {/* Step 1: Basic Info */}
-            {step === 1 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    Let's get started
-                  </h3>
-                  <p className="text-gray-400">
-                    Tell us a bit about yourself
-                  </p>
+        {/* Step 1: Welcome */}
+        {step === 1 && (
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/30">
+            <CardHeader>
+              <CardTitle className="text-white text-2xl">
+                🎉 Account Created Successfully!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                  <Shield className="w-8 h-8 text-cyan-400 mb-3" />
+                  <p className="text-white font-semibold mb-1">Title Protection</p>
+                  <p className="text-gray-400 text-sm">AI-powered property monitoring</p>
                 </div>
-
-                <div>
-                  <Label className="text-gray-300 mb-2 block">Full Name *</Label>
-                  <Input
-                    value={formData.full_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                    placeholder="John Doe"
-                    className="bg-[#0f1419] border-cyan-500/20 text-white"
-                  />
+                
+                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <Sparkles className="w-8 h-8 text-purple-400 mb-3" />
+                  <p className="text-white font-semibold mb-1">Legal AI Assistant</p>
+                  <p className="text-gray-400 text-sm">24/7 legal support</p>
                 </div>
-
-                <div>
-                  <Label className="text-gray-300 mb-2 block">Phone Number (optional)</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+1 (555) 123-4567"
-                    className="bg-[#0f1419] border-cyan-500/20 text-white"
-                  />
+                
+                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <CheckCircle className="w-8 h-8 text-green-400 mb-3" />
+                  <p className="text-white font-semibold mb-1">Identity Monitor</p>
+                  <p className="text-gray-400 text-sm">Dark web scanning</p>
                 </div>
               </div>
-            )}
 
-            {/* Step 2: Security Setup */}
-            {step === 2 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    Set up monitoring
-                  </h3>
-                  <p className="text-gray-400">
-                    Add emails to monitor for data breaches
-                  </p>
-                </div>
-
-                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4">
-                  <p className="text-cyan-400 text-sm font-semibold mb-2">
-                    ✨ Trial Benefit: Monitor up to 2 emails
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    During your trial, you can monitor 2 email addresses. Upgrade to monitor up to 5 (Elite plan).
-                  </p>
-                </div>
-
-                {formData.monitored_emails.length > 0 && (
-                  <div className="space-y-2">
-                    {formData.monitored_emails.map((email, idx) => (
-                      <div key={idx} className="bg-[#0f1419] rounded-lg p-3 border border-cyan-500/10">
-                        <p className="text-white text-sm">{email}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {formData.monitored_emails.length < 2 && (
-                  <Button
-                    onClick={addEmail}
-                    variant="outline"
-                    className="w-full border-cyan-500/20 text-cyan-400"
-                  >
-                    + Add Email to Monitor
-                  </Button>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="bg-[#0f1419] rounded-lg p-4 text-center">
-                    <Shield className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-white font-semibold text-sm">VPN Protection</p>
-                    <p className="text-gray-400 text-xs">Included</p>
-                  </div>
-                  <div className="bg-[#0f1419] rounded-lg p-4 text-center">
-                    <CheckCircle className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                    <p className="text-white font-semibold text-sm">Unlimited Passwords</p>
-                    <p className="text-gray-400 text-xs">Included</p>
-                  </div>
-                  <div className="bg-[#0f1419] rounded-lg p-4 text-center">
-                    <Sparkles className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-                    <p className="text-white font-semibold text-sm">AI Protection</p>
-                    <p className="text-gray-400 text-xs">Included</p>
-                  </div>
-                </div>
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p className="text-green-300 text-sm">
+                  ✅ <strong>All features are 100% FREE!</strong> No credit card required.
+                </p>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 mt-8">
-              {step > 1 && (
-                <Button
-                  onClick={() => setStep(step - 1)}
-                  variant="outline"
-                  className="flex-1 border-cyan-500/20 text-gray-300"
-                  disabled={loading}
-                >
-                  Back
-                </Button>
-              )}
               <Button
                 onClick={handleNext}
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12 text-lg"
               >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Loading...
-                  </>
-                ) : step === 1 ? (
-                  'Continue'
-                ) : (
-                  <>
-                    Start My Trial
-                    <Sparkles className="w-4 h-4 ml-2" />
-                  </>
-                )}
+                Continue
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <p className="text-xs text-gray-500 text-center mt-4">
-              No credit card required • Cancel anytime • Full access for 3 days
-            </p>
-          </CardContent>
-        </Card>
+        {/* Step 2: Referral Code */}
+        {step === 2 && (
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/30">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Gift className="w-6 h-6 text-purple-400" />
+                Do You Have a Referral Code?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg border border-purple-500/30">
+                <div className="flex items-start gap-3">
+                  <Users className="w-10 h-10 text-purple-400 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-white font-bold text-lg mb-2">
+                      Get 1 Month FREE Premium!
+                    </h3>
+                    <ul className="text-purple-300 text-sm space-y-1">
+                      <li>✨ Full access to all premium features</li>
+                      <li>🚀 Priority support</li>
+                      <li>🎁 No credit card required</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-gray-300 mb-2 block">
+                  Referral Code (Optional)
+                </Label>
+                <div className="relative">
+                  <Input
+                    value={referralCode}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      setReferralCode(value);
+                      if (value.length >= 4) {
+                        validateReferralCode(value);
+                      } else {
+                        setCodeValid(null);
+                      }
+                    }}
+                    placeholder="Enter code (e.g., ABC1234)"
+                    className="bg-[#0f1419] border-purple-500/20 text-white uppercase h-12 pr-12"
+                    maxLength={10}
+                  />
+                  {validatingCode && (
+                    <Loader2 className="absolute right-3 top-3 w-6 h-6 text-purple-400 animate-spin" />
+                  )}
+                  {!validatingCode && codeValid === true && (
+                    <CheckCircle className="absolute right-3 top-3 w-6 h-6 text-green-400" />
+                  )}
+                </div>
+                
+                {codeValid === true && referrerName && (
+                  <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-300 text-sm">
+                      ✅ Valid code from <strong>{referrerName}</strong>! 
+                      You'll get 1 month FREE and they'll get 1 month too!
+                    </p>
+                  </div>
+                )}
+                
+                {codeValid === false && (
+                  <p className="mt-2 text-red-400 text-sm">
+                    Invalid referral code. Please check and try again.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSkip}
+                  variant="outline"
+                  className="flex-1 border-gray-500/20 h-12"
+                  disabled={applyReferralMutation.isPending}
+                >
+                  Skip
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={applyReferralMutation.isPending || (referralCode && !codeValid)}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 h-12"
+                >
+                  {applyReferralMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Applying...
+                    </>
+                  ) : referralCode ? (
+                    'Apply Code'
+                  ) : (
+                    'Continue'
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-center text-xs text-gray-500">
+                Don't have a code? No problem! You can still use all free features.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3: Success */}
+        {step === 3 && (
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/30">
+            <CardContent className="p-12 text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                <CheckCircle className="w-12 h-12 text-white" />
+              </div>
+              
+              <h2 className="text-3xl font-bold text-white mb-3">
+                🎉 You're All Set!
+              </h2>
+              
+              <div className="mb-6">
+                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg px-6 py-2">
+                  1 Month FREE Premium Access!
+                </Badge>
+              </div>
+              
+              <p className="text-gray-300 mb-8">
+                {referrerName && (
+                  <>Thanks to <strong className="text-green-400">{referrerName}</strong>, you now have full access to all premium features!</>
+                )}
+              </p>
+
+              <Button
+                onClick={completeOnboarding}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12 px-8 text-lg"
+              >
+                Go to Dashboard
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Footer */}
+        <div className="text-center mt-8">
+          <p className="text-gray-500 text-sm">
+            Need help? <a href="#" className="text-cyan-400 hover:underline">Contact Support</a>
+          </p>
+        </div>
       </div>
     </div>
   );
