@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Unlock, AlertTriangle, Clock, Fingerprint } from "lucide-react";
+import { Lock, Unlock, AlertTriangle, Clock, Fingerprint, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
@@ -19,6 +19,8 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
         throw new Error('Please enter your PIN');
       }
 
+      console.log('Unlocking vault...');
+
       // Hash PIN (same as setup)
       const encoder = new TextEncoder();
       const data = encoder.encode(pin + vault.vault_salt);
@@ -26,14 +28,35 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const vault_pin_hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
+      console.log('Calling vaultService.unlock...');
+
       const response = await base44.functions.invoke('vaultService', {
         endpoint: 'unlock',
         vault_pin_hash: vault_pin_hash
       });
 
+      console.log('Unlock response:', response);
+
+      if (response.status >= 400) {
+        throw new Error(response.data?.error || 'Failed to unlock vault');
+      }
+
+      if (!response.data) {
+        throw new Error('Empty response from server');
+      }
+
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+
+      if (!response.data.success) {
+        throw new Error('Unlock failed');
+      }
+
       return response.data;
     },
     onSuccess: (data) => {
+      console.log('✅ Vault unlocked successfully');
       queryClient.invalidateQueries({ queryKey: ['vault'] });
       toast.success(`🔓 Vault unlocked! Auto-locks in ${Math.floor(data.expires_in / 60)} minutes`);
       setPin('');
@@ -41,6 +64,7 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
       if (onClose) onClose();
     },
     onError: (error) => {
+      console.error('❌ Unlock error:', error);
       toast.error(error.message || 'Failed to unlock vault');
       setPin('');
     }
@@ -48,6 +72,7 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Unlock form submitted');
     unlockMutation.mutate();
   };
 
@@ -105,6 +130,7 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
                 placeholder="Enter PIN"
                 maxLength={8}
                 autoFocus
+                disabled={unlockMutation.isPending}
                 className="bg-[#0f1419] border-purple-500/20 text-white text-center text-3xl tracking-widest h-16"
               />
               {vault.failed_attempts > 0 && (
@@ -119,9 +145,10 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
                 type="button"
                 variant="outline"
                 className="w-full border-purple-500/20 text-purple-400"
+                disabled
               >
                 <Fingerprint className="w-4 h-4 mr-2" />
-                Use Biometric
+                Use Biometric (Coming Soon)
               </Button>
             )}
 
@@ -152,7 +179,7 @@ export default function VaultUnlock({ vault, open, onClose, onUnlocked }) {
               >
                 {unlockMutation.isPending ? (
                   <>
-                    <Lock className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Unlocking...
                   </>
                 ) : (
