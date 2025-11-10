@@ -1,8 +1,7 @@
-
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio, ChevronDown, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -22,169 +21,132 @@ import {
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 
-const navigationItems = [
+// Compressed navigation structure with hierarchy
+const navigationStructure = [
   {
-    title: "Dashboard",
-    url: createPageUrl("Dashboard"),
+    id: 'dashboard',
+    title: 'Dashboard',
     icon: LayoutDashboard,
+    children: [
+      { title: 'Overview', url: createPageUrl('Dashboard'), icon: LayoutDashboard },
+      { title: 'Security Dashboard', url: createPageUrl('SecurityDashboard'), icon: ShieldCheck, badge: 'OWASP', highlight: true },
+      { title: 'Activity Log', url: createPageUrl('Activity'), icon: Activity },
+      { title: 'Reports', url: createPageUrl('Reports'), icon: FileText }
+    ]
   },
   {
-    title: "Security Dashboard",
-    url: createPageUrl("SecurityDashboard"),
-    icon: ShieldCheck,
-    badge: "OWASP",
-    highlight: true
+    id: 'ai',
+    title: 'AI Assistants',
+    icon: Bot,
+    badge: 'AI',
+    children: [
+      { title: 'Lex (Legal AI)', url: createPageUrl('LegalAssistant'), icon: Scale, badge: 'AI', highlight: true },
+      { title: 'Mia (Security AI)', url: createPageUrl('MiaAssistant'), icon: Bot }
+    ]
   },
   {
-    title: "Title Protection",
-    url: createPageUrl("TitleProtection"),
+    id: 'legal',
+    title: 'Legal & Property',
     icon: Home,
-    badge: "AI",
+    children: [
+      { title: 'Title Protection', url: createPageUrl('TitleProtection'), icon: Home, badge: 'AI' },
+      { title: 'Legal Support', url: createPageUrl('LegalSupport'), icon: Scale, badge: 'NEW', highlight: true },
+      { title: 'Collaboration', url: createPageUrl('Collaboration'), icon: Users, badge: 'LIVE', highlight: true },
+      { title: 'Attorney Tasks', url: createPageUrl('AttorneyTasks'), icon: CheckSquare, badge: 'AUTO' }
+    ]
   },
   {
-    title: "Legal Support",
-    url: createPageUrl("LegalSupport"),
-    icon: Scale,
-    badge: "NEW",
-    highlight: true
-  },
-  {
-    title: "Lex AI Assistant",
-    url: createPageUrl("LegalAssistant"),
-    icon: Bot,
-    badge: "AI",
-    highlight: true
-  },
-  {
-    title: "Collaboration",
-    url: createPageUrl("Collaboration"),
-    icon: Users,
-    badge: "LIVE",
-    highlight: true
-  },
-  {
-    title: "Attorney Tasks",
-    url: createPageUrl("AttorneyTasks"),
-    icon: CheckSquare,
-    badge: "AUTO",
-  },
-  {
-    title: "Identity Monitor",
-    url: createPageUrl("IdentityMonitor"),
+    id: 'identity',
+    title: 'Identity & Privacy',
     icon: Shield,
-    badge: "VAULT",
-    highlight: true
+    children: [
+      { title: 'Identity Monitor', url: createPageUrl('IdentityMonitor'), icon: Shield, badge: 'VAULT', highlight: true },
+      { title: 'Signal Watch', url: createPageUrl('SignalWatch'), icon: Radio, badge: 'BETA', highlight: true },
+      { title: 'Dark Web Monitor', url: createPageUrl('DarkWebMonitor'), icon: Eye },
+      { title: 'Credit Cards', url: createPageUrl('CreditCardMonitor'), icon: CreditCard }
+    ]
   },
   {
-    title: "Signal Watch",
-    url: createPageUrl("SignalWatch"),
-    icon: Radio,
-    badge: "BETA",
-    highlight: true
-  },
-  {
-    title: "Credit Cards",
-    url: createPageUrl("CreditCardMonitor"),
-    icon: CreditCard,
-  },
-  {
-    title: "VPN Protection",
-    url: createPageUrl("VPNPage"),
-    icon: Wifi,
-  },
-  {
-    title: "VPN Analytics",
-    url: createPageUrl("VPNAnalytics"),
-    icon: BarChart3,
-  },
-  {
-    title: "Device Care",
-    url: createPageUrl("DeviceCare"),
+    id: 'device',
+    title: 'Device Protection',
     icon: Smartphone,
+    children: [
+      { title: 'VPN Protection', url: createPageUrl('VPNPage'), icon: Wifi },
+      { title: 'VPN Analytics', url: createPageUrl('VPNAnalytics'), icon: BarChart3 },
+      { title: 'Device Care', url: createPageUrl('DeviceCare'), icon: Smartphone },
+      { title: 'Storage Optimizer', url: createPageUrl('StorageOptimizer'), icon: HardDrive },
+      { title: 'Auto Protection', url: createPageUrl('AutoProtection'), icon: Zap }
+    ]
   },
   {
-    title: "Storage Optimizer",
-    url: createPageUrl("StorageOptimizer"),
-    icon: HardDrive,
-  },
-  {
-    title: "Dark Web Monitor",
-    url: createPageUrl("DarkWebMonitor"),
-    icon: Eye,
-  },
-  {
-    title: "Auto Protection",
-    url: createPageUrl("AutoProtection"),
-    icon: Zap,
-  },
-  {
-    title: "Password Vault",
-    url: createPageUrl("PasswordVault"),
+    id: 'security',
+    title: 'Security Tools',
     icon: Lock,
+    children: [
+      { title: 'Password Vault', url: createPageUrl('PasswordVault'), icon: Lock },
+      { title: 'Alerts', url: createPageUrl('Alerts'), icon: Bell }
+    ]
   },
   {
-    title: "Alerts",
-    url: createPageUrl("Alerts"),
-    icon: Bell,
-  },
-  {
-    title: "Activity Log",
-    url: createPageUrl("Activity"),
-    icon: Activity,
-  },
-  {
-    title: "Reports",
-    url: createPageUrl("Reports"),
-    icon: FileText,
-  },
-  {
-    title: "Achievements",
-    url: createPageUrl("Achievements"),
-    icon: Trophy,
-  },
-  {
-    title: "Invite Friends",
-    url: createPageUrl("Referrals"),
+    id: 'community',
+    title: 'Community',
     icon: Users,
-  },
-  {
-    title: "Mia AI Assistant",
-    url: createPageUrl("MiaAssistant"),
-    icon: Bot,
-  },
-  {
-    title: "Settings",
-    url: createPageUrl("Settings"),
-    icon: Settings,
-  },
-];
-
-const adminNavigationItems = [
-  {
-    title: "Monitoring Engine",
-    url: createPageUrl("AdminMonitoringDashboard"),
-    icon: Server,
-    badge: "ADMIN",
-    adminOnly: true
-  },
-  {
-    title: "Referral Analytics",
-    url: createPageUrl("AdminReferralDashboard"),
-    icon: BarChart3,
-    badge: "ADMIN",
-    adminOnly: true
+    children: [
+      { title: 'Invite Friends', url: createPageUrl('Referrals'), icon: Users },
+      { title: 'Achievements', url: createPageUrl('Achievements'), icon: Trophy }
+    ]
   }
 ];
+
+const adminNavigationStructure = [
+  {
+    id: 'admin',
+    title: 'Admin',
+    icon: Server,
+    badge: 'ADMIN',
+    adminOnly: true,
+    children: [
+      { title: 'Monitoring Engine', url: createPageUrl('AdminMonitoringDashboard'), icon: Server, badge: 'ADMIN', adminOnly: true },
+      { title: 'Referral Analytics', url: createPageUrl('AdminReferralDashboard'), icon: BarChart3, badge: 'ADMIN', adminOnly: true }
+    ]
+  }
+];
+
+// Settings (no submenu, always visible at bottom)
+const settingsItem = {
+  title: 'Settings',
+  url: createPageUrl('Settings'),
+  icon: Settings
+};
 
 function LayoutContent({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
+  const [expandedMenus, setExpandedMenus] = React.useState({});
   const { setOpenMobile, isMobile } = useSidebar();
 
   React.useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
+
+  // Auto-expand menu if current page is in it
+  React.useEffect(() => {
+    const allMenus = user?.is_admin 
+      ? [...navigationStructure, ...adminNavigationStructure]
+      : navigationStructure;
+
+    const newExpanded = {};
+    allMenus.forEach(menu => {
+      if (menu.children) {
+        const hasActivePage = menu.children.some(child => child.url === location.pathname);
+        if (hasActivePage) {
+          newExpanded[menu.id] = true;
+        }
+      }
+    });
+    setExpandedMenus(prev => ({ ...prev, ...newExpanded }));
+  }, [location.pathname, user]);
 
   const handleLogout = () => {
     base44.auth.logout();
@@ -200,12 +162,19 @@ function LayoutContent({ children, currentPageName }) {
     }, 100);
   };
 
+  const toggleMenu = (menuId) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [menuId]: !prev[menuId]
+    }));
+  };
+
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.payment_status === 'active';
 
   const allNavigationItems = user?.is_admin
-    ? [...navigationItems, ...adminNavigationItems]
-    : navigationItems;
+    ? [...navigationStructure, ...adminNavigationStructure]
+    : navigationStructure;
 
   return (
     <>
@@ -257,7 +226,7 @@ function LayoutContent({ children, currentPageName }) {
           background: #667eea;
         }
 
-        /* Highlight animation for OWASP badge */
+        /* Highlight animation for special badges */
         @keyframes pulse-glow {
           0%, 100% {
             box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
@@ -267,7 +236,7 @@ function LayoutContent({ children, currentPageName }) {
           }
         }
 
-        .owasp-highlight {
+        .badge-highlight {
           animation: pulse-glow 2s ease-in-out infinite;
         }
       `}</style>
@@ -296,65 +265,137 @@ function LayoutContent({ children, currentPageName }) {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {allNavigationItems.map((item) => {
-                    const isActive = location.pathname === item.url;
+                    const isExpanded = expandedMenus[item.id];
+                    const hasActiveChild = item.children?.some(child => child.url === location.pathname);
+                    
                     return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-xl mb-1.5 transition-all duration-300 ${
-                            isActive 
-                              ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30 scale-105' 
-                              : item.highlight
-                              ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-white hover:from-green-500/20 hover:to-emerald-500/20 hover:scale-105 hover:shadow-md border border-green-500/30'
-                              : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
-                          }`}
-                        >
-                          <Link 
-                            to={item.url} 
-                            onClick={(e) => handleMenuClick(e, item.url)}
-                            className="flex items-center gap-3 px-4 py-3 w-full"
-                          >
-                            <item.icon className={`w-5 h-5 ${
-                              isActive 
-                                ? 'text-white' 
-                                : item.highlight 
-                                ? 'text-green-400' 
-                                : item.adminOnly 
-                                ? 'text-red-400' // Example for admin-only icon color
-                                : 'text-gray-300'
-                            }`} />
-                            <span className="font-semibold text-[15px] flex-1">{item.title}</span>
-                            {item.badge && (
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                item.highlight 
-                                  ? 'bg-green-500/20 text-green-400 border border-green-500/50 owasp-highlight' 
-                                  : item.adminOnly 
-                                  ? 'bg-red-500/20 text-red-400 border border-red-500/50' // Example for admin-only badge
-                                  : item.badge === "AI" 
-                                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' // Specific style for AI badge
-                                  : item.badge === "NEW"
-                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                  : item.badge === "LIVE" // Specific style for LIVE badge
-                                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                  : item.badge === "AUTO" // Specific style for AUTO badge
-                                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
-                                  : item.badge === "VAULT" // Specific style for VAULT badge
-                                  ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50' // New VAULT badge style
-                                  : item.badge === "BETA" // Specific style for BETA badge
-                                  ? 'bg-sky-500/20 text-sky-400 border border-sky-500/50' // New BETA badge style
-                                  : 'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {item.badge}
-                              </span>
+                      <SidebarMenuItem key={item.id}>
+                        {item.children ? (
+                          <div>
+                            {/* Parent menu item (collapsible) */}
+                            <button
+                              onClick={() => toggleMenu(item.id)}
+                              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-300 ${
+                                hasActiveChild
+                                  ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30'
+                                  : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <item.icon className={`w-5 h-5 ${
+                                  hasActiveChild ? 'text-white' : 'text-gray-300'
+                                }`} />
+                                <span className="font-semibold text-[15px]">{item.title}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {item.badge && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                    item.adminOnly 
+                                      ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                                      : item.badge === "AI"
+                                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                      : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                  }`}>
+                                    {item.badge}
+                                  </span>
+                                )}
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </div>
+                            </button>
+                            
+                            {/* Submenu items */}
+                            {isExpanded && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {item.children.map((child) => {
+                                  const isActive = location.pathname === child.url;
+                                  return (
+                                    <SidebarMenuButton
+                                      key={child.title}
+                                      asChild
+                                      className={`rounded-lg transition-all duration-300 ${
+                                        isActive
+                                          ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
+                                          : child.highlight
+                                          ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-white hover:from-green-500/20 hover:to-emerald-500/20 border border-green-500/30'
+                                          : 'bg-transparent text-gray-300 hover:bg-[#0f3460]/50 hover:text-white'
+                                      }`}
+                                    >
+                                      <Link
+                                        to={child.url}
+                                        onClick={(e) => handleMenuClick(e, child.url)}
+                                        className="flex items-center gap-3 px-3 py-2 w-full"
+                                      >
+                                        <child.icon className={`w-4 h-4 ${
+                                          isActive ? 'text-white' : child.highlight ? 'text-green-400' : 'text-gray-400'
+                                        }`} />
+                                        <span className="text-sm font-medium flex-1">{child.title}</span>
+                                        {child.badge && (
+                                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                            child.highlight
+                                              ? 'bg-green-500/20 text-green-400 border border-green-500/50 badge-highlight'
+                                              : child.adminOnly
+                                              ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                                              : child.badge === "AI"
+                                              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                              : child.badge === "NEW"
+                                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                              : child.badge === "LIVE"
+                                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                              : child.badge === "AUTO"
+                                              ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
+                                              : child.badge === "VAULT"
+                                              ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50'
+                                              : child.badge === "BETA"
+                                              ? 'bg-sky-500/20 text-sky-400 border border-sky-500/50'
+                                              : 'bg-purple-500/20 text-purple-400'
+                                          }`}>
+                                            {child.badge}
+                                          </span>
+                                        )}
+                                        {isActive && (
+                                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                        )}
+                                      </Link>
+                                    </SidebarMenuButton>
+                                  );
+                                })}
+                              </div>
                             )}
-                            {isActive && (
-                              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                            )}
-                          </Link>
-                        </SidebarMenuButton>
+                          </div>
+                        ) : null}
                       </SidebarMenuItem>
                     );
                   })}
+                  
+                  {/* Settings (always visible at bottom) */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      className={`rounded-xl mb-1.5 transition-all duration-300 ${
+                        location.pathname === settingsItem.url
+                          ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30 scale-105'
+                          : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
+                      }`}
+                    >
+                      <Link
+                        to={settingsItem.url}
+                        onClick={(e) => handleMenuClick(e, settingsItem.url)}
+                        className="flex items-center gap-3 px-4 py-3 w-full"
+                      >
+                        <settingsItem.icon className={`w-5 h-5 ${
+                          location.pathname === settingsItem.url ? 'text-white' : 'text-gray-300'
+                        }`} />
+                        <span className="font-semibold text-[15px] flex-1">{settingsItem.title}</span>
+                        {location.pathname === settingsItem.url && (
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -362,7 +403,7 @@ function LayoutContent({ children, currentPageName }) {
             {/* OWASP Status Widget */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <div className="mx-2 my-4 p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border-2 border-green-500/30 owasp-highlight">
+                <div className="mx-2 my-4 p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border-2 border-green-500/30 badge-highlight">
                   <div className="flex items-center gap-2 mb-3">
                     <ShieldCheck className="w-5 h-5 text-green-400 animate-pulse" />
                     <span className="text-sm font-bold text-green-300">Live OWASP Protection</span>
