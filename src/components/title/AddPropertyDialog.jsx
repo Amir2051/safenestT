@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -57,6 +58,72 @@ export default function AddPropertyDialog({ open, onClose, isAdmin }) {
         is_premium: false, // Everything is free now!
         scan_frequency: 'daily' // Everyone gets daily scans!
       });
+
+      // Check if user came from a referral and this is their first property
+      const urlParams = new URLSearchParams(window.location.search);
+      const referralCode = urlParams.get('ref') || localStorage.getItem('pending_referral_code');
+      
+      if (referralCode) {
+        // Find existing verified referral for this user and code
+        const referrals = await base44.entities.Referral.filter({ 
+          referred_email: currentUser.email,
+          referrer_code: referralCode,
+          status: 'verified'
+        });
+
+        if (referrals.length > 0) {
+          const referral = referrals[0];
+          
+          // Complete the referral
+          await base44.entities.Referral.update(referral.id, {
+            status: 'completed',
+            completed_date: new Date().toISOString(),
+            completion_action: 'property_added',
+            property_id: property.id,
+            referred_user_activity: {
+              properties_added: 1,
+              consultations_requested: 0,
+              documents_uploaded: deedFileUrl ? 1 : 0,
+              days_active: Math.floor((new Date().getTime() - new Date(currentUser.created_date).getTime()) / (1000 * 60 * 60 * 24))
+            }
+          });
+
+          // Award bonus to referrer
+          const referrerUsers = await base44.entities.User.filter({ email: referral.referrer_email });
+          if (referrerUsers.length > 0) {
+            const referrer = referrerUsers[0];
+            const currentStats = referrer.referral_stats || {};
+            
+            await base44.entities.User.update(referrer.id, {
+              referral_stats: {
+                ...currentStats,
+                completed_referrals: (currentStats.completed_referrals || 0) + 1,
+                property_referrals: (currentStats.property_referrals || 0) + 1,
+                bonus_months_earned: (currentStats.bonus_months_earned || 0) + 1,
+                total_credits_earned: (currentStats.total_credits_earned || 0) + 30
+              }
+            });
+
+            // Update referral with bonus
+            await base44.entities.Referral.update(referral.id, {
+              status: 'rewarded',
+              rewarded_date: new Date().toISOString(),
+              bonus_granted: true,
+              bonus_type: 'premium_days',
+              bonus_value: 30
+            });
+
+            // Send notification to referrer
+            await base44.integrations.Core.SendEmail({
+              to: referral.referrer_email,
+              subject: '🎉 Referral Bonus Earned - Title Protection!',
+              body: `Great news! ${referral.referred_name} just added their first property to Title Protection using your referral code.\n\nYour Rewards:\n• +30 Premium Credits\n• +1 Month Premium Access\n• Property Protection Ambassador Badge\n\nTotal Referrals: ${(currentStats.completed_referrals || 0) + 1}\nTotal Credits: ${(currentStats.total_credits_earned || 0) + 30}\n\nKeep sharing to earn more rewards!\n\nSafeNest Referral Program`
+            });
+          }
+
+          localStorage.removeItem('pending_referral_code');
+        }
+      }
 
       await base44.entities.AuditLog.create({
         action_type: 'settings_updated',

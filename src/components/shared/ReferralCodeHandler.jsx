@@ -1,212 +1,271 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { toast } from 'sonner';
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Gift, Sparkles, X, Check } from "lucide-react";
+import { Gift, X, CheckCircle, Home, Users } from "lucide-react";
+import { toast } from "sonner";
 
-/**
- * Referral Code Handler Component
- * Allows users to enter referral codes manually
- */
 export default function ReferralCodeHandler() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [referralCode, setReferralCode] = useState('');
-  const [inputCode, setInputCode] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [referralSource, setReferralSource] = useState('general');
 
   useEffect(() => {
-    const checkReferralStatus = async () => {
+    const checkReferral = async () => {
       try {
-        const isAuth = await base44.auth.isAuthenticated();
-        
-        if (!isAuth) return;
-
         const user = await base44.auth.me();
+        const alreadyApplied = localStorage.getItem('referral_applied');
         
-        // Check if user already has a referral
-        if (user.referred_by) {
-          console.log('✅ User already has referral:', user.referred_by);
-          return;
+        if (alreadyApplied) return;
+
+        // Check URL for referral code
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlReferralCode = urlParams.get('ref');
+        
+        if (urlReferralCode) {
+          localStorage.setItem('pending_referral_code', urlReferralCode);
+          
+          // Determine source from URL path
+          const path = window.location.pathname;
+          if (path.includes('title-protection')) {
+            setReferralSource('title_protection');
+            localStorage.setItem('referral_source', 'title_protection');
+          } else if (path.includes('legal-support')) {
+            setReferralSource('legal_support');
+            localStorage.setItem('referral_source', 'legal_support');
+          }
+          
+          setReferralCode(urlReferralCode);
         }
 
-        // Check if this is a new user (created in last 5 minutes)
-        const userAge = Date.now() - new Date(user.created_date).getTime();
-        const isNewUser = userAge < 5 * 60 * 1000;
-
-        if (isNewUser) {
-          // Check for stored referral code
-          const storedCode = localStorage.getItem('pending_referral_code');
-          
-          if (storedCode) {
-            setReferralCode(storedCode);
-            setInputCode(storedCode);
-            setShowPrompt(true);
-            console.log('👋 Showing referral prompt for new user');
-          } else {
-            // Show prompt to enter code manually
-            setShowPrompt(true);
-            console.log('👋 Showing referral input for new user');
-          }
+        // Check if user is new (created within last 24 hours) and has pending code
+        const isNewUser = new Date() - new Date(user.created_date) < 24 * 60 * 60 * 1000;
+        const pendingCode = localStorage.getItem('pending_referral_code');
+        const pendingSource = localStorage.getItem('referral_source') || 'general';
+        
+        if (isNewUser && (urlReferralCode || pendingCode)) {
+          setReferralCode(urlReferralCode || pendingCode);
+          setReferralSource(pendingSource);
+          setShowPrompt(true);
         }
       } catch (error) {
-        console.error('❌ Error checking referral status:', error);
+        // User not logged in
       }
     };
 
-    const timer = setTimeout(checkReferralStatus, 2000);
-    return () => clearTimeout(timer);
+    checkReferral();
   }, []);
 
   const applyReferralCode = async () => {
-    if (!inputCode || inputCode.length < 6) {
-      toast.error('Please enter a valid referral code');
+    if (!referralCode.trim()) {
+      toast.error('Please enter a referral code');
       return;
     }
 
-    setProcessing(true);
+    setApplying(true);
 
     try {
       const user = await base44.auth.me();
 
-      // Check if already applied
-      if (user.referred_by) {
-        toast.error('You already used a referral code');
-        setShowPrompt(false);
+      // Find referrer by code
+      const referrers = await base44.entities.User.filter({ referral_code: referralCode.toUpperCase() });
+      
+      if (referrers.length === 0) {
+        toast.error('Invalid referral code');
+        setApplying(false);
         return;
       }
 
-      // Apply the code
-      await base44.auth.updateMe({ 
-        referred_by: inputCode.toUpperCase(),
-        subscription_plan: 'trial',
-        payment_status: 'trial',
-        trial_start_date: new Date().toISOString(),
-        trial_end_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        trial_days_remaining: 3
-      });
+      const referrer = referrers[0];
+
+      if (referrer.email === user.email) {
+        toast.error('You cannot use your own referral code');
+        setApplying(false);
+        return;
+      }
 
       // Create referral record
       await base44.entities.Referral.create({
-        referrer_code: inputCode.toUpperCase(),
+        referrer_email: referrer.email,
+        referrer_code: referralCode.toUpperCase(),
         referred_email: user.email,
         referred_name: user.full_name,
-        status: 'pending',
-        signup_date: user.created_date,
-        referral_link_clicked: false
+        referral_source: referralSource,
+        status: 'verified',
+        signup_date: new Date().toISOString(),
+        verified_date: new Date().toISOString(),
+        referral_link_clicked: true,
+        link_click_date: new Date().toISOString()
       });
 
+      // Update referrer stats
+      const currentStats = referrer.referral_stats || {};
+      await base44.entities.User.update(referrer.id, {
+        referral_stats: {
+          ...currentStats,
+          total_referrals: (currentStats.total_referrals || 0) + 1,
+          pending_referrals: (currentStats.pending_referrals || 0) + 1
+        }
+      });
+
+      // Send notification to referrer
+      await base44.integrations.Core.SendEmail({
+        to: referrer.email,
+        subject: '🎉 New Referral Signup!',
+        body: `Great news! ${user.full_name} just signed up using your referral code ${referralCode}.\n\nService: ${
+          referralSource === 'title_protection' ? '🏠 Title Protection (30 credits on completion)' :
+          referralSource === 'legal_support' ? '⚖️ Legal Support (50 credits on completion)' :
+          '🎯 General (credits on first action)'
+        }\n\nThey're verified! You'll earn your reward once they complete their first action.\n\nSafeNest Referral Program`
+      });
+
+      localStorage.setItem('referral_applied', 'true');
+      localStorage.removeItem('pending_referral_code');
+      localStorage.removeItem('referral_source');
       setApplied(true);
       
-      toast.success('🎉 Referral code applied! You got 3 days free premium!', {
-        duration: 5000
-      });
-
-      localStorage.removeItem('pending_referral_code');
-      localStorage.removeItem('referral_code_timestamp');
-
+      toast.success('✅ Referral code applied! Complete an action to earn rewards for your referrer.', { duration: 5000 });
+      
       setTimeout(() => setShowPrompt(false), 3000);
-
     } catch (error) {
-      console.error('❌ Failed to apply referral code:', error);
-      toast.error('Invalid referral code. Please check and try again.');
-    } finally {
-      setProcessing(false);
+      console.error('Referral error:', error);
+      toast.error('Failed to apply referral code');
     }
+
+    setApplying(false);
   };
 
   const skipReferral = () => {
-    setShowPrompt(false);
+    localStorage.setItem('referral_applied', 'true');
     localStorage.removeItem('pending_referral_code');
-    localStorage.removeItem('referral_code_timestamp');
+    localStorage.removeItem('referral_source');
+    setShowPrompt(false);
   };
 
   if (!showPrompt) return null;
 
+  const getServiceIcon = () => {
+    if (referralSource === 'title_protection') return <Home className="w-6 h-6 text-cyan-400" />;
+    if (referralSource === 'legal_support') return <Users className="w-6 h-6 text-purple-400" />;
+    return <Gift className="w-6 h-6 text-purple-400" />;
+  };
+
+  const getServiceBadge = () => {
+    if (referralSource === 'title_protection') {
+      return (
+        <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border">
+          🏠 Title Protection Referral
+        </Badge>
+      );
+    }
+    if (referralSource === 'legal_support') {
+      return (
+        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border">
+          ⚖️ Legal Support Referral
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border">
+        🎯 General Referral
+      </Badge>
+    );
+  };
+
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xl w-full px-4 animate-in slide-in-from-top duration-500">
-      <Card className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-500/50 shadow-2xl backdrop-blur-sm">
-        <CardContent className="p-6 relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={skipReferral}
-            className="absolute top-2 right-2 text-gray-400 hover:text-white"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <Gift className="w-8 h-8 text-white" />
-            </div>
-            
-            <h3 className="text-2xl font-bold text-white mb-2">
-              {referralCode ? "You've Been Invited!" : "Have a Referral Code?"}
-            </h3>
-            
-            <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/50 mb-4">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Get 3 Days Free Premium
-            </Badge>
-
-            {!applied ? (
-              <>
-                <p className="text-purple-200 text-sm mb-4">
-                  {referralCode 
-                    ? `Your friend shared code ${referralCode} with you. Apply it to get 3 days free premium!`
-                    : 'Enter a referral code from a friend to get 3 days of premium features free!'
-                  }
-                </p>
-
-                <div className="flex gap-3 mb-4">
-                  <Input
-                    value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                    placeholder="Enter referral code"
-                    className="bg-white/10 border-purple-500/30 text-white text-center text-lg font-mono tracking-wider"
-                    disabled={processing}
-                  />
-                  <Button
-                    onClick={applyReferralCode}
-                    disabled={processing || !inputCode}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 min-w-[100px]"
-                  >
-                    {processing ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Apply
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={skipReferral}
-                  className="text-gray-400 hover:text-white text-xs"
-                >
-                  Skip for now
-                </Button>
-              </>
-            ) : (
-              <div className="py-4">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="w-8 h-8 text-white" />
-                </div>
-                <p className="text-green-400 font-bold text-lg">Success!</p>
-                <p className="text-purple-200 text-sm mt-2">
-                  Your 3-day premium trial is now active. Enjoy!
-                </p>
+    <div className="fixed top-20 right-4 z-50 max-w-md animate-slide-in-right">
+      <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              {getServiceIcon()}
+              <div>
+                <h3 className="text-white font-bold text-lg">Referral Code Detected!</h3>
+                {getServiceBadge()}
               </div>
+            </div>
+            {!applied && (
+              <button
+                onClick={skipReferral}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             )}
           </div>
+
+          {applied ? (
+            <div className="text-center py-4">
+              <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-3 animate-bounce" />
+              <p className="text-green-400 font-bold mb-2">✅ Referral Applied!</p>
+              <p className="text-gray-300 text-sm">
+                {referralSource === 'title_protection' 
+                  ? 'Add your first property to earn rewards for your referrer!'
+                  : referralSource === 'legal_support'
+                  ? 'Request a legal consultation to earn rewards for your referrer!'
+                  : 'Complete your first action to earn rewards for your referrer!'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                <p className="text-purple-300 text-sm">
+                  <strong>🎁 Referral Benefits:</strong>
+                </p>
+                <ul className="text-xs text-gray-300 mt-2 space-y-1">
+                  {referralSource === 'title_protection' && (
+                    <>
+                      <li>✓ Your friend earns 30 credits when you add a property</li>
+                      <li>✓ You get free Title Protection forever</li>
+                    </>
+                  )}
+                  {referralSource === 'legal_support' && (
+                    <>
+                      <li>✓ Your friend earns 50 credits when you request legal help</li>
+                      <li>✓ You get free Legal Support access</li>
+                    </>
+                  )}
+                  {referralSource === 'general' && (
+                    <>
+                      <li>✓ Your friend earns rewards on your first action</li>
+                      <li>✓ You get full SafeNest access</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+
+              <div className="space-y-3">
+                <Input
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="Enter referral code"
+                  className="bg-[#0f1419] border-purple-500/20 text-white text-center text-lg font-mono tracking-widest"
+                  maxLength={10}
+                />
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={skipReferral}
+                    variant="outline"
+                    className="flex-1 border-gray-500/20 text-gray-400"
+                  >
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={applyReferralCode}
+                    disabled={applying || !referralCode}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  >
+                    {applying ? 'Applying...' : 'Apply Code'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

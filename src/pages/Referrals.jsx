@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  Gift, Users, CheckCircle, Clock, XCircle, AlertTriangle, 
-  Copy, TrendingUp, Award, Sparkles, Share2, Mail, MessageSquare, BarChart3
+import {
+  Gift, Users, CheckCircle, Clock, XCircle, AlertTriangle,
+  Copy, TrendingUp, Award, Sparkles, Share2, Mail, MessageSquare, BarChart3,
+  Home, Star // Added Home and Star icons
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +33,8 @@ export default function Referrals() {
   const { data: leaderboard = [] } = useQuery({
     queryKey: ['referral-leaderboard'],
     queryFn: async () => {
-      const users = [];
+      const users = []; // This should fetch users with referral stats
+      // For now, returning an empty array or mocking some data until `base44.entities.User.list` supports filtering/aggregating referral stats
       return users
         .filter(u => u.referral_stats?.completed_referrals > 0)
         .map(u => ({
@@ -51,23 +53,48 @@ export default function Referrals() {
 
   useEffect(() => {
     base44.auth.me().then(async (userData) => {
-      setUser(userData);
-      
+      let updatedUserData = { ...userData };
+
       if (!userData.referral_code) {
         const code = generateReferralCode(userData.email);
-        await base44.auth.updateMe({ 
+        const newReferralStats = {
+          total_referrals: 0,
+          completed_referrals: 0,
+          pending_referrals: 0,
+          bonus_months_earned: 0,
+          property_referrals: 0,
+          legal_referrals: 0,
+          total_credits_earned: 0
+        };
+        const updatePayload = {
           referral_code: code,
-          referral_stats: {
-            total_referrals: 0,
-            completed_referrals: 0,
-            pending_referrals: 0,
-            bonus_months_earned: 0
-          }
-        });
-        
-        setUser(prev => ({ ...prev, referral_code: code }));
+          referral_stats: newReferralStats,
+          referral_tier: 'bronze',
+          referral_badges: []
+        };
+        await base44.auth.updateMe(updatePayload);
+        updatedUserData = { ...updatedUserData, ...updatePayload };
       }
-    }).catch(() => {});
+
+      // Calculate tier based on referrals
+      const stats = updatedUserData.referral_stats || {};
+      const totalCompleted = stats.completed_referrals || 0;
+
+      let tier = 'bronze';
+      if (totalCompleted >= 50) tier = 'diamond';
+      else if (totalCompleted >= 25) tier = 'platinum';
+      else if (totalCompleted >= 10) tier = 'gold';
+      else if (totalCompleted >= 5) tier = 'silver';
+
+      if (tier !== updatedUserData.referral_tier) {
+        await base44.auth.updateMe({ referral_tier: tier });
+        updatedUserData = { ...updatedUserData, referral_tier: tier };
+      }
+      setUser(updatedUserData);
+    }).catch(() => {
+      // Handle error, e.g., redirect to login or show a message
+      console.error("Failed to fetch user data or update referral info.");
+    });
   }, []);
 
   const generateReferralCode = (email) => {
@@ -84,54 +111,60 @@ export default function Referrals() {
   };
 
   const shareViaEmail = () => {
-    const subject = encodeURIComponent('🎁 Join SafeNest - Get 3 Days Free Premium!');
+    const appUrl = "https://safenest.com"; // Replace with your actual app URL
+    const subject = encodeURIComponent('🏠 Protect Your Property Title - Join SafeNest FREE!');
     const body = encodeURIComponent(
       `Hi!\n\n` +
-      `I'm using SafeNest for complete security protection and I think you'd love it too!\n\n` +
-      `Sign up and use my referral code to get 3 days of premium features FREE:\n\n` +
-      `🎁 Referral Code: ${user.referral_code}\n\n` +
-      `What you'll get:\n` +
-      `✅ OWASP Top 10 Protection\n` +
-      `✅ Dark Web Monitoring\n` +
-      `✅ Password Vault\n` +
-      `✅ VPN Protection\n` +
-      `✅ Credit Card Monitoring\n\n` +
-      `Join now and enter code ${user.referral_code} during signup!\n\n` +
+      `I'm using SafeNest to protect my property from title fraud and legal issues. I think you should try it too!\n\n` +
+      `🎁 Sign up FREE and use my referral code:\n\n` +
+      `Code: ${user.referral_code}\n\n` +
+      `What You Get:\n` +
+      `🏠 Title Protection - Monitor NYC property records\n` +
+      `⚖️ Legal Support - Access to licensed attorneys\n` +
+      `📄 Document Templates - Auto-generated legal docs\n` +
+      `🔒 Title Lock - Digital property protection\n` +
+      `🤖 AI Monitoring - 24/7 threat detection\n\n` +
+      `100% FREE - No credit card required!\n\n` +
+      `Join now: ${appUrl}/?ref=${user.referral_code}\n\n` +
       `Best regards`
     );
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const shareViaSMS = () => {
+    const appUrl = "https://safenest.com"; // Replace with your actual app URL
     const message = encodeURIComponent(
-      `Join me on SafeNest - Complete Security Protection! 🛡️\n\n` +
-      `Get 3 days FREE premium using my code: ${user.referral_code}\n\n` +
-      `Sign up and enter the code!`
+      `Protect your property with SafeNest! 🏠\n\n` +
+      `FREE Title Protection + Legal Support\n\n` +
+      `Use code: ${user.referral_code}\n` +
+      `Sign up: ${appUrl}/?ref=${user.referral_code}`
     );
     window.location.href = `sms:?body=${message}`;
   };
 
   const shareViaWhatsApp = () => {
+    const appUrl = "https://safenest.com"; // Replace with your actual app URL
     const message = encodeURIComponent(
       `Hi! 👋\n\n` +
-      `I'm using SafeNest for complete security protection and I think you'd love it!\n\n` +
-      `🎁 Get 3 days FREE premium using my referral code:\n` +
-      `*${user.referral_code}*\n\n` +
-      `✅ OWASP Protection\n` +
-      `✅ Password Vault\n` +
-      `✅ Dark Web Monitor\n` +
-      `✅ VPN & More!\n\n` +
-      `Sign up and enter my code to get started! 🚀`
+      `I'm using SafeNest to protect my property from fraud. It's 100% FREE and amazing!\n\n` +
+      `🏠 *Title Protection*\n` +
+      `⚖️ *Legal Support*\n` +
+      `🔒 *Title Lock*\n` +
+      `🤖 *AI Monitoring*\n\n` +
+      `Use my referral code: *${user.referral_code}*\n\n` +
+      `Sign up here: ${appUrl}/?ref=${user.referral_code}\n\n` +
+      `You'll love it! 🚀`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
   const shareNative = async () => {
+    const appUrl = "https://safenest.com"; // Replace with your actual app URL
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join SafeNest - Get 3 Days Free!',
-          text: `Join me on SafeNest! Use my referral code ${user.referral_code} to get 3 days free premium. Sign up and enter the code!`
+          title: 'Join SafeNest - Protect Your Property FREE!',
+          text: `Protect your property with SafeNest! Use my referral code ${user.referral_code} for FREE Title Protection & Legal Support. Sign up here: ${appUrl}/?ref=${user.referral_code}`
         });
         toast.success('✅ Shared successfully!');
       } catch (error) {
@@ -185,16 +218,46 @@ export default function Referrals() {
   }
 
   const myReferrals = referrals.filter(r => r.referrer_email === user.email);
+  const propertyReferrals = myReferrals.filter(r => r.referral_source === 'title_protection' || r.completion_action === 'property_added');
+  const legalReferrals = myReferrals.filter(r => r.referral_source === 'legal_support' || r.completion_action === 'legal_consultation');
+
+  const getTierInfo = (tier) => {
+    switch (tier) {
+      case 'diamond':
+        return { icon: '💎', color: 'from-cyan-500 to-blue-500', name: 'Diamond', min: 50 };
+      case 'platinum':
+        return { icon: '🏆', color: 'from-purple-500 to-pink-500', name: 'Platinum', min: 25 };
+      case 'gold':
+        return { icon: '🥇', color: 'from-yellow-500 to-amber-500', name: 'Gold', min: 10 };
+      case 'silver':
+        return { icon: '🥈', color: 'from-gray-400 to-gray-500', name: 'Silver', min: 5 };
+      default:
+        return { icon: '🥉', color: 'from-orange-500 to-red-500', name: 'Bronze', min: 0 };
+    }
+  };
+
+  const tierInfo = getTierInfo(user?.referral_tier || 'bronze');
+  const nextTier = user?.referral_tier === 'bronze' ? getTierInfo('silver') :
+                   user?.referral_tier === 'silver' ? getTierInfo('gold') :
+                   user?.referral_tier === 'gold' ? getTierInfo('platinum') :
+                   user?.referral_tier === 'platinum' ? getTierInfo('diamond') : null;
+
+  const completedReferrals = user?.referral_stats?.completed_referrals || 0;
+  const progressToNext = nextTier ? ((completedReferrals / nextTier.min) * 100) : 100;
+  const appUrl = "https://safenest.com"; // Replace with your actual app URL
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <Gift className="w-8 h-8 text-purple-400" />
-          Refer & Earn Premium
+          Referral Program
+          <Badge className={`bg-gradient-to-r ${tierInfo.color} text-white border-none`}>
+            {tierInfo.icon} {tierInfo.name}
+          </Badge>
         </h1>
         <p className="text-gray-400 mt-1">
-          Share your code and earn 1 month premium for each successful referral
+          Earn rewards by referring friends to Title Protection & Legal Support
         </p>
       </div>
 
@@ -212,64 +275,149 @@ export default function Referrals() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
+          {/* Tier Progress */}
+          {nextTier && (
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="text-4xl">{tierInfo.icon}</div>
+                    <div>
+                      <p className="text-white font-bold">{tierInfo.name} Tier</p>
+                      <p className="text-sm text-gray-400">
+                        {completedReferrals} / {nextTier.min} to {nextTier.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-purple-400">
+                      {user?.referral_stats?.total_credits_earned || 0}
+                    </p>
+                    <p className="text-xs text-gray-400">Total Credits</p>
+                  </div>
+                </div>
+                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full bg-gradient-to-r ${nextTier.color} transition-all duration-500`}
+                    style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Rewards Info */}
           <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
             <CardContent className="p-6">
               <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-yellow-400" />
-                How It Works
+                Referral Rewards System
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl font-bold text-purple-400">1</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Home className="w-5 h-5 text-cyan-400" />
+                    <h4 className="text-white font-bold">Title Protection Referral</h4>
                   </div>
-                  <h4 className="text-white font-semibold mb-1">Share Your Code</h4>
-                  <p className="text-sm text-gray-400">
-                    Copy and share your unique referral code
+                  <p className="text-sm text-gray-400 mb-2">
+                    When your friend adds their first property
                   </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl font-bold text-purple-400">2</span>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-green-400">✓ +30 Premium Credits</p>
+                    <p className="text-green-400">✓ +1 Month Premium</p>
+                    <p className="text-green-400">✓ Property Ambassador Badge</p>
                   </div>
-                  <h4 className="text-white font-semibold mb-1">Friend Signs Up</h4>
-                  <p className="text-sm text-gray-400">
-                    They enter your code and create account
-                  </p>
                 </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl font-bold text-purple-400">3</span>
+
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-purple-400" />
+                    <h4 className="text-white font-bold">Legal Support Referral</h4>
                   </div>
-                  <h4 className="text-white font-semibold mb-1">You Both Win!</h4>
-                  <p className="text-sm text-gray-400">
-                    You get 1 month premium, they get 3 days free
+                  <p className="text-sm text-gray-400 mb-2">
+                    When your friend requests an attorney consultation
                   </p>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-purple-400">✓ +50 Premium Credits (Higher!)</p>
+                    <p className="text-purple-400">✓ +1 Month Premium</p>
+                    <p className="text-purple-400">✓ Legal Advocate Badge</p>
+                  </div>
                 </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-yellow-300 text-sm">
+                  <strong>💡 Pro Tip:</strong> Legal Support referrals earn 50 credits vs 30 for property referrals.
+                  Share with friends who need legal help for maximum rewards!
+                </p>
               </div>
             </CardContent>
           </Card>
 
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+              <CardContent className="p-6 text-center">
+                <Home className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-cyan-400">
+                  {user?.referral_stats?.property_referrals || 0}
+                </p>
+                <p className="text-sm text-gray-400">Property Referrals</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+              <CardContent className="p-6 text-center">
+                <Users className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-purple-400">
+                  {user?.referral_stats?.legal_referrals || 0}
+                </p>
+                <p className="text-sm text-gray-400">Legal Referrals</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-green-400">
+                  {user?.referral_stats?.completed_referrals || 0}
+                </p>
+                <p className="text-sm text-gray-400">Total Completed</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-yellow-500/20">
+              <CardContent className="p-6 text-center">
+                <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-yellow-400">
+                  {user?.referral_stats?.total_credits_earned || 0}
+                </p>
+                <p className="text-sm text-gray-400">Credits Earned</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <ReferralStats user={user} referrals={myReferrals} />
 
+          {/* Referral Code Card */}
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Gift className="w-5 h-5 text-purple-400" />
-                Your Referral Code
+                Your Referral Links
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Referral Code - Big & Prominent */}
+              {/* Universal Code */}
               <div>
                 <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 rounded-xl p-8 text-center">
-                  <p className="text-sm text-purple-300 mb-3 font-semibold">YOUR UNIQUE CODE</p>
+                  <p className="text-sm text-purple-300 mb-3 font-semibold">YOUR UNIVERSAL REFERRAL CODE</p>
                   <div className="text-5xl font-bold text-white tracking-widest mb-4 font-mono">
-                    {user.referral_code || 'LOADING...'}
+                    {user?.referral_code || 'LOADING...'}
                   </div>
                   <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/50 mb-4">
                     <Sparkles className="w-3 h-3 mr-1" />
-                    Each Referral = 1 Month Free Premium
+                    Works for all SafeNest services
                   </Badge>
                   <div className="flex gap-3 justify-center">
                     <Button
@@ -284,11 +432,60 @@ export default function Referrals() {
                 </div>
               </div>
 
+              {/* Specific Service Links */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                  <h4 className="text-cyan-400 font-bold mb-2 flex items-center gap-2">
+                    <Home className="w-5 h-5" />
+                    Title Protection Link
+                  </h4>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Share this with property owners • Earns 30 credits
+                  </p>
+                  <div className="p-2 bg-[#0f1419] rounded text-xs text-gray-300 mb-2 break-all">
+                    {appUrl}/title-protection?ref={user?.referral_code}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${appUrl}/title-protection?ref=${user?.referral_code}`);
+                      toast.success('Title Protection link copied!');
+                    }}
+                    className="w-full bg-cyan-500 hover:bg-cyan-600"
+                  >
+                    Copy Link
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <h4 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Legal Support Link
+                  </h4>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Share with those needing legal help • Earns 50 credits
+                  </p>
+                  <div className="p-2 bg-[#0f1419] rounded text-xs text-gray-300 mb-2 break-all">
+                    {appUrl}/legal-support?ref={user?.referral_code}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${appUrl}/legal-support?ref=${user?.referral_code}`);
+                      toast.success('Legal Support link copied!');
+                    }}
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                  >
+                    Copy Link
+                  </Button>
+                </div>
+              </div>
+
               {/* Share Instructions */}
               <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
                 <h4 className="text-cyan-400 font-bold text-sm mb-2">📱 How to Share</h4>
                 <p className="text-gray-300 text-sm mb-3">
-                  Tell your friends to sign up for SafeNest and enter code <strong className="text-white">{user.referral_code}</strong> during registration to get 3 days free premium!
+                  Tell your friends to sign up for SafeNest and enter code <strong className="text-white">{user.referral_code}</strong> during registration to get started FREE!
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <Button
@@ -334,6 +531,7 @@ export default function Referrals() {
             </CardContent>
           </Card>
 
+          {/* Referrals List with Service Type */}
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
@@ -348,7 +546,7 @@ export default function Referrals() {
                 <div className="text-center py-12">
                   <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                   <p className="text-white font-semibold text-lg">No referrals yet</p>
-                  <p className="text-gray-400 text-sm mt-1">Share your code to start earning premium!</p>
+                  <p className="text-gray-400 text-sm mt-1">Share your code to start earning rewards!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -367,18 +565,34 @@ export default function Referrals() {
                             <Badge className={`${getStatusColor(referral.status)} border text-xs`}>
                               {referral.status}
                             </Badge>
+                            {(referral.referral_source && referral.referral_source !== 'general') || referral.completion_action && (
+                              <Badge className={
+                                referral.referral_source === 'title_protection' || referral.completion_action === 'property_added'
+                                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs'
+                                  : 'bg-purple-500/20 text-purple-400 border-purple-500/50 border text-xs'
+                              }>
+                                {referral.referral_source === 'title_protection' || referral.completion_action === 'property_added'
+                                  ? '🏠 Title Protection'
+                                  : '⚖️ Legal Support'}
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-gray-400">{referral.referred_email}</p>
                           <p className="text-xs text-gray-500 mt-1">
                             Signed up: {new Date(referral.signup_date).toLocaleDateString()}
                           </p>
+                          {referral.completion_action && (
+                            <p className="text-xs text-green-400 mt-1">
+                              ✓ Completed: {referral.completion_action.replace('_', ' ')}
+                            </p>
+                          )}
                         </div>
-                        
+
                         {referral.bonus_granted && (
                           <div className="text-right">
                             <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
                               <Award className="w-3 h-3 mr-1" />
-                              +{referral.bonus_months} month
+                              +{referral.bonus_value} credits
                             </Badge>
                             <p className="text-xs text-gray-500 mt-1">
                               {new Date(referral.rewarded_date).toLocaleDateString()}
@@ -407,12 +621,13 @@ export default function Referrals() {
             <CardContent className="p-6">
               <h3 className="text-white font-bold text-sm mb-3">Terms & Conditions</h3>
               <ul className="space-y-2 text-xs text-gray-400">
-                <li>• Share your unique referral code with friends</li>
-                <li>• Each successful referral earns you 1 month of premium access</li>
-                <li>• Friend must enter your code during signup and activate their account</li>
-                <li>• Bonuses are stackable - refer multiple friends to extend your premium</li>
-                <li>• Self-referrals and fraudulent signups are automatically invalidated</li>
-                <li>• SafeNest reserves the right to revoke bonuses for abuse or fraud</li>
+                <li>• Share your unique referral code or specific links with friends</li>
+                <li>• You earn credits and premium months for each successful referral. Rewards vary by referral type.</li>
+                <li>• A successful referral means your friend signs up, uses your code, and completes a qualifying action (e.g., adds a property, requests legal consultation).</li>
+                <li>• Credits can be redeemed for various benefits within the SafeNest app.</li>
+                <li>• Premium months are stackable - refer multiple friends to extend your premium access.</li>
+                <li>• Self-referrals and fraudulent signups are automatically invalidated.</li>
+                <li>• SafeNest reserves the right to revoke bonuses for abuse or fraud.</li>
               </ul>
             </CardContent>
           </Card>

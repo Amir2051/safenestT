@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +28,8 @@ export default function AttorneyConsultations({ consultations, properties, selec
         throw new Error('Please fill in all fields');
       }
 
+      const currentUser = await base44.auth.me();
+
       const consultation = await base44.entities.AttorneyConsultation.create({
         property_id: propertyId,
         consultation_type: consultationType,
@@ -36,6 +39,69 @@ export default function AttorneyConsultations({ consultations, properties, selec
         user_message: userMessage,
         consultation_fee: 0 // Free for SafeNest users
       });
+
+      // Check if user came from a referral
+      const urlParams = new URLSearchParams(window.location.search);
+      const referralCode = urlParams.get('ref') || localStorage.getItem('pending_referral_code');
+      
+      if (referralCode) {
+        // Find existing verified referral for the current user and code
+        const referrals = await base44.entities.Referral.filter({ 
+          referred_email: currentUser.email,
+          referrer_code: referralCode,
+          status: 'verified' // Only process verified referrals
+        });
+
+        if (referrals.length > 0) {
+          const referral = referrals[0];
+          
+          // Complete the referral
+          await base44.entities.Referral.update(referral.id, {
+            status: 'completed',
+            completed_date: new Date().toISOString(),
+            completion_action: 'legal_consultation',
+            consultation_id: consultation.id,
+            referred_user_activity: {
+              ...(referral.referred_user_activity || {}),
+              consultations_requested: (referral.referred_user_activity?.consultations_requested || 0) + 1
+            }
+          });
+
+          // Award bonus to referrer
+          const referrerUsers = await base44.entities.User.filter({ email: referral.referrer_email });
+          if (referrerUsers.length > 0) {
+            const referrer = referrerUsers[0];
+            const currentStats = referrer.referral_stats || {};
+            
+            await base44.entities.User.update(referrer.id, {
+              referral_stats: {
+                ...currentStats,
+                completed_referrals: (currentStats.completed_referrals || 0) + 1,
+                legal_referrals: (currentStats.legal_referrals || 0) + 1,
+                bonus_months_earned: (currentStats.bonus_months_earned || 0) + 1, // Grant 1 month premium for legal referral
+                total_credits_earned: (currentStats.total_credits_earned || 0) + 50 // Grant 50 credits for legal referral
+              }
+            });
+
+            await base44.entities.Referral.update(referral.id, {
+              status: 'rewarded',
+              rewarded_date: new Date().toISOString(),
+              bonus_granted: true,
+              bonus_type: 'credits_and_premium', // More specific bonus type
+              bonus_value: { credits: 50, premium_months: 1 } // Store bonus details
+            });
+
+            // Send notification
+            await base44.integrations.Core.SendEmail({
+              to: referral.referrer_email,
+              subject: '🎉 Premium Referral Bonus - Legal Support!',
+              body: `Excellent! ${referral.referred_name} just requested a legal consultation using your referral code.\n\nYour Premium Rewards:\n• +50 Premium Credits\n• +1 Month Premium Access\n• Legal Protection Advocate Badge (new badge to be implemented)\n\nLegal Support referrals earn 50 credits (vs 30 for property referrals)!\n\nTotal Referrals: ${(currentStats.completed_referrals || 0) + 1}\nTotal Credits: ${(currentStats.total_credits_earned || 0) + 50}\n\nSafeNest Referral Program`
+            });
+          }
+
+          localStorage.removeItem('pending_referral_code'); // Clear the pending code after processing
+        }
+      }
 
       // Create legal action
       await base44.entities.LegalAction.create({
