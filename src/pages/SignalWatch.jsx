@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tantml:react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Radio, Shield, AlertTriangle, TrendingUp, MapPin, 
-  Loader2, RefreshCw, Plus
+  Loader2, RefreshCw, Plus, TestTube
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ export default function SignalWatch() {
   const [towers, setTowers] = useState([]);
   const [fetchingTowers, setFetchingTowers] = useState(false);
   const [monitoringActive, setMonitoringActive] = useState(false);
+  const [dataSource, setDataSource] = useState('unknown');
 
   const queryClient = useQueryClient();
 
@@ -108,7 +109,7 @@ export default function SignalWatch() {
         setFetchingLocation(false);
         toast.success('📍 Location detected!');
         // Auto-fetch towers after getting location
-        fetchNearbyTowers(location);
+        fetchNearbyTowers(location, false);
       },
       (error) => {
         console.error('Geolocation error:', error);
@@ -132,7 +133,7 @@ export default function SignalWatch() {
     );
   };
 
-  const fetchNearbyTowers = async (location = userLocation) => {
+  const fetchNearbyTowers = async (location = userLocation, useMock = false) => {
     if (!location) {
       toast.error('Location required to scan for towers');
       return;
@@ -141,30 +142,42 @@ export default function SignalWatch() {
     setFetchingTowers(true);
     
     try {
-      console.log('Fetching nearby towers:', location);
+      console.log('Fetching nearby towers:', { location, useMock });
       
       const response = await base44.functions.invoke('signalWatchService', {
         endpoint: 'fetch-towers',
         lat: location.lat,
         lon: location.lon,
-        range: 5000 // 5km radius
+        range: 5000, // 5km radius
+        use_mock: useMock
       });
 
       console.log('Fetch towers response:', response);
 
-      if (response.status >= 400 || response.data.error) {
+      if (response.status >= 400 && !response.data?.towers) {
         throw new Error(response.data?.error || 'Failed to fetch towers');
       }
 
       const fetchedTowers = response.data.towers || [];
-      console.log('Fetched towers:', fetchedTowers.length, fetchedTowers);
+      const source = response.data.data_source || 'unknown';
+      const note = response.data.note;
+      
+      console.log('Fetched towers:', fetchedTowers.length, 'Source:', source);
       
       setTowers(fetchedTowers);
+      setDataSource(source);
       
       const unverifiedCount = response.data.unverified || 0;
       const criticalCount = response.data.critical || 0;
 
-      if (criticalCount > 0) {
+      // Show appropriate toast based on data source
+      if (source === 'mock') {
+        if (note) {
+          toast.info(note, { duration: 6000 });
+        } else {
+          toast.info('📊 Using demo data. Configure OPENCELLID_TOKEN for real cell tower data.', { duration: 6000 });
+        }
+      } else if (criticalCount > 0) {
         toast.error(`⚠️ ${criticalCount} unverified tower(s) detected nearby!`, { duration: 5000 });
       } else if (unverifiedCount > 0) {
         toast.warning(`${unverifiedCount} tower(s) with low verification found`, { duration: 4000 });
@@ -229,28 +242,65 @@ export default function SignalWatch() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3 flex-wrap">
             <Radio className="w-8 h-8 text-sky-400" />
             Signal Watch
             <Badge className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white border-none animate-pulse">
               BETA
             </Badge>
+            {dataSource === 'mock' && (
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 border">
+                DEMO DATA
+              </Badge>
+            )}
           </h1>
           <p className="text-gray-400 mt-1">
             Monitor cellular towers for suspicious activity • Powered by OpenCelliD
           </p>
         </div>
 
-        <Button
-          onClick={() => setShowManualLogger(true)}
-          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Log Tower Manually
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowManualLogger(true)}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Log Tower Manually
+          </Button>
+          
+          {userLocation && (
+            <Button
+              onClick={() => fetchNearbyTowers(userLocation, true)}
+              variant="outline"
+              className="border-yellow-500/20 text-yellow-400"
+              disabled={fetchingTowers}
+            >
+              <TestTube className="w-4 h-4 mr-2" />
+              Test with Demo Data
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Data Source Info Banner */}
+      {dataSource === 'mock' && (
+        <Card className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <TestTube className="w-6 h-6 text-yellow-400 mt-0.5" />
+              <div>
+                <p className="text-white font-semibold mb-1">Using Demo Data</p>
+                <p className="text-yellow-300 text-sm">
+                  You're viewing simulated cell tower data for demonstration purposes. 
+                  To scan real towers, ensure OPENCELLID_TOKEN is properly configured in your environment settings.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Location Banner */}
       {!userLocation && !fetchingLocation && (
@@ -397,6 +447,7 @@ export default function SignalWatch() {
                 <li>• <strong>Manual Logging:</strong> Can't get tower info from browser? Log towers manually from dialer codes</li>
                 <li>• <strong>Community Reports:</strong> Help others by reporting suspicious towers anonymously</li>
                 <li>• <strong>Real-Time Monitoring:</strong> Enable monitoring to continuously track signal changes</li>
+                <li>• <strong>Demo Mode:</strong> Test the feature with simulated data using "Test with Demo Data" button</li>
               </ul>
             </div>
           </div>
