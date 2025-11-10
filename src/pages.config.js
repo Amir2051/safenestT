@@ -30,6 +30,7 @@ import AttorneyTasks from './pages/AttorneyTasks';
 import LegalAssistant from './pages/LegalAssistant';
 import IdentityMonitor from './pages/IdentityMonitor';
 import SignalWatch from './pages/SignalWatch';
+import CreditMonitor from './pages/CreditMonitor';
 import Layout from './Layout.jsx';
 
 
@@ -66,6 +67,7 @@ export const PAGES = {
     "LegalAssistant": LegalAssistant,
     "IdentityMonitor": IdentityMonitor,
     "SignalWatch": SignalWatch,
+    "CreditMonitor": CreditMonitor,
 }
 
 export const pagesConfig = {
