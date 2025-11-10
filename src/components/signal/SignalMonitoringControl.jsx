@@ -11,17 +11,28 @@ export default function SignalMonitoringControl({ monitoringActive, healthScore,
 
   const toggleMonitoringMutation = useMutation({
     mutationFn: async (shouldStart) => {
-      const response = await base44.functions.invoke('signalWatchService', {
-        endpoint: shouldStart ? 'start' : 'stop'
-      });
-      return response.data;
+      try {
+        const response = await base44.functions.invoke('signalWatchService', {
+          endpoint: shouldStart ? 'start' : 'stop'
+        });
+        
+        if (response.status >= 400) {
+          throw new Error(response.data?.error || 'Failed to toggle monitoring');
+        }
+        
+        return response.data;
+      } catch (err) {
+        console.error('Toggle monitoring error:', err);
+        throw err;
+      }
     },
     onSuccess: (data, shouldStart) => {
       queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
       toast.success(shouldStart ? '📡 Monitoring started' : '⏸️ Monitoring paused');
     },
     onError: (error) => {
-      toast.error('Failed to toggle monitoring: ' + error.message);
+      toast.error('Failed to toggle monitoring. Please try again.');
+      console.error('Monitoring toggle error:', error);
     }
   });
 

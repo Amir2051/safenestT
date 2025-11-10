@@ -28,16 +28,37 @@ export default function SignalWatch() {
 
   const queryClient = useQueryClient();
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['signal-watch-stats'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('signalWatchService', {
-        endpoint: 'stats'
-      });
-      return response.data;
+      try {
+        const response = await base44.functions.invoke('signalWatchService', {
+          endpoint: 'stats'
+        });
+        
+        if (response.status >= 400) {
+          throw new Error(response.data?.error || 'Failed to fetch stats');
+        }
+        
+        return response.data;
+      } catch (err) {
+        console.error('Failed to fetch signal watch stats:', err);
+        // Return default data instead of throwing
+        return {
+          session_exists: false,
+          monitoring_active: false,
+          health_score: 100,
+          total_towers_seen: 0,
+          suspicious_towers_count: 0,
+          recent_anomalies: [],
+          current_tower: null,
+          signal_history: []
+        };
+      }
     },
     enabled: !!user,
-    refetchInterval: 5000 // Refresh every 5 seconds while monitoring
+    refetchInterval: (data) => data?.monitoring_active ? 5000 : false, // Only refresh when monitoring
+    retry: 1
   });
 
   useEffect(() => {
@@ -63,24 +84,28 @@ export default function SignalWatch() {
   useEffect(() => {
     if (stats?.monitoring_active && user) {
       const interval = setInterval(async () => {
-        // Simulate random tower data
-        const connectionTypes = ['4G', '5G', '4G', '5G', '2G']; // 2G less common
-        const randomType = connectionTypes[Math.floor(Math.random() * connectionTypes.length)];
-        
-        await base44.functions.invoke('signalWatchService', {
-          endpoint: 'log-tower',
-          cell_id: `TOWER_${Math.floor(Math.random() * 1000)}`,
-          mcc: '310',
-          mnc: Math.random() > 0.8 ? '999' : '120', // 20% chance of unknown tower
-          lac: `LAC_${Math.floor(Math.random() * 100)}`,
-          rssi: -50 - Math.floor(Math.random() * 60), // -50 to -110 dBm
-          connection_type: randomType,
-          carrier_name: 'Verizon',
-          latitude: 40.7128 + (Math.random() - 0.5) * 0.1,
-          longitude: -74.0060 + (Math.random() - 0.5) * 0.1
-        });
-        
-        queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
+        try {
+          // Simulate random tower data
+          const connectionTypes = ['4G', '5G', '4G', '5G', '2G']; // 2G less common
+          const randomType = connectionTypes[Math.floor(Math.random() * connectionTypes.length)];
+          
+          await base44.functions.invoke('signalWatchService', {
+            endpoint: 'log-tower',
+            cell_id: `TOWER_${Math.floor(Math.random() * 1000)}`,
+            mcc: '310',
+            mnc: Math.random() > 0.8 ? '999' : '120', // 20% chance of unknown tower
+            lac: `LAC_${Math.floor(Math.random() * 100)}`,
+            rssi: -50 - Math.floor(Math.random() * 60), // -50 to -110 dBm
+            connection_type: randomType,
+            carrier_name: 'Verizon',
+            latitude: 40.7128 + (Math.random() - 0.5) * 0.1,
+            longitude: -74.0060 + (Math.random() - 0.5) * 0.1
+          });
+          
+          queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] });
+        } catch (err) {
+          console.error('Failed to log tower:', err);
+        }
       }, 10000); // Every 10 seconds
 
       return () => clearInterval(interval);
@@ -91,6 +116,28 @@ export default function SignalWatch() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error && !stats) {
+    return (
+      <div className="p-6 lg:p-8">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/30">
+          <CardContent className="p-12 text-center">
+            <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Service Unavailable</h2>
+            <p className="text-gray-400 mb-4">
+              Signal Watch service is temporarily unavailable. Please try again later.
+            </p>
+            <Button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['signal-watch-stats'] })}
+              className="bg-cyan-500 hover:bg-cyan-600"
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -140,93 +187,104 @@ export default function SignalWatch() {
         </div>
       </div>
 
-      {/* Status Indicator Card */}
-      <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 ${
-        monitoringActive ? 'border-green-500/30' : 'border-gray-500/20'
-      }`}>
-        <CardContent className="p-6">
-          <SignalMonitoringControl 
-            monitoringActive={monitoringActive}
-            healthScore={healthScore}
-            stats={stats}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {isLoading ? (
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Activity className="w-8 h-8 text-cyan-400" />
-              <div>
-                <p className="text-xs text-gray-400">Signal Health</p>
-                <p className={`text-2xl font-bold ${getHealthColor(healthScore)}`}>
-                  {healthScore}
-                </p>
-              </div>
-            </div>
+          <CardContent className="p-12 text-center">
+            <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">Loading Signal Watch...</p>
           </CardContent>
         </Card>
+      ) : (
+        <>
+          {/* Status Indicator Card */}
+          <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 ${
+            monitoringActive ? 'border-green-500/30' : 'border-gray-500/20'
+          }`}>
+            <CardContent className="p-6">
+              <SignalMonitoringControl 
+                monitoringActive={monitoringActive}
+                healthScore={healthScore}
+                stats={stats}
+              />
+            </CardContent>
+          </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <MapPin className="w-8 h-8 text-green-400" />
-              <div>
-                <p className="text-xs text-gray-400">Towers Seen</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {stats?.total_towers_seen || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Activity className="w-8 h-8 text-cyan-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Signal Health</p>
+                    <p className={`text-2xl font-bold ${getHealthColor(healthScore)}`}>
+                      {healthScore}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-              <div>
-                <p className="text-xs text-gray-400">Suspicious</p>
-                <p className="text-2xl font-bold text-red-400">
-                  {stats?.suspicious_towers_count || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <MapPin className="w-8 h-8 text-green-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Towers Seen</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {stats?.total_towers_seen || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Signal className="w-8 h-8 text-purple-400" />
-              <div>
-                <p className="text-xs text-gray-400">Network</p>
-                <p className="text-lg font-bold text-purple-400">
-                  {stats?.current_tower?.connection_type || 'N/A'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <AlertTriangle className="w-8 h-8 text-red-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Suspicious</p>
+                    <p className="text-2xl font-bold text-red-400">
+                      {stats?.suspicious_towers_count || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tower Map/List */}
-        <TowerList 
-          currentTower={stats?.current_tower}
-          signalHistory={stats?.signal_history || []}
-          onReport={() => setShowReportDialog(true)}
-        />
+            <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Signal className="w-8 h-8 text-purple-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Network</p>
+                    <p className="text-lg font-bold text-purple-400">
+                      {stats?.current_tower?.connection_type || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Activity Feed */}
-        <ActivityFeed 
-          anomalies={stats?.recent_anomalies || []}
-          signalHistory={stats?.signal_history || []}
-        />
-      </div>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Tower Map/List */}
+            <TowerList 
+              currentTower={stats?.current_tower}
+              signalHistory={stats?.signal_history || []}
+              onReport={() => setShowReportDialog(true)}
+            />
+
+            {/* Activity Feed */}
+            <ActivityFeed 
+              anomalies={stats?.recent_anomalies || []}
+              signalHistory={stats?.signal_history || []}
+            />
+          </div>
+        </>
+      )}
 
       {/* Report Tower Dialog */}
       <ReportTowerDialog
@@ -268,7 +326,7 @@ export default function SignalWatch() {
               <ul className="space-y-2 text-sm text-gray-300">
                 <li>• <strong>Cannot block networks:</strong> SafeNest alerts you but doesn't interfere with connections</li>
                 <li>• <strong>Not 100% accurate:</strong> Temporary towers may trigger false alerts</li>
-                <li>• <strong>Requires location access:</strong> For accurate tower mapping</li>
+                <li>• <strong>Simulated data:</strong> Currently using demo data (real device APIs coming soon)</li>
               </ul>
             </div>
 
