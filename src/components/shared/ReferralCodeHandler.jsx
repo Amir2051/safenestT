@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X, Gift, Loader2, CheckCircle, Users } from "lucide-react";
+import { X, Gift, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ReferralCodeHandler() {
@@ -14,14 +15,37 @@ export default function ReferralCodeHandler() {
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const checkReferral = async () => {
       try {
         const userData = await base44.auth.me();
         setUser(userData);
 
-        // Don't show if user already has referral or completed onboarding
-        if (userData.referred_by || userData.onboarding_completed) {
+        // Don't show if user already has referral
+        if (userData.referred_by) {
+          return;
+        }
+
+        // Check sessionStorage first (from landing page)
+        const pendingCode = sessionStorage.getItem('pending_referral_code');
+        if (pendingCode) {
+          setReferralCode(pendingCode);
+          sessionStorage.removeItem('pending_referral_code');
+          
+          // If user just completed onboarding, don't show the prompt - they already saw it
+          if (userData.onboarding_completed) {
+            return;
+          }
+          
+          // If onboarding not completed, redirect to onboarding with code
+          if (!userData.onboarding_completed) {
+            navigate(`/onboarding?ref=${pendingCode}`);
+            return;
+          }
+          
+          setShowPrompt(true);
           return;
         }
 
@@ -31,6 +55,13 @@ export default function ReferralCodeHandler() {
         
         if (refCode) {
           setReferralCode(refCode.toUpperCase());
+          
+          // If onboarding not completed, this is handled by Onboarding page
+          if (!userData.onboarding_completed) {
+            return;
+          }
+          
+          // If completed onboarding but no referral, show prompt
           setShowPrompt(true);
         }
       } catch (error) {
@@ -40,7 +71,7 @@ export default function ReferralCodeHandler() {
     };
 
     checkReferral();
-  }, []);
+  }, [navigate]);
 
   const handleApply = async () => {
     if (!referralCode) {

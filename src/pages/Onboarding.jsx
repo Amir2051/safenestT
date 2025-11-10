@@ -26,26 +26,49 @@ export default function Onboarding() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    base44.auth.me().then(userData => {
-      setUser(userData);
-      
-      // Skip onboarding if already completed
-      if (userData.onboarding_completed) {
-        navigate(createPageUrl('Dashboard'));
+    const init = async () => {
+      try {
+        const userData = await base44.auth.me();
+        setUser(userData);
+        
+        // Skip onboarding if already completed
+        if (userData.onboarding_completed) {
+          navigate(createPageUrl('Dashboard'));
+          return;
+        }
+        
+        // Check sessionStorage first (from landing page or ReferralCodeHandler)
+        const pendingCode = sessionStorage.getItem('pending_referral_code');
+        if (pendingCode) {
+          setReferralCode(pendingCode.toUpperCase());
+          validateReferralCode(pendingCode);
+          sessionStorage.removeItem('pending_referral_code');
+        } else {
+          // Check URL for referral code
+          const urlParams = new URLSearchParams(window.location.search);
+          const refCode = urlParams.get('ref');
+          if (refCode) {
+            setReferralCode(refCode.toUpperCase());
+            validateReferralCode(refCode);
+          }
+        }
+      } catch (error) {
+        // Not authenticated, redirect to login
+        console.error('Auth error:', error);
+        
+        // Preserve referral code through login
+        const urlParams = new URLSearchParams(window.location.search);
+        const refCode = urlParams.get('ref');
+        if (refCode) {
+          sessionStorage.setItem('pending_referral_code', refCode.toUpperCase());
+        }
+        
+        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
       }
-      
-      // Check URL for referral code
-      const urlParams = new URLSearchParams(window.location.search);
-      const refCode = urlParams.get('ref');
-      if (refCode) {
-        setReferralCode(refCode.toUpperCase());
-        validateReferralCode(refCode);
-      }
-    }).catch(() => {
-      // Not authenticated, redirect to login
-      base44.auth.redirectToLogin(window.location.pathname);
-    });
-  }, []);
+    };
+
+    init();
+  }, [navigate]);
 
   const validateReferralCode = async (code) => {
     if (!code || code.length < 4) {
@@ -275,7 +298,7 @@ export default function Onboarding() {
                   <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p className="text-green-300 text-sm">
                       ✅ Valid code from <strong>{referrerName}</strong>! 
-                      You'll get 1 month FREE and they'll get 1 month too!
+                      You'll get 1 month FREE and they'll get bonus months too!
                     </p>
                   </div>
                 )}
