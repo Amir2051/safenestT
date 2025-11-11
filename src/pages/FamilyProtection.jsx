@@ -24,6 +24,7 @@ import FamilyVault from "../components/family/FamilyVault.jsx";
 import LexJrChat from "../components/family/LexJrChat.jsx";
 import LocationSharingToggle from "../components/family/LocationSharingToggle.jsx";
 import FamilyMap from "../components/family/FamilyMap.jsx";
+import SOSButton from "../components/family/SOSButton.jsx"; // NEW IMPORT
 
 export default function FamilyProtection() {
   const [user, setUser] = useState(null);
@@ -66,6 +67,11 @@ export default function FamilyProtection() {
 
   const children = members.filter(m => m.member_role === 'child' || m.age_category === 'child_under_13');
   const teens = members.filter(m => m.member_role === 'teen' || m.age_category === 'teen_13_17');
+  
+  // Determine if current user is a child
+  const isChild = myMembership?.member_role === 'child' || 
+                  myMembership?.age_category === 'child_under_13' ||
+                  myMembership?.age_category === 'teen_13_17';
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -162,6 +168,32 @@ export default function FamilyProtection() {
       ) : (
         /* Has Family Group - Dashboard */
         <div className="space-y-6">
+          {/* SOS Emergency Button - Prominent at top */}
+          <Card className="bg-gradient-to-br from-red-900/50 to-orange-900/50 border-red-500/50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400 animate-pulse" />
+                <div className="flex-1">
+                  <h3 className="text-white font-bold text-xl mb-1">
+                    Emergency SOS
+                  </h3>
+                  <p className="text-red-200 text-sm">
+                    {isChild 
+                      ? "Need help? Press this button to alert your family immediately."
+                      : "Any family member can trigger SOS to alert everyone instantly."
+                    }
+                  </p>
+                </div>
+              </div>
+              <SOSButton
+                groupId={group?.group_id}
+                userEmail={user?.email}
+                userName={user?.full_name || user?.email || ''}
+                isChild={isChild}
+              />
+            </CardContent>
+          </Card>
+
           {/* Group Info Card */}
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/30">
             <CardContent className="p-6">
