@@ -24,7 +24,8 @@ import FamilyVault from "../components/family/FamilyVault.jsx";
 import LexJrChat from "../components/family/LexJrChat.jsx";
 import LocationSharingToggle from "../components/family/LocationSharingToggle.jsx";
 import FamilyMap from "../components/family/FamilyMap.jsx";
-import SOSButton from "../components/family/SOSButton.jsx"; // NEW IMPORT
+import SOSButton from "../components/family/SOSButton.jsx";
+import SOSSettings from "../components/family/SOSSettings.jsx"; // NEW IMPORT
 
 export default function FamilyProtection() {
   const [user, setUser] = useState(null);
@@ -294,6 +295,10 @@ export default function FamilyProtection() {
                 <AlertTriangle className="w-4 h-4 mr-2" />
                 Alerts
               </TabsTrigger>
+              <TabsTrigger value="sos-settings"> {/* NEW TAB TRIGGER */}
+                <Shield className="w-4 h-4 mr-2" />
+                SOS Settings
+              </TabsTrigger>
               <TabsTrigger value="settings">
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
@@ -448,6 +453,11 @@ export default function FamilyProtection() {
                 alerts={recentAlerts}
                 members={members}
               />
+            </TabsContent>
+            
+            {/* NEW: SOS Settings Tab */}
+            <TabsContent value="sos-settings" className="mt-6">
+              <SOSSettings groupId={group?.group_id} />
             </TabsContent>
 
             {/* Settings Tab */}
