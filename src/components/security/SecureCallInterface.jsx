@@ -32,7 +32,8 @@ export default function SecureCallInterface({ recipientEmail, onCallEnd }) {
   const remoteVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
-  const callIdRef = useRef(null);
+  const callRecordIdRef = useRef(null); // Store entity ID, not call_id
+  const callStartTimeRef = useRef(null);
 
   // WebRTC Configuration with TURN servers for reliability
   const rtcConfig = {
@@ -89,17 +90,21 @@ export default function SecureCallInterface({ recipientEmail, onCallEnd }) {
 
       // Create call record
       const callId = crypto.randomUUID();
-      callIdRef.current = callId;
+      const startTime = new Date().toISOString();
+      callStartTimeRef.current = startTime;
 
-      await base44.entities.SecureCall.create({
+      const callRecord = await base44.entities.SecureCall.create({
         call_id: callId,
         caller_email: (await base44.auth.me()).email,
         callee_email: recipientEmail,
         call_type: videoEnabled ? 'video' : 'audio',
         encryption_protocol: 'DTLS-SRTP',
         call_status: 'initiating',
-        started_at: new Date().toISOString()
+        started_at: startTime
       });
+
+      // Store the entity ID (not call_id)
+      callRecordIdRef.current = callRecord.id;
 
       // Create and send offer (simplified - in production use signaling server)
       const offer = await peerConnection.createOffer();
@@ -149,20 +154,25 @@ export default function SecureCallInterface({ recipientEmail, onCallEnd }) {
 
       setSecurityStatus(secStatus);
 
-      // Update call record
-      if (callIdRef.current) {
-        await base44.entities.SecureCall.update(callIdRef.current, {
-          call_status: 'connected',
-          connected_at: new Date().toISOString(),
-          security_verification: {
-            end_to_end_encrypted: secStatus.encrypted,
-            peer_verified: secStatus.verified,
-            dtls_verified: secStatus.dtls,
-            srtp_active: secStatus.srtp,
-            mitm_detected: false,
-            security_score: secStatus.encrypted ? 100 : 0
-          }
-        });
+      // Update call record with security verification
+      if (callRecordIdRef.current) {
+        try {
+          await base44.entities.SecureCall.update(callRecordIdRef.current, {
+            call_status: 'connected',
+            connected_at: new Date().toISOString(),
+            security_verification: {
+              end_to_end_encrypted: secStatus.encrypted,
+              peer_verified: secStatus.verified,
+              dtls_verified: secStatus.dtls,
+              srtp_active: secStatus.srtp,
+              mitm_detected: false,
+              security_score: secStatus.encrypted ? 100 : 0
+            }
+          });
+        } catch (updateError) {
+          console.error('Failed to update call record:', updateError);
+          // Continue - don't break the call
+        }
       }
 
       if (secStatus.encrypted) {
@@ -246,18 +256,21 @@ export default function SecureCallInterface({ recipientEmail, onCallEnd }) {
     }
 
     // Update call record
-    if (callIdRef.current) {
-      const startTime = new Date((await base44.entities.SecureCall.filter({ 
-        call_id: callIdRef.current 
-      }))[0]?.started_at);
-      const duration = (Date.now() - startTime.getTime()) / 1000;
+    if (callRecordIdRef.current && callStartTimeRef.current) {
+      try {
+        const startTime = new Date(callStartTimeRef.current);
+        const duration = (Date.now() - startTime.getTime()) / 1000;
 
-      await base44.entities.SecureCall.update(callIdRef.current, {
-        call_status: 'ended',
-        ended_at: new Date().toISOString(),
-        duration_seconds: duration,
-        quality_metrics: callQuality
-      });
+        await base44.entities.SecureCall.update(callRecordIdRef.current, {
+          call_status: 'ended',
+          ended_at: new Date().toISOString(),
+          duration_seconds: duration,
+          quality_metrics: callQuality
+        });
+      } catch (updateError) {
+        console.error('Failed to update call end status:', updateError);
+        // Don't throw - call is already ended
+      }
     }
 
     setCallState('ended');
