@@ -13,19 +13,37 @@ export default function CreateFamilyDialog({ open, onClose, onSuccess }) {
 
   const createGroupMutation = useMutation({
     mutationFn: async () => {
+      console.log('Creating family group:', groupName);
       const response = await base44.functions.invoke('familyService', {
         endpoint: 'create-group',
         group_name: groupName,
         max_members: 5
       });
+      
+      console.log('Create group response:', response);
+      
+      if (response.status >= 400) {
+        throw new Error(response.data?.error || 'Failed to create group');
+      }
+      
+      if (!response.data) {
+        throw new Error('Empty response from server');
+      }
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success('🎉 ' + data.message);
+      console.log('✅ Group created successfully:', data);
+      toast.success('🎉 ' + data.message, { duration: 5000 });
       setGroupName('');
       if (onSuccess) onSuccess(data);
     },
     onError: (error) => {
+      console.error('❌ Create group error:', error);
       toast.error(error.message || 'Failed to create family group');
     }
   });
@@ -36,6 +54,7 @@ export default function CreateFamilyDialog({ open, onClose, onSuccess }) {
       toast.error('Please enter a family name');
       return;
     }
+    console.log('Submitting create group form...');
     createGroupMutation.mutate();
   };
 

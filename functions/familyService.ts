@@ -1,3 +1,4 @@
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
 
 // Generate secure invitation token
@@ -72,15 +73,16 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'Group name required' }, { status: 400 });
         }
         
-        // Check if user already has a family group
-        const existingGroups = await base44.entities.FamilyGroup.filter({
-          primary_account_holder: user.email
+        // Check if user already has a family group - check as member
+        const existingMemberships = await base44.entities.FamilyMember.filter({
+          member_email: user.email,
+          status: 'active'
         });
         
-        if (existingGroups.length > 0) {
+        if (existingMemberships.length > 0) {
           return Response.json({ 
-            error: 'You already have a family group',
-            group_id: existingGroups[0].group_id
+            error: 'You are already a member of a family group',
+            group_id: existingMemberships[0].group_id
           }, { status: 400 });
         }
         
@@ -88,7 +90,9 @@ Deno.serve(async (req) => {
         const trialEnds = new Date();
         trialEnds.setDate(trialEnds.getDate() + 30); // 30-day trial
         
-        // Create family group
+        console.log('Creating family group:', { groupId, group_name, user: user.email });
+        
+        // Create family group (RLS will set created_by automatically)
         const group = await base44.entities.FamilyGroup.create({
           group_id: groupId,
           group_name,
@@ -96,12 +100,24 @@ Deno.serve(async (req) => {
           subscription_plan: 'family_basic',
           max_members: max_members || 5,
           current_members_count: 1,
-          created_date: new Date().toISOString(),
           payment_status: 'trial',
           trial_ends: trialEnds.toISOString(),
           shared_vault_enabled: true,
-          parental_controls_enabled: false
+          parental_controls_enabled: false,
+          family_settings: {
+            require_approval_for_children: true,
+            monitor_child_activity: true,
+            shared_breach_alerts: true,
+            allow_vault_sharing: true
+          },
+          activity_summary: {
+            total_alerts: 0,
+            resolved_alerts: 0,
+            total_threats_blocked: 0
+          }
         });
+        
+        console.log('✅ Family group created:', group.id);
         
         // Add primary account holder as member
         await base44.entities.FamilyMember.create({
@@ -114,6 +130,13 @@ Deno.serve(async (req) => {
           joined_date: new Date().toISOString(),
           invited_by: user.email,
           permissions: getDefaultPermissions('parent', 'adult'),
+          monitored_settings: {
+            monitor_web_activity: false,
+            monitor_app_usage: false,
+            block_inappropriate_content: false,
+            screen_time_limit_minutes: 0,
+            bedtime_mode_enabled: false
+          },
           security_stats: {
             risk_score: user.risk_score || 100,
             alerts_count: 0,
@@ -121,11 +144,15 @@ Deno.serve(async (req) => {
           }
         });
         
+        console.log('✅ Primary member added');
+        
         // Update user with family group
         await base44.auth.updateMe({
           family_group_id: groupId,
           is_family_admin: true
         });
+        
+        console.log('✅ User updated with family_group_id');
         
         return Response.json({
           success: true,
