@@ -22,6 +22,8 @@ import LocationTracker from "../components/family/LocationTracker.jsx";
 import GeofenceManager from "../components/family/GeofenceManager.jsx";
 import FamilyVault from "../components/family/FamilyVault.jsx";
 import LexJrChat from "../components/family/LexJrChat.jsx";
+import LocationSharingToggle from "../components/family/LocationSharingToggle.jsx";
+import FamilyMap from "../components/family/FamilyMap.jsx";
 
 export default function FamilyProtection() {
   const [user, setUser] = useState(null);
@@ -242,7 +244,7 @@ export default function FamilyProtection() {
               </TabsTrigger>
               <TabsTrigger value="location">
                 <MapPin className="w-4 h-4 mr-2" />
-                Location
+                Live Map
               </TabsTrigger>
               <TabsTrigger value="vault">
                 <Lock className="w-4 h-4 mr-2" />
@@ -322,20 +324,23 @@ export default function FamilyProtection() {
               </Card>
             </TabsContent>
 
-            {/* Location Tab */}
+            {/* Location Tab - Updated */}
             <TabsContent value="location" className="space-y-6 mt-6">
-              <div className="grid gap-6">
-                <LocationTracker
-                  groupId={group?.group_id}
-                  members={members}
-                  isAdmin={isAdmin}
-                />
-                <GeofenceManager
-                  groupId={group?.group_id}
-                  members={members}
-                  isAdmin={isAdmin}
-                />
-              </div>
+              <LocationSharingToggle
+                groupId={group?.group_id}
+                userEmail={user?.email}
+              />
+              
+              <FamilyMap
+                groupId={group?.group_id}
+                members={members}
+              />
+              
+              <GeofenceManager
+                groupId={group?.group_id}
+                members={members}
+                isAdmin={isAdmin}
+              />
             </TabsContent>
 
             {/* Vault Tab */}
