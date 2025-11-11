@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   MapPin, Navigation, RefreshCw, Loader2, 
-  Battery, BatteryCharging, Users, Zap, Clock, Route, Shield
+  Battery, BatteryCharging, Users, Zap, Clock, Route, Shield, Crosshair
 } from "lucide-react";
 import InteractiveMap from "./InteractiveMap.jsx";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export default function FamilyMap({ groupId, members }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [showRouteHistory, setShowRouteHistory] = useState(false);
   const [historyHours, setHistoryHours] = useState(24);
+  const [sharingMyLocation, setSharingMyLocation] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: locations = [], isLoading, refetch } = useQuery({
@@ -64,6 +65,85 @@ export default function FamilyMap({ groupId, members }) {
     enabled: !!groupId && !!selectedMember && showRouteHistory
   });
 
+  const shareMyLocationMutation = useMutation({
+    mutationFn: async (locationData) => {
+      const response = await base44.functions.invoke('familyLocationService', {
+        endpoint: 'update-location',
+        ...locationData
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['family-locations-active'] });
+      
+      if (data.triggered_geofences && data.triggered_geofences.length > 0) {
+        const events = data.triggered_geofences.map(g => 
+          `${g.event} ${g.zone_name}`
+        ).join(', ');
+        toast.success(`📍 Location shared! Geofence: ${events}`);
+      } else {
+        toast.success('📍 Your location has been shared with the family!');
+      }
+      setSharingMyLocation(false);
+    },
+    onError: (error) => {
+      toast.error('Failed to share location: ' + error.message);
+      setSharingMyLocation(false);
+    }
+  });
+
+  const handleShareMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported by your browser');
+      return;
+    }
+
+    setSharingMyLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const locationData = {
+          group_id: groupId,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed_kmh: position.coords.speed ? position.coords.speed * 3.6 : null
+        };
+        
+        // Get battery info if available
+        if (navigator.getBattery) {
+          try {
+            const battery = await navigator.getBattery();
+            locationData.battery_level = Math.round(battery.level * 100);
+            locationData.is_charging = battery.charging;
+          } catch (e) {
+            // Battery API not available
+          }
+        }
+        
+        shareMyLocationMutation.mutate(locationData);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setSharingMyLocation(false);
+        
+        let message = 'Failed to get your location';
+        if (error.code === 1) {
+          message = 'Location permission denied. Please enable location access in your browser settings.';
+        } else if (error.code === 2) {
+          message = 'Location unavailable. Please check your GPS settings.';
+        }
+        
+        toast.error(message, { duration: 5000 });
+      },
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 0 
+      }
+    );
+  };
+
   const getTimeSince = (timestamp) => {
     const now = new Date();
     const then = new Date(timestamp);
@@ -92,8 +172,7 @@ export default function FamilyMap({ groupId, members }) {
       const prev = route[i - 1];
       const curr = route[i];
       
-      // Haversine formula
-      const R = 6371; // km
+      const R = 6371;
       const dLat = (curr.latitude - prev.latitude) * Math.PI / 180;
       const dLon = (curr.longitude - prev.longitude) * Math.PI / 180;
       const a = 
@@ -116,6 +195,24 @@ export default function FamilyMap({ groupId, members }) {
             Family Map ({locations.length} active)
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={handleShareMyLocation}
+              disabled={sharingMyLocation}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+              size="sm"
+            >
+              {sharingMyLocation ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <Crosshair className="w-4 h-4 mr-2" />
+                  Share My Location
+                </>
+              )}
+            </Button>
             {selectedMember && (
               <Button
                 onClick={() => {
@@ -166,18 +263,41 @@ export default function FamilyMap({ groupId, members }) {
                 <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
                 <p className="text-gray-400 text-sm">Loading family locations...</p>
               </div>
-            ) : locations.length === 0 ? (
-              <div className="text-center py-12">
-                <MapPin className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-white font-semibold text-lg mb-2">
-                  No Active Locations
-                </p>
-                <p className="text-gray-400 text-sm">
-                  Family members need to enable location sharing
-                </p>
-              </div>
             ) : (
               <div className="space-y-4">
+                {/* Quick Share Button Above Map */}
+                {locations.length === 0 && (
+                  <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-white font-semibold mb-1">
+                          🗺️ Be the first to share your location!
+                        </p>
+                        <p className="text-cyan-300 text-sm">
+                          Family members can see each other on the map
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleShareMyLocation}
+                        disabled={sharingMyLocation}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                      >
+                        {sharingMyLocation ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Sharing...
+                          </>
+                        ) : (
+                          <>
+                            <Crosshair className="w-4 h-4 mr-2" />
+                            Share Now
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Interactive Map */}
                 <InteractiveMap
                   locations={locations}
@@ -277,6 +397,27 @@ export default function FamilyMap({ groupId, members }) {
           </TabsContent>
 
           <TabsContent value="list" className="mt-4">
+            {/* Share My Location Button at Top of List */}
+            <div className="mb-4">
+              <Button
+                onClick={handleShareMyLocation}
+                disabled={sharingMyLocation}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12"
+              >
+                {sharingMyLocation ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Getting Your Location...
+                  </>
+                ) : (
+                  <>
+                    <Crosshair className="w-5 h-5 mr-2" />
+                    Share My Location with Family
+                  </>
+                )}
+              </Button>
+            </div>
+
             {isLoading ? (
               <div className="text-center py-8">
                 <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
@@ -284,7 +425,10 @@ export default function FamilyMap({ groupId, members }) {
             ) : locations.length === 0 ? (
               <div className="text-center py-8">
                 <MapPin className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">No locations shared yet</p>
+                <p className="text-white font-semibold mb-2">No locations shared yet</p>
+                <p className="text-gray-400 text-sm">
+                  Click the button above to share your location
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
