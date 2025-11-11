@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, Shield, Lock, UserPlus, Loader2, AlertTriangle,
-  Settings, Eye, TrendingUp, CheckCircle, Clock, Crown
+  Settings, Eye, TrendingUp, CheckCircle, Clock, Crown, MapPin, Bot
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,8 +16,12 @@ import CreateFamilyDialog from "../components/family/CreateFamilyDialog.jsx";
 import InviteMemberDialog from "../components/family/InviteMemberDialog.jsx";
 import MemberCard from "../components/family/MemberCard.jsx";
 import FamilyAlerts from "../components/family/FamilyAlerts.jsx";
-import SharedVaultManager from "../components/family/SharedVaultManager.jsx";
+// Removed SharedVaultManager as it's replaced by FamilyVault
 import ParentalControlsPanel from "../components/family/ParentalControlsPanel.jsx";
+import LocationTracker from "../components/family/LocationTracker.jsx";
+import GeofenceManager from "../components/family/GeofenceManager.jsx";
+import FamilyVault from "../components/family/FamilyVault.jsx";
+import LexJrChat from "../components/family/LexJrChat.jsx";
 
 export default function FamilyProtection() {
   const [user, setUser] = useState(null);
@@ -235,13 +240,21 @@ export default function FamilyProtection() {
                 <Users className="w-4 h-4 mr-2" />
                 Members
               </TabsTrigger>
+              <TabsTrigger value="location">
+                <MapPin className="w-4 h-4 mr-2" />
+                Location
+              </TabsTrigger>
               <TabsTrigger value="vault">
                 <Lock className="w-4 h-4 mr-2" />
-                Shared Vault
+                Vault
+              </TabsTrigger>
+              <TabsTrigger value="lexjr">
+                <Bot className="w-4 h-4 mr-2" />
+                Lex Jr.
               </TabsTrigger>
               <TabsTrigger value="controls">
                 <Eye className="w-4 h-4 mr-2" />
-                Parental Controls
+                Controls
               </TabsTrigger>
               <TabsTrigger value="alerts">
                 <AlertTriangle className="w-4 h-4 mr-2" />
@@ -309,13 +322,76 @@ export default function FamilyProtection() {
               </Card>
             </TabsContent>
 
-            {/* Shared Vault Tab */}
+            {/* Location Tab */}
+            <TabsContent value="location" className="space-y-6 mt-6">
+              <div className="grid gap-6">
+                <LocationTracker
+                  groupId={group?.group_id}
+                  members={members}
+                  isAdmin={isAdmin}
+                />
+                <GeofenceManager
+                  groupId={group?.group_id}
+                  members={members}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </TabsContent>
+
+            {/* Vault Tab */}
             <TabsContent value="vault" className="mt-6">
-              <SharedVaultManager
+              <FamilyVault
                 groupId={group?.group_id}
-                canAccess={myMembership?.permissions?.can_access_shared_vault}
+                userEmail={user?.email}
+                members={members}
                 isAdmin={isAdmin}
               />
+            </TabsContent>
+
+            {/* Lex Jr. Tab */}
+            <TabsContent value="lexjr" className="space-y-6 mt-6">
+              {children.length === 0 && teens.length === 0 ? (
+                <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+                  <CardContent className="p-12 text-center">
+                    <Bot className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                    <p className="text-white font-bold text-xl mb-2">No Children Added</p>
+                    <p className="text-gray-400">
+                      Add children to the family to enable Lex Jr. - their personal safety assistant!
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-6">
+                  <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-3">
+                        <Bot className="w-8 h-8 text-purple-400" />
+                        <div>
+                          <h3 className="text-white font-bold text-lg mb-2">
+                            Meet Lex Jr. 🤖
+                          </h3>
+                          <p className="text-purple-300 text-sm">
+                            Your child's friendly AI assistant for learning about online safety, 
+                            cybersecurity, and digital literacy. Age-appropriate responses and 
+                            automatic parental monitoring included!
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {[...children, ...teens].map((child) => (
+                    <LexJrChat
+                      key={child.id}
+                      groupId={group?.group_id}
+                      childEmail={child.member_email}
+                      childName={child.member_name}
+                      ageGroup={child.age_category === 'child_under_13' ? '5-8' : 
+                                child.age_category === 'teen_13_17' ? '13-17' : '9-12'}
+                    />
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             {/* Parental Controls Tab */}
