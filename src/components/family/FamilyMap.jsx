@@ -17,6 +17,8 @@ export default function FamilyMap({ groupId, members }) {
   const [showRouteHistory, setShowRouteHistory] = useState(false);
   const [historyHours, setHistoryHours] = useState(24);
   const [sharingMyLocation, setSharingMyLocation] = useState(false);
+  const [myCurrentLocation, setMyCurrentLocation] = useState(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: locations = [], isLoading, refetch } = useQuery({
@@ -64,6 +66,42 @@ export default function FamilyMap({ groupId, members }) {
     },
     enabled: !!groupId && !!selectedMember && showRouteHistory
   });
+
+  // Auto-detect user's current location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      setGettingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const locationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            speed_kmh: position.coords.speed ? position.coords.speed * 3.6 : null
+          };
+          
+          // Get battery info if available
+          if (navigator.getBattery) {
+            try {
+              const battery = await navigator.getBattery();
+              locationData.battery_level = Math.round(battery.level * 100);
+              locationData.is_charging = battery.charging;
+            } catch (e) {
+              // Battery API not available
+            }
+          }
+          
+          setMyCurrentLocation(locationData);
+          setGettingLocation(false);
+        },
+        (error) => {
+          console.error('Location detection error:', error);
+          setGettingLocation(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
 
   const shareMyLocationMutation = useMutation({
     mutationFn: async (locationData) => {
@@ -120,6 +158,16 @@ export default function FamilyMap({ groupId, members }) {
             // Battery API not available
           }
         }
+        
+        // Update current location state
+        setMyCurrentLocation({
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          accuracy: locationData.accuracy,
+          speed_kmh: locationData.speed_kmh,
+          battery_level: locationData.battery_level,
+          is_charging: locationData.is_charging
+        });
         
         shareMyLocationMutation.mutate(locationData);
       },
@@ -193,6 +241,12 @@ export default function FamilyMap({ groupId, members }) {
           <CardTitle className="text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-cyan-400" />
             Family Map ({locations.length} active)
+            {myCurrentLocation && (
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/50 ml-2">
+                <Crosshair className="w-3 h-3 mr-1" />
+                Your location detected
+              </Badge>
+            )}
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button
@@ -258,6 +312,22 @@ export default function FamilyMap({ groupId, members }) {
           </TabsList>
 
           <TabsContent value="map" className="mt-4">
+            {gettingLocation && !myCurrentLocation && (
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg mb-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                  <div>
+                    <p className="text-cyan-300 font-semibold text-sm">
+                      Detecting your location...
+                    </p>
+                    <p className="text-cyan-400 text-xs">
+                      This will show your position on the map (visible only to you until shared)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="text-center py-12">
                 <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
@@ -271,10 +341,13 @@ export default function FamilyMap({ groupId, members }) {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-white font-semibold mb-1">
-                          🗺️ Be the first to share your location!
+                          🗺️ Share your location with family
                         </p>
                         <p className="text-cyan-300 text-sm">
-                          Family members can see each other on the map
+                          {myCurrentLocation 
+                            ? "We detected your location! Click to share it with everyone."
+                            : "Family members can see each other on the map"
+                          }
                         </p>
                       </div>
                       <Button
@@ -306,7 +379,31 @@ export default function FamilyMap({ groupId, members }) {
                   routeHistory={showRouteHistory ? routeHistory : []}
                   onLocationSelect={setSelectedMember}
                   members={members}
+                  myCurrentLocation={myCurrentLocation}
                 />
+
+                {/* Current Location Status */}
+                {myCurrentLocation && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Crosshair className="w-4 h-4 text-green-400" />
+                        <div>
+                          <p className="text-green-400 font-semibold text-sm">
+                            Your Location: {myCurrentLocation.latitude.toFixed(4)}, {myCurrentLocation.longitude.toFixed(4)}
+                          </p>
+                          <p className="text-green-300 text-xs">
+                            Accuracy: ±{Math.round(myCurrentLocation.accuracy)}m
+                            {myCurrentLocation.battery_level && ` • Battery: ${myCurrentLocation.battery_level}%`}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                        You
+                      </Badge>
+                    </div>
+                  </div>
+                )}
 
                 {/* Route History Stats */}
                 {showRouteHistory && selectedMember && routeHistory.length > 0 && (
@@ -417,6 +514,35 @@ export default function FamilyMap({ groupId, members }) {
                 )}
               </Button>
             </div>
+
+            {/* Current Location Card */}
+            {myCurrentLocation && (
+              <div className="mb-4 p-4 bg-green-500/10 border-2 border-green-500/30 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <Crosshair className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold flex items-center gap-2">
+                      You (Current Location)
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                        Live
+                      </Badge>
+                    </p>
+                    <p className="text-green-300 text-sm mt-1">
+                      📍 {myCurrentLocation.latitude.toFixed(6)}, {myCurrentLocation.longitude.toFixed(6)}
+                    </p>
+                    <p className="text-green-400 text-xs mt-1">
+                      Accuracy: ±{Math.round(myCurrentLocation.accuracy)}m
+                      {myCurrentLocation.battery_level && ` • Battery: ${myCurrentLocation.battery_level}%`}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-green-300 text-xs mt-3 text-center">
+                  👆 This is visible only to you. Click "Share My Location" to let family see it.
+                </p>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="text-center py-8">

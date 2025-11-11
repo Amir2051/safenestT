@@ -9,13 +9,15 @@ export default function InteractiveMap({
   selectedMember, 
   routeHistory,
   onLocationSelect,
-  members 
+  members,
+  myCurrentLocation
 }) {
   const mapRef = useRef(null);
   const autocompleteInputRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
+  const [myLocationMarker, setMyLocationMarker] = useState(null);
   const [circles, setCircles] = useState([]);
   const [polyline, setPolyline] = useState(null);
   const [autocomplete, setAutocomplete] = useState(null);
@@ -28,7 +30,7 @@ export default function InteractiveMap({
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAiXcecx82VKrvg7LUGSGheErKCTIMX0_c&libraries=places,marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${Deno.env.get('GOOGLE_MAPS_API_KEY') || 'AIzaSyAiXcecx82VKrvg7LUGSGheErKCTIMX0_c'}&libraries=places,marker`;
     script.async = true;
     script.defer = true;
     script.onload = () => setMapLoaded(true);
@@ -43,13 +45,16 @@ export default function InteractiveMap({
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || map) return;
 
-    const center = locations.length > 0 
+    // Use myCurrentLocation, then first family location, then NYC default
+    const center = myCurrentLocation 
+      ? { lat: myCurrentLocation.latitude, lng: myCurrentLocation.longitude }
+      : locations.length > 0 
       ? { lat: locations[0].latitude, lng: locations[0].longitude }
       : { lat: 40.7128, lng: -74.0060 }; // NYC default
 
     const googleMap = new window.google.maps.Map(mapRef.current, {
       center,
-      zoom: 12,
+      zoom: myCurrentLocation ? 15 : 12,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
@@ -57,7 +62,7 @@ export default function InteractiveMap({
     });
 
     setMap(googleMap);
-  }, [mapLoaded, mapRef.current]);
+  }, [mapLoaded, mapRef.current, myCurrentLocation]);
 
   // Initialize Places Autocomplete
   useEffect(() => {
@@ -134,6 +139,41 @@ export default function InteractiveMap({
     setAutocomplete(auto);
   }, [map, autocompleteInputRef.current]);
 
+  // Update "You" marker when myCurrentLocation changes
+  useEffect(() => {
+    if (!map || !window.google || !myCurrentLocation) return;
+
+    // Clear existing "You" marker
+    if (myLocationMarker) {
+      myLocationMarker.setMap(null);
+    }
+
+    // Create new "You" marker
+    const marker = new window.google.maps.marker.AdvancedMarkerElement({
+      map,
+      position: { lat: myCurrentLocation.latitude, lng: myCurrentLocation.longitude },
+      title: 'You (Current Location)',
+      content: createMyLocationMarkerContent()
+    });
+
+    const infowindow = new window.google.maps.InfoWindow({
+      content: createMyLocationInfoWindowContent(myCurrentLocation)
+    });
+
+    marker.addListener('click', () => {
+      infowindow.open(map, marker);
+    });
+
+    setMyLocationMarker(marker);
+
+    // Center map on user's location initially
+    if (!locations.length) {
+      map.setCenter({ lat: myCurrentLocation.latitude, lng: myCurrentLocation.longitude });
+      map.setZoom(15);
+    }
+
+  }, [map, myCurrentLocation]);
+
   // Update markers when locations change
   useEffect(() => {
     if (!map || !window.google) return;
@@ -168,12 +208,20 @@ export default function InteractiveMap({
     setMarkers(newMarkers);
 
     // Auto-fit bounds
-    if (locations.length > 0) {
+    if (locations.length > 0 || myCurrentLocation) {
       const bounds = new window.google.maps.LatLngBounds();
+      
+      // Add current location
+      if (myCurrentLocation) {
+        bounds.extend({ lat: myCurrentLocation.latitude, lng: myCurrentLocation.longitude });
+      }
+      
+      // Add family locations
       locations.forEach(loc => {
         bounds.extend({ lat: loc.latitude, lng: loc.longitude });
       });
       
+      // Add geofences
       geofences.forEach(fence => {
         bounds.extend({ lat: fence.center_latitude, lng: fence.center_longitude });
       });
@@ -181,7 +229,7 @@ export default function InteractiveMap({
       map.fitBounds(bounds, { padding: 50 });
     }
 
-  }, [map, locations, selectedMember, members]);
+  }, [map, locations, selectedMember, members, myCurrentLocation]);
 
   // Update geofences
   useEffect(() => {
@@ -293,6 +341,120 @@ export default function InteractiveMap({
     }
 
   }, [map, routeHistory]);
+
+  const createMyLocationMarkerContent = () => {
+    const div = document.createElement('div');
+    div.style.cssText = `
+      position: relative;
+    `;
+    
+    const markerDiv = document.createElement('div');
+    markerDiv.style.cssText = `
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: 3px solid white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      animation: pulse 2s infinite;
+    `;
+    markerDiv.innerHTML = '📍';
+    markerDiv.onmouseenter = () => markerDiv.style.transform = 'scale(1.1)';
+    markerDiv.onmouseleave = () => markerDiv.style.transform = 'scale(1)';
+
+    div.appendChild(markerDiv);
+
+    const badge = document.createElement('div');
+    badge.style.cssText = `
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #10b981;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: bold;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    `;
+    badge.textContent = 'YOU';
+    div.appendChild(badge);
+
+    return div;
+  };
+
+  const createMyLocationInfoWindowContent = (location) => {
+    return `
+      <div style="padding: 12px; min-width: 220px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+          ">
+            📍
+          </div>
+          <div>
+            <p style="font-weight: bold; margin: 0; font-size: 14px; color: #10b981;">
+              Your Current Location
+            </p>
+            <p style="font-size: 11px; color: #059669; margin: 0;">
+              Live • Just now
+            </p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+          <span style="font-size: 12px; color: #666;">📍</span>
+          <p style="font-size: 12px; color: #333; margin: 0;">
+            ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
+          </p>
+        </div>
+
+        ${location.battery_level !== null ? `
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+            <span style="font-size: 12px;">
+              ${location.is_charging ? '🔋' : '🔋'}
+            </span>
+            <span style="font-size: 12px; color: ${location.battery_level < 20 ? '#ef4444' : '#666'};">
+              ${location.battery_level}% ${location.is_charging ? '(Charging)' : ''}
+            </span>
+          </div>
+        ` : ''}
+
+        <div style="
+          background: #d1fae5;
+          color: #065f46;
+          padding: 6px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          margin-bottom: 8px;
+          display: inline-block;
+        ">
+          Visible only to you (not shared yet)
+        </div>
+
+        <p style="font-size: 10px; color: #999; margin-top: 8px; margin-bottom: 0;">
+          Accuracy: ±${Math.round(location.accuracy)}m
+        </p>
+      </div>
+    `;
+  };
 
   const createMarkerContent = (location, member, isSelected) => {
     const div = document.createElement('div');
