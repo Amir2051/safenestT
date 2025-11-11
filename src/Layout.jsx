@@ -63,6 +63,7 @@ const navigationStructure = [
     children: [
       { title: 'Identity Monitor', url: createPageUrl('IdentityMonitor'), icon: Shield, badge: 'VAULT', highlight: true },
       { title: 'Signal Watch', url: createPageUrl('SignalWatch'), icon: Radio, badge: 'BETA', highlight: true },
+      { title: 'Advanced Security', url: createPageUrl('AdvancedSecurity'), icon: ShieldAlert, badge: 'PEGASUS', highlight: true },
       { title: 'Dark Web Monitor', url: createPageUrl('DarkWebMonitor'), icon: Eye },
       { title: 'Credit Monitor', url: createPageUrl('CreditMonitor'), icon: CreditCard },
       { title: 'Family Protection', url: createPageUrl('FamilyProtection'), icon: Users, badge: 'NEW', highlight: true }
@@ -353,6 +354,8 @@ function LayoutContent({ children, currentPageName }) {
                                               ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50'
                                               : child.badge === "BETA"
                                               ? 'bg-sky-500/20 text-sky-400 border border-sky-500/50'
+                                              : child.badge === "PEGASUS"
+                                              ? 'bg-red-500/20 text-red-400 border border-red-500/50 badge-highlight'
                                               : 'bg-purple-500/20 text-purple-400'
                                           }`}>
                                             {child.badge}

@@ -33,6 +33,7 @@ import SignalWatch from './pages/SignalWatch';
 import CreditMonitor from './pages/CreditMonitor';
 import FamilyProtection from './pages/FamilyProtection';
 import FamilyInvite from './pages/FamilyInvite';
+import AdvancedSecurity from './pages/AdvancedSecurity';
 import Layout from './Layout.jsx';
 
 
@@ -72,6 +73,7 @@ export const PAGES = {
     "CreditMonitor": CreditMonitor,
     "FamilyProtection": FamilyProtection,
     "FamilyInvite": FamilyInvite,
+    "AdvancedSecurity": AdvancedSecurity,
 }
 
 export const pagesConfig = {
