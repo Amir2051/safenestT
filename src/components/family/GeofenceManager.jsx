@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, Shield, AlertTriangle, Trash2, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapPin, Plus, Shield, AlertTriangle, Trash2, Loader2, Map } from "lucide-react";
 import { toast } from "sonner";
+import GeofenceMapCreator from "./GeofenceMapCreator.jsx";
 
 export default function GeofenceManager({ groupId, members, isAdmin }) {
   const [showDialog, setShowDialog] = useState(false);
+  const [createMode, setCreateMode] = useState('manual'); // 'manual' or 'map'
   const [zoneName, setZoneName] = useState('');
   const [zoneType, setZoneType] = useState('safe_zone');
   const [radius, setRadius] = useState(500);
@@ -62,6 +65,7 @@ export default function GeofenceManager({ groupId, members, isAdmin }) {
     setRadius(500);
     setSelectedMembers([]);
     setCenterCoords(null);
+    setCreateMode('manual');
   };
 
   const getCurrentLocation = () => {
@@ -80,6 +84,11 @@ export default function GeofenceManager({ groupId, members, isAdmin }) {
         toast.error('Failed to get location');
       }
     );
+  };
+
+  const handleMapCreate = (coords) => {
+    setCenterCoords(coords);
+    toast.success('📍 Pin dropped on map!');
   };
 
   const handleCreate = () => {
@@ -105,9 +114,9 @@ export default function GeofenceManager({ groupId, members, isAdmin }) {
   };
 
   const zoneTypeConfig = {
-    safe_zone: { icon: Shield, color: 'text-green-400', bg: 'bg-green-500/10' },
-    restricted_zone: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10' },
-    alert_zone: { icon: MapPin, color: 'text-yellow-400', bg: 'bg-yellow-500/10' }
+    safe_zone: { icon: Shield, color: 'text-green-400', bg: 'bg-green-500/10', name: 'Safe Zone' },
+    restricted_zone: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', name: 'Restricted Zone' },
+    alert_zone: { icon: MapPin, color: 'text-yellow-400', bg: 'bg-yellow-500/10', name: 'Alert Zone' }
   };
 
   if (!isAdmin) {
@@ -167,7 +176,7 @@ export default function GeofenceManager({ groupId, members, isAdmin }) {
                         <div className="flex-1">
                           <h3 className="text-white font-semibold">{fence.zone_name}</h3>
                           <p className="text-sm text-gray-400 mt-1">
-                            Radius: {fence.radius_meters}m • {fence.monitored_members?.length || 0} members
+                            {config.name} • Radius: {fence.radius_meters}m • {fence.monitored_members?.length || 0} members
                           </p>
                           {fence.trigger_count > 0 && (
                             <p className="text-xs text-gray-500 mt-1">
@@ -194,91 +203,193 @@ export default function GeofenceManager({ groupId, members, isAdmin }) {
       </Card>
 
       {/* Create Geofence Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="bg-[#1a2332] border-cyan-500/30 text-white max-w-lg">
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="bg-[#1a2332] border-cyan-500/30 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">Create Geofence</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label>Zone Name</Label>
-              <Input
-                value={zoneName}
-                onChange={(e) => setZoneName(e.target.value)}
-                placeholder="e.g., Home, School, Friend's House"
-                className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
-              />
-            </div>
+          <Tabs value={createMode} onValueChange={setCreateMode} className="w-full">
+            <TabsList className="w-full bg-[#0f1419] border border-cyan-500/20">
+              <TabsTrigger value="manual" className="flex-1">
+                <MapPin className="w-4 h-4 mr-2" />
+                Manual Entry
+              </TabsTrigger>
+              <TabsTrigger value="map" className="flex-1">
+                <Map className="w-4 h-4 mr-2" />
+                Drop Pin on Map
+              </TabsTrigger>
+            </TabsList>
 
-            <div>
-              <Label>Zone Type</Label>
-              <Select value={zoneType} onValueChange={setZoneType}>
-                <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="safe_zone">Safe Zone (notify when leaving)</SelectItem>
-                  <SelectItem value="restricted_zone">Restricted Zone (notify when entering)</SelectItem>
-                  <SelectItem value="alert_zone">Alert Zone (notify both)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <TabsContent value="manual" className="space-y-4 mt-4">
+              <div>
+                <Label>Zone Name</Label>
+                <Input
+                  value={zoneName}
+                  onChange={(e) => setZoneName(e.target.value)}
+                  placeholder="e.g., Home, School, Friend's House"
+                  className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                />
+              </div>
 
-            <div>
-              <Label>Radius (meters)</Label>
-              <Input
-                type="number"
-                value={radius}
-                onChange={(e) => setRadius(parseInt(e.target.value))}
-                className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
-              />
-            </div>
+              <div>
+                <Label>Zone Type</Label>
+                <Select value={zoneType} onValueChange={setZoneType}>
+                  <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="safe_zone">Safe Zone (notify when leaving)</SelectItem>
+                    <SelectItem value="restricted_zone">Restricted Zone (notify when entering)</SelectItem>
+                    <SelectItem value="alert_zone">Alert Zone (notify both)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label>Center Location</Label>
-              <Button
-                onClick={getCurrentLocation}
-                disabled={gettingLocation}
-                className="w-full mt-2 bg-cyan-500/20 border border-cyan-500/30"
-                variant="outline"
-              >
-                {gettingLocation ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Getting Location...
-                  </>
-                ) : centerCoords ? (
-                  <>
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Location Captured ✓
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Get Current Location
-                  </>
-                )}
-              </Button>
-            </div>
+              <div>
+                <Label>Radius (meters)</Label>
+                <Input
+                  type="number"
+                  value={radius}
+                  onChange={(e) => setRadius(parseInt(e.target.value))}
+                  className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                />
+              </div>
 
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowDialog(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={!zoneName || !centerCoords || createGeofenceMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600"
-              >
-                Create Zone
-              </Button>
-            </div>
-          </div>
+              <div>
+                <Label>Center Location</Label>
+                <Button
+                  onClick={getCurrentLocation}
+                  disabled={gettingLocation}
+                  className="w-full mt-2 bg-cyan-500/20 border border-cyan-500/30"
+                  variant="outline"
+                >
+                  {gettingLocation ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting Location...
+                    </>
+                  ) : centerCoords ? (
+                    <>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Location Captured ✓
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Get Current Location
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setShowDialog(false);
+                    resetForm();
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={!zoneName || !centerCoords || createGeofenceMutation.isPending}
+                  className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600"
+                >
+                  Create Zone
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="map" className="space-y-4 mt-4">
+              <div>
+                <Label>Zone Name</Label>
+                <Input
+                  value={zoneName}
+                  onChange={(e) => setZoneName(e.target.value)}
+                  placeholder="e.g., Home, School, Friend's House"
+                  className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Zone Type</Label>
+                  <Select value={zoneType} onValueChange={setZoneType}>
+                    <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="safe_zone">Safe Zone</SelectItem>
+                      <SelectItem value="restricted_zone">Restricted</SelectItem>
+                      <SelectItem value="alert_zone">Alert Zone</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Radius (meters)</Label>
+                  <Input
+                    type="number"
+                    value={radius}
+                    onChange={(e) => setRadius(parseInt(e.target.value))}
+                    className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Drop Pin on Map</Label>
+                <GeofenceMapCreator
+                  onLocationSelect={handleMapCreate}
+                  radius={radius}
+                  zoneType={zoneType}
+                  selectedLocation={centerCoords}
+                />
+              </div>
+
+              {centerCoords && (
+                <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                  <p className="text-cyan-300 text-sm">
+                    📍 Pin Location: {centerCoords.lat.toFixed(6)}, {centerCoords.lon.toFixed(6)}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setShowDialog(false);
+                    resetForm();
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={!zoneName || !centerCoords || createGeofenceMutation.isPending}
+                  className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600"
+                >
+                  {createGeofenceMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Zone'
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </>
