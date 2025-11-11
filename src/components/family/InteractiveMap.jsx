@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Navigation, Battery, BatteryCharging, Zap, Loader2 } from "lucide-react";
+import { MapPin, Navigation, Battery, BatteryCharging, Zap, Loader2, Search } from "lucide-react";
 
 export default function InteractiveMap({ 
   locations, 
@@ -12,11 +12,13 @@ export default function InteractiveMap({
   members 
 }) {
   const mapRef = useRef(null);
+  const autocompleteInputRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [circles, setCircles] = useState([]);
   const [polyline, setPolyline] = useState(null);
+  const [autocomplete, setAutocomplete] = useState(null);
 
   // Load Google Maps script
   useEffect(() => {
@@ -56,6 +58,81 @@ export default function InteractiveMap({
 
     setMap(googleMap);
   }, [mapLoaded, mapRef.current]);
+
+  // Initialize Places Autocomplete
+  useEffect(() => {
+    if (!map || !window.google || !autocompleteInputRef.current || autocomplete) return;
+
+    const auto = new window.google.maps.places.Autocomplete(autocompleteInputRef.current, {
+      fields: ['geometry', 'formatted_address', 'name', 'place_id']
+    });
+
+    auto.addListener('place_changed', () => {
+      const place = auto.getPlace();
+      
+      if (!place.geometry?.location) {
+        return;
+      }
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      // Center map on selected place
+      if (place.geometry.viewport) {
+        map.fitBounds(place.geometry.viewport);
+      } else {
+        map.setCenter({ lat, lng });
+        map.setZoom(15);
+      }
+
+      // Add temporary marker for searched place
+      const placeMarker = new window.google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: { lat, lng },
+        title: place.name || place.formatted_address
+      });
+
+      const infowindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding: 12px; min-width: 200px;">
+            <h3 style="font-weight: bold; margin-bottom: 4px; font-size: 14px;">
+              ${place.name || 'Selected Location'}
+            </h3>
+            <p style="font-size: 12px; color: #666; margin: 4px 0;">
+              ${place.formatted_address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`}
+            </p>
+            <div style="margin-top: 12px;">
+              <a 
+                href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}"
+                target="_blank"
+                style="
+                  display: inline-block;
+                  background: #06b6d4;
+                  color: white;
+                  padding: 6px 12px;
+                  border-radius: 6px;
+                  text-decoration: none;
+                  font-size: 12px;
+                  font-weight: 600;
+                "
+              >
+                Get Directions
+              </a>
+            </div>
+          </div>
+        `
+      });
+
+      infowindow.open(map, placeMarker);
+
+      // Remove marker after 10 seconds
+      setTimeout(() => {
+        placeMarker.setMap(null);
+      }, 10000);
+    });
+
+    setAutocomplete(auto);
+  }, [map, autocompleteInputRef.current]);
 
   // Update markers when locations change
   useEffect(() => {
@@ -410,7 +487,28 @@ export default function InteractiveMap({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
+      {/* Google Places Search Bar */}
+      {mapLoaded && (
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+            <Search className="w-5 h-5 text-gray-400" />
+          </div>
+          <input
+            ref={autocompleteInputRef}
+            type="text"
+            placeholder="Search for any location, address, or place..."
+            className="w-full pl-10 pr-4 py-3 bg-[#0f1419] border-2 border-cyan-500/20 text-white rounded-lg focus:outline-none focus:border-cyan-500/50 placeholder-gray-500"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Badge className="bg-cyan-500/20 text-cyan-400 text-xs border-cyan-500/50">
+              Google Places
+            </Badge>
+          </div>
+        </div>
+      )}
+
+      {/* Map Container */}
       {!mapLoaded ? (
         <div className="w-full h-[500px] bg-[#0f1419] rounded-lg border-2 border-cyan-500/20 flex items-center justify-center">
           <div className="text-center">

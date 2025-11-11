@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function GeofenceMapCreator({ 
   onLocationSelect, 
@@ -14,6 +15,7 @@ export default function GeofenceMapCreator({
   const [marker, setMarker] = useState(null);
   const [circle, setCircle] = useState(null);
   const [autocomplete, setAutocomplete] = useState(null);
+  const [searchValue, setSearchValue] = useState('');
 
   // Load Google Maps script
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function GeofenceMapCreator({
     if (!map || !window.google || !autocompleteRef.current || autocomplete) return;
 
     const auto = new window.google.maps.places.Autocomplete(autocompleteRef.current, {
-      fields: ['geometry', 'formatted_address', 'name']
+      fields: ['geometry', 'formatted_address', 'name', 'place_id', 'types']
     });
 
     auto.addListener('place_changed', () => {
@@ -101,6 +103,7 @@ export default function GeofenceMapCreator({
       map.setZoom(15);
       
       onLocationSelect({ lat, lon: lng });
+      setSearchValue(place.formatted_address || place.name || '');
     });
 
     setAutocomplete(auto);
@@ -117,10 +120,34 @@ export default function GeofenceMapCreator({
       marker.setMap(null);
     }
 
+    const pinElement = document.createElement('div');
+    pinElement.style.cssText = `
+      width: 32px;
+      height: 32px;
+      background: ${getGeofenceColor(zoneType)};
+      border: 3px solid white;
+      border-radius: 50% 50% 50% 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const innerDot = document.createElement('div');
+    innerDot.style.cssText = `
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+    `;
+    pinElement.appendChild(innerDot);
+
     const newMarker = new window.google.maps.marker.AdvancedMarkerElement({
       map,
       position,
-      title: 'Geofence Center'
+      title: 'Geofence Center',
+      content: pinElement
     });
 
     setMarker(newMarker);
@@ -138,15 +165,26 @@ export default function GeofenceMapCreator({
       radius,
       strokeColor: color,
       strokeOpacity: 0.8,
-      strokeWeight: 2,
+      strokeWeight: 3,
       fillColor: color,
-      fillOpacity: 0.2
+      fillOpacity: 0.2,
+      strokeDashArray: zoneType === 'restricted_zone' ? '10 5' : undefined
     });
 
     setCircle(newCircle);
 
-    // Center map
-    map.setCenter(position);
+    // Center map with proper zoom
+    const bounds = new window.google.maps.LatLngBounds();
+    const radiusInKm = radius / 1000;
+    const latOffset = radiusInKm / 111;
+    const lngOffset = radiusInKm / (111 * Math.cos(position.lat * Math.PI / 180));
+    
+    bounds.extend({ lat: position.lat + latOffset, lng: position.lng + lngOffset });
+    bounds.extend({ lat: position.lat - latOffset, lng: position.lng - lngOffset });
+    bounds.extend({ lat: position.lat + latOffset, lng: position.lng - lngOffset });
+    bounds.extend({ lat: position.lat - latOffset, lng: position.lng + lngOffset });
+    
+    map.fitBounds(bounds, { padding: 50 });
 
   }, [map, selectedLocation, radius, zoneType]);
 
@@ -159,18 +197,51 @@ export default function GeofenceMapCreator({
     }
   };
 
+  const getZoneTypeName = (type) => {
+    switch (type) {
+      case 'safe_zone': return '🟢 Safe Zone';
+      case 'restricted_zone': return '🔴 Restricted Zone';
+      case 'alert_zone': return '🟡 Alert Zone';
+      default: return 'Zone';
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {/* Search box */}
-      <div>
+      {/* Enhanced Search box with Google Places */}
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+          <Search className="w-5 h-5 text-gray-400" />
+        </div>
         <input
           ref={autocompleteRef}
           type="text"
-          placeholder="Search for an address or place..."
-          className="w-full px-4 py-2 bg-[#0f1419] border border-cyan-500/20 text-white rounded-lg focus:outline-none focus:border-cyan-500/50"
+          placeholder="Search for any location, address, or place..."
+          className="w-full pl-10 pr-32 py-3 bg-[#0f1419] border-2 border-cyan-500/20 text-white rounded-lg focus:outline-none focus:border-cyan-500/50 placeholder-gray-500"
           disabled={!mapLoaded}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
         />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <Badge className="bg-cyan-500/20 text-cyan-400 text-xs border-cyan-500/50">
+            Google Places
+          </Badge>
+        </div>
       </div>
+
+      {/* Zone Type Indicator */}
+      {selectedLocation && (
+        <div className="p-3 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg">
+          <div className="flex items-center justify-between">
+            <p className="text-cyan-300 text-sm font-semibold">
+              {getZoneTypeName(zoneType)}
+            </p>
+            <p className="text-gray-400 text-xs">
+              Radius: {radius}m
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Map container */}
       {!mapLoaded ? (
@@ -188,11 +259,28 @@ export default function GeofenceMapCreator({
       )}
 
       {/* Instructions */}
-      <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-        <p className="text-cyan-300 text-xs text-center">
-          👆 Click anywhere on the map to drop a pin, or search for an address above
-        </p>
+      <div className="space-y-2">
+        <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+          <p className="text-cyan-300 text-xs text-center">
+            🔍 <strong>Search above</strong> for any address, landmark, or business worldwide
+          </p>
+        </div>
+        <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+          <p className="text-purple-300 text-xs text-center">
+            👆 Or <strong>click anywhere on the map</strong> to drop a pin
+          </p>
+        </div>
       </div>
+
+      {/* Selected Location Info */}
+      {selectedLocation && (
+        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <p className="text-green-400 text-xs font-semibold mb-1">📍 Pin Location:</p>
+          <p className="text-green-300 text-xs font-mono">
+            {selectedLocation.lat.toFixed(6)}, {selectedLocation.lon.toFixed(6)}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
