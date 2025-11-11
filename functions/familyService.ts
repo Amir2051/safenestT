@@ -1,4 +1,3 @@
-
 import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
 
 // Generate secure invitation token
@@ -41,13 +40,16 @@ function getDefaultPermissions(role, ageCategory) {
 }
 
 Deno.serve(async (req) => {
+  console.log('=== Family Service Request ===');
+  
   try {
     const base44 = createClientFromRequest(req);
     
     let body;
     try {
       body = await req.json();
-    } catch {
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
       return Response.json({ error: 'Invalid request body' }, { status: 400 });
     }
     
@@ -57,21 +59,32 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing endpoint parameter' }, { status: 400 });
     }
     
-    console.log('Family service request:', { endpoint });
+    console.log('Endpoint:', endpoint);
+    console.log('Params:', params);
     
     // POST /family/create-group - Create family group
     if (endpoint === 'create-group') {
+      console.log('=== CREATE GROUP ENDPOINT ===');
+      
       try {
+        console.log('Step 1: Authenticating user...');
         const user = await base44.auth.me();
+        
         if (!user) {
+          console.error('Authentication failed - no user');
           return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        
+        console.log('✅ User authenticated:', user.email);
         
         const { group_name, max_members } = params;
         
         if (!group_name) {
+          console.error('Missing group_name');
           return Response.json({ error: 'Group name required' }, { status: 400 });
         }
+        
+        console.log('Step 2: Checking existing memberships...');
         
         // Check if user already has a family group - check as member
         const existingMemberships = await base44.entities.FamilyMember.filter({
@@ -79,7 +92,10 @@ Deno.serve(async (req) => {
           status: 'active'
         });
         
+        console.log('Existing memberships:', existingMemberships.length);
+        
         if (existingMemberships.length > 0) {
+          console.error('User already has a family group');
           return Response.json({ 
             error: 'You are already a member of a family group',
             group_id: existingMemberships[0].group_id
@@ -88,12 +104,14 @@ Deno.serve(async (req) => {
         
         const groupId = `FAMILY_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         const trialEnds = new Date();
-        trialEnds.setDate(trialEnds.getDate() + 30); // 30-day trial
+        trialEnds.setDate(trialEnds.getDate() + 30);
         
-        console.log('Creating family group:', { groupId, group_name, user: user.email });
+        console.log('Step 3: Creating family group...');
+        console.log('Group ID:', groupId);
+        console.log('Group Name:', group_name);
+        console.log('Primary Holder:', user.email);
         
-        // Create family group (RLS will set created_by automatically)
-        const group = await base44.entities.FamilyGroup.create({
+        const groupData = {
           group_id: groupId,
           group_name,
           primary_account_holder: user.email,
@@ -115,15 +133,25 @@ Deno.serve(async (req) => {
             resolved_alerts: 0,
             total_threats_blocked: 0
           }
-        });
+        };
         
-        console.log('✅ Family group created:', group.id);
+        console.log('Creating with data:', JSON.stringify(groupData, null, 2));
         
-        // Add primary account holder as member
-        await base44.entities.FamilyMember.create({
+        let group;
+        try {
+          group = await base44.entities.FamilyGroup.create(groupData);
+          console.log('✅ Family group created:', group);
+        } catch (createError) {
+          console.error('❌ Failed to create FamilyGroup entity:', createError);
+          throw new Error(`Database error creating group: ${createError.message}`);
+        }
+        
+        console.log('Step 4: Adding primary member...');
+        
+        const memberData = {
           group_id: groupId,
           member_email: user.email,
-          member_name: user.full_name,
+          member_name: user.full_name || 'User',
           member_role: 'parent',
           age_category: 'adult',
           status: 'active',
@@ -142,17 +170,36 @@ Deno.serve(async (req) => {
             alerts_count: 0,
             last_activity: new Date().toISOString()
           }
-        });
+        };
         
-        console.log('✅ Primary member added');
+        console.log('Creating member with data:', JSON.stringify(memberData, null, 2));
         
-        // Update user with family group
-        await base44.auth.updateMe({
-          family_group_id: groupId,
-          is_family_admin: true
-        });
+        try {
+          await base44.entities.FamilyMember.create(memberData);
+          console.log('✅ Primary member added');
+        } catch (memberError) {
+          console.error('❌ Failed to create FamilyMember:', memberError);
+          // Try to clean up the group
+          try {
+            await base44.asServiceRole.entities.FamilyGroup.delete(group.id);
+          } catch {}
+          throw new Error(`Failed to add member: ${memberError.message}`);
+        }
         
-        console.log('✅ User updated with family_group_id');
+        console.log('Step 5: Updating user profile...');
+        
+        try {
+          await base44.auth.updateMe({
+            family_group_id: groupId,
+            is_family_admin: true
+          });
+          console.log('✅ User profile updated');
+        } catch (updateError) {
+          console.error('❌ Failed to update user:', updateError);
+          throw new Error(`Failed to update profile: ${updateError.message}`);
+        }
+        
+        console.log('=== SUCCESS ===');
         
         return Response.json({
           success: true,
@@ -161,8 +208,14 @@ Deno.serve(async (req) => {
           message: 'Family group created successfully!'
         });
       } catch (error) {
-        console.error('Create group error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
+        console.error('=== CREATE GROUP ERROR ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        return Response.json({ 
+          error: error.message || 'Failed to create family group',
+          details: error.stack 
+        }, { status: 500 });
       }
     }
     
@@ -219,7 +272,7 @@ Deno.serve(async (req) => {
         const invitationId = `INV_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         const token = await generateInvitationToken();
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+        expiresAt.setDate(expiresAt.getDate() + 7);
         
         // Create invitation
         const invitation = await base44.entities.FamilyInvitation.create({
@@ -442,8 +495,8 @@ Deno.serve(async (req) => {
         
         const membership = memberships[0];
         
-        // Get group details
-        const groups = await base44.entities.FamilyGroup.filter({
+        // Get group details (use service role to bypass RLS)
+        const groups = await base44.asServiceRole.entities.FamilyGroup.filter({
           group_id: membership.group_id
         });
         
@@ -454,19 +507,19 @@ Deno.serve(async (req) => {
         const group = groups[0];
         
         // Get all members
-        const members = await base44.entities.FamilyMember.filter({
+        const members = await base44.asServiceRole.entities.FamilyMember.filter({
           group_id: membership.group_id,
           status: 'active'
         });
         
         // Get pending invitations
-        const invitations = await base44.entities.FamilyInvitation.filter({
+        const invitations = await base44.asServiceRole.entities.FamilyInvitation.filter({
           group_id: membership.group_id,
           status: 'pending'
         });
         
         // Get family alerts
-        const alerts = await base44.entities.FamilyAlert.filter({
+        const alerts = await base44.asServiceRole.entities.FamilyAlert.filter({
           group_id: membership.group_id,
           status: 'active'
         }, '-created_date', 10);
@@ -497,7 +550,7 @@ Deno.serve(async (req) => {
         const { group_id, member_email } = params;
         
         // Verify user is admin
-        const groups = await base44.entities.FamilyGroup.filter({
+        const groups = await base44.asServiceRole.entities.FamilyGroup.filter({
           group_id,
           primary_account_holder: user.email
         });
@@ -514,7 +567,7 @@ Deno.serve(async (req) => {
         }
         
         // Find member
-        const members = await base44.entities.FamilyMember.filter({
+        const members = await base44.asServiceRole.entities.FamilyMember.filter({
           group_id,
           member_email,
           status: 'active'
@@ -525,12 +578,12 @@ Deno.serve(async (req) => {
         }
         
         // Update member status
-        await base44.entities.FamilyMember.update(members[0].id, {
+        await base44.asServiceRole.entities.FamilyMember.update(members[0].id, {
           status: 'removed'
         });
         
         // Update group count
-        await base44.entities.FamilyGroup.update(group.id, {
+        await base44.asServiceRole.entities.FamilyGroup.update(group.id, {
           current_members_count: group.current_members_count - 1
         });
         
@@ -555,7 +608,7 @@ Deno.serve(async (req) => {
         const { group_id, member_email, permissions, monitored_settings } = params;
         
         // Verify user is admin
-        const groups = await base44.entities.FamilyGroup.filter({
+        const groups = await base44.asServiceRole.entities.FamilyGroup.filter({
           group_id,
           primary_account_holder: user.email
         });
@@ -565,7 +618,7 @@ Deno.serve(async (req) => {
         }
         
         // Find member
-        const members = await base44.entities.FamilyMember.filter({
+        const members = await base44.asServiceRole.entities.FamilyMember.filter({
           group_id,
           member_email
         });
@@ -578,7 +631,7 @@ Deno.serve(async (req) => {
         if (permissions) updateData.permissions = permissions;
         if (monitored_settings) updateData.monitored_settings = monitored_settings;
         
-        await base44.entities.FamilyMember.update(members[0].id, updateData);
+        await base44.asServiceRole.entities.FamilyMember.update(members[0].id, updateData);
         
         return Response.json({
           success: true,
@@ -593,7 +646,8 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unknown endpoint: ' + endpoint }, { status: 404 });
     
   } catch (error) {
-    console.error('Family service error:', error);
+    console.error('=== FAMILY SERVICE TOP-LEVEL ERROR ===');
+    console.error('Error:', error);
     return Response.json({ error: 'Internal server error: ' + error.message }, { status: 500 });
   }
 });
