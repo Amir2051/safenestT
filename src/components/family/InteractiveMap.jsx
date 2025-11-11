@@ -30,7 +30,7 @@ export default function InteractiveMap({
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${Deno.env.get('GOOGLE_MAPS_API_KEY') || 'AIzaSyAiXcecx82VKrvg7LUGSGheErKCTIMX0_c'}&libraries=places,marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAiXcecx82VKrvg7LUGSGheErKCTIMX0_c&libraries=places,marker`;
     script.async = true;
     script.defer = true;
     script.onload = () => setMapLoaded(true);
