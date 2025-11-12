@@ -18,6 +18,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { toast } from "sonner";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 
@@ -40,7 +41,7 @@ const navigationStructure = [
     icon: Bot,
     badge: 'AI',
     children: [
-      { title: 'Lex (Legal AI)', url: createPageUrl('LegalAssistant'), icon: Scale, badge: 'AI', highlight: true },
+      { title: 'Lex (Legal AI)', url: createPageUrl('LegalAssistant'), icon: Scale, badge: 'AI', highlight: true, comingSoon: true },
       { title: 'Mia (Security AI)', url: createPageUrl('MiaAssistant'), icon: Bot }
     ]
   },
@@ -48,11 +49,13 @@ const navigationStructure = [
     id: 'legal',
     title: 'Legal & Property',
     icon: Home,
+    comingSoon: true,
+    badge: 'SOON',
     children: [
-      { title: 'Title Protection', url: createPageUrl('TitleProtection'), icon: Home, badge: 'AI' },
-      { title: 'Legal Support', url: createPageUrl('LegalSupport'), icon: Scale, badge: 'NEW', highlight: true },
-      { title: 'Collaboration', url: createPageUrl('Collaboration'), icon: Users, badge: 'LIVE', highlight: true },
-      { title: 'Attorney Tasks', url: createPageUrl('AttorneyTasks'), icon: CheckSquare, badge: 'AUTO' }
+      { title: 'Title Protection', url: createPageUrl('TitleProtection'), icon: Home, badge: 'SOON', comingSoon: true },
+      { title: 'Legal Support', url: createPageUrl('LegalSupport'), icon: Scale, badge: 'SOON', comingSoon: true },
+      { title: 'Collaboration', url: createPageUrl('Collaboration'), icon: Users, badge: 'SOON', comingSoon: true },
+      { title: 'Attorney Tasks', url: createPageUrl('AttorneyTasks'), icon: CheckSquare, badge: 'SOON', comingSoon: true }
     ]
   },
   {
@@ -74,7 +77,7 @@ const navigationStructure = [
     icon: Smartphone,
     children: [
       { title: 'VPN Protection', url: createPageUrl('VPNPage'), icon: Wifi },
-      { title: 'VPN Devices', url: createPageUrl('VPNDevices'), icon: Smartphone, badge: 'NEW', highlight: true },
+      { title: 'VPN Devices', url: createPageUrl('VPNDevices'), icon: Smartphone, badge: 'LIVE', highlight: true },
       { title: 'VPN Analytics', url: createPageUrl('VPNAnalytics'), icon: BarChart3 },
       { title: 'Device Care', url: createPageUrl('DeviceCare'), icon: Smartphone },
       { title: 'Storage Optimizer', url: createPageUrl('StorageOptimizer'), icon: HardDrive },
@@ -155,8 +158,18 @@ function LayoutContent({ children, currentPageName }) {
     base44.auth.logout();
   };
 
-  const handleMenuClick = (e, url) => {
+  const handleMenuClick = (e, url, item) => {
     e.preventDefault();
+    
+    // Check if item is coming soon
+    if (item.comingSoon) {
+      toast.info('🚧 Coming Soon! This feature is currently under development.', {
+        description: 'We\'re working hard to bring you this functionality. Stay tuned!',
+        duration: 4000
+      });
+      return;
+    }
+    
     if (isMobile) {
       setOpenMobile(false);
     }
@@ -165,7 +178,16 @@ function LayoutContent({ children, currentPageName }) {
     }, 100);
   };
 
-  const toggleMenu = (menuId) => {
+  const toggleMenu = (menuId, menu) => {
+    // If menu is coming soon, show toast instead of expanding
+    if (menu.comingSoon) {
+      toast.info('🚧 Coming Soon! This section is currently under development.', {
+        description: 'We\'re working hard to bring you these features. Stay tuned!',
+        duration: 4000
+      });
+      return;
+    }
+    
     setExpandedMenus(prev => ({
       ...prev,
       [menuId]: !prev[menuId]
@@ -242,6 +264,16 @@ function LayoutContent({ children, currentPageName }) {
         .badge-highlight {
           animation: pulse-glow 2s ease-in-out infinite;
         }
+
+        /* Coming soon items styling */
+        .menu-item-coming-soon {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .menu-item-coming-soon:hover {
+          opacity: 0.7;
+        }
       `}</style>
       <div className="min-h-screen flex w-full bg-[#0f1419]">
         <Sidebar className="border-r-2 border-[#0f3460] bg-[#1a1a2e] shadow-xl">
@@ -277,23 +309,29 @@ function LayoutContent({ children, currentPageName }) {
                           <div>
                             {/* Parent menu item (collapsible) */}
                             <button
-                              onClick={() => toggleMenu(item.id)}
+                              onClick={() => toggleMenu(item.id, item)}
                               className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-300 ${
-                                hasActiveChild
+                                item.comingSoon 
+                                  ? 'menu-item-coming-soon bg-gray-500/10 text-gray-400'
+                                  : hasActiveChild
                                   ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30'
                                   : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105'
                               }`}
                             >
                               <div className="flex items-center gap-3">
                                 <item.icon className={`w-5 h-5 ${
-                                  hasActiveChild ? 'text-white' : 'text-gray-300'
+                                  item.comingSoon 
+                                    ? 'text-gray-500'
+                                    : hasActiveChild ? 'text-white' : 'text-gray-300'
                                 }`} />
                                 <span className="font-semibold text-[15px]">{item.title}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {item.badge && (
                                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                    item.adminOnly 
+                                    item.comingSoon
+                                      ? 'bg-gray-500/20 text-gray-400 border border-gray-500/50'
+                                      : item.adminOnly 
                                       ? 'bg-red-500/20 text-red-400 border border-red-500/50'
                                       : item.badge === "AI"
                                       ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
@@ -302,16 +340,18 @@ function LayoutContent({ children, currentPageName }) {
                                     {item.badge}
                                   </span>
                                 )}
-                                {isExpanded ? (
-                                  <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4" />
+                                {!item.comingSoon && (
+                                  isExpanded ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )
                                 )}
                               </div>
                             </button>
                             
                             {/* Submenu items */}
-                            {isExpanded && (
+                            {isExpanded && !item.comingSoon && (
                               <div className="ml-4 mt-1 space-y-1">
                                 {item.children.map((child) => {
                                   const isActive = location.pathname === child.url;
@@ -320,7 +360,9 @@ function LayoutContent({ children, currentPageName }) {
                                       key={child.title}
                                       asChild
                                       className={`rounded-lg transition-all duration-300 ${
-                                        isActive
+                                        child.comingSoon
+                                          ? 'menu-item-coming-soon bg-gray-500/10 text-gray-400'
+                                          : isActive
                                           ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
                                           : child.highlight
                                           ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-white hover:from-green-500/20 hover:to-emerald-500/20 border border-green-500/30'
@@ -328,17 +370,21 @@ function LayoutContent({ children, currentPageName }) {
                                       }`}
                                     >
                                       <Link
-                                        to={child.url}
-                                        onClick={(e) => handleMenuClick(e, child.url)}
+                                        to={child.comingSoon ? '#' : child.url}
+                                        onClick={(e) => handleMenuClick(e, child.url, child)}
                                         className="flex items-center gap-3 px-3 py-2 w-full"
                                       >
                                         <child.icon className={`w-4 h-4 ${
-                                          isActive ? 'text-white' : child.highlight ? 'text-green-400' : 'text-gray-400'
+                                          child.comingSoon 
+                                            ? 'text-gray-500'
+                                            : isActive ? 'text-white' : child.highlight ? 'text-green-400' : 'text-gray-400'
                                         }`} />
                                         <span className="text-sm font-medium flex-1">{child.title}</span>
                                         {child.badge && (
                                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                                            child.highlight
+                                            child.comingSoon
+                                              ? 'bg-gray-500/20 text-gray-400 border border-gray-500/50'
+                                              : child.highlight
                                               ? 'bg-green-500/20 text-green-400 border border-green-500/50 badge-highlight'
                                               : child.adminOnly
                                               ? 'bg-red-500/20 text-red-400 border border-red-500/50'
@@ -347,7 +393,7 @@ function LayoutContent({ children, currentPageName }) {
                                               : child.badge === "NEW"
                                               ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                                               : child.badge === "LIVE"
-                                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 animate-pulse'
                                               : child.badge === "AUTO"
                                               ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
                                               : child.badge === "VAULT"
@@ -361,7 +407,7 @@ function LayoutContent({ children, currentPageName }) {
                                             {child.badge}
                                           </span>
                                         )}
-                                        {isActive && (
+                                        {isActive && !child.comingSoon && (
                                           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                                         )}
                                       </Link>
@@ -388,7 +434,7 @@ function LayoutContent({ children, currentPageName }) {
                     >
                       <Link
                         to={settingsItem.url}
-                        onClick={(e) => handleMenuClick(e, settingsItem.url)}
+                        onClick={(e) => handleMenuClick(e, settingsItem.url, settingsItem)}
                         className="flex items-center gap-3 px-4 py-3 w-full"
                       >
                         <settingsItem.icon className={`w-5 h-5 ${
@@ -441,7 +487,7 @@ function LayoutContent({ children, currentPageName }) {
                 <SidebarGroupContent>
                   <Link 
                     to={createPageUrl("Upgrade")}
-                    onClick={(e) => handleMenuClick(e, createPageUrl("Upgrade"))}
+                    onClick={(e) => handleMenuClick(e, createPageUrl("Upgrade"), {})}
                   >
                     <div className="mx-2 my-4 p-5 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-xl border-2 border-purple-500/50 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/30 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 mb-2">
