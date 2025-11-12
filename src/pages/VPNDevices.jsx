@@ -38,7 +38,8 @@ export default function VPNDevices() {
       return response.data;
     },
     enabled: !!user,
-    refetchInterval: 30000
+    refetchInterval: 3000, // Real-time updates every 3 seconds
+    refetchIntervalInBackground: true
   });
 
   const { data: serversData } = useQuery({
@@ -48,7 +49,8 @@ export default function VPNDevices() {
       return servers;
     },
     enabled: !!user,
-    refetchInterval: 60000
+    refetchInterval: 5000, // Update server status every 5 seconds
+    refetchIntervalInBackground: true
   });
 
   const revokeDeviceMutation = useMutation({
@@ -94,6 +96,20 @@ export default function VPNDevices() {
     router: Wifi
   };
 
+  const getTimeSince = (timestamp) => {
+    if (!timestamp) return 'Never';
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now - then;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
@@ -116,6 +132,33 @@ export default function VPNDevices() {
         </Button>
       </div>
 
+      {/* Real-time Status Banner */}
+      {connectedDevices.length > 0 && (
+        <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400 animate-pulse" />
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-bold text-lg">
+                  {connectedDevices.length} Device{connectedDevices.length > 1 ? 's' : ''} Connected
+                </p>
+                <p className="text-green-300 text-sm">
+                  🔒 Protected • Live updates every 3 seconds
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-green-400">
+                  {totalDataTransfer.toFixed(2)} GB
+                </p>
+                <p className="text-xs text-green-300">Total Transfer</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
@@ -126,11 +169,14 @@ export default function VPNDevices() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20">
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/20 relative overflow-hidden">
           <CardContent className="p-6">
             <CheckCircle className="w-8 h-8 text-green-400 mb-2" />
             <p className="text-3xl font-bold text-green-400">{connectedDevices.length}</p>
             <p className="text-sm text-gray-400">Connected Now</p>
+            {connectedDevices.length > 0 && (
+              <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            )}
           </CardContent>
         </Card>
 
@@ -170,6 +216,83 @@ export default function VPNDevices() {
 
         {/* Devices Tab */}
         <TabsContent value="devices" className="mt-6 space-y-4">
+          {/* Active Connections - Prominent Section */}
+          {connectedDevices.length > 0 && (
+            <Card className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/40 shadow-lg shadow-green-500/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                  Active Connections ({connectedDevices.length})
+                  <Badge className="bg-green-500/30 text-green-300 border-green-400/50 ml-auto">
+                    LIVE
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {connectedDevices.map(device => {
+                  const Icon = deviceTypeIcons[device.device_type] || Smartphone;
+                  const server = servers.find(s => s.server_id === device.current_server_id);
+                  const rxMB = ((device.data_transfer?.rx_bytes || 0) / (1024 * 1024)).toFixed(2);
+                  const txMB = ((device.data_transfer?.tx_bytes || 0) / (1024 * 1024)).toFixed(2);
+                  
+                  return (
+                    <div key={device.id} className="p-4 bg-[#0f1419] rounded-lg border-2 border-green-500/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                              <Icon className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-[#0f1419] animate-pulse" />
+                          </div>
+                          <div>
+                            <p className="text-white font-bold">{device.device_name}</p>
+                            <p className="text-xs text-green-400 font-semibold">
+                              ⚡ Connected • {device.assigned_ip}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-white font-semibold mb-1">
+                            {server?.location?.flag || '🌐'} {server?.location?.city || 'Server'}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {getTimeSince(device.last_handshake)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Live Stats */}
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="p-2 bg-[#1a2332] rounded text-center">
+                          <p className="text-xs text-gray-400">↓ Download</p>
+                          <p className="text-green-400 font-bold text-sm">{rxMB} MB</p>
+                        </div>
+                        <div className="p-2 bg-[#1a2332] rounded text-center">
+                          <p className="text-xs text-gray-400">↑ Upload</p>
+                          <p className="text-cyan-400 font-bold text-sm">{txMB} MB</p>
+                        </div>
+                        <div className="p-2 bg-[#1a2332] rounded text-center">
+                          <p className="text-xs text-gray-400">Latency</p>
+                          <p className="text-yellow-400 font-bold text-sm">
+                            {server?.performance?.avg_latency_ms || 0}ms
+                          </p>
+                        </div>
+                        <div className="p-2 bg-[#1a2332] rounded text-center">
+                          <p className="text-xs text-gray-400">Server Load</p>
+                          <p className="text-purple-400 font-bold text-sm">
+                            {server?.capacity?.cpu_usage?.toFixed(0) || 0}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* All Devices */}
           {isLoading ? (
             <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
               <CardContent className="p-12 text-center">
