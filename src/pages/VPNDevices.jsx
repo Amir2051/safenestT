@@ -16,6 +16,7 @@ import AddDeviceDialog from "../components/vpn/AddDeviceDialog.jsx";
 import DeviceCard from "../components/vpn/DeviceCard.jsx";
 import ConfigDownloadDialog from "../components/vpn/ConfigDownloadDialog.jsx";
 import ConnectionHistory from "../components/vpn/ConnectionHistory.jsx";
+import LiveServerStatus from "../components/vpn/LiveServerStatus.jsx";
 
 export default function VPNDevices() {
   const [user, setUser] = useState(null);
@@ -336,7 +337,43 @@ export default function VPNDevices() {
         </TabsContent>
 
         {/* Servers Tab */}
-        <TabsContent value="servers" className="mt-6">
+        <TabsContent value="servers" className="mt-6 space-y-6">
+          {/* Live Server Map */}
+          <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-white font-semibold">
+                  Live Server Status • Updates every 5 seconds
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-2 bg-[#0f1419] rounded">
+                  <span className="text-gray-400">Total Servers:</span>
+                  <span className="text-white font-bold ml-2">{servers.length}</span>
+                </div>
+                <div className="p-2 bg-[#0f1419] rounded">
+                  <span className="text-gray-400">Online:</span>
+                  <span className="text-green-400 font-bold ml-2">
+                    {servers.filter(s => s.status === 'online').length}
+                  </span>
+                </div>
+                <div className="p-2 bg-[#0f1419] rounded">
+                  <span className="text-gray-400">Total Peers:</span>
+                  <span className="text-cyan-400 font-bold ml-2">
+                    {servers.reduce((sum, s) => sum + (s.capacity?.current_peers || 0), 0)}
+                  </span>
+                </div>
+                <div className="p-2 bg-[#0f1419] rounded">
+                  <span className="text-gray-400">Avg Load:</span>
+                  <span className="text-purple-400 font-bold ml-2">
+                    {(servers.reduce((sum, s) => sum + (s.capacity?.cpu_usage || 0), 0) / servers.length).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardHeader>
               <CardTitle className="text-white">Available VPN Servers</CardTitle>
@@ -350,56 +387,7 @@ export default function VPNDevices() {
               ) : (
                 <div className="grid gap-4">
                   {servers.map(server => (
-                    <div
-                      key={server.id}
-                      className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="text-3xl">{server.location?.flag || '🌐'}</div>
-                          <div>
-                            <h3 className="text-white font-bold">{server.server_name}</h3>
-                            <p className="text-sm text-gray-400">
-                              {server.location?.city}, {server.location?.country}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className={
-                          server.status === 'online' 
-                            ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                            : 'bg-red-500/20 text-red-400 border-red-500/50'
-                        }>
-                          {server.status}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-3 text-xs">
-                        <div className="p-2 bg-[#1a2332] rounded text-center">
-                          <p className="text-gray-400">Load</p>
-                          <p className="text-white font-semibold">
-                            {server.capacity?.cpu_usage?.toFixed(0) || 0}%
-                          </p>
-                        </div>
-                        <div className="p-2 bg-[#1a2332] rounded text-center">
-                          <p className="text-gray-400">Peers</p>
-                          <p className="text-white font-semibold">
-                            {server.capacity?.current_peers || 0}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-[#1a2332] rounded text-center">
-                          <p className="text-gray-400">Latency</p>
-                          <p className="text-white font-semibold">
-                            {server.performance?.avg_latency_ms || 0}ms
-                          </p>
-                        </div>
-                        <div className="p-2 bg-[#1a2332] rounded text-center">
-                          <p className="text-gray-400">Uptime</p>
-                          <p className="text-white font-semibold">
-                            {server.performance?.uptime_percentage?.toFixed(1) || 99.9}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <LiveServerStatus key={server.id} server={server} />
                   ))}
                 </div>
               )}

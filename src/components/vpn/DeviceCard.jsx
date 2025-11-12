@@ -6,6 +6,7 @@ import {
   Smartphone, Laptop, MonitorSmartphone, Wifi, Download,
   Trash2, CheckCircle, XCircle, Clock, Activity
 } from "lucide-react";
+import LiveConnectionIndicator from "./LiveConnectionIndicator.jsx";
 
 export default function DeviceCard({ device, onRevoke, onViewConfig, servers }) {
   const deviceTypeIcons = {
@@ -40,16 +41,23 @@ export default function DeviceCard({ device, onRevoke, onViewConfig, servers }) 
   };
 
   return (
-    <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all">
+    <Card className={`bg-gradient-to-br from-[#1a2332] to-[#0f1419] transition-all ${
+      device.connected 
+        ? 'border-green-500/40 shadow-lg shadow-green-500/10' 
+        : 'border-cyan-500/20 hover:border-cyan-500/40'
+    }`}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center relative ${
               device.connected 
                 ? 'bg-gradient-to-br from-green-500 to-green-600'
                 : 'bg-gradient-to-br from-gray-600 to-gray-700'
             }`}>
               <Icon className="w-6 h-6 text-white" />
+              {device.connected && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-[#1a2332] animate-pulse" />
+              )}
             </div>
             <div>
               <h3 className="text-white font-bold text-lg">{device.device_name}</h3>
@@ -59,7 +67,7 @@ export default function DeviceCard({ device, onRevoke, onViewConfig, servers }) 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-2">
             <Badge className={
               device.status === 'active'
                 ? 'bg-green-500/20 text-green-400 border-green-500/50'
@@ -69,12 +77,7 @@ export default function DeviceCard({ device, onRevoke, onViewConfig, servers }) 
             }>
               {device.status}
             </Badge>
-            {device.connected && (
-              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 animate-pulse">
-                <Activity className="w-3 h-3 mr-1" />
-                Connected
-              </Badge>
-            )}
+            <LiveConnectionIndicator device={device} server={currentServer} />
           </div>
         </div>
 
