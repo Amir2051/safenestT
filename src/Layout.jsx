@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -75,6 +74,7 @@ const navigationStructure = [
     icon: Smartphone,
     children: [
       { title: 'VPN Protection', url: createPageUrl('VPNPage'), icon: Wifi },
+      { title: 'VPN Devices', url: createPageUrl('VPNDevices'), icon: Smartphone, badge: 'NEW', highlight: true },
       { title: 'VPN Analytics', url: createPageUrl('VPNAnalytics'), icon: BarChart3 },
       { title: 'Device Care', url: createPageUrl('DeviceCare'), icon: Smartphone },
       { title: 'Storage Optimizer', url: createPageUrl('StorageOptimizer'), icon: HardDrive },
