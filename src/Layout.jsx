@@ -90,7 +90,7 @@ const navigationStructure = [
     icon: Lock,
     children: [
       { title: 'Password Vault', url: createPageUrl('PasswordVault'), icon: Lock },
-      { title: 'Alerts', url: createPageUrl('Alerts'), icon: Bell }
+      { title: 'Alerts', url: createPageUrl('Alerts'), icon: Bell, badge: 'LIVE', highlight: true }
     ]
   },
   {
@@ -112,6 +112,7 @@ const adminNavigationStructure = [
     badge: 'ADMIN',
     adminOnly: true,
     children: [
+      { title: 'VPN Servers', url: createPageUrl('AdminVPNServers'), icon: Server, badge: 'LIVE', adminOnly: true, highlight: true },
       { title: 'Monitoring Engine', url: createPageUrl('AdminMonitoringDashboard'), icon: Server, badge: 'ADMIN', adminOnly: true },
       { title: 'Referral Analytics', url: createPageUrl('AdminReferralDashboard'), icon: BarChart3, badge: 'ADMIN', adminOnly: true }
     ]
@@ -161,7 +162,6 @@ function LayoutContent({ children, currentPageName }) {
   const handleMenuClick = (e, url, item) => {
     e.preventDefault();
     
-    // Check if item is coming soon
     if (item.comingSoon) {
       toast.info('🚧 Coming Soon! This feature is currently under development.', {
         description: 'We\'re working hard to bring you this functionality. Stay tuned!',
@@ -179,7 +179,6 @@ function LayoutContent({ children, currentPageName }) {
   };
 
   const toggleMenu = (menuId, menu) => {
-    // If menu is coming soon, show toast instead of expanding
     if (menu.comingSoon) {
       toast.info('🚧 Coming Soon! This section is currently under development.', {
         description: 'We\'re working hard to bring you these features. Stay tuned!',
@@ -203,7 +202,6 @@ function LayoutContent({ children, currentPageName }) {
 
   return (
     <>
-      {/* Add referral code handler */}
       <ReferralCodeHandler />
       
       <style>{`
@@ -251,7 +249,6 @@ function LayoutContent({ children, currentPageName }) {
           background: #667eea;
         }
 
-        /* Highlight animation for special badges */
         @keyframes pulse-glow {
           0%, 100% {
             box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
@@ -265,7 +262,6 @@ function LayoutContent({ children, currentPageName }) {
           animation: pulse-glow 2s ease-in-out infinite;
         }
 
-        /* Coming soon items styling */
         .menu-item-coming-soon {
           opacity: 0.6;
           cursor: not-allowed;
@@ -307,7 +303,6 @@ function LayoutContent({ children, currentPageName }) {
                       <SidebarMenuItem key={item.id}>
                         {item.children ? (
                           <div>
-                            {/* Parent menu item (collapsible) */}
                             <button
                               onClick={() => toggleMenu(item.id, item)}
                               className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-300 ${
@@ -350,7 +345,6 @@ function LayoutContent({ children, currentPageName }) {
                               </div>
                             </button>
                             
-                            {/* Submenu items */}
                             {isExpanded && !item.comingSoon && (
                               <div className="ml-4 mt-1 space-y-1">
                                 {item.children.map((child) => {
@@ -402,6 +396,8 @@ function LayoutContent({ children, currentPageName }) {
                                               ? 'bg-sky-500/20 text-sky-400 border border-sky-500/50'
                                               : child.badge === "PEGASUS"
                                               ? 'bg-red-500/20 text-red-400 border border-red-500/50 badge-highlight'
+                                              : child.badge === "ADMIN"
+                                              ? 'bg-red-500/20 text-red-400 border border-red-500/50'
                                               : 'bg-purple-500/20 text-purple-400'
                                           }`}>
                                             {child.badge}
@@ -422,7 +418,6 @@ function LayoutContent({ children, currentPageName }) {
                     );
                   })}
                   
-                  {/* Settings (always visible at bottom) */}
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -451,7 +446,6 @@ function LayoutContent({ children, currentPageName }) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* OWASP Status Widget */}
             <SidebarGroup>
               <SidebarGroupContent>
                 <div className="mx-2 my-4 p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border-2 border-green-500/30 badge-highlight">
@@ -481,7 +475,6 @@ function LayoutContent({ children, currentPageName }) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* Upgrade CTA */}
             {(!isPremium || !isActive) && (
               <SidebarGroup>
                 <SidebarGroupContent>
@@ -586,7 +579,6 @@ function LayoutContent({ children, currentPageName }) {
               </div>
             </div>
             
-            {/* OWASP Badge in Header */}
             <div className="hidden lg:flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
                 <ShieldCheck className="w-4 h-4 text-green-400" />
