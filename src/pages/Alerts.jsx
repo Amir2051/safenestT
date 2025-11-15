@@ -32,6 +32,8 @@ const severityColors = {
   low: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/50', dot: 'bg-blue-500' }
 };
 
+const defaultColors = { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500/50', dot: 'bg-gray-500' };
+
 export default function Alerts() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -43,7 +45,7 @@ export default function Alerts() {
     queryKey: ['alerts'],
     queryFn: () => base44.entities.Alert.list('-created_date'),
     initialData: [],
-    refetchInterval: 5000, // Real-time updates every 5 seconds
+    refetchInterval: 5000,
     refetchIntervalInBackground: true
   });
 
@@ -252,7 +254,7 @@ export default function Alerts() {
             ) : (
               filteredAlerts.map((alert) => {
                 const Icon = alertIcons[alert.alert_type] || AlertTriangle;
-                const colors = severityColors[alert.severity];
+                const colors = severityColors[alert.severity] || defaultColors;
 
                 return (
                   <Card
