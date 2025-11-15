@@ -1,7 +1,8 @@
+
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio, ChevronDown, ChevronRight } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio, ChevronDown, ChevronRight, Globe } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -78,6 +79,7 @@ const navigationStructure = [
     children: [
       { title: 'VPN Protection', url: createPageUrl('VPNPage'), icon: Wifi },
       { title: 'VPN Devices', url: createPageUrl('VPNDevices'), icon: Smartphone, badge: 'LIVE', highlight: true },
+      { title: 'Web VPN', url: createPageUrl('WebVPN'), icon: Globe, badge: 'BETA', highlight: true },
       { title: 'VPN Analytics', url: createPageUrl('VPNAnalytics'), icon: BarChart3 },
       { title: 'Device Care', url: createPageUrl('DeviceCare'), icon: Smartphone },
       { title: 'Storage Optimizer', url: createPageUrl('StorageOptimizer'), icon: HardDrive },

@@ -36,6 +36,7 @@ import FamilyInvite from './pages/FamilyInvite';
 import AdvancedSecurity from './pages/AdvancedSecurity';
 import VPNDevices from './pages/VPNDevices';
 import AdminVPNServers from './pages/AdminVPNServers';
+import WebVPN from './pages/WebVPN';
 import Layout from './Layout.jsx';
 
 
@@ -78,6 +79,7 @@ export const PAGES = {
     "AdvancedSecurity": AdvancedSecurity,
     "VPNDevices": VPNDevices,
     "AdminVPNServers": AdminVPNServers,
+    "WebVPN": WebVPN,
 }
 
 export const pagesConfig = {
