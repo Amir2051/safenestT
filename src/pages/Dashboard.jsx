@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, AlertTriangle, Lock, Wifi, Eye, TrendingUp,
-  CheckCircle, XCircle, Clock, Sparkles, ChevronRight, Bell, ShieldCheck, Gift, Users, Home
+  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -18,7 +16,6 @@ import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
-import TrialBanner from "../components/shared/TrialBanner.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -29,7 +26,7 @@ export default function Dashboard() {
 
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts'],
-    queryFn: () => base44.entities.Alert.filter({ created_by: user?.email, status: 'active' }, '-created_date', 5),
+    queryFn: () => base44.entities.Alert.filter({ status: 'active' }, '-created_date', 5),
     enabled: !!user,
     initialData: [],
   });
@@ -48,10 +45,9 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  // Add title protection query
   const { data: properties = [] } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.list('-created_date'), // Changed queryFn here
+    queryFn: () => base44.entities.Property.list('-created_date'),
     enabled: !!user,
     initialData: [],
   });
@@ -67,32 +63,23 @@ export default function Dashboard() {
     base44.auth.me().then(async (userData) => {
       setUser(userData);
       
-      // Check if trial needs initialization
-      if (!userData.trial_start_date && userData.subscription_plan === 'free') {
-        const trialStartDate = new Date();
-        const trialEndDate = new Date(trialStartDate);
-        trialEndDate.setDate(trialEndDate.getDate() + 3);
-
-        await base44.auth.updateMe({
-          subscription_plan: 'trial',
-          payment_status: 'trial',
-          trial_start_date: trialStartDate.toISOString(),
-          trial_end_date: trialEndDate.toISOString(),
-          trial_days_remaining: 3
-        });
-
-        setUser(prev => ({
-          ...prev,
-          subscription_plan: 'trial',
-          payment_status: 'trial',
-          trial_start_date: trialStartDate.toISOString(),
-          trial_end_date: trialEndDate.toISOString(),
-          trial_days_remaining: 3
-        }));
+      // Initialize trial if needed
+      if (!userData.trial_started && userData.subscription_plan !== 'basic' && userData.subscription_plan !== 'elite') {
+        try {
+          await base44.functions.invoke('subscriptionService', {
+            endpoint: 'init-trial'
+          });
+          
+          const updatedUser = await base44.auth.me();
+          setUser(updatedUser);
+        } catch (error) {
+          console.error('Failed to init trial:', error);
+        }
       }
       
+      // Check in streak
       const today = new Date().toISOString().split('T')[0];
-      const lastCheckIn = userData.last_checkin_date;
+      const lastCheckIn = userData.last_check_in?.split('T')[0];
       
       if (lastCheckIn !== today) {
         const yesterday = new Date();
@@ -101,20 +88,18 @@ export default function Dashboard() {
         
         let newStreak = 1;
         if (lastCheckIn === yesterdayStr) {
-          newStreak = (userData.current_streak || 0) + 1;
+          newStreak = (userData.check_in_streak || 0) + 1;
         }
         
         await base44.auth.updateMe({ 
-          last_checkin_date: today,
-          current_streak: newStreak,
-          longest_streak: Math.max(newStreak, userData.longest_streak || 0)
+          last_check_in: new Date().toISOString(),
+          check_in_streak: newStreak
         });
         
         setUser(prev => ({ 
           ...prev, 
-          last_checkin_date: today,
-          current_streak: newStreak,
-          longest_streak: Math.max(newStreak, userData.longest_streak || 0)
+          last_check_in: new Date().toISOString(),
+          check_in_streak: newStreak
         }));
 
         if (newStreak === 7 || newStreak === 30) {
@@ -122,22 +107,9 @@ export default function Dashboard() {
         }
       }
     }).catch(() => {});
-    
-    const lastPrompt = localStorage.getItem('lastUpgradePrompt');
-    const daysSincePrompt = lastPrompt ? (Date.now() - parseInt(lastPrompt)) / (1000 * 60 * 60 * 24) : 999;
-    
-    if (daysSincePrompt > 3) {
-      setTimeout(() => {
-        if (user?.subscription_plan === 'free' || user?.subscription_plan === 'trial') {
-          setShowUpgradePrompt(true);
-          localStorage.setItem('lastUpgradePrompt', Date.now().toString());
-        }
-      }, 10000);
-    }
-  }, [user]);
+  }, []);
 
   const runSecurityScan = async () => {
-    const startTime = Date.now();
     setScanning(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -163,64 +135,7 @@ export default function Dashboard() {
       
       setUser(prev => ({ ...prev, risk_score: score, last_scan_date: new Date().toISOString() }));
 
-      const scanDuration = Date.now() - startTime;
-      
-      const deviceLogs = await queryClient.fetchQuery({
-        queryKey: ['device-logs'],
-        queryFn: () => base44.entities.DeviceProtectionLog.list(),
-      });
-      
-      if (deviceLogs.length === 0 || deviceLogs.every(log => new Date(log.created_date).getTime() >= startTime)) {
-        toast.success('First security scan complete! 🎉');
-      }
-
-      const autoThreshold = user?.auto_protection_threshold || 70;
-      
-      if (score < autoThreshold && user?.auto_vpn_enable && !user?.vpn_enabled) {
-        await base44.auth.updateMe({ vpn_enabled: true });
-        await base44.entities.AutomatedRemediation.create({
-          action_type: 'vpn_enable',
-          trigger_reason: `Security score dropped to ${score}, below threshold of ${autoThreshold}`,
-          status: 'completed',
-          details: { before: 'disabled', after: 'enabled', score_impact: 5 },
-          user_notified: true,
-          auto_approved: true
-        });
-        toast.success('VPN automatically enabled for protection 🛡️');
-      }
-
-      if (score < 60 && user?.auto_2fa_enable && !user?.two_factor_enabled) {
-        await base44.auth.updateMe({ two_factor_enabled: true });
-        await base44.entities.AutomatedRemediation.create({
-          action_type: '2fa_enable',
-          trigger_reason: `Critical: Security score at ${score}`,
-          status: 'completed',
-          details: { before: 'disabled', after: 'enabled', score_impact: 10 },
-          user_notified: true,
-          auto_approved: true
-        });
-        toast.success('Two-factor authentication automatically enabled 🔒');
-      }
-
-      const criticalAlertsCount = alerts.filter(a => a.severity === 'critical').length;
-      if (criticalAlertsCount > 0 && user?.auto_alert_remediation) {
-        for (const alert of alerts.filter(a => a.severity === 'critical' && a.status === 'active')) {
-          if ((alert.alert_type === 'wifi' || alert.alert_type === 'vpn') && !user?.vpn_enabled) {
-            await base44.auth.updateMe({ vpn_enabled: true });
-            await base44.entities.AutomatedRemediation.create({
-              action_type: 'vpn_enable',
-              trigger_reason: `Critical ${alert.alert_type} alert: ${alert.title}`,
-              status: 'completed',
-              affected_entity: alert.id,
-              details: { before: 'disabled', after: 'enabled', score_impact: 5 },
-              user_notified: true,
-              auto_approved: true
-            });
-            toast.success('VPN enabled to address critical alert');
-          }
-        }
-      }
-
+      toast.success('Security scan completed!');
     } catch (error) {
       console.error('Scan error:', error);
       toast.error('Failed to run security scan.');
@@ -238,15 +153,13 @@ export default function Dashboard() {
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
-  const isActive = user?.payment_status === 'active';
+  const isActive = user?.subscription_status === 'active';
   
-  // Calculate referral metrics
   const myReferrals = referrals.filter(r => r.referrer_email === user.email);
   const completedReferrals = myReferrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
   const pendingReferrals = myReferrals.filter(r => r.status === 'pending').length;
-  const bonusMonthsEarned = user?.referral_stats?.bonus_months_earned || 0;
+  const bonusMonthsEarned = completedReferrals;
 
-  // Title protection metrics
   const criticalTitleAlerts = titleAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
   const atRiskProperties = properties.filter(p => (p.title_security_score || 100) < 70).length;
 
@@ -285,9 +198,6 @@ export default function Dashboard() {
           )}
         </Button>
       </div>
-
-      {/* Trial Banner */}
-      <TrialBanner user={user} />
 
       {/* OWASP Protection Banner */}
       <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 relative overflow-hidden">
@@ -349,50 +259,6 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Premium Welcome */}
-      {isPremium && isActive && new URLSearchParams(window.location.search).get('upgraded') === 'true' && (
-        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl" />
-          <CardContent className="p-6 relative">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                  🎊 Welcome to Premium!
-                  <Sparkles className="w-6 h-6 text-yellow-400" />
-                </h2>
-                <p className="text-purple-300">Your account has been successfully upgraded. Here's what you can do now:</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <Link to={createPageUrl("DarkWebMonitor")}>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
-                  <Shield className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                  <p className="text-white font-semibold text-sm">Add More Emails</p>
-                  <p className="text-gray-400 text-xs mt-1">Monitor multiple addresses</p>
-                </div>
-              </Link>
-              
-              <Link to={createPageUrl("Settings")}>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
-                  <Bell className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-                  <p className="text-white font-semibold text-sm">Enable Alerts</p>
-                  <p className="text-gray-400 text-xs mt-1">Get instant notifications</p>
-                </div>
-              </Link>
-              
-              <Link to={createPageUrl("PasswordVault")}>
-                <div className="bg-[#0f1419] rounded-lg p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer text-center">
-                  <Lock className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                  <p className="text-white font-semibold text-sm">Unlimited Vault</p>
-                  <p className="text-gray-400 text-xs mt-1">Store unlimited passwords</p>
-                </div>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Critical Alert Banner */}
       {criticalAlerts > 0 && (
         <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/50">
@@ -417,7 +283,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Referral Program CTA - Show for users with low referrals */}
+      {/* Referral Program CTA */}
       {myReferrals.length < 3 && (
         <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
           <CardContent className="p-6">
@@ -446,7 +312,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Referral Stats Card - Show for users with referrals */}
+      {/* Referral Stats Card */}
       {myReferrals.length > 0 && (
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
           <CardContent className="p-6">
