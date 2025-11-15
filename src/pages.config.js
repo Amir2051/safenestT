@@ -37,6 +37,9 @@ import AdvancedSecurity from './pages/AdvancedSecurity';
 import VPNDevices from './pages/VPNDevices';
 import AdminVPNServers from './pages/AdminVPNServers';
 import WebVPN from './pages/WebVPN';
+import PaymentOnboarding from './pages/PaymentOnboarding';
+import Billing from './pages/Billing';
+import AdminSubscriptions from './pages/AdminSubscriptions';
 import Layout from './Layout.jsx';
 
 
@@ -80,6 +83,9 @@ export const PAGES = {
     "VPNDevices": VPNDevices,
     "AdminVPNServers": AdminVPNServers,
     "WebVPN": WebVPN,
+    "PaymentOnboarding": PaymentOnboarding,
+    "Billing": Billing,
+    "AdminSubscriptions": AdminSubscriptions,
 }
 
 export const pagesConfig = {
