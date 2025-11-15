@@ -266,30 +266,6 @@ export default function WebVPN() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Upgrade Notice */}
-      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <Info className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="text-white font-bold mb-2">
-                Want Full System Protection?
-              </h3>
-              <p className="text-purple-200 text-sm mb-4">
-                For true system-wide VPN with the official status bar icon, download WireGuard 
-                and use SafeNest's VPN configuration. Visit <strong>VPN Devices</strong> to get your config.
-              </p>
-              <Button
-                onClick={() => window.location.href = '/VPNDevices'}
-                className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/50"
-              >
-                Go to VPN Devices
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
