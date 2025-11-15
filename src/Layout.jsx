@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio, ChevronDown, ChevronRight, Globe } from "lucide-react";
+import { Shield, LayoutDashboard, Lock, Bell, FileText, Bot, Settings, LogOut, Smartphone, Zap, CreditCard, Eye, HardDrive, Trophy, Users, Wifi, Activity, ShieldCheck, ShieldAlert, BarChart3, Home, Server, Scale, CheckSquare, Radio, ChevronDown, ChevronRight, Globe, DollarSign } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Sidebar,
@@ -96,6 +96,15 @@ const navigationStructure = [
     ]
   },
   {
+    id: 'account',
+    title: 'Account',
+    icon: Settings,
+    children: [
+      { title: 'Settings', url: createPageUrl('Settings'), icon: Settings },
+      { title: 'Billing', url: createPageUrl('Billing'), icon: CreditCard, badge: 'NEW', highlight: true }
+    ]
+  },
+  {
     id: 'community',
     title: 'Community',
     icon: Users,
@@ -115,18 +124,12 @@ const adminNavigationStructure = [
     adminOnly: true,
     children: [
       { title: 'VPN Servers', url: createPageUrl('AdminVPNServers'), icon: Server, badge: 'LIVE', adminOnly: true, highlight: true },
+      { title: 'Subscriptions', url: createPageUrl('AdminSubscriptions'), icon: DollarSign, badge: 'ADMIN', adminOnly: true },
       { title: 'Monitoring Engine', url: createPageUrl('AdminMonitoringDashboard'), icon: Server, badge: 'ADMIN', adminOnly: true },
       { title: 'Referral Analytics', url: createPageUrl('AdminReferralDashboard'), icon: BarChart3, badge: 'ADMIN', adminOnly: true }
     ]
   }
 ];
-
-// Settings (no submenu, always visible at bottom)
-const settingsItem = {
-  title: 'Settings',
-  url: createPageUrl('Settings'),
-  icon: Settings
-};
 
 function LayoutContent({ children, currentPageName }) {
   const location = useLocation();
@@ -196,7 +199,7 @@ function LayoutContent({ children, currentPageName }) {
   };
 
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
-  const isActive = user?.payment_status === 'active';
+  const isActive = user?.subscription_status === 'active';
 
   const allNavigationItems = user?.is_admin
     ? [...navigationStructure, ...adminNavigationStructure]
@@ -419,31 +422,6 @@ function LayoutContent({ children, currentPageName }) {
                       </SidebarMenuItem>
                     );
                   })}
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      className={`rounded-xl mb-1.5 transition-all duration-300 ${
-                        location.pathname === settingsItem.url
-                          ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg shadow-purple-500/30 scale-105'
-                          : 'bg-transparent text-gray-200 hover:bg-[#0f3460] hover:text-white hover:scale-105 hover:shadow-md'
-                      }`}
-                    >
-                      <Link
-                        to={settingsItem.url}
-                        onClick={(e) => handleMenuClick(e, settingsItem.url, settingsItem)}
-                        className="flex items-center gap-3 px-4 py-3 w-full"
-                      >
-                        <settingsItem.icon className={`w-5 h-5 ${
-                          location.pathname === settingsItem.url ? 'text-white' : 'text-gray-300'
-                        }`} />
-                        <span className="font-semibold text-[15px] flex-1">{settingsItem.title}</span>
-                        {location.pathname === settingsItem.url && (
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -481,8 +459,8 @@ function LayoutContent({ children, currentPageName }) {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <Link 
-                    to={createPageUrl("Upgrade")}
-                    onClick={(e) => handleMenuClick(e, createPageUrl("Upgrade"), {})}
+                    to={createPageUrl("Billing")}
+                    onClick={(e) => handleMenuClick(e, createPageUrl("Billing"), {})}
                   >
                     <div className="mx-2 my-4 p-5 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-xl border-2 border-purple-500/50 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/30 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 mb-2">
@@ -493,7 +471,7 @@ function LayoutContent({ children, currentPageName }) {
                         From $9.99/month
                       </p>
                       <p className="text-xs text-purple-200 font-semibold">
-                        ⚡ Limited: 20% off for first 100 users!
+                        ⚡ 7-day free trial included!
                       </p>
                     </div>
                   </Link>
@@ -531,11 +509,11 @@ function LayoutContent({ children, currentPageName }) {
                       <p className="text-xs font-semibold text-gray-300">
                         {isPremium && isActive ? (
                           user.subscription_plan === 'elite' ? '✨ Elite' : '💎 Basic'
-                        ) : '🆓 Free'}
+                        ) : user.subscription_status === 'trial' ? '🆓 Trial' : '🆓 Free'}
                       </p>
-                      {isPremium && isActive && user.renewal_date && (
+                      {isPremium && isActive && user.billing_cycle_anchor && (
                         <p className="text-xs text-gray-400 font-medium">
-                          Renews {new Date(user.renewal_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          Renews {new Date(user.billing_cycle_anchor).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
                     </div>
