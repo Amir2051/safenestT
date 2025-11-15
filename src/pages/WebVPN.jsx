@@ -228,7 +228,7 @@ export default function WebVPN() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-              <span className="text-gray-300">Basic IP masking</span>
+              <span className="text-gray-300">IP masking protected</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
