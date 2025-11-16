@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
-  UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, FileText
+  UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, 
+  AlertTriangle, Info, CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +25,12 @@ export default function AdminUserApprovals() {
   const [verifyingUser, setVerifyingUser] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [reason, setReason] = useState('');
+  const [verificationChecks, setVerificationChecks] = useState({
+    email_valid: false,
+    no_spam_indicators: false,
+    legitimate_request: false,
+    reviewed_profile: false
+  });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -63,6 +71,12 @@ export default function AdminUserApprovals() {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       setVerifyingUser(null);
       setReason('');
+      setVerificationChecks({
+        email_valid: false,
+        no_spam_indicators: false,
+        legitimate_request: false,
+        reviewed_profile: false
+      });
       toast.success(`✅ User approved: ${data.user_email}`);
     },
     onError: (error) => {
@@ -83,6 +97,12 @@ export default function AdminUserApprovals() {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       setVerifyingUser(null);
       setReason('');
+      setVerificationChecks({
+        email_valid: false,
+        no_spam_indicators: false,
+        legitimate_request: false,
+        reviewed_profile: false
+      });
       toast.success(`❌ User rejected: ${data.user_email}`);
     },
     onError: (error) => {
@@ -94,6 +114,12 @@ export default function AdminUserApprovals() {
     setVerifyingUser(u);
     setActionType(action);
     setReason('');
+    setVerificationChecks({
+      email_valid: false,
+      no_spam_indicators: false,
+      legitimate_request: false,
+      reviewed_profile: false
+    });
   };
 
   const handleSubmitAction = () => {
@@ -103,6 +129,8 @@ export default function AdminUserApprovals() {
       rejectMutation.mutate({ userId: verifyingUser.id, reason });
     }
   };
+
+  const allChecksComplete = Object.values(verificationChecks).every(check => check === true);
 
   if (!user || isLoading) {
     return (
@@ -338,7 +366,7 @@ export default function AdminUserApprovals() {
                             className="bg-green-500 hover:bg-green-600"
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
-                            Approve
+                            Verify
                           </Button>
                           <Button
                             size="sm"
@@ -375,13 +403,13 @@ export default function AdminUserApprovals() {
 
       {/* Verification Modal */}
       <Dialog open={!!verifyingUser} onOpenChange={() => setVerifyingUser(null)}>
-        <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-2xl">
+        <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {actionType === 'approve' && <UserCheck className="w-5 h-5 text-green-400" />}
+              {actionType === 'approve' && <CheckSquare className="w-5 h-5 text-green-400" />}
               {actionType === 'reject' && <UserX className="w-5 h-5 text-red-400" />}
               {actionType === 'view' && <Eye className="w-5 h-5 text-cyan-400" />}
-              {actionType === 'approve' ? 'Approve User' : actionType === 'reject' ? 'Reject User' : 'User Details'}
+              {actionType === 'approve' ? 'Verify & Approve User' : actionType === 'reject' ? 'Reject User' : 'User Details'}
             </DialogTitle>
           </DialogHeader>
 
@@ -415,10 +443,122 @@ export default function AdminUserApprovals() {
                       {verifyingUser.account_status}
                     </Badge>
                   </div>
+                  {verifyingUser.phone && (
+                    <div>
+                      <p className="text-gray-400">Phone:</p>
+                      <p className="text-white">{verifyingUser.phone}</p>
+                    </div>
+                  )}
+                  {verifyingUser.invited_by && (
+                    <div>
+                      <p className="text-gray-400">Invited By:</p>
+                      <p className="text-white text-xs">{verifyingUser.invited_by}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Reason/Notes Field - Optional */}
+              {/* Verification Checklist - Only for Approve */}
+              {actionType === 'approve' && (
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-green-500/20">
+                  <h3 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    Verification Checklist
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="email_valid"
+                        checked={verificationChecks.email_valid}
+                        onCheckedChange={(checked) => 
+                          setVerificationChecks(prev => ({...prev, email_valid: checked}))
+                        }
+                        className="mt-1"
+                      />
+                      <div>
+                        <Label htmlFor="email_valid" className="text-white cursor-pointer">
+                          Email address is valid and not disposable
+                        </Label>
+                        <p className="text-xs text-gray-400">Verify the email domain is legitimate</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="no_spam"
+                        checked={verificationChecks.no_spam_indicators}
+                        onCheckedChange={(checked) => 
+                          setVerificationChecks(prev => ({...prev, no_spam_indicators: checked}))
+                        }
+                        className="mt-1"
+                      />
+                      <div>
+                        <Label htmlFor="no_spam" className="text-white cursor-pointer">
+                          No spam or suspicious indicators
+                        </Label>
+                        <p className="text-xs text-gray-400">Check for automated bot behavior</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="legitimate"
+                        checked={verificationChecks.legitimate_request}
+                        onCheckedChange={(checked) => 
+                          setVerificationChecks(prev => ({...prev, legitimate_request: checked}))
+                        }
+                        className="mt-1"
+                      />
+                      <div>
+                        <Label htmlFor="legitimate" className="text-white cursor-pointer">
+                          Appears to be a legitimate request
+                        </Label>
+                        <p className="text-xs text-gray-400">User intent seems genuine</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="reviewed"
+                        checked={verificationChecks.reviewed_profile}
+                        onCheckedChange={(checked) => 
+                          setVerificationChecks(prev => ({...prev, reviewed_profile: checked}))
+                        }
+                        className="mt-1"
+                      />
+                      <div>
+                        <Label htmlFor="reviewed" className="text-white cursor-pointer">
+                          Profile information reviewed
+                        </Label>
+                        <p className="text-xs text-gray-400">All available info has been checked</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!allChecksComplete && (
+                    <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-yellow-300">
+                        Complete all verification checks before approving
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Info Note */}
+              {actionType !== 'view' && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-blue-300">
+                    {actionType === 'approve' 
+                      ? 'User will receive an approval email and gain full access to SafeNestt.'
+                      : 'User will receive a rejection notification email.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Reason/Notes Field */}
               {actionType !== 'view' && (
                 <div>
                   <Label className="text-white mb-2 block">
@@ -449,7 +589,11 @@ export default function AdminUserApprovals() {
                 {actionType !== 'view' && (
                   <Button
                     onClick={handleSubmitAction}
-                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    disabled={
+                      (actionType === 'approve' && !allChecksComplete) ||
+                      approveMutation.isPending || 
+                      rejectMutation.isPending
+                    }
                     className={
                       actionType === 'approve'
                         ? 'bg-green-500 hover:bg-green-600'
