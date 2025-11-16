@@ -5,10 +5,8 @@ import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
-  Users, Wifi, Activity, ShieldCheck, Home, Scale, CheckSquare,
-  Radio, Globe, DollarSign, Server, BarChart3, Eye, CreditCard,
-  HardDrive, Trophy, Smartphone, Zap, FileText, MessageSquare,
-  AlertTriangle, Mail, ChevronRight, Power
+  Users, Wifi, Activity, ShieldCheck, Mail, Server,
+  ChevronRight, Power, AlertTriangle, Globe, Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +36,36 @@ const navigationItems = [
     glow: 'blue'
   },
   {
+    id: 'device-care',
+    title: 'Device Protection',
+    icon: Smartphone,
+    url: createPageUrl('DeviceCare'),
+    glow: 'green',
+    badge: 'SCAN'
+  },
+  {
+    id: 'web-vpn',
+    title: 'Web VPN',
+    icon: Globe,
+    url: createPageUrl('WebVPN'),
+    glow: 'cyan'
+  },
+  {
+    id: 'vpn',
+    title: 'VPN Protection',
+    icon: Wifi,
+    url: createPageUrl('VPNPage'),
+    glow: 'emerald'
+  },
+  {
+    id: 'alerts',
+    title: 'Security Alerts',
+    icon: Bell,
+    url: createPageUrl('Alerts'),
+    glow: 'red',
+    badge: 'LIVE'
+  },
+  {
     id: 'invitations',
     title: 'Referrals',
     icon: Users,
@@ -50,21 +78,6 @@ const navigationItems = [
     icon: Activity,
     url: createPageUrl('Activity'),
     glow: 'green'
-  },
-  {
-    id: 'alerts',
-    title: 'Security Alerts',
-    icon: Bell,
-    url: createPageUrl('Alerts'),
-    glow: 'red',
-    badge: 'LIVE'
-  },
-  {
-    id: 'vpn',
-    title: 'VPN Protection',
-    icon: Wifi,
-    url: createPageUrl('VPNPage'),
-    glow: 'emerald'
   },
   {
     id: 'settings',
@@ -256,6 +269,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                           ? 'bg-red-500/20 text-red-400 border-red-500/50'
                           : item.badge === 'AI'
                           ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                          : item.badge === 'SCAN'
+                          ? 'bg-green-500/20 text-green-400 border-green-500/50'
                           : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
                       } border`}>
                         {item.badge}
