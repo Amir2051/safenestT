@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, Loader2, CheckCircle, XCircle } from "lucide-react";
@@ -10,6 +12,7 @@ export default function InviteGate({ children }) {
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     checkAccess();
@@ -20,14 +23,35 @@ export default function InviteGate({ children }) {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      // Admin always has access
+      // Admin always has full access
       if (userData.role === 'admin' || userData.is_admin) {
         setHasAccess(true);
         setChecking(false);
         return;
       }
 
-      // Check if user has been invited
+      // Check account status
+      if (userData.account_status === 'rejected') {
+        // Redirect to access denied page
+        navigate(createPageUrl('AccessDenied'));
+        setChecking(false);
+        return;
+      }
+
+      if (userData.account_status === 'pending_approval') {
+        // Redirect to pending approval page
+        navigate(createPageUrl('PendingApproval'));
+        setChecking(false);
+        return;
+      }
+
+      if (userData.account_status === 'active') {
+        setHasAccess(true);
+        setChecking(false);
+        return;
+      }
+
+      // Legacy: Check if user has been invited (for backwards compatibility)
       if (userData.invited_by || userData.invite_accepted_at) {
         setHasAccess(true);
         setChecking(false);

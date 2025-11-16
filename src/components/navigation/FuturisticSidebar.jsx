@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
-  ChevronRight, Power, AlertTriangle, Globe, Smartphone
+  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +89,14 @@ const navigationItems = [
 ];
 
 const adminItems = [
+  {
+    id: 'admin-approvals',
+    title: 'User Approvals',
+    icon: UserCheck,
+    url: createPageUrl('AdminUserApprovals'),
+    glow: 'purple',
+    badge: 'ADMIN'
+  },
   {
     id: 'admin-invites',
     title: 'Invite Manager',
