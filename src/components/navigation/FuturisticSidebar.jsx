@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
-  Users, Wifi, Activity, ShieldCheck, Home, Scale, CheckSquare,
-  Radio, Globe, DollarSign, Server, BarChart3, Eye, CreditCard,
-  HardDrive, Trophy, Smartphone, Zap, FileText, MessageSquare,
-  AlertTriangle, Mail, ChevronRight, Power
+  Shield, LayoutDashboard, Lock, Bell, Bot, Settings,
+  Users, Wifi, Activity, ShieldCheck, Mail, Server,
+  ChevronRight, Power, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +103,7 @@ const glowColors = {
   orange: 'shadow-orange-500/50 border-orange-500/50'
 };
 
-export default function FuturisticSidebar({ user, onLogout }) {
+export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeItem, setActiveItem] = useState('dashboard');
@@ -128,7 +125,6 @@ export default function FuturisticSidebar({ user, onLogout }) {
     if (user) {
       setLastLogin(user.last_login || user.created_date);
       
-      // Calculate security status based on risk score
       const score = user.risk_score || 0;
       if (score >= 90) setSecurityStatus('optimal');
       else if (score >= 70) setSecurityStatus('good');
@@ -140,6 +136,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
   const handleNavClick = (item) => {
     setActiveItem(item.id);
     navigate(item.url);
+    if (onNavigate) onNavigate();
   };
 
   const allMenuItems = user?.role === 'admin' || user?.is_admin
@@ -156,12 +153,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
   const status = statusConfig[securityStatus] || statusConfig.optimal;
 
   return (
-    <motion.div
-      initial={{ x: -300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="relative w-72 h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 overflow-hidden"
-    >
+    <div className="relative w-72 h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 overflow-hidden">
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/20 via-transparent to-purple-950/20 pointer-events-none" />
       <div className="absolute top-0 left-0 w-full h-32 bg-gradient-radial from-cyan-500/10 to-transparent blur-2xl pointer-events-none animate-pulse" />
@@ -176,10 +168,8 @@ export default function FuturisticSidebar({ user, onLogout }) {
           className="mb-8"
         >
           <div className="relative">
-            {/* Glowing Ring */}
             <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full blur-md opacity-75 animate-spin-slow" />
             
-            {/* Avatar */}
             <div className="relative w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/50 mx-auto">
               <span className="text-white font-bold text-2xl">
                 {user?.full_name?.[0]?.toUpperCase() || 'U'}
@@ -213,7 +203,6 @@ export default function FuturisticSidebar({ user, onLogout }) {
                   transition={{ delay: index * 0.05 }}
                   className="relative"
                 >
-                  {/* Active Indicator Bar */}
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
@@ -318,7 +307,6 @@ export default function FuturisticSidebar({ user, onLogout }) {
         <div className="absolute inset-0 opacity-5 bg-gradient-to-b from-transparent via-cyan-500 to-transparent animate-scan-line" />
       </div>
 
-      {/* Custom Styles */}
       <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
@@ -356,6 +344,6 @@ export default function FuturisticSidebar({ user, onLogout }) {
           scrollbar-width: none;
         }
       `}</style>
-    </motion.div>
+    </div>
   );
 }
