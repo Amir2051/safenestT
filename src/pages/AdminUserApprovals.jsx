@@ -100,10 +100,6 @@ export default function AdminUserApprovals() {
     if (actionType === 'approve') {
       approveMutation.mutate({ userId: verifyingUser.id, reason });
     } else if (actionType === 'reject') {
-      if (!reason.trim()) {
-        toast.error('Please provide a reason for rejection');
-        return;
-      }
       rejectMutation.mutate({ userId: verifyingUser.id, reason });
     }
   };
@@ -422,32 +418,11 @@ export default function AdminUserApprovals() {
                 </div>
               </div>
 
-              {/* Verification Checklist */}
-              {actionType !== 'view' && (
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                  <h3 className="text-sm font-semibold text-cyan-400 mb-3">Verification Checklist</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span className="text-gray-300">Email format is valid</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span className="text-gray-300">Account created successfully</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span className="text-gray-300">No suspicious activity detected</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Reason/Notes Field */}
+              {/* Reason/Notes Field - Optional */}
               {actionType !== 'view' && (
                 <div>
                   <Label className="text-white mb-2 block">
-                    {actionType === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
+                    {actionType === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Optional)'}
                   </Label>
                   <Textarea
                     value={reason}
