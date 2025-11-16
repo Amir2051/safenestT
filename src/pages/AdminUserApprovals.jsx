@@ -58,6 +58,24 @@ export default function AdminUserApprovals() {
     refetchInterval: 5000
   });
 
+  const bulkApproveMutation = useMutation({
+    mutationFn: async ({ userIds }) => {
+      const response = await base44.functions.invoke('adminUserService', {
+        endpoint: 'bulk-approve-users',
+        user_ids: userIds,
+        reason: 'Bulk approval - All users granted access'
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      toast.success(`✅ Approved ${data.approved} user${data.approved > 1 ? 's' : ''}!`);
+    },
+    onError: (error) => {
+      toast.error('Failed to bulk approve users: ' + error.message);
+    }
+  });
+
   const approveMutation = useMutation({
     mutationFn: async ({ userId, reason }) => {
       const response = await base44.functions.invoke('adminUserService', {
@@ -130,6 +148,24 @@ export default function AdminUserApprovals() {
     }
   };
 
+  const handleBulkApprove = () => {
+    const pendingAndRejectedUsers = allUsers.filter(u => 
+      u.account_status === 'pending_approval' || u.account_status === 'rejected'
+    );
+    
+    if (pendingAndRejectedUsers.length === 0) {
+      toast.info('No users to approve');
+      return;
+    }
+
+    if (!confirm(`Approve ${pendingAndRejectedUsers.length} user${pendingAndRejectedUsers.length > 1 ? 's' : ''}? They will all gain access to SafeNestt.`)) {
+      return;
+    }
+
+    const userIds = pendingAndRejectedUsers.map(u => u.id);
+    bulkApproveMutation.mutate({ userIds });
+  };
+
   const allChecksComplete = Object.values(verificationChecks).every(check => check === true);
 
   if (!user || isLoading) {
@@ -154,18 +190,42 @@ export default function AdminUserApprovals() {
     rejected: allUsers.filter(u => u.account_status === 'rejected').length
   };
 
+  const pendingAndRejectedCount = stats.pending + stats.rejected;
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Users className="w-8 h-8 text-cyan-400" />
-          User Approvals
-          <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
-            ADMIN
-          </Badge>
-        </h1>
-        <p className="text-gray-400 mt-1">Manually verify and approve user account requests</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Users className="w-8 h-8 text-cyan-400" />
+            User Approvals
+            <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
+              ADMIN
+            </Badge>
+          </h1>
+          <p className="text-gray-400 mt-1">Manually verify and approve user account requests</p>
+        </div>
+
+        {pendingAndRejectedCount > 0 && (
+          <Button
+            onClick={handleBulkApprove}
+            disabled={bulkApproveMutation.isPending}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+          >
+            {bulkApproveMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Approving...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve All ({pendingAndRejectedCount})
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -232,7 +292,7 @@ export default function AdminUserApprovals() {
                 className="pl-10 bg-[#0f1419] border-cyan-500/20 text-white"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant={filterStatus === 'pending_approval' ? 'default' : 'outline'}
                 onClick={() => setFilterStatus('pending_approval')}
@@ -378,6 +438,16 @@ export default function AdminUserApprovals() {
                             Reject
                           </Button>
                         </>
+                      ) : u.account_status === 'rejected' ? (
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate({ userId: u.id, reason: 'Re-approved after rejection' })}
+                          disabled={approveMutation.isPending}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Approve
+                        </Button>
                       ) : (
                         <Button
                           size="sm"
