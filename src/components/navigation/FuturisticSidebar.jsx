@@ -19,14 +19,14 @@ const navigationItems = [
     id: 'dashboard',
     title: 'Dashboard',
     icon: LayoutDashboard,
-    url: '/Dashboard',
+    url: createPageUrl('Dashboard'),
     glow: 'cyan'
   },
   {
     id: 'messages',
     title: 'AI Assistant',
     icon: Bot,
-    url: '/MiaAssistant',
+    url: createPageUrl('MiaAssistant'),
     glow: 'purple',
     badge: 'AI'
   },
@@ -34,28 +34,28 @@ const navigationItems = [
     id: 'vault',
     title: 'Password Vault',
     icon: Lock,
-    url: '/PasswordVault',
+    url: createPageUrl('PasswordVault'),
     glow: 'blue'
   },
   {
     id: 'invitations',
     title: 'Referrals',
     icon: Users,
-    url: '/Referrals',
+    url: createPageUrl('Referrals'),
     glow: 'pink'
   },
   {
     id: 'activity',
     title: 'Activity Log',
     icon: Activity,
-    url: '/Activity',
+    url: createPageUrl('Activity'),
     glow: 'green'
   },
   {
     id: 'alerts',
     title: 'Security Alerts',
     icon: Bell,
-    url: '/Alerts',
+    url: createPageUrl('Alerts'),
     glow: 'red',
     badge: 'LIVE'
   },
@@ -63,14 +63,14 @@ const navigationItems = [
     id: 'vpn',
     title: 'VPN Protection',
     icon: Wifi,
-    url: '/VPNPage',
+    url: createPageUrl('VPNPage'),
     glow: 'emerald'
   },
   {
     id: 'settings',
     title: 'Settings',
     icon: Settings,
-    url: '/Settings',
+    url: createPageUrl('Settings'),
     glow: 'gray'
   }
 ];
@@ -80,7 +80,7 @@ const adminItems = [
     id: 'admin-invites',
     title: 'Invite Manager',
     icon: Mail,
-    url: '/AdminInvites',
+    url: createPageUrl('AdminInvites'),
     glow: 'red',
     badge: 'ADMIN'
   },
@@ -88,7 +88,7 @@ const adminItems = [
     id: 'admin-vpn',
     title: 'VPN Servers',
     icon: Server,
-    url: '/AdminVPNServers',
+    url: createPageUrl('AdminVPNServers'),
     glow: 'orange',
     badge: 'ADMIN'
   }
@@ -114,7 +114,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
   const [lastLogin, setLastLogin] = useState(null);
 
   useEffect(() => {
-    const allItems = user?.role === 'admin' 
+    const allItems = user?.role === 'admin' || user?.is_admin
       ? [...navigationItems, ...adminItems]
       : navigationItems;
     
@@ -142,7 +142,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
     navigate(item.url);
   };
 
-  const allMenuItems = user?.role === 'admin'
+  const allMenuItems = user?.role === 'admin' || user?.is_admin
     ? [...navigationItems, ...adminItems]
     : navigationItems;
 
@@ -192,7 +192,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
               {user?.full_name || 'User'}
             </h3>
             <p className="text-cyan-400 text-xs font-mono tracking-wider mt-1">
-              {user?.role === 'admin' ? '// ADMIN ACCESS //' : '// SECURED //'}
+              {user?.role === 'admin' || user?.is_admin ? '// ADMIN ACCESS //' : '// SECURED //'}
             </p>
           </div>
         </motion.div>
@@ -319,7 +319,7 @@ export default function FuturisticSidebar({ user, onLogout }) {
       </div>
 
       {/* Custom Styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

@@ -40,6 +40,7 @@ import WebVPN from './pages/WebVPN';
 import PaymentOnboarding from './pages/PaymentOnboarding';
 import Billing from './pages/Billing';
 import AdminSubscriptions from './pages/AdminSubscriptions';
+import AdminInvites from './pages/AdminInvites';
 import Layout from './Layout.jsx';
 
 
@@ -86,6 +87,7 @@ export const PAGES = {
     "PaymentOnboarding": PaymentOnboarding,
     "Billing": Billing,
     "AdminSubscriptions": AdminSubscriptions,
+    "AdminInvites": AdminInvites,
 }
 
 export const pagesConfig = {
