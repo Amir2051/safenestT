@@ -44,6 +44,7 @@ import AdminInvites from './pages/AdminInvites';
 import PendingApproval from './pages/PendingApproval';
 import AccessDenied from './pages/AccessDenied';
 import AdminUserApprovals from './pages/AdminUserApprovals';
+import AdminDashboard from './pages/AdminDashboard';
 import Layout from './Layout.jsx';
 
 
@@ -94,6 +95,7 @@ export const PAGES = {
     "PendingApproval": PendingApproval,
     "AccessDenied": AccessDenied,
     "AdminUserApprovals": AdminUserApprovals,
+    "AdminDashboard": AdminDashboard,
 }
 
 export const pagesConfig = {

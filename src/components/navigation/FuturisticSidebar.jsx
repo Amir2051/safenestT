@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
-  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck
+  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,14 @@ const navigationItems = [
 
 const adminItems = [
   {
+    id: 'admin-dashboard',
+    title: 'Admin Dashboard',
+    icon: Command,
+    url: createPageUrl('AdminDashboard'),
+    glow: 'cyan',
+    badge: 'ADMIN'
+  },
+  {
     id: 'admin-approvals',
     title: 'User Approvals',
     icon: UserCheck,
@@ -149,7 +157,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
     if (user) {
       setLastLogin(user.last_login || user.created_date);
       
-      // Calculate security status based on risk score
       const score = user.risk_score || 0;
       if (score >= 90) setSecurityStatus('optimal');
       else if (score >= 70) setSecurityStatus('good');
@@ -161,7 +168,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const handleNavClick = (item) => {
     setActiveItem(item.id);
     navigate(item.url);
-    // Call mobile close handler if provided
     if (onNavigate) {
       onNavigate();
     }
@@ -187,13 +193,10 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="relative w-72 h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 overflow-hidden"
     >
-      {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/20 via-transparent to-purple-950/20 pointer-events-none" />
       <div className="absolute top-0 left-0 w-full h-32 bg-gradient-radial from-cyan-500/10 to-transparent blur-2xl pointer-events-none animate-pulse" />
       
-      {/* Content */}
       <div className="relative z-10 flex flex-col h-full p-6">
-        {/* Profile Section */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -201,10 +204,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           className="mb-8"
         >
           <div className="relative">
-            {/* Glowing Ring */}
             <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full blur-md opacity-75 animate-spin-slow" />
-            
-            {/* Avatar */}
             <div className="relative w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/50 mx-auto">
               <span className="text-white font-bold text-2xl">
                 {user?.full_name?.[0]?.toUpperCase() || 'U'}
@@ -222,7 +222,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           </div>
         </motion.div>
 
-        {/* Menu Items */}
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide">
           <AnimatePresence>
             {allMenuItems.map((item, index) => {
@@ -238,7 +237,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   transition={{ delay: index * 0.05 }}
                   className="relative"
                 >
-                  {/* Active Indicator Bar */}
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
@@ -295,14 +293,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           </AnimatePresence>
         </div>
 
-        {/* Footer Section */}
         <motion.div
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
           className="mt-6 space-y-4"
         >
-          {/* Security Status */}
           <div className="p-4 bg-gray-900/50 backdrop-blur-md border border-gray-700/50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-gray-400 uppercase tracking-wider">System Status</span>
@@ -319,7 +315,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             </div>
           </div>
 
-          {/* Emergency Mode Button */}
           <Button
             variant="outline"
             className="w-full bg-red-950/30 border-red-500/50 text-red-400 hover:bg-red-950/50 hover:border-red-500 transition-all"
@@ -332,7 +327,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             Emergency Mode
           </Button>
 
-          {/* Logout */}
           <Button
             onClick={() => {
               onLogout();
@@ -346,12 +340,10 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         </motion.div>
       </div>
 
-      {/* Scan Lines Effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 opacity-5 bg-gradient-to-b from-transparent via-cyan-500 to-transparent animate-scan-line" />
       </div>
 
-      {/* Custom Styles */}
       <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
