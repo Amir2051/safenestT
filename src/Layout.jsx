@@ -5,7 +5,6 @@ import { Shield, Bell, Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
-import InviteGate from "./components/shared/InviteGate.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 
 export default function Layout({ children, currentPageName }) {
@@ -81,148 +80,146 @@ export default function Layout({ children, currentPageName }) {
   return (
     <>
       <ReferralCodeHandler />
-      <InviteGate>
-        <div 
-          className="min-h-screen flex bg-[#000000]"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          {/* Desktop Sidebar - Always visible on lg+ */}
-          <div className="hidden lg:block">
-            <FuturisticSidebar user={user} onLogout={handleLogout} />
-          </div>
-
-          {/* Mobile Menu Button */}
-          <AnimatePresence>
-            {showMenuButton && !isMobileMenuOpen && (
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                onClick={handleMenuOpen}
-                className="lg:hidden fixed top-4 left-4 z-50 w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/50"
-                style={{
-                  animation: 'neon-pulse 2s ease-in-out infinite'
-                }}
-              >
-                <Menu className="w-6 h-6 text-white" />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* Mobile Slide-out Menu */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <>
-                {/* Backdrop */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
-                  onClick={handleMenuClose}
-                />
-
-                {/* Slide-out Menu */}
-                <motion.div
-                  initial={{ x: -300, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: -300, opacity: 0 }}
-                  transition={{ 
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30
-                  }}
-                  className="lg:hidden fixed left-0 top-0 bottom-0 z-50"
-                >
-                  <FuturisticSidebar 
-                    user={user} 
-                    onLogout={handleLogout}
-                    onNavigate={handleMenuClose}
-                  />
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative overflow-hidden">
-            {/* Ambient Background Effects */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />
-              <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
-            </div>
-
-            {/* Header */}
-            <header className="relative z-10 bg-black/40 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {/* Mobile: Show menu trigger area */}
-                <button
-                  onClick={() => setShowMenuButton(true)}
-                  className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
-                >
-                  <Menu className="w-5 h-5 text-cyan-400" />
-                </button>
-
-                <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/30">
-                  <Shield className="w-5 h-5 text-cyan-400 animate-pulse" />
-                  <div>
-                    <h1 className="text-white font-bold text-sm tracking-wider">SAFENEST</h1>
-                    <p className="text-cyan-400 text-[10px] font-mono">// SECURED //</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                {/* Live Protection Indicator */}
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-500/50" />
-                  <span className="text-xs font-bold text-green-400 tracking-wide">LIVE</span>
-                </div>
-
-                {/* Score Display */}
-                {user?.risk_score !== undefined && (
-                  <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
-                    <span className="text-xs text-gray-400">SCORE</span>
-                    <span className={`text-sm font-bold ${
-                      user.risk_score >= 80 ? 'text-green-400' : 
-                      user.risk_score >= 60 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {user.risk_score}
-                    </span>
-                  </div>
-                )}
-
-                <NotificationCenter />
-              </div>
-            </header>
-
-            {/* Page Content */}
-            <div className="relative z-10 flex-1 overflow-auto">
-              {children}
-            </div>
-          </main>
+      <div 
+        className="min-h-screen flex bg-[#000000]"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* Desktop Sidebar - Always visible on lg+ */}
+        <div className="hidden lg:block">
+          <FuturisticSidebar user={user} onLogout={handleLogout} />
         </div>
 
-        {/* Custom Animations */}
-        <style>{`
-          @keyframes neon-pulse {
-            0%, 100% {
-              box-shadow: 0 0 20px rgba(6, 182, 212, 0.5),
-                          0 0 40px rgba(6, 182, 212, 0.3),
-                          inset 0 0 10px rgba(6, 182, 212, 0.2);
-            }
-            50% {
-              box-shadow: 0 0 30px rgba(6, 182, 212, 0.8),
-                          0 0 60px rgba(6, 182, 212, 0.5),
-                          inset 0 0 15px rgba(6, 182, 212, 0.4);
-            }
+        {/* Mobile Menu Button */}
+        <AnimatePresence>
+          {showMenuButton && !isMobileMenuOpen && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              onClick={handleMenuOpen}
+              className="lg:hidden fixed top-4 left-4 z-50 w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/50"
+              style={{
+                animation: 'neon-pulse 2s ease-in-out infinite'
+              }}
+            >
+              <Menu className="w-6 h-6 text-white" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        {/* Mobile Slide-out Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+                onClick={handleMenuClose}
+              />
+
+              {/* Slide-out Menu */}
+              <motion.div
+                initial={{ x: -300, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -300, opacity: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30
+                }}
+                className="lg:hidden fixed left-0 top-0 bottom-0 z-50"
+              >
+                <FuturisticSidebar 
+                  user={user} 
+                  onLogout={handleLogout}
+                  onNavigate={handleMenuClose}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative overflow-hidden">
+          {/* Ambient Background Effects */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
+          </div>
+
+          {/* Header */}
+          <header className="relative z-10 bg-black/40 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Mobile: Show menu trigger area */}
+              <button
+                onClick={() => setShowMenuButton(true)}
+                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
+              >
+                <Menu className="w-5 h-5 text-cyan-400" />
+              </button>
+
+              <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/30">
+                <Shield className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <div>
+                  <h1 className="text-white font-bold text-sm tracking-wider">SAFENEST</h1>
+                  <p className="text-cyan-400 text-[10px] font-mono">// SECURED //</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Live Protection Indicator */}
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-500/50" />
+                <span className="text-xs font-bold text-green-400 tracking-wide">LIVE</span>
+              </div>
+
+              {/* Score Display */}
+              {user?.risk_score !== undefined && (
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                  <span className="text-xs text-gray-400">SCORE</span>
+                  <span className={`text-sm font-bold ${
+                    user.risk_score >= 80 ? 'text-green-400' : 
+                    user.risk_score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {user.risk_score}
+                  </span>
+                </div>
+              )}
+
+              <NotificationCenter />
+            </div>
+          </header>
+
+          {/* Page Content */}
+          <div className="relative z-10 flex-1 overflow-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      {/* Custom Animations */}
+      <style>{`
+        @keyframes neon-pulse {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5),
+                        0 0 40px rgba(6, 182, 212, 0.3),
+                        inset 0 0 10px rgba(6, 182, 212, 0.2);
           }
-        `}</style>
-      </InviteGate>
+          50% {
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.8),
+                        0 0 60px rgba(6, 182, 212, 0.5),
+                        inset 0 0 15px rgba(6, 182, 212, 0.4);
+          }
+        }
+      `}</style>
     </>
   );
 }
