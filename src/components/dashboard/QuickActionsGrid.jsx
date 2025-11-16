@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Lock, Bell, FileText, Bot, Shield, Scan, Wifi, Eye } from 'lucide-react';
+import { Lock, Bell, FileText, Bot, Shield, Scan, Wifi, Globe } from 'lucide-react';
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -24,25 +24,41 @@ export default function QuickActionsGrid({ user, alerts, passwords }) {
       pulse: alerts.filter(a => a.severity === 'critical').length > 0
     },
     {
-      title: 'Security Reports',
-      description: 'View your history',
-      icon: FileText,
-      color: 'from-blue-500 to-cyan-500',
-      url: createPageUrl('Reports'),
-      glow: 'shadow-blue-500/20'
+      title: 'Device Protection',
+      description: 'Scan for threats',
+      icon: Shield,
+      color: 'from-green-500 to-emerald-500',
+      url: createPageUrl('DeviceCare'),
+      glow: 'shadow-green-500/20'
+    },
+    {
+      title: 'Web VPN',
+      description: 'Secure browsing',
+      icon: Globe,
+      color: 'from-cyan-500 to-blue-500',
+      url: createPageUrl('WebVPN'),
+      glow: 'shadow-cyan-500/20'
+    },
+    {
+      title: 'VPN Protection',
+      description: 'Full device VPN',
+      icon: Wifi,
+      color: 'from-indigo-500 to-purple-500',
+      url: createPageUrl('VPNPage'),
+      glow: 'shadow-indigo-500/20'
     },
     {
       title: 'Talk to Mia AI',
       description: 'Get instant help',
       icon: Bot,
-      color: 'from-green-500 to-emerald-500',
+      color: 'from-orange-500 to-pink-500',
       url: createPageUrl('MiaAssistant'),
-      glow: 'shadow-green-500/20'
+      glow: 'shadow-orange-500/20'
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {actions.map((action, idx) => (
         <Link key={idx} to={action.url}>
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300 cursor-pointer group hover:scale-105 relative overflow-hidden">
