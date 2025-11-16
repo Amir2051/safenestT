@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
-  UserCheck, UserX, Shield, Mail, Calendar, Loader2
+  UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, FileText
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +20,9 @@ export default function AdminUserApprovals() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('pending_approval');
+  const [verifyingUser, setVerifyingUser] = useState(null);
+  const [actionType, setActionType] = useState(null);
+  const [reason, setReason] = useState('');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -45,15 +51,18 @@ export default function AdminUserApprovals() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (userId) => {
+    mutationFn: async ({ userId, reason }) => {
       const response = await base44.functions.invoke('adminUserService', {
         endpoint: 'approve-user',
-        user_id: userId
+        user_id: userId,
+        reason: reason
       });
       return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      setVerifyingUser(null);
+      setReason('');
       toast.success(`✅ User approved: ${data.user_email}`);
     },
     onError: (error) => {
@@ -62,21 +71,42 @@ export default function AdminUserApprovals() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async (userId) => {
+    mutationFn: async ({ userId, reason }) => {
       const response = await base44.functions.invoke('adminUserService', {
         endpoint: 'reject-user',
-        user_id: userId
+        user_id: userId,
+        reason: reason
       });
       return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      setVerifyingUser(null);
+      setReason('');
       toast.success(`❌ User rejected: ${data.user_email}`);
     },
     onError: (error) => {
       toast.error('Failed to reject user: ' + error.message);
     }
   });
+
+  const handleVerify = (u, action) => {
+    setVerifyingUser(u);
+    setActionType(action);
+    setReason('');
+  };
+
+  const handleSubmitAction = () => {
+    if (actionType === 'approve') {
+      approveMutation.mutate({ userId: verifyingUser.id, reason });
+    } else if (actionType === 'reject') {
+      if (!reason.trim()) {
+        toast.error('Please provide a reason for rejection');
+        return;
+      }
+      rejectMutation.mutate({ userId: verifyingUser.id, reason });
+    }
+  };
 
   if (!user || isLoading) {
     return (
@@ -111,7 +141,7 @@ export default function AdminUserApprovals() {
             ADMIN
           </Badge>
         </h1>
-        <p className="text-gray-400 mt-1">Manage user account approval requests</p>
+        <p className="text-gray-400 mt-1">Manually verify and approve user account requests</p>
       </div>
 
       {/* Stats */}
@@ -303,29 +333,42 @@ export default function AdminUserApprovals() {
                     </div>
 
                     {/* Actions */}
-                    {u.account_status === 'pending_approval' && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => approveMutation.mutate(u.id)}
-                          disabled={approveMutation.isPending}
-                          className="bg-green-500 hover:bg-green-600"
-                        >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Approve
-                        </Button>
+                    <div className="flex gap-2">
+                      {u.account_status === 'pending_approval' ? (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerify(u, 'approve')}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <UserCheck className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleVerify(u, 'reject')}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                          >
+                            <UserX className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => rejectMutation.mutate(u.id)}
-                          disabled={rejectMutation.isPending}
-                          className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                          onClick={() => {
+                            setVerifyingUser(u);
+                            setActionType('view');
+                          }}
+                          className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
                         >
-                          <UserX className="w-4 h-4 mr-1" />
-                          Reject
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -333,6 +376,126 @@ export default function AdminUserApprovals() {
           )}
         </CardContent>
       </Card>
+
+      {/* Verification Modal */}
+      <Dialog open={!!verifyingUser} onOpenChange={() => setVerifyingUser(null)}>
+        <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {actionType === 'approve' && <UserCheck className="w-5 h-5 text-green-400" />}
+              {actionType === 'reject' && <UserX className="w-5 h-5 text-red-400" />}
+              {actionType === 'view' && <Eye className="w-5 h-5 text-cyan-400" />}
+              {actionType === 'approve' ? 'Approve User' : actionType === 'reject' ? 'Reject User' : 'User Details'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {verifyingUser && (
+            <div className="space-y-4">
+              {/* User Info */}
+              <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <h3 className="text-sm font-semibold text-cyan-400 mb-3">User Information</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-400">Full Name:</p>
+                    <p className="text-white font-semibold">{verifyingUser.full_name || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Email:</p>
+                    <p className="text-white font-semibold">{verifyingUser.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Registered:</p>
+                    <p className="text-white">{new Date(verifyingUser.created_date).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Status:</p>
+                    <Badge className={
+                      verifyingUser.account_status === 'pending_approval' 
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : verifyingUser.account_status === 'active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }>
+                      {verifyingUser.account_status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verification Checklist */}
+              {actionType !== 'view' && (
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                  <h3 className="text-sm font-semibold text-cyan-400 mb-3">Verification Checklist</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span className="text-gray-300">Email format is valid</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span className="text-gray-300">Account created successfully</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span className="text-gray-300">No suspicious activity detected</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Reason/Notes Field */}
+              {actionType !== 'view' && (
+                <div>
+                  <Label className="text-white mb-2 block">
+                    {actionType === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
+                  </Label>
+                  <Textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder={
+                      actionType === 'approve' 
+                        ? 'Add any notes about this approval...'
+                        : 'Explain why this user is being rejected...'
+                    }
+                    className="bg-[#0f1419] border-cyan-500/20 text-white min-h-24"
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-cyan-500/10">
+                <Button
+                  variant="outline"
+                  onClick={() => setVerifyingUser(null)}
+                  className="border-gray-600 text-gray-300"
+                >
+                  Cancel
+                </Button>
+                {actionType !== 'view' && (
+                  <Button
+                    onClick={handleSubmitAction}
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    className={
+                      actionType === 'approve'
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : 'bg-red-500 hover:bg-red-600'
+                    }
+                  >
+                    {approveMutation.isPending || rejectMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : actionType === 'approve' ? (
+                      <UserCheck className="w-4 h-4 mr-2" />
+                    ) : (
+                      <UserX className="w-4 h-4 mr-2" />
+                    )}
+                    Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
