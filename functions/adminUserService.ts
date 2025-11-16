@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { endpoint, user_id, reason } = body;
+    const { endpoint, user_id, user_ids, reason } = body;
 
     // List all users
     if (endpoint === 'list-users') {
@@ -21,7 +21,87 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Approve user - all fields are optional except account_status
+    // Bulk approve users
+    if (endpoint === 'bulk-approve-users') {
+      if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+        return Response.json({ error: 'user_ids array is required' }, { status: 400 });
+      }
+
+      const approvedUsers = [];
+      const errors = [];
+
+      for (const userId of user_ids) {
+        try {
+          const users = await base44.asServiceRole.entities.User.filter({ id: userId });
+          if (!users || users.length === 0) {
+            errors.push({ userId, error: 'User not found' });
+            continue;
+          }
+
+          const targetUser = users[0];
+
+          // Update user status
+          await base44.asServiceRole.entities.User.update(userId, {
+            account_status: 'active',
+            approved_by: adminUser.email,
+            approved_at: new Date().toISOString()
+          });
+
+          // Log admin action
+          await base44.asServiceRole.entities.AdminAction.create({
+            action_type: 'user_approved',
+            admin_email: adminUser.email,
+            target_user: targetUser.email,
+            target_resource: userId,
+            details: {
+              reason: reason || 'Bulk approval',
+              previous_status: targetUser.account_status,
+              new_status: 'active'
+            }
+          });
+
+          // Send approval email
+          try {
+            await base44.asServiceRole.integrations.Core.SendEmail({
+              to: targetUser.email,
+              subject: '🎉 Welcome to SafeNestt - Your Account is Approved!',
+              body: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h1 style="color: #06b6d4;">Welcome to SafeNestt!</h1>
+                  <p>Hi ${targetUser.full_name || 'there'},</p>
+                  <p>Great news! Your SafeNestt account has been approved by our team.</p>
+                  <p>You can now access all features and start protecting your digital life.</p>
+                  <p>Get started by:</p>
+                  <ul>
+                    <li>Setting up your password vault</li>
+                    <li>Running your first security scan</li>
+                    <li>Enabling VPN protection</li>
+                  </ul>
+                  <p>If you have any questions, our support team is here to help.</p>
+                  <p>Stay safe!</p>
+                  <p><strong>The SafeNestt Team</strong></p>
+                </div>
+              `
+            });
+          } catch (emailError) {
+            console.error('Email notification failed:', emailError);
+          }
+
+          approvedUsers.push(targetUser.email);
+        } catch (error) {
+          errors.push({ userId, error: error.message });
+        }
+      }
+
+      return Response.json({ 
+        success: true, 
+        approved: approvedUsers.length,
+        approvedUsers: approvedUsers,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    }
+
+    // Approve user
     if (endpoint === 'approve-user') {
       if (!user_id) {
         return Response.json({ error: 'user_id is required' }, { status: 400 });
@@ -34,7 +114,6 @@ Deno.serve(async (req) => {
 
       const targetUser = users[0];
 
-      // Update user with flexible fields - only account_status is required
       const updateData = {
         account_status: 'active',
         approved_by: adminUser.email,
@@ -43,7 +122,6 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.User.update(user_id, updateData);
 
-      // Log admin action
       await base44.asServiceRole.entities.AdminAction.create({
         action_type: 'user_approved',
         admin_email: adminUser.email,
@@ -56,7 +134,6 @@ Deno.serve(async (req) => {
         }
       });
 
-      // Send approval email
       try {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: targetUser.email,
@@ -91,7 +168,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Reject user - all fields are optional
+    // Reject user
     if (endpoint === 'reject-user') {
       if (!user_id) {
         return Response.json({ error: 'user_id is required' }, { status: 400 });
@@ -104,7 +181,6 @@ Deno.serve(async (req) => {
 
       const targetUser = users[0];
 
-      // Update user with flexible fields - only account_status is required
       const updateData = {
         account_status: 'rejected',
         approved_by: adminUser.email,
@@ -113,7 +189,6 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.User.update(user_id, updateData);
 
-      // Log admin action
       await base44.asServiceRole.entities.AdminAction.create({
         action_type: 'user_rejected',
         admin_email: adminUser.email,
@@ -126,7 +201,6 @@ Deno.serve(async (req) => {
         }
       });
 
-      // Send rejection email
       try {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: targetUser.email,
