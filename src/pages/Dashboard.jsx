@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
+import GettingStartedChecklist from "../components/onboarding/GettingStartedChecklist.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -198,6 +200,11 @@ export default function Dashboard() {
           )}
         </Button>
       </div>
+
+      {/* Getting Started Checklist - Show for new users */}
+      {user && !user.onboarding_completed && (
+        <GettingStartedChecklist user={user} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['user'] })} />
+      )}
 
       {/* OWASP Protection Banner */}
       <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 relative overflow-hidden">

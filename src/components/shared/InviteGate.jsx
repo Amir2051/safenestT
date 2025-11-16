@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Lock, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Shield, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function InviteGate({ children }) {
@@ -32,20 +32,24 @@ export default function InviteGate({ children }) {
 
       // Check account status
       if (userData.account_status === 'rejected') {
-        // Redirect to access denied page
         navigate(createPageUrl('AccessDenied'));
         setChecking(false);
         return;
       }
 
       if (userData.account_status === 'pending_approval') {
-        // Redirect to pending approval page
         navigate(createPageUrl('PendingApproval'));
         setChecking(false);
         return;
       }
 
       if (userData.account_status === 'active') {
+        // Check if onboarding is needed
+        if (!userData.onboarding_completed) {
+          navigate(createPageUrl('WelcomeOnboarding'));
+          setChecking(false);
+          return;
+        }
         setHasAccess(true);
         setChecking(false);
         return;
@@ -91,7 +95,6 @@ export default function InviteGate({ children }) {
         return;
       }
 
-      // Accept the invitation
       const acceptResponse = await base44.functions.invoke('inviteService', {
         endpoint: 'accept-invite',
         invite_code: inviteCode,
@@ -104,9 +107,7 @@ export default function InviteGate({ children }) {
           description: 'Your invitation has been accepted'
         });
         
-        // Remove invite param from URL
         window.history.replaceState({}, document.title, window.location.pathname);
-        
         setHasAccess(true);
       } else {
         toast.error(acceptResponse.data.error || 'Failed to accept invitation');
@@ -183,6 +184,5 @@ export default function InviteGate({ children }) {
     );
   }
 
-  // User has access, render the app
   return <>{children}</>;
 }
