@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
-  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command
+  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
+  Wallet, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,22 @@ const navigationItems = [
     icon: Lock,
     url: createPageUrl('PasswordVault'),
     glow: 'blue'
+  },
+  {
+    id: 'crypto',
+    title: 'Crypto Protection',
+    icon: Wallet,
+    url: createPageUrl('CryptoProtection'),
+    glow: 'purple',
+    badge: 'NEW'
+  },
+  {
+    id: 'fraud',
+    title: 'Fraud Recovery',
+    icon: Search,
+    url: createPageUrl('FraudRecovery'),
+    glow: 'red',
+    badge: 'NEW'
   },
   {
     id: 'device-care',
@@ -277,6 +294,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                           ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
                           : item.badge === 'SCAN'
                           ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                          : item.badge === 'NEW'
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
                           : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
                       } border`}>
                         {item.badge}
