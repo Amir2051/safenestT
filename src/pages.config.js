@@ -46,6 +46,8 @@ import AccessDenied from './pages/AccessDenied';
 import AdminUserApprovals from './pages/AdminUserApprovals';
 import AdminDashboard from './pages/AdminDashboard';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
+import CryptoProtection from './pages/CryptoProtection';
+import FraudRecovery from './pages/FraudRecovery';
 import __Layout from './Layout.jsx';
 
 
@@ -98,6 +100,8 @@ export const PAGES = {
     "AdminUserApprovals": AdminUserApprovals,
     "AdminDashboard": AdminDashboard,
     "WelcomeOnboarding": WelcomeOnboarding,
+    "CryptoProtection": CryptoProtection,
+    "FraudRecovery": FraudRecovery,
 }
 
 export const pagesConfig = {
