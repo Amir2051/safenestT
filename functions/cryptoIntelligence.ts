@@ -56,20 +56,49 @@ Deno.serve(async (req) => {
 
     if (endpoint === 'scam-alerts') {
       // Get recent scam alerts from database
-      const recentScams = await base44.asServiceRole.entities.ScamDatabase.list('-created_date', 10);
+      const recentScams = await base44.asServiceRole.entities.ScamDatabase.list('-created_date', 20);
       
       const alerts = recentScams.map(scam => ({
         id: scam.id,
-        title: `${scam.scam_type.toUpperCase()}: ${scam.identifier.substring(0, 20)}...`,
+        scamType: scam.scam_type,
+        title: `${scam.scam_type.toUpperCase()}: ${scam.identifier.substring(0, 30)}...`,
         summary: scam.scam_description,
+        platform: scam.blockchain || 'Multiple',
+        walletAddress: scam.scam_type === 'wallet' ? scam.identifier : null,
         category: scam.scam_type,
         riskLevel: scam.risk_level,
         timestamp: scam.created_date,
         source: scam.reported_by,
-        verified: scam.verified
+        verified: scam.verified,
+        victimCount: scam.victim_count || 1
       }));
 
       return Response.json({ alerts });
+    }
+
+    if (endpoint === 'flagged-wallets') {
+      // Get flagged wallets from database
+      const flaggedWallets = await base44.asServiceRole.entities.ScamDatabase.filter(
+        { scam_type: 'wallet', status: 'active' },
+        '-created_date',
+        30
+      );
+      
+      const wallets = flaggedWallets.map(wallet => ({
+        id: wallet.id,
+        address: wallet.identifier,
+        scamCategory: wallet.scam_description || 'Suspicious Activity',
+        reportCount: wallet.victim_count || 1,
+        platforms: [wallet.blockchain || 'Unknown'],
+        riskLevel: wallet.risk_level,
+        source: wallet.reported_by,
+        totalStolen: wallet.total_stolen_usd || 0,
+        firstReported: wallet.first_reported || wallet.created_date,
+        verified: wallet.verified,
+        status: wallet.status
+      }));
+
+      return Response.json({ wallets });
     }
 
     if (endpoint === 'security-tips') {

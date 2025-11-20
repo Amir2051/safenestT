@@ -8,7 +8,8 @@ import { Radio, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-import ScamAlertsFeed from "../components/intelligence/ScamAlertsFeed.jsx";
+import GlobalScamReports from "../components/intelligence/GlobalScamReports.jsx";
+import ScammerWalletLookup from "../components/intelligence/ScammerWalletLookup.jsx";
 import CryptoPriceTracker from "../components/intelligence/CryptoPriceTracker.jsx";
 import SecurityTips from "../components/intelligence/SecurityTips.jsx";
 
@@ -18,6 +19,7 @@ export default function LiveIntelligence() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [wallets, setWallets] = useState([]);
   const [prices, setPrices] = useState({});
   const [tips, setTips] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -28,13 +30,15 @@ export default function LiveIntelligence() {
 
   const fetchAllData = async () => {
     try {
-      const [alertsRes, pricesRes, tipsRes] = await Promise.all([
+      const [alertsRes, walletsRes, pricesRes, tipsRes] = await Promise.all([
         base44.functions.invoke('cryptoIntelligence', { endpoint: 'scam-alerts' }),
+        base44.functions.invoke('cryptoIntelligence', { endpoint: 'flagged-wallets' }),
         base44.functions.invoke('cryptoIntelligence', { endpoint: 'crypto-prices' }),
         base44.functions.invoke('cryptoIntelligence', { endpoint: 'security-tips' })
       ]);
 
       setAlerts(alertsRes.data.alerts || []);
+      setWallets(walletsRes.data.wallets || []);
       setPrices(pricesRes.data.prices || {});
       setTips(tipsRes.data.tips || []);
       setLastUpdate(new Date());
@@ -132,27 +136,36 @@ export default function LiveIntelligence() {
           <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-500/50" />
           <p className="text-white font-semibold">All Systems Operational</p>
           <span className="text-gray-400 text-sm ml-auto">
-            {alerts.length} active threats monitored
+            {alerts.length} reports • {wallets.length} flagged wallets
           </span>
         </div>
       </motion.div>
 
       {/* Main Content */}
       <div className="space-y-6">
-        {/* Scam Alerts Feed */}
+        {/* Global Scam Reports Feed */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <ScamAlertsFeed alerts={alerts} loading={loading} />
+          <GlobalScamReports alerts={alerts} loading={loading} />
+        </motion.div>
+
+        {/* Scammer Wallet Lookup */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <ScammerWalletLookup wallets={wallets} loading={loading} />
         </motion.div>
 
         {/* Crypto Price Tracker */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
         >
           <CryptoPriceTracker prices={prices} loading={loading} />
         </motion.div>
@@ -161,7 +174,7 @@ export default function LiveIntelligence() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
         >
           <SecurityTips tips={tips} loading={loading} />
         </motion.div>
