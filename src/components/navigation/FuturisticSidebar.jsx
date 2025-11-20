@@ -37,6 +37,14 @@ const navigationItems = [
     glow: 'blue'
   },
   {
+    id: 'intelligence',
+    title: 'Live Intelligence',
+    icon: Activity,
+    url: createPageUrl('LiveIntelligence'),
+    glow: 'cyan',
+    badge: 'LIVE'
+  },
+  {
     id: 'crypto',
     title: 'Crypto Protection',
     icon: Wallet,
