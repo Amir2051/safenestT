@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home
+  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home, Sparkles, Clock
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -59,6 +59,18 @@ export default function Dashboard() {
     queryFn: () => base44.entities.TitleAlert.list('-alert_date', 10),
     enabled: !!user,
     initialData: [],
+  });
+
+  const { data: subscriptionInfo } = useQuery({
+    queryKey: ['subscription-info'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('subscriptionService', {
+        endpoint: 'get-subscription-info'
+      });
+      return response.data;
+    },
+    enabled: !!user,
+    refetchInterval: 30000
   });
 
   useEffect(() => {
@@ -204,6 +216,85 @@ export default function Dashboard() {
       {/* Getting Started Checklist - Show for new users */}
       {user && !user.onboarding_completed && (
         <GettingStartedChecklist user={user} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['user'] })} />
+      )}
+
+      {/* Subscription Status Banner */}
+      {subscriptionInfo && (
+        <Card className={`bg-gradient-to-r ${
+          subscriptionInfo.subscription_plan === 'elite' ? 'from-purple-500/10 to-pink-500/10 border-purple-500/30' :
+          subscriptionInfo.subscription_plan === 'basic' ? 'from-blue-500/10 to-cyan-500/10 border-blue-500/30' :
+          subscriptionInfo.is_trial_active ? 'from-cyan-500/10 to-blue-500/10 border-cyan-500/30' :
+          'from-gray-500/10 to-gray-600/10 border-gray-500/30'
+        }`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  subscriptionInfo.subscription_plan === 'elite' ? 'bg-gradient-to-br from-purple-500 to-pink-500' :
+                  subscriptionInfo.subscription_plan === 'basic' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' :
+                  'bg-gradient-to-br from-gray-500 to-gray-600'
+                }`}>
+                  {subscriptionInfo.subscription_plan === 'elite' || subscriptionInfo.subscription_plan === 'basic' ? (
+                    <Sparkles className="w-6 h-6 text-white" />
+                  ) : (
+                    <Clock className="w-6 h-6 text-white" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-white font-bold text-lg capitalize">
+                      {subscriptionInfo.subscription_plan === 'elite' ? 'Elite Plan' :
+                       subscriptionInfo.subscription_plan === 'basic' ? 'Basic Plan' :
+                       subscriptionInfo.is_trial_active ? '14-Day Free Trial' : 'Free Plan'}
+                    </h3>
+                    {subscriptionInfo.subscription_status === 'active' && (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <p className={`text-sm ${
+                    subscriptionInfo.subscription_plan === 'elite' ? 'text-purple-300' :
+                    subscriptionInfo.subscription_plan === 'basic' ? 'text-blue-300' :
+                    'text-cyan-300'
+                  }`}>
+                    {subscriptionInfo.is_trial_active ? (
+                      <>🎁 {subscriptionInfo.days_left} days remaining in your free trial</>
+                    ) : subscriptionInfo.subscription_plan === 'elite' ? (
+                      <>✨ Multi-device • Advanced protection • Priority support</>
+                    ) : subscriptionInfo.subscription_plan === 'basic' ? (
+                      <>🛡️ Full protection • Single device • Priority support</>
+                    ) : (
+                      <>Start your 14-day free trial today</>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {!subscriptionInfo.has_payment_method && subscriptionInfo.is_trial_active && (
+                <Link to={createPageUrl("Billing")}>
+                  <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
+                    Add Payment Method
+                  </Button>
+                </Link>
+              )}
+              {(!subscriptionInfo.subscription_plan || subscriptionInfo.subscription_plan === 'free') && !subscriptionInfo.is_trial_active && (
+                <Link to={createPageUrl("Upgrade")}>
+                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Start Free Trial
+                  </Button>
+                </Link>
+              )}
+              {subscriptionInfo.subscription_plan === 'basic' && (
+                <Link to={createPageUrl("Upgrade")}>
+                  <Button variant="outline" className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
+                    Upgrade to Elite
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* OWASP Protection Banner */}
