@@ -81,7 +81,7 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
           {/* Pricing */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-center">
-              <p className="text-xs text-gray-400 mb-1">Basic</p>
+              <p className="text-xs text-gray-400 mb-1">Basic Plan</p>
               <p className="text-2xl font-bold text-white">$9.99</p>
               <p className="text-xs text-gray-400">/month</p>
             </div>
@@ -89,8 +89,8 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
               <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
                 Popular
               </div>
-              <p className="text-xs text-gray-400 mb-1">Elite</p>
-              <p className="text-2xl font-bold text-white">$14.99</p>
+              <p className="text-xs text-gray-400 mb-1">Elite Plan</p>
+              <p className="text-2xl font-bold text-white">$19.99</p>
               <p className="text-xs text-gray-400">/month</p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
           </Link>
 
           <p className="text-center text-gray-500 text-xs mt-4">
-            30-day money-back guarantee • Cancel anytime
+            14-day free trial • 30-day money-back guarantee • Cancel anytime
           </p>
         </CardContent>
       </Card>

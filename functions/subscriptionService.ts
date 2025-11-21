@@ -13,9 +13,9 @@ Deno.serve(async (req) => {
 
     switch (endpoint) {
       case 'init-trial': {
-        // Initialize 7-day trial for new user
+        // Initialize 14-day trial for new user
         const trialStart = new Date();
-        const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000);
 
         await base44.auth.updateMe({
           subscription_plan: 'trial',
@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
         if (!notificationsSent.trial_start) {
           toSend.push({
             id: crypto.randomUUID(),
-            title: '🎉 Welcome to SafeNest!',
-            message: 'Your 7-day free trial has started. Add your payment method to continue after the trial.',
+            title: '🎉 Welcome to SafeNestt!',
+            message: 'Your 14-day free trial has started. Add your payment method to continue after the trial.',
             type: 'premium',
             priority: 'normal',
             actionUrl: '/PaymentOnboarding',

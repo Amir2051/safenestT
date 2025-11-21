@@ -13,27 +13,27 @@ export default function Upgrade() {
 
   const PLANS = {
     basic: {
-      name: "Basic Protection",
+      name: "Basic Plan",
       price: "$9.99",
       period: "month",
       checkoutUrl: "https://buy.stripe.com/14AfZacYa62u0vVaY14gg09",
       color: "from-blue-500 to-cyan-500",
       icon: Shield,
       features: [
-        "✅ Unlimited password breach checking",
-        "✅ Real-time breach monitoring (3 emails)",
-        "✅ Instant breach notifications",
-        "✅ Phone number monitoring",
+        "✅ Full scam-check access",
+        "✅ Phone number verification",
+        "✅ Identity report tools",
+        "✅ Basic protection alerts",
+        "✅ Password breach monitoring",
         "✅ Unlimited vault storage",
         "✅ Dark web scan reports",
-        "✅ VPN protection",
         "✅ Priority email support",
-        "✅ Export reports (PDF)"
+        "✅ Single-device usage"
       ]
     },
     elite: {
-      name: "Elite Protection",
-      price: "$14.99",
+      name: "Elite Plan",
+      price: "$19.99",
       period: "month",
       checkoutUrl: "https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a",
       color: "from-purple-500 to-pink-500",
@@ -41,16 +41,16 @@ export default function Upgrade() {
       popular: true,
       features: [
         "✨ Everything in Basic Plan",
-        "✅ Family protection (5 emails)",
+        "✅ Advanced scam pattern detection",
+        "✅ Multi-device support (up to 5 devices)",
+        "✅ Priority protection alerts",
+        "✅ Premium identity verification tools",
         "✅ Credit card breach monitoring",
-        "✅ SSN monitoring",
-        "✅ Advanced dark web scanning",
         "✅ 24/7 priority support",
         "✅ AI-powered threat analysis",
         "✅ Automated security fixes",
-        "✅ Monthly security consultation",
-        "✅ Custom security alerts",
-        "✅ Early access to features"
+        "✅ Access to future AI-driven features",
+        "✅ Early access to new features"
       ]
     }
   };
@@ -100,6 +100,7 @@ export default function Upgrade() {
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
+            <span className="flex items-center gap-1">🎁 14-Day Free Trial</span>
             <span className="flex items-center gap-1">✅ 30-Day Money Back</span>
             <span className="flex items-center gap-1">🔒 Secure via Stripe</span>
             <span className="flex items-center gap-1">❌ Cancel Anytime</span>
@@ -142,18 +143,18 @@ export default function Upgrade() {
               
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-5 border-2 border-blue-500/40">
                 <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                  💎 Basic
+                  💎 Basic Plan
                   <Badge className="bg-blue-500/20 text-blue-400 text-xs">$9.99/mo</Badge>
                 </h4>
                 <ul className="space-y-2 text-sm">
                   <li className="text-green-400">✅ Everything in Free</li>
-                  <li className="text-cyan-400">✨ 3 emails monitored</li>
-                  <li className="text-cyan-400">✨ Real-time alerts</li>
+                  <li className="text-cyan-400">✨ Full scam-check access</li>
+                  <li className="text-cyan-400">✨ Phone verification</li>
+                  <li className="text-cyan-400">✨ Identity report tools</li>
+                  <li className="text-cyan-400">✨ Basic protection alerts</li>
                   <li className="text-cyan-400">✨ Unlimited vault</li>
-                  <li className="text-cyan-400">✨ VPN protection</li>
-                  <li className="text-cyan-400">✨ Priority support</li>
-                  <li className="text-cyan-400">✨ PDF reports</li>
-                  <li className="text-red-400">❌ Family protection</li>
+                  <li className="text-cyan-400">✨ Single-device usage</li>
+                  <li className="text-red-400">❌ Multi-device support</li>
                 </ul>
               </div>
               
@@ -165,18 +166,18 @@ export default function Upgrade() {
                   </Badge>
                 </div>
                 <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2 mt-2">
-                  ✨ Elite
-                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">$14.99/mo</Badge>
+                  ✨ Elite Plan
+                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">$19.99/mo</Badge>
                 </h4>
                 <ul className="space-y-2 text-sm">
                   <li className="text-green-400">✅ Everything in Basic</li>
-                  <li className="text-purple-400">⭐ 5 emails monitored</li>
-                  <li className="text-purple-400">⭐ Credit card monitoring</li>
-                  <li className="text-purple-400">⭐ SSN monitoring</li>
+                  <li className="text-purple-400">⭐ Advanced scam detection</li>
+                  <li className="text-purple-400">⭐ Multi-device (up to 5)</li>
+                  <li className="text-purple-400">⭐ Priority alerts</li>
+                  <li className="text-purple-400">⭐ Premium identity tools</li>
                   <li className="text-purple-400">⭐ AI threat analysis</li>
-                  <li className="text-purple-400">⭐ Auto security fixes</li>
                   <li className="text-purple-400">⭐ 24/7 support</li>
-                  <li className="text-purple-400">⭐ Expert consultations</li>
+                  <li className="text-purple-400">⭐ Future AI features</li>
                 </ul>
               </div>
             </div>
@@ -329,9 +330,15 @@ export default function Upgrade() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="text-white font-semibold mb-2">What's the difference between free and premium?</h4>
+              <h4 className="text-white font-semibold mb-2">What's included in the 14-day free trial?</h4>
               <p className="text-gray-400 text-sm">
-                Free tier includes unlimited password checking and 1 email check/day. Premium unlocks unlimited email monitoring, real-time alerts, VPN, and advanced features.
+                You get full access to all features of your chosen plan for 14 days. No credit card required to start. Cancel anytime during the trial without being charged.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-2">What's the difference between Basic and Elite?</h4>
+              <p className="text-gray-400 text-sm">
+                Basic Plan ($9.99/mo) includes full scam protection for single-device usage. Elite Plan ($19.99/mo) adds multi-device support (up to 5 devices), advanced scam pattern detection, priority alerts, and future AI-driven features.
               </p>
             </div>
             <div>

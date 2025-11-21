@@ -44,14 +44,14 @@ Deno.serve(async (req) => {
           stripe_subscription_id: session.subscription,
           subscription_plan: planName,
           subscription_status: 'active',
-          billing_cycle_anchor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          billing_cycle_anchor: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
         });
 
         // Send welcome notification
         const notification = {
           id: crypto.randomUUID(),
           title: '🎉 Payment Method Added!',
-          message: `Your ${planName} plan will activate after your 7-day free trial ends.`,
+          message: `Your ${planName} plan will activate after your 14-day free trial ends.`,
           type: 'premium',
           priority: 'normal',
           timestamp: Date.now(),

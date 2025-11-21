@@ -256,7 +256,11 @@ export default function Billing() {
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Your trial period is 7 days with full access to all features</span>
+              <span>Your trial period is 14 days with full access to all features</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+              <span>Basic Plan: $9.99/month - Elite Plan: $19.99/month</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
