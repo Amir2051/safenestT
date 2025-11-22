@@ -178,8 +178,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="policies" className="w-full">
+      <Tabs defaultValue="fraud" className="w-full">
         <TabsList className="bg-[#1a2332] border border-cyan-500/20">
+          <TabsTrigger value="fraud">
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Fraud Reports
+          </TabsTrigger>
           <TabsTrigger value="policies">
             <Settings className="w-4 h-4 mr-2" />
             Security Policies
@@ -201,6 +205,10 @@ export default function AdminDashboard() {
             Audit Log
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="fraud" className="mt-6">
+          <FraudReportsManager />
+        </TabsContent>
 
         <TabsContent value="policies" className="mt-6">
           <SecurityPolicies />
