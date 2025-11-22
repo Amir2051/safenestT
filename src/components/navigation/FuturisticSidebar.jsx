@@ -123,6 +123,14 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
+    id: 'admin-investigation',
+    title: 'Fraud Investigation',
+    icon: Search,
+    url: createPageUrl('AdminInvestigation'),
+    glow: 'red',
+    badge: 'NEW'
+  },
+  {
     id: 'admin-approvals',
     title: 'User Approvals',
     icon: UserCheck,

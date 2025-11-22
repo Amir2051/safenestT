@@ -49,6 +49,7 @@ import WelcomeOnboarding from './pages/WelcomeOnboarding';
 import CryptoProtection from './pages/CryptoProtection';
 import FraudRecovery from './pages/FraudRecovery';
 import LiveIntelligence from './pages/LiveIntelligence';
+import AdminInvestigation from './pages/AdminInvestigation';
 import __Layout from './Layout.jsx';
 
 
@@ -104,6 +105,7 @@ export const PAGES = {
     "CryptoProtection": CryptoProtection,
     "FraudRecovery": FraudRecovery,
     "LiveIntelligence": LiveIntelligence,
+    "AdminInvestigation": AdminInvestigation,
 }
 
 export const pagesConfig = {
