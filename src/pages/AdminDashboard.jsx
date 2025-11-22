@@ -19,6 +19,7 @@ import ApprovalCriteria from "../components/admin/ApprovalCriteria.jsx";
 import AdminAuditLog from "../components/admin/AdminAuditLog.jsx";
 import UserGroupsManager from "../components/admin/UserGroupsManager.jsx";
 import InviteCodeManager from "../components/admin/InviteCodeManager.jsx";
+import FraudReportsManager from "../components/admin/FraudReportsManager.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
