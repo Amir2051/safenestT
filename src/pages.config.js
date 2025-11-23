@@ -51,6 +51,7 @@ import FraudRecovery from './pages/FraudRecovery';
 import LiveIntelligence from './pages/LiveIntelligence';
 import AdminInvestigation from './pages/AdminInvestigation';
 import CryptoTracker from './pages/CryptoTracker';
+import InvestigationHub from './pages/InvestigationHub';
 import __Layout from './Layout.jsx';
 
 
@@ -108,6 +109,7 @@ export const PAGES = {
     "LiveIntelligence": LiveIntelligence,
     "AdminInvestigation": AdminInvestigation,
     "CryptoTracker": CryptoTracker,
+    "InvestigationHub": InvestigationHub,
 }
 
 export const pagesConfig = {
