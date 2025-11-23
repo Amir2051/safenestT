@@ -18,6 +18,7 @@ import RiskScoringDashboard from "../components/tracker/RiskScoringDashboard.jsx
 import AlertsCenter from "../components/tracker/AlertsCenter.jsx";
 import LawEnforcementReports from "../components/tracker/LawEnforcementReports.jsx";
 import InvestigationAuditLog from "../components/tracker/InvestigationAuditLog.jsx";
+import ExportReports from "../components/tracker/ExportReports.jsx";
 
 export default function CryptoTracker() {
   const [user, setUser] = useState(null);
@@ -79,6 +80,7 @@ export default function CryptoTracker() {
             Real-time wallet monitoring • Fund flow analysis • Law enforcement reporting
           </p>
         </div>
+        <ExportReports monitors={monitors} alerts={alerts} />
       </div>
 
       {/* Real-time Stats Dashboard */}

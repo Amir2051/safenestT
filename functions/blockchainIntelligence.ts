@@ -92,43 +92,109 @@ async function trackWallet(data, base44, user) {
 }
 
 async function fetchBlockchainTransactions(address, blockchain) {
-  // Simulate API call (in production, use Etherscan, Blockchain.com, etc.)
-  const mockTransactions = [
-    {
-      hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-      from: address,
-      to: `0x${Math.random().toString(16).substr(2, 40)}`,
-      value: (Math.random() * 5).toFixed(4),
-      timestamp: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
-      blockNumber: Math.floor(18000000 + Math.random() * 100000),
-      status: 'confirmed',
-      gasUsed: Math.floor(21000 + Math.random() * 50000)
-    },
-    {
-      hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-      from: `0x${Math.random().toString(16).substr(2, 40)}`,
-      to: address,
-      value: (Math.random() * 3).toFixed(4),
-      timestamp: new Date(Date.now() - Math.random() * 86400000 * 14).toISOString(),
-      blockNumber: Math.floor(17900000 + Math.random() * 100000),
-      status: 'confirmed',
-      gasUsed: Math.floor(21000 + Math.random() * 50000)
-    }
-  ];
+  const ALCHEMY_API_KEY = Deno.env.get("ALCHEMY_API_KEY");
+  
+  if (!ALCHEMY_API_KEY) {
+    throw new Error("ALCHEMY_API_KEY not configured");
+  }
 
-  return mockTransactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  // Alchemy network mapping
+  const networks = {
+    'ethereum': 'eth-mainnet',
+    'polygon': 'polygon-mainnet',
+    'bsc': 'bnb-mainnet',
+    'solana': 'solana-mainnet'
+  };
+
+  const network = networks[blockchain] || 'eth-mainnet';
+  const alchemyUrl = `https://${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+
+  try {
+    // Fetch asset transfers using Alchemy API
+    const response = await fetch(alchemyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'alchemy_getAssetTransfers',
+        params: [{
+          fromBlock: '0x0',
+          toBlock: 'latest',
+          fromAddress: address,
+          category: ['external', 'erc20', 'erc721', 'erc1155'],
+          maxCount: '0x32', // 50 transactions
+          withMetadata: true
+        }]
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('Alchemy API error:', data.error);
+      return [];
+    }
+
+    const transfers = data.result?.transfers || [];
+    
+    return transfers.map(tx => ({
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      value: tx.value || '0',
+      asset: tx.asset || 'ETH',
+      timestamp: tx.metadata?.blockTimestamp || new Date().toISOString(),
+      blockNumber: parseInt(tx.blockNum, 16),
+      status: 'confirmed',
+      gasUsed: 21000,
+      category: tx.category
+    })).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  } catch (error) {
+    console.error('Failed to fetch from Alchemy:', error);
+    return [];
+  }
 }
 
 async function fetchWalletBalance(address, blockchain) {
-  // Simulate balance fetch
-  const amount = (Math.random() * 10).toFixed(4);
-  const usdPrice = blockchain === 'ethereum' ? 3000 : blockchain === 'bitcoin' ? 42000 : 500;
+  const ALCHEMY_API_KEY = Deno.env.get("ALCHEMY_API_KEY");
   
-  return {
-    amount: parseFloat(amount),
-    usd: parseFloat(amount) * usdPrice,
-    currency: blockchain === 'ethereum' ? 'ETH' : blockchain === 'bitcoin' ? 'BTC' : 'BNB'
+  const networks = {
+    'ethereum': 'eth-mainnet',
+    'polygon': 'polygon-mainnet',
+    'bsc': 'bnb-mainnet'
   };
+
+  const network = networks[blockchain] || 'eth-mainnet';
+  const alchemyUrl = `https://${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+
+  try {
+    const response = await fetch(alchemyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_getBalance',
+        params: [address, 'latest']
+      })
+    });
+
+    const data = await response.json();
+    const balanceWei = data.result ? parseInt(data.result, 16) : 0;
+    const balanceEth = balanceWei / 1e18;
+    
+    const usdPrice = blockchain === 'ethereum' ? 3000 : blockchain === 'polygon' ? 0.5 : 500;
+    
+    return {
+      amount: parseFloat(balanceEth.toFixed(4)),
+      usd: balanceEth * usdPrice,
+      currency: blockchain === 'ethereum' ? 'ETH' : blockchain === 'polygon' ? 'MATIC' : 'BNB'
+    };
+  } catch (error) {
+    console.error('Failed to fetch balance:', error);
+    return { amount: 0, usd: 0, currency: 'ETH' };
+  }
 }
 
 function calculateWalletRiskScore(transactions, blockchain) {

@@ -182,7 +182,7 @@ export default function WalletMonitoringEngine({ monitors }) {
                     <p className="text-white font-mono text-sm break-all mb-2">
                       {monitor.wallet_address}
                     </p>
-                    <div className="grid grid-cols-4 gap-3 text-xs">
+                    <div className="grid grid-cols-5 gap-3 text-xs">
                       <div>
                         <p className="text-gray-400">Risk Score</p>
                         <p className={`font-bold ${
@@ -195,6 +195,12 @@ export default function WalletMonitoringEngine({ monitors }) {
                       <div>
                         <p className="text-gray-400">Balance</p>
                         <p className="text-white font-bold">${monitor.balance_usd?.toLocaleString() || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Asset</p>
+                        <p className="text-cyan-400 font-bold">
+                          {monitor.current_balance?.toFixed(4) || '0.0000'} {monitor.blockchain === 'ethereum' ? 'ETH' : 'BNB'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-400">Transactions</p>
