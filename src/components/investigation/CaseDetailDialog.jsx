@@ -107,72 +107,73 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <select
               value={caseData.status}
               onChange={(e) => updateStatus(e.target.value)}
-              className="px-4 py-2 bg-[#0f1419] border border-cyan-500/20 rounded-lg text-white text-sm"
+              className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white text-sm font-medium"
+              style={{ color: '#ffffff' }}
             >
-              <option value="new">New</option>
-              <option value="investigating">Investigating</option>
-              <option value="documented">Documented</option>
-              <option value="submitted">Submitted</option>
-              <option value="law_enforcement">Law Enforcement</option>
-              <option value="recovering">Recovering</option>
-              <option value="recovered">Recovered</option>
-              <option value="closed">Closed</option>
+              <option value="new" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>New</option>
+              <option value="investigating" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Investigating</option>
+              <option value="documented" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Documented</option>
+              <option value="submitted" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Submitted</option>
+              <option value="law_enforcement" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Law Enforcement</option>
+              <option value="recovering" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Recovering</option>
+              <option value="recovered" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Recovered</option>
+              <option value="closed" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Closed</option>
             </select>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-[#0f1419] border border-cyan-500/20">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="evidence">Evidence</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="tracking">Tracking</TabsTrigger>
+            <TabsList className="bg-[#0f1419] border border-cyan-500/30">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Overview</TabsTrigger>
+              <TabsTrigger value="evidence" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Evidence</TabsTrigger>
+              <TabsTrigger value="timeline" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Timeline</TabsTrigger>
+              <TabsTrigger value="notes" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Notes</TabsTrigger>
+              <TabsTrigger value="tracking" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Tracking</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <p className="text-xs text-gray-400">Victim</p>
+                    <User className="w-4 h-4 text-cyan-400" />
+                    <p className="text-xs text-gray-300 font-medium">Victim</p>
                   </div>
-                  <p className="text-white font-semibold">{caseData.victim_name}</p>
+                  <p className="text-white font-semibold text-base">{caseData.victim_name}</p>
                   {caseData.victim_email && (
-                    <p className="text-xs text-gray-400 mt-1">{caseData.victim_email}</p>
+                    <p className="text-xs text-gray-300 mt-1">{caseData.victim_email}</p>
                   )}
                   {caseData.victim_phone && (
-                    <p className="text-xs text-gray-400">{caseData.victim_phone}</p>
+                    <p className="text-xs text-gray-300">{caseData.victim_phone}</p>
                   )}
                 </div>
 
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="w-4 h-4 text-gray-400" />
-                    <p className="text-xs text-gray-400">Amount Stolen</p>
+                    <DollarSign className="w-4 h-4 text-cyan-400" />
+                    <p className="text-xs text-gray-300 font-medium">Amount Stolen</p>
                   </div>
                   <p className="text-2xl font-bold text-red-400">
                     ${caseData.amount_stolen_usd?.toLocaleString() || 0}
                   </p>
                   {caseData.cryptocurrency && (
-                    <p className="text-xs text-gray-400 mt-1">{caseData.cryptocurrency}</p>
+                    <p className="text-xs text-gray-300 mt-1 font-medium">{caseData.cryptocurrency}</p>
                   )}
                 </div>
 
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <p className="text-xs text-gray-400">Incident Date</p>
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <p className="text-xs text-gray-300 font-medium">Incident Date</p>
                   </div>
-                  <p className="text-white font-semibold">
+                  <p className="text-white font-semibold text-base">
                     {caseData.incident_date ? new Date(caseData.incident_date).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
               </div>
 
               {caseData.description && (
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                  <p className="text-xs text-gray-400 mb-2">Case Description</p>
-                  <p className="text-white text-sm">{caseData.description}</p>
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                  <p className="text-xs text-gray-300 mb-2 font-medium">Case Description</p>
+                  <p className="text-white text-sm leading-relaxed">{caseData.description}</p>
                 </div>
               )}
 
@@ -196,7 +197,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="evidence" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold">Evidence Files</h3>
+                <h3 className="text-white font-semibold text-lg">Evidence Files</h3>
                 <label>
                   <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                   <Button size="sm" disabled={uploading} className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer">
@@ -209,12 +210,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               {caseData.evidence_files && caseData.evidence_files.length > 0 ? (
                 <div className="grid gap-2">
                   {caseData.evidence_files.map((file, idx) => (
-                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/10 flex items-center justify-between">
+                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20 flex items-center justify-between hover:border-cyan-500/40 transition-colors">
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-cyan-400" />
                         <div>
-                          <p className="text-white text-sm">{file.name}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-white text-sm font-medium">{file.name}</p>
+                          <p className="text-xs text-gray-300">
                             {new Date(file.uploaded_date).toLocaleDateString()}
                           </p>
                         </div>
@@ -234,18 +235,18 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="timeline" className="space-y-4">
-              <h3 className="text-white font-semibold">Case Timeline</h3>
+              <h3 className="text-white font-semibold text-lg">Case Timeline</h3>
               {caseData.timeline && caseData.timeline.length > 0 ? (
                 <div className="space-y-3">
                   {caseData.timeline.map((event, idx) => (
-                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border-l-4 border-cyan-500">
+                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border-l-4 border-cyan-500 border border-cyan-500/20">
                       <div className="flex items-start justify-between mb-2">
-                        <p className="text-white font-semibold">{event.event}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-white font-semibold text-base">{event.event}</p>
+                        <p className="text-xs text-gray-300 font-medium">
                           {new Date(event.date).toLocaleString()}
                         </p>
                       </div>
-                      {event.details && <p className="text-sm text-gray-400">{event.details}</p>}
+                      {event.details && <p className="text-sm text-gray-300 leading-relaxed">{event.details}</p>}
                     </div>
                   ))}
                 </div>
@@ -274,16 +275,16 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               {caseData.case_notes && caseData.case_notes.length > 0 ? (
                 <div className="space-y-2">
                   {caseData.case_notes.slice().reverse().map((note, idx) => (
-                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                       <div className="flex items-start justify-between mb-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs font-medium border-cyan-500/30 text-cyan-300">
                           {note.author}
                         </Badge>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-300 font-medium">
                           {new Date(note.timestamp).toLocaleString()}
                         </p>
                       </div>
-                      <p className="text-white text-sm">{note.note}</p>
+                      <p className="text-white text-sm leading-relaxed">{note.note}</p>
                     </div>
                   ))}
                 </div>
@@ -296,11 +297,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">
-              <h3 className="text-white font-semibold">Wallet Tracking</h3>
+              <h3 className="text-white font-semibold text-lg">Wallet Tracking</h3>
               {caseData.monitored_wallets && caseData.monitored_wallets.length > 0 ? (
                 <div className="space-y-2">
                   {caseData.monitored_wallets.map((wallet, idx) => (
-                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20 hover:border-cyan-500/40 transition-colors">
                       <p className="text-white font-mono text-sm">{wallet}</p>
                     </div>
                   ))}

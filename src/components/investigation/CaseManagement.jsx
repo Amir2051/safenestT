@@ -70,17 +70,18 @@ export default function CaseManagement({ cases }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-[#0f1419] border border-cyan-500/20 rounded-lg text-white"
+              className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white font-medium"
+              style={{ color: '#ffffff' }}
             >
-              <option value="all">All Statuses</option>
-              <option value="new">New</option>
-              <option value="investigating">Investigating</option>
-              <option value="documented">Documented</option>
-              <option value="submitted">Submitted</option>
-              <option value="law_enforcement">Law Enforcement</option>
-              <option value="recovering">Recovering</option>
-              <option value="recovered">Recovered</option>
-              <option value="closed">Closed</option>
+              <option value="all" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>All Statuses</option>
+              <option value="new" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>New</option>
+              <option value="investigating" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Investigating</option>
+              <option value="documented" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Documented</option>
+              <option value="submitted" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Submitted</option>
+              <option value="law_enforcement" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Law Enforcement</option>
+              <option value="recovering" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Recovering</option>
+              <option value="recovered" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Recovered</option>
+              <option value="closed" style={{ backgroundColor: '#0f1419', color: '#ffffff' }}>Closed</option>
             </select>
             <Button
               onClick={() => setShowCreateDialog(true)}
@@ -98,8 +99,8 @@ export default function CaseManagement({ cases }) {
         {filteredCases.length === 0 ? (
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardContent className="p-12 text-center">
-              <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No cases found</p>
+              <FileText className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-300 text-lg font-medium">No cases found</p>
               <Button
                 onClick={() => setShowCreateDialog(true)}
                 className="mt-4 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30"
@@ -118,8 +119,8 @@ export default function CaseManagement({ cases }) {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-white">{caseItem.case_title}</h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <h3 className="text-xl font-bold text-white">{caseItem.case_title}</h3>
                       <Badge className={getStatusColor(caseItem.status)}>
                         {caseItem.status.replace('_', ' ')}
                       </Badge>
@@ -130,38 +131,38 @@ export default function CaseManagement({ cases }) {
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                       <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
+                        <User className="w-4 h-4 text-cyan-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Victim</p>
-                          <p className="text-sm text-white">{caseItem.victim_name}</p>
+                          <p className="text-xs text-gray-300 font-medium">Victim</p>
+                          <p className="text-sm text-white font-semibold">{caseItem.victim_name}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-gray-400" />
+                        <DollarSign className="w-4 h-4 text-cyan-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Amount Stolen</p>
-                          <p className="text-sm text-red-400 font-semibold">
+                          <p className="text-xs text-gray-300 font-medium">Amount Stolen</p>
+                          <p className="text-sm text-red-400 font-bold">
                             ${caseItem.amount_stolen_usd?.toLocaleString() || 0}
                           </p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <Calendar className="w-4 h-4 text-cyan-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Incident Date</p>
-                          <p className="text-sm text-white">
+                          <p className="text-xs text-gray-300 font-medium">Incident Date</p>
+                          <p className="text-sm text-white font-semibold">
                             {caseItem.incident_date ? new Date(caseItem.incident_date).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400" />
+                        <FileText className="w-4 h-4 text-cyan-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Case #</p>
-                          <p className="text-sm text-cyan-400 font-mono">
+                          <p className="text-xs text-gray-300 font-medium">Case #</p>
+                          <p className="text-sm text-cyan-400 font-mono font-semibold">
                             {caseItem.case_number || 'Pending'}
                           </p>
                         </div>
