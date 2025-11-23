@@ -131,6 +131,14 @@ const adminItems = [
     badge: 'NEW'
   },
   {
+    id: 'crypto-tracker',
+    title: 'Crypto Tracker',
+    icon: Activity,
+    url: createPageUrl('CryptoTracker'),
+    glow: 'cyan',
+    badge: 'LIVE'
+  },
+  {
     id: 'admin-approvals',
     title: 'User Approvals',
     icon: UserCheck,
