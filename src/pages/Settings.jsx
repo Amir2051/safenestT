@@ -20,7 +20,7 @@ export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: '',
+    username: '',
     phone: '',
     monitored_emails: [],
     vpn_enabled: false,
@@ -33,7 +33,7 @@ export default function Settings() {
     base44.auth.me().then(userData => {
       setUser(userData);
       setFormData({
-        full_name: userData.full_name || '',
+        username: userData.username || userData.full_name || '',
         phone: userData.phone || '',
         monitored_emails: userData.monitored_emails || [],
         vpn_enabled: userData.vpn_enabled || false,
@@ -79,12 +79,12 @@ export default function Settings() {
         });
       }
       
-      if (user && (data.full_name !== user.full_name || data.phone !== user.phone)) { // Added user check
+      if (user && (data.username !== user.username || data.phone !== user.phone)) {
         const profileChanges = {};
-        if (data.full_name !== user.full_name) {
-          profileChanges.full_name = {
-            previous: user.full_name,
-            new: data.full_name
+        if (data.username !== user.username) {
+          profileChanges.username = {
+            previous: user.username,
+            new: data.username
           };
         }
         if (data.phone !== user.phone) {
@@ -108,9 +108,13 @@ export default function Settings() {
     },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
+      setFormData(prev => ({
+        ...prev,
+        username: updatedUser.username || updatedUser.full_name || prev.username
+      }));
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-      toast.success('Settings saved successfully!');
+      toast.success('✅ Settings saved successfully!');
     },
     onError: () => {
       toast.error('Failed to save settings');
@@ -118,8 +122,8 @@ export default function Settings() {
   });
 
   const handleSave = async () => {
-    if (!formData.full_name || formData.full_name.trim() === '') {
-      toast.error('Please enter your full name');
+    if (!formData.username || formData.username.trim() === '') {
+      toast.error('Please enter a username');
       return;
     }
     
@@ -128,6 +132,7 @@ export default function Settings() {
       await updateUserMutation.mutateAsync(formData);
     } catch (error) {
       console.error('Save error:', error);
+      toast.error('Failed to save settings');
     }
     setLoading(false);
   };
@@ -222,12 +227,12 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-gray-300">Full Name</Label>
+                <Label className="text-gray-300">Username</Label>
                 <Input
-                  value={formData.full_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                   className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
-                  placeholder="John Doe"
+                  placeholder="johndoe"
                 />
               </div>
               
@@ -479,7 +484,7 @@ export default function Settings() {
               className="border-cyan-500/20 text-gray-300"
               onClick={() => {
                 setFormData({
-                  full_name: user.full_name || '',
+                  username: user.username || user.full_name || '',
                   phone: user.phone || '',
                   monitored_emails: user.monitored_emails || [],
                   vpn_enabled: user.vpn_enabled || false,
