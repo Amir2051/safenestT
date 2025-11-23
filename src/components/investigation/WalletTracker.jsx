@@ -48,24 +48,40 @@ export default function WalletTracker({ cases }) {
 
     setTracking(true);
     try {
-      // Simulate blockchain data fetch
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch real blockchain data
+      const response = await base44.functions.invoke('blockchainIntelligence', {
+        action: 'track-wallet',
+        data: {
+          wallet_address: walletAddress,
+          blockchain: blockchain,
+          wallet_type: 'unknown'
+        }
+      });
+
+      const data = response.data.data;
       
       setActivityData({
         address: walletAddress,
         blockchain: blockchain,
-        balance: (Math.random() * 10).toFixed(4),
-        balanceUSD: (Math.random() * 30000).toFixed(2),
-        transactionCount: Math.floor(Math.random() * 500),
-        firstSeen: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-        lastActivity: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-        riskScore: Math.floor(Math.random() * 100),
-        interactions: Math.floor(Math.random() * 200)
+        balance: data.balance?.amount || 0,
+        balanceUSD: data.balance?.usd || 0,
+        transactionCount: data.transactions?.length || 0,
+        firstSeen: data.transactions?.[data.transactions.length - 1]?.timestamp 
+          ? new Date(data.transactions[data.transactions.length - 1].timestamp).toLocaleDateString() 
+          : 'N/A',
+        lastActivity: data.transactions?.[0]?.timestamp 
+          ? new Date(data.transactions[0].timestamp).toLocaleDateString() 
+          : 'N/A',
+        riskScore: data.riskScore?.score || 0,
+        riskIndicators: data.riskScore?.indicators || [],
+        interactions: new Set(data.transactions?.map(t => t.to) || []).size,
+        monitor: data.monitor
       });
 
-      toast.success("Wallet data retrieved");
+      toast.success(`Wallet tracked - ${data.transactions?.length || 0} transactions found`);
     } catch (error) {
-      toast.error("Failed to fetch wallet data");
+      console.error('Track error:', error);
+      toast.error("Failed to fetch wallet data: " + (error.message || 'Unknown error'));
     }
     setTracking(false);
   };
@@ -252,6 +268,18 @@ export default function WalletTracker({ cases }) {
                       This wallet shows patterns consistent with suspicious activity. 
                       Consider flagging for detailed investigation.
                     </p>
+                    {activityData.riskIndicators && activityData.riskIndicators.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-400 mb-1">Risk Indicators:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {activityData.riskIndicators.map((indicator, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs text-orange-400">
+                              {indicator}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

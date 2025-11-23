@@ -48,6 +48,39 @@ Deno.serve(async (req) => {
 async function trackWallet(data, base44, user) {
   const { wallet_address, blockchain, fraud_case_id, wallet_type } = data;
 
+  // Fetch initial data first
+  const transactions = await fetchBlockchainTransactions(wallet_address, blockchain);
+  const balance = await fetchWalletBalance(wallet_address, blockchain);
+  const riskScore = calculateWalletRiskScore(transactions, blockchain);
+
+  // Store transactions in database
+  if (transactions.length > 0 && fraud_case_id) {
+    const txToStore = transactions.slice(0, 100).map(tx => ({
+      case_id: fraud_case_id,
+      tx_hash: tx.hash,
+      from_address: tx.from,
+      to_address: tx.to,
+      amount: parseFloat(tx.value) || 0,
+      blockchain: blockchain,
+      asset: tx.asset || blockchain === 'ethereum' ? 'ETH' : 'BTC',
+      timestamp: tx.timestamp,
+      direction: tx.from.toLowerCase() === wallet_address.toLowerCase() ? 'outgoing' : 'incoming',
+      status: tx.status || 'confirmed',
+      block_number: tx.blockNumber,
+      gas_used: tx.gasUsed,
+      category: tx.category
+    }));
+
+    // Bulk create transactions
+    for (const tx of txToStore) {
+      try {
+        await base44.asServiceRole.entities.Transaction.create(tx);
+      } catch (err) {
+        console.error('Transaction insert error:', err);
+      }
+    }
+  }
+
   // Create or update wallet monitor
   const monitor = await base44.asServiceRole.entities.WalletMonitor.create({
     wallet_address,
@@ -56,32 +89,62 @@ async function trackWallet(data, base44, user) {
     wallet_type: wallet_type || 'unknown',
     monitoring_status: 'active',
     alert_enabled: true,
-    last_check: new Date().toISOString()
-  });
-
-  // Log action
-  await base44.asServiceRole.entities.InvestigationLog.create({
-    admin_email: user.email,
-    action_type: 'wallet_added',
-    wallet_address,
-    fraud_case_id,
-    description: `Started monitoring wallet on ${blockchain}`
-  });
-
-  // Fetch initial data
-  const transactions = await fetchBlockchainTransactions(wallet_address, blockchain);
-  const balance = await fetchWalletBalance(wallet_address, blockchain);
-  const riskScore = calculateWalletRiskScore(transactions, blockchain);
-
-  // Update monitor with initial data
-  await base44.asServiceRole.entities.WalletMonitor.update(monitor.id, {
     current_balance: balance.amount,
     balance_usd: balance.usd,
     total_transactions: transactions.length,
     risk_score: riskScore.score,
     risk_indicators: riskScore.indicators,
-    last_transaction_date: transactions[0]?.timestamp
+    last_transaction_date: transactions[0]?.timestamp || new Date().toISOString(),
+    last_check: new Date().toISOString()
   });
+
+  // Log action if case is provided
+  if (fraud_case_id) {
+    await base44.asServiceRole.entities.InvestigationLog.create({
+      admin_email: user.email,
+      action_type: 'wallet_added',
+      wallet_address,
+      fraud_case_id,
+      description: `Started monitoring wallet on ${blockchain}`
+    });
+  }
+
+  // Generate alerts for high-risk wallets
+  if (riskScore.score > 70) {
+    await base44.asServiceRole.entities.BlockchainAlert.create({
+      wallet_monitor_id: monitor.id,
+      wallet_address,
+      alert_type: 'high_risk_interaction',
+      severity: 'high',
+      title: 'High Risk Wallet Detected',
+      message: `Wallet ${wallet_address} has a risk score of ${riskScore.score}`,
+      metadata: {
+        risk_indicators: riskScore.indicators,
+        transaction_count: transactions.length
+      }
+    });
+  }
+
+  // Check for exchange interactions
+  const exchangeTransactions = transactions.filter(tx => {
+    const toType = detectWalletType(tx.to);
+    const fromType = detectWalletType(tx.from);
+    return toType === 'exchange' || fromType === 'exchange';
+  });
+
+  if (exchangeTransactions.length > 0) {
+    await base44.asServiceRole.entities.BlockchainAlert.create({
+      wallet_monitor_id: monitor.id,
+      wallet_address,
+      alert_type: 'exchange_deposit',
+      severity: 'critical',
+      title: 'Exchange Interaction Detected',
+      message: `Wallet has ${exchangeTransactions.length} transaction(s) with exchanges`,
+      metadata: {
+        exchange_transactions: exchangeTransactions.slice(0, 5)
+      }
+    });
+  }
 
   return Response.json({
     success: true,
