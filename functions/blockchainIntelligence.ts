@@ -18,6 +18,9 @@ Deno.serve(async (req) => {
       case 'get-transactions':
         return await getTransactions(data);
       
+      case 'get-balance':
+        return await getBalance(data);
+      
       case 'analyze-fund-flow':
         return await analyzeFundFlow(data);
       
@@ -255,6 +258,16 @@ async function getTransactions(data) {
   return Response.json({
     success: true,
     data: transactions.slice(0, limit)
+  });
+}
+
+async function getBalance(data) {
+  const { wallet_address, blockchain } = data;
+  const balance = await fetchWalletBalance(wallet_address, blockchain);
+  
+  return Response.json({
+    success: true,
+    data: balance
   });
 }
 
