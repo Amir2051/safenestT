@@ -29,7 +29,7 @@ export default function AIReportGenerator({ cases }) {
 
     setGenerating(true);
     try {
-      const caseData = cases.find(c => c.id === selectedCase);
+      const caseData = (cases || []).find(c => c.id === selectedCase);
       
       // Fetch additional data
       const transactions = await base44.entities.Transaction.filter({ case_id: selectedCase });
@@ -241,7 +241,7 @@ Write the report in professional format with clear sections.`,
                 <SelectValue placeholder="Choose case..." />
               </SelectTrigger>
               <SelectContent className="bg-[#1a2332] border-cyan-500/20">
-                {cases.map((c) => (
+                {(cases || []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.case_number} - {c.case_title}
                   </SelectItem>

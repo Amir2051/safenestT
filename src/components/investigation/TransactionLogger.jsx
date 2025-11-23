@@ -91,7 +91,7 @@ export default function TransactionLogger({ cases, caseId }) {
                     <SelectValue placeholder="Select case..." />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a2332] border-cyan-500/20">
-                    {cases.map((c) => (
+                    {(cases || []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.case_number} - {c.case_title}
                       </SelectItem>
