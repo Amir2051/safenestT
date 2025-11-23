@@ -13,13 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Play, Pause, Loader2, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Play, Pause, Loader2, TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export default function WalletMonitoringEngine({ monitors }) {
   const [walletAddress, setWalletAddress] = useState("");
   const [blockchain, setBlockchain] = useState("ethereum");
   const [walletType, setWalletType] = useState("scammer");
+  const [syncing, setSyncing] = useState(null);
   const queryClient = useQueryClient();
 
   const addWalletMutation = useMutation({
@@ -73,6 +74,68 @@ export default function WalletMonitoringEngine({ monitors }) {
       blockchain,
       wallet_type: walletType
     });
+  };
+
+  const syncWallet = async (monitorId, address, blockchain) => {
+    setSyncing(monitorId);
+    try {
+      // Fetch latest transactions
+      const txResponse = await base44.functions.invoke('blockchainIntelligence', {
+        action: 'get-transactions',
+        data: { wallet_address: address, blockchain, limit: 100 }
+      });
+
+      // Fetch balance
+      const balanceResponse = await base44.functions.invoke('blockchainIntelligence', {
+        action: 'get-balance',
+        data: { wallet_address: address, blockchain }
+      });
+
+      // Calculate risk
+      const riskResponse = await base44.functions.invoke('blockchainIntelligence', {
+        action: 'calculate-risk-score',
+        data: { wallet_address: address, blockchain }
+      });
+
+      const transactions = txResponse.data.data || [];
+      const balance = balanceResponse.data.data || { amount: 0, usd: 0 };
+      const risk = riskResponse.data.data || { score: 0, indicators: [] };
+
+      // Update monitor
+      await base44.entities.WalletMonitor.update(monitorId, {
+        current_balance: balance.amount,
+        balance_usd: balance.usd,
+        total_transactions: transactions.length,
+        risk_score: risk.score,
+        risk_indicators: risk.indicators,
+        last_transaction_date: transactions[0]?.timestamp || new Date().toISOString(),
+        last_check: new Date().toISOString()
+      });
+
+      // Create alert if transactions found
+      if (transactions.length > 0) {
+        const latestTx = transactions[0];
+        await base44.entities.BlockchainAlert.create({
+          wallet_monitor_id: monitorId,
+          wallet_address: address,
+          alert_type: 'new_transaction',
+          severity: parseFloat(latestTx.value) > 1 ? 'high' : 'medium',
+          title: 'Wallet Synced - Activity Detected',
+          message: `${latestTx.value} ${latestTx.asset} transferred`,
+          transaction_hash: latestTx.hash,
+          amount: parseFloat(latestTx.value),
+          from_address: latestTx.from,
+          to_address: latestTx.to
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['wallet-monitors'] });
+      queryClient.invalidateQueries({ queryKey: ['blockchain-alerts'] });
+      toast.success(`✅ ${transactions.length} transactions found`);
+    } catch (error) {
+      toast.error('Sync failed: ' + error.message);
+    }
+    setSyncing(null);
   };
 
   return (
@@ -235,6 +298,20 @@ export default function WalletMonitoringEngine({ monitors }) {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => syncWallet(monitor.id, monitor.wallet_address, monitor.blockchain)}
+                      disabled={syncing === monitor.id}
+                      className="text-green-400"
+                      title="Sync wallet data from blockchain"
+                    >
+                      {syncing === monitor.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
