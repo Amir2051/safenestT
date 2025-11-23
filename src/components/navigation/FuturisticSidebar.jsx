@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search
+  Wallet, Search, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +59,13 @@ const navigationItems = [
     url: createPageUrl('FraudRecovery'),
     glow: 'red',
     badge: 'NEW'
+  },
+  {
+    id: 'agencies',
+    title: 'Agencies Directory',
+    icon: Building2,
+    url: createPageUrl('AgenciesDirectory'),
+    glow: 'blue'
   },
   {
     id: 'device-care',
