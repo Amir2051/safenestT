@@ -239,12 +239,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       initial={{ x: -300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="relative w-72 h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 overflow-hidden"
+      className="relative w-72 h-full min-h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 flex flex-col"
     >
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/20 via-transparent to-purple-950/20 pointer-events-none" />
       <div className="absolute top-0 left-0 w-full h-32 bg-gradient-radial from-cyan-500/10 to-transparent blur-2xl pointer-events-none animate-pulse" />
       
-      <div className="relative z-10 flex flex-col h-full p-6">
+      <div className="relative z-10 flex flex-col h-full min-h-screen p-6">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -270,7 +270,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           </div>
         </motion.div>
 
-        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
           <AnimatePresence>
             {allMenuItems.map((item, index) => {
               const isActive = activeItem === item.id;
@@ -296,7 +296,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   
                   <button
                     onClick={() => handleNavClick(item)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group ${
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-300 group touch-manipulation ${
                       isActive
                         ? `bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/50 ${glow}`
                         : 'bg-gray-900/30 border border-gray-700/30 hover:border-cyan-500/30 hover:bg-gray-800/50'
@@ -312,8 +312,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                     </div>
                     
                     <span className={`flex-1 text-left text-sm font-medium tracking-wide ${
-                      isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'
-                    } transition-colors`}>
+                      isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'
+                    } transition-colors leading-relaxed`}>
                       {item.title}
                     </span>
                     
@@ -429,6 +429,29 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+          background: rgba(15, 20, 25, 0.5);
+          border-radius: 10px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+          background: rgba(6, 182, 212, 0.3);
+          border-radius: 10px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+          background: rgba(6, 182, 212, 0.5);
+        }
+        
+        .scrollbar-custom {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(6, 182, 212, 0.3) rgba(15, 20, 25, 0.5);
         }
       `}</style>
     </motion.div>

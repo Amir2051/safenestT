@@ -87,7 +87,7 @@ export default function Layout({ children, currentPageName }) {
         onTouchEnd={onTouchEnd}
       >
         {/* Desktop Sidebar - Always visible on lg+ */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block h-screen sticky top-0 overflow-hidden">
           <FuturisticSidebar user={user} onLogout={handleLogout} />
         </div>
 
@@ -134,20 +134,22 @@ export default function Layout({ children, currentPageName }) {
                   stiffness: 300,
                   damping: 30
                 }}
-                className="lg:hidden fixed left-0 top-0 bottom-0 z-50"
+                className="lg:hidden fixed left-0 top-0 bottom-0 z-50 h-full overflow-hidden"
               >
-                <FuturisticSidebar 
-                  user={user} 
-                  onLogout={handleLogout}
-                  onNavigate={handleMenuClose}
-                />
+                <div className="h-full overflow-y-auto">
+                  <FuturisticSidebar 
+                    user={user} 
+                    onLogout={handleLogout}
+                    onNavigate={handleMenuClose}
+                  />
+                </div>
               </motion.div>
             </>
           )}
         </AnimatePresence>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative overflow-hidden">
+        <main className="flex-1 flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative overflow-hidden min-h-screen">
           {/* Ambient Background Effects */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />
@@ -199,7 +201,7 @@ export default function Layout({ children, currentPageName }) {
           </header>
 
           {/* Page Content */}
-          <div className="relative z-10 flex-1 overflow-auto">
+          <div className="relative z-10 flex-1 overflow-auto h-full">
             {children}
           </div>
         </main>
