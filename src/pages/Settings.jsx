@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -119,8 +118,17 @@ export default function Settings() {
   });
 
   const handleSave = async () => {
+    if (!formData.full_name || formData.full_name.trim() === '') {
+      toast.error('Please enter your full name');
+      return;
+    }
+    
     setLoading(true);
-    await updateUserMutation.mutateAsync(formData);
+    try {
+      await updateUserMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error('Save error:', error);
+    }
     setLoading(false);
   };
 
@@ -355,7 +363,13 @@ export default function Settings() {
                     <p className="text-xs text-gray-400">Last Security Scan</p>
                     <p className="text-white text-sm font-semibold">
                       {user.last_scan_date 
-                        ? new Date(user.last_scan_date).toLocaleString()
+                        ? new Date(user.last_scan_date).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
                         : 'Never'
                       }
                     </p>
