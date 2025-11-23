@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,9 @@ import InvestigationSettings from "../components/investigation/InvestigationSett
 
 export default function InvestigationHub() {
   const [user, setUser] = useState(null);
+  const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: cases = [] } = useQuery({
     queryKey: ['investigation-cases'],
@@ -33,6 +36,13 @@ export default function InvestigationHub() {
   const { data: submissions = [] } = useQuery({
     queryKey: ['agency-submissions'],
     queryFn: () => base44.entities.AgencySubmission.list('-submission_date'),
+    enabled: !!user,
+    initialData: [],
+  });
+
+  const { data: fraudCases = [] } = useQuery({
+    queryKey: ['fraud-cases-import'],
+    queryFn: () => base44.entities.FraudCase.list('-created_date'),
     enabled: !!user,
     initialData: [],
   });
@@ -61,6 +71,62 @@ export default function InvestigationHub() {
   const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending').length;
   const criticalCases = (cases || []).filter(c => c.priority === 'critical').length;
 
+  const importFraudCases = async () => {
+    if (fraudCases.length === 0) {
+      toast.error("No fraud cases found to import");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      let imported = 0;
+      for (const fraudCase of fraudCases) {
+        const existing = cases.find(c => 
+          c.case_title === fraudCase.case_title || 
+          c.description?.includes(fraudCase.id)
+        );
+        if (existing) continue;
+
+        await base44.entities.InvestigationCase.create({
+          case_number: `IC-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+          case_title: fraudCase.case_title,
+          victim_name: user.full_name,
+          fraud_type: fraudCase.fraud_type,
+          amount_stolen_usd: fraudCase.amount_stolen_usd,
+          amount_stolen: fraudCase.amount_stolen,
+          cryptocurrency: fraudCase.blockchain,
+          blockchain: fraudCase.blockchain,
+          incident_date: fraudCase.incident_date,
+          description: `${fraudCase.description || ''}\n\n[Imported from Fraud Case ID: ${fraudCase.id}]`,
+          status: fraudCase.status === 'reported' ? 'new' : 
+                  fraudCase.status === 'investigating' ? 'investigating' :
+                  fraudCase.status === 'traced' ? 'documented' :
+                  fraudCase.status === 'recovering' ? 'recovering' :
+                  fraudCase.status === 'recovered' ? 'recovered' : 'closed',
+          priority: fraudCase.amount_stolen_usd > 100000 ? 'critical' :
+                    fraudCase.amount_stolen_usd > 50000 ? 'high' :
+                    fraudCase.amount_stolen_usd > 10000 ? 'medium' : 'low',
+          scammer_info: {
+            wallet_addresses: [fraudCase.scammer_wallet]
+          },
+          monitored_wallets: fraudCase.traced_wallets && fraudCase.traced_wallets.length > 0 
+            ? fraudCase.traced_wallets 
+            : [fraudCase.scammer_wallet],
+          case_notes: fraudCase.case_notes || [],
+          last_activity: new Date().toISOString()
+        });
+        imported++;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['investigation-cases'] });
+      toast.success(`Successfully imported ${imported} fraud case${imported !== 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error("Failed to import cases");
+    }
+    setImporting(false);
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
@@ -74,6 +140,25 @@ export default function InvestigationHub() {
             Internal Investigation & Fraud Tracking Command Center
           </p>
         </div>
+        {fraudCases.length > 0 && (
+          <Button
+            onClick={importFraudCases}
+            disabled={importing}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          >
+            {importing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Import {fraudCases.length} Fraud Case{fraudCases.length !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Stats Overview */}
