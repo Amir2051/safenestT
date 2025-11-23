@@ -189,7 +189,13 @@ export default function Dashboard() {
           <p className="text-gray-400 mt-1">
             Your digital security dashboard • Last scan: {
               user.last_scan_date 
-                ? new Date(user.last_scan_date).toLocaleString()
+                ? new Date(user.last_scan_date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
                 : 'Never'
             }
           </p>
