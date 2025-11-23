@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
-  MessageSquare, ExternalLink, Calendar, AlertCircle 
+  MessageSquare, ExternalLink, Calendar, AlertCircle, Database
 } from "lucide-react";
+import InvestigationNotes from "./InvestigationNotes.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -122,12 +123,13 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-[#0f1419] border border-cyan-500/30">
+            <TabsList className="bg-[#0f1419] border border-cyan-500/30 flex-wrap h-auto">
               <TabsTrigger value="overview" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Overview</TabsTrigger>
               <TabsTrigger value="evidence" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Evidence</TabsTrigger>
               <TabsTrigger value="timeline" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Timeline</TabsTrigger>
               <TabsTrigger value="notes" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Notes</TabsTrigger>
               <TabsTrigger value="tracking" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Tracking</TabsTrigger>
+              <TabsTrigger value="transactions" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Transactions</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
@@ -259,41 +261,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="notes" className="space-y-4">
-              <div className="space-y-3">
-                <Textarea
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Add investigation notes..."
-                  className="bg-[#0f1419] border-cyan-500/20 text-white h-24"
-                />
-                <Button onClick={addNote} className="bg-gradient-to-r from-cyan-500 to-blue-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Note
-                </Button>
-              </div>
-
-              {caseData.case_notes && caseData.case_notes.length > 0 ? (
-                <div className="space-y-2">
-                  {caseData.case_notes.slice().reverse().map((note, idx) => (
-                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                      <div className="flex items-start justify-between mb-2">
-                        <Badge variant="outline" className="text-xs font-medium border-cyan-500/30 text-cyan-300">
-                          {note.author}
-                        </Badge>
-                        <p className="text-xs text-gray-300 font-medium">
-                          {new Date(note.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                      <p className="text-white text-sm leading-relaxed">{note.note}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                  <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No notes yet</p>
-                </div>
-              )}
+              <InvestigationNotes caseId={caseData.id} caseData={caseData} onUpdate={onUpdate} />
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">
@@ -312,6 +280,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <p className="text-gray-400 text-sm">No wallets being monitored</p>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="transactions" className="space-y-4">
+              <div className="text-center py-12 bg-[#0f1419] rounded-lg border border-cyan-500/10">
+                <Database className="w-12 h-12 text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm mb-4">Transaction logging available in main Transactions tab</p>
+                <p className="text-xs text-gray-500">Go to Investigation Hub → Transactions to log and view all case transactions</p>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

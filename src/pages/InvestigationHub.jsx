@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield, FileText, Search, Send, Settings, Plus, AlertCircle,
-  TrendingUp, Clock, CheckCircle, Briefcase
+  TrendingUp, Clock, CheckCircle, Briefcase, Database, Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,6 +19,8 @@ import FederalAgencyDirectory from "../components/investigation/FederalAgencyDir
 import DocumentGenerator from "../components/investigation/DocumentGenerator.jsx";
 import SubmissionHub from "../components/investigation/SubmissionHub.jsx";
 import InvestigationSettings from "../components/investigation/InvestigationSettings.jsx";
+import TransactionLogger from "../components/investigation/TransactionLogger.jsx";
+import AIReportGenerator from "../components/investigation/AIReportGenerator.jsx";
 
 export default function InvestigationHub() {
   const [user, setUser] = useState(null);
@@ -241,6 +243,14 @@ export default function InvestigationHub() {
             <FileText className="w-4 h-4" />
             Paperwork
           </TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-2">
+            <Database className="w-4 h-4" />
+            Transactions
+          </TabsTrigger>
+          <TabsTrigger value="ai-reports" className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            AI Reports
+          </TabsTrigger>
           <TabsTrigger value="submissions" className="gap-2">
             <Send className="w-4 h-4" />
             Submissions
@@ -265,6 +275,14 @@ export default function InvestigationHub() {
 
         <TabsContent value="paperwork" className="mt-6">
           <DocumentGenerator cases={cases} />
+        </TabsContent>
+
+        <TabsContent value="transactions" className="mt-6">
+          <TransactionLogger cases={cases} />
+        </TabsContent>
+
+        <TabsContent value="ai-reports" className="mt-6">
+          <AIReportGenerator cases={cases} />
         </TabsContent>
 
         <TabsContent value="submissions" className="mt-6">
