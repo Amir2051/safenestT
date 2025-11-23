@@ -391,7 +391,7 @@ export default function Settings() {
               className="border-cyan-500/20 text-gray-300"
               onClick={() => {
                 setFormData({
-                  full_name: user.full_name || '',
+                  username: user.username || user.full_name || '',
                   phone: user.phone || '',
                   monitored_emails: user.monitored_emails || [],
                   vpn_enabled: user.vpn_enabled || false,
