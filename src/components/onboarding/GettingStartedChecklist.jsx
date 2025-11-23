@@ -64,9 +64,15 @@ export default function GettingStartedChecklist({ user, onUpdate }) {
   });
 
   useEffect(() => {
-    if (user?.onboarding_checklist) {
-      setChecklist(user.onboarding_checklist);
-    }
+    const updatedChecklist = {
+      profile_completed: !!(user?.username && user?.phone),
+      password_added: user?.onboarding_checklist?.password_added || false,
+      device_scanned: !!(user?.last_scan_date),
+      vpn_connected: user?.vpn_enabled || false,
+      two_factor_enabled: user?.two_factor_enabled || false
+    };
+    
+    setChecklist(updatedChecklist);
   }, [user]);
 
   const completedCount = Object.values(checklist).filter(Boolean).length;

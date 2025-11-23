@@ -44,7 +44,16 @@ export default function Settings() {
 
   const updateUserMutation = useMutation({
     mutationFn: async (data) => {
-      const result = await base44.auth.updateMe(data);
+      // Mark profile as completed if username and phone are filled
+      const updateData = { ...data };
+      if (data.username && data.phone) {
+        updateData.onboarding_checklist = {
+          ...(user.onboarding_checklist || {}),
+          profile_completed: true
+        };
+      }
+      
+      const result = await base44.auth.updateMe(updateData);
       
       const changes = [];
       if (user && data.vpn_enabled !== user.vpn_enabled) { // Added user check
