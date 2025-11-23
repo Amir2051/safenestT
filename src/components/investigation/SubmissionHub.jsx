@@ -127,7 +127,7 @@ export default function SubmissionHub({ submissions, cases }) {
 
       {/* Submissions List */}
       <div className="grid gap-4">
-        {submissions.length === 0 ? (
+        {(submissions || []).length === 0 ? (
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
             <CardContent className="p-12 text-center">
               <Send className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -141,8 +141,8 @@ export default function SubmissionHub({ submissions, cases }) {
             </CardContent>
           </Card>
         ) : (
-          submissions.map((submission) => {
-            const caseData = cases.find(c => c.id === submission.case_id);
+          (submissions || []).map((submission) => {
+            const caseData = (cases || []).find(c => c.id === submission.case_id);
             const StatusIcon = getStatusIcon(submission.status);
 
             return (

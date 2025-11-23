@@ -65,7 +65,7 @@ export default function DocumentGenerator({ cases }) {
 
     setGenerating(true);
     try {
-      const caseData = cases.find(c => c.id === selectedCase);
+      const caseData = (cases || []).find(c => c.id === selectedCase);
       const template = documentTemplates.find(t => t.id === selectedTemplate);
 
       const content = generateDocumentContent(caseData, template);

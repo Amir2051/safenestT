@@ -18,7 +18,7 @@ export default function CaseManagement({ cases }) {
   const [selectedCase, setSelectedCase] = useState(null);
   const queryClient = useQueryClient();
 
-  const filteredCases = cases.filter(c => {
+  const filteredCases = (cases || []).filter(c => {
     const matchesSearch = c.case_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.victim_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.case_number?.toLowerCase().includes(searchTerm.toLowerCase());

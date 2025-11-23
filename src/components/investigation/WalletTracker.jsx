@@ -266,14 +266,14 @@ export default function WalletTracker({ cases }) {
           <CardTitle className="text-white">Monitored Wallets Across Cases</CardTitle>
         </CardHeader>
         <CardContent>
-          {cases.filter(c => c.monitored_wallets?.length > 0).length === 0 ? (
+          {(cases || []).filter(c => c.monitored_wallets?.length > 0).length === 0 ? (
             <div className="text-center py-8">
               <Search className="w-12 h-12 text-gray-600 mx-auto mb-2" />
               <p className="text-gray-400 text-sm">No wallets being monitored yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {cases.filter(c => c.monitored_wallets?.length > 0).map((caseItem) => (
+              {(cases || []).filter(c => c.monitored_wallets?.length > 0).map((caseItem) => (
                 <div key={caseItem.id} className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
                   <div className="flex items-start justify-between mb-3">
                     <div>

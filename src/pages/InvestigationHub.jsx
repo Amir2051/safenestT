@@ -56,10 +56,10 @@ export default function InvestigationHub() {
     );
   }
 
-  const activeCases = cases.filter(c => !['closed', 'recovered'].includes(c.status));
-  const totalRecovered = cases.reduce((sum, c) => sum + (c.recovery_amount || 0), 0);
-  const pendingSubmissions = submissions.filter(s => s.status === 'pending').length;
-  const criticalCases = cases.filter(c => c.priority === 'critical').length;
+  const activeCases = (cases || []).filter(c => !['closed', 'recovered'].includes(c.status));
+  const totalRecovered = (cases || []).reduce((sum, c) => sum + (c.recovery_amount || 0), 0);
+  const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending').length;
+  const criticalCases = (cases || []).filter(c => c.priority === 'critical').length;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
