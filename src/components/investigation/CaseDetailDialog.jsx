@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
-  MessageSquare, ExternalLink, Calendar, AlertCircle, Database
+  MessageSquare, ExternalLink, Calendar, AlertCircle, Database, Building2
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
+import RecommendedAgencies from "./RecommendedAgencies.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -125,12 +126,17 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-[#0f1419] border border-cyan-500/30 flex-wrap h-auto">
               <TabsTrigger value="overview" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Overview</TabsTrigger>
+              <TabsTrigger value="agencies" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Agencies</TabsTrigger>
               <TabsTrigger value="evidence" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Evidence</TabsTrigger>
               <TabsTrigger value="timeline" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Timeline</TabsTrigger>
               <TabsTrigger value="notes" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Notes</TabsTrigger>
               <TabsTrigger value="tracking" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Tracking</TabsTrigger>
               <TabsTrigger value="transactions" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 text-gray-300 font-medium">Transactions</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="agencies" className="space-y-4">
+              <RecommendedAgencies caseData={caseData} />
+            </TabsContent>
 
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

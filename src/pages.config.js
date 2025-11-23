@@ -52,6 +52,7 @@ import LiveIntelligence from './pages/LiveIntelligence';
 import AdminInvestigation from './pages/AdminInvestigation';
 import CryptoTracker from './pages/CryptoTracker';
 import InvestigationHub from './pages/InvestigationHub';
+import AgenciesDirectory from './pages/AgenciesDirectory';
 import __Layout from './Layout.jsx';
 
 
@@ -110,6 +111,7 @@ export const PAGES = {
     "AdminInvestigation": AdminInvestigation,
     "CryptoTracker": CryptoTracker,
     "InvestigationHub": InvestigationHub,
+    "AgenciesDirectory": AgenciesDirectory,
 }
 
 export const pagesConfig = {
