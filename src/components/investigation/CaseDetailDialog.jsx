@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
+import CaseDocuments from "./CaseDocuments.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -237,6 +238,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-[#0f1419] border border-cyan-500/30 flex-wrap h-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="victim">Victim Details</TabsTrigger>
               <TabsTrigger value="suspect">Suspect Details</TabsTrigger>
               <TabsTrigger value="evidence">Evidence</TabsTrigger>
@@ -337,6 +339,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   )}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="documents" className="space-y-4">
+              <CaseDocuments caseData={caseData} onUpdate={onUpdate} />
             </TabsContent>
 
             <TabsContent value="victim" className="space-y-4">

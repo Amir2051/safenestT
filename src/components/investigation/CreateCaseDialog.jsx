@@ -55,6 +55,16 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
       
       const caseNumber = `CASE-${Date.now()}`;
       
+      // Create initial case documents structure
+      const initialDocuments = {
+        case_summary: null,
+        victim_statement: null,
+        transaction_log: null,
+        transaction_analysis: null,
+        scammer_profile: null,
+        evidence_package: null
+      };
+
       await base44.entities.InvestigationCase.create({
         ...formData,
         case_number: caseNumber,
@@ -63,10 +73,12 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
         last_activity: new Date().toISOString(),
         created_by_name: user.full_name,
         created_by_email: user.email,
+        case_documents: initialDocuments,
+        imported_transactions: [],
         case_notes: [{
           timestamp: new Date().toISOString(),
           author: "system",
-          note: "Case created",
+          note: "Case created - Ready for document generation",
           type: "system"
         }]
       });
