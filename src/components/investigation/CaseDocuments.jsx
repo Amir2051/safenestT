@@ -27,26 +27,31 @@ export default function CaseDocuments({ caseData, onUpdate }) {
   const [activeTab, setActiveTab] = useState("documents");
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState(null); // Track which doc is generating
+  const [generatingAll, setGeneratingAll] = useState(false);
   const [submissionOpen, setSubmissionOpen] = useState(false);
+  const [localDocuments, setLocalDocuments] = useState(caseData.case_documents || {});
   
   const queryClient = useQueryClient();
 
-  const documents = caseData.case_documents || {};
+  const documents = localDocuments;
 
-  const generateDocument = async (docType) => {
-    setGenerating(true);
+  const generateDocument = async (docType, e) => {
+    if (e) e.stopPropagation();
+    setGenerating(docType);
     try {
       const docContent = await generateDocumentContent(docType, caseData);
       
       const updatedDocs = {
-        ...documents,
+        ...localDocuments,
         [docType]: {
           content: docContent,
           generated_at: new Date().toISOString(),
           status: 'generated'
         }
       };
+
+      setLocalDocuments(updatedDocs);
 
       await base44.entities.InvestigationCase.update(caseData.id, {
         case_documents: updatedDocs,
@@ -56,14 +61,14 @@ export default function CaseDocuments({ caseData, onUpdate }) {
       onUpdate();
       toast.success(`${DOCUMENT_TYPES.find(d => d.id === docType)?.name} generated`);
     } catch (error) {
-      toast.error("Failed to generate document");
+      toast.error("Failed to generate document: " + error.message);
       console.error(error);
     }
-    setGenerating(false);
+    setGenerating(null);
   };
 
   const generateAllDocuments = async () => {
-    setGenerating(true);
+    setGeneratingAll(true);
     try {
       const allDocs = {};
       
@@ -76,6 +81,8 @@ export default function CaseDocuments({ caseData, onUpdate }) {
         };
       }
 
+      setLocalDocuments(allDocs);
+
       await base44.entities.InvestigationCase.update(caseData.id, {
         case_documents: allDocs,
         last_activity: new Date().toISOString()
@@ -84,9 +91,10 @@ export default function CaseDocuments({ caseData, onUpdate }) {
       onUpdate();
       toast.success("All documents generated successfully!");
     } catch (error) {
-      toast.error("Failed to generate documents");
+      toast.error("Failed to generate documents: " + error.message);
+      console.error(error);
     }
-    setGenerating(false);
+    setGeneratingAll(false);
   };
 
   const handleTransactionsImported = async (transactions) => {
@@ -125,14 +133,15 @@ export default function CaseDocuments({ caseData, onUpdate }) {
     toast.success(`${transactions.length} transactions imported and documents updated`);
   };
 
-  const openDocument = (docType) => {
+  const openDocument = (docType, e) => {
+    if (e) e.stopPropagation();
     setSelectedDoc(docType);
     setViewerOpen(true);
   };
 
   const getDocStatus = (docType) => {
     const doc = documents[docType];
-    if (!doc) return 'not_generated';
+    if (!doc || !doc.content) return 'not_generated';
     return doc.status || 'generated';
   };
 
@@ -146,10 +155,10 @@ export default function CaseDocuments({ caseData, onUpdate }) {
         <div className="flex gap-2">
           <Button
             onClick={generateAllDocuments}
-            disabled={generating}
+            disabled={generatingAll || generating}
             className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
           >
-            {generating ? (
+            {generatingAll ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
             ) : (
               <><RefreshCw className="w-4 h-4 mr-2" />Generate All Documents</>
@@ -211,7 +220,7 @@ export default function CaseDocuments({ caseData, onUpdate }) {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => openDocument(docType.id)}
+                            onClick={(e) => openDocument(docType.id, e)}
                             className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
                           >
                             <Eye className="w-3 h-3 mr-1" />
@@ -220,20 +229,21 @@ export default function CaseDocuments({ caseData, onUpdate }) {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => generateDocument(docType.id)}
+                            onClick={(e) => generateDocument(docType.id, e)}
+                            disabled={generating === docType.id || generatingAll}
                             className="border-gray-500/30 text-gray-400 hover:bg-gray-500/10"
                           >
-                            <RefreshCw className="w-3 h-3" />
+                            {generating === docType.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                           </Button>
                         </>
                       ) : (
                         <Button 
                           size="sm"
-                          onClick={() => generateDocument(docType.id)}
-                          disabled={generating}
+                          onClick={(e) => generateDocument(docType.id, e)}
+                          disabled={generating === docType.id || generatingAll}
                           className="w-full bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30"
                         >
-                          {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Generate'}
+                          {generating === docType.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Generate'}
                         </Button>
                       )}
                     </div>
