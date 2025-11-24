@@ -53,6 +53,8 @@ import AdminInvestigation from './pages/AdminInvestigation';
 import CryptoTracker from './pages/CryptoTracker';
 import InvestigationHub from './pages/InvestigationHub';
 import AgenciesDirectory from './pages/AgenciesDirectory';
+import Subscription from './pages/Subscription';
+import SubscriptionRequired from './pages/SubscriptionRequired';
 import __Layout from './Layout.jsx';
 
 
@@ -112,6 +114,8 @@ export const PAGES = {
     "CryptoTracker": CryptoTracker,
     "InvestigationHub": InvestigationHub,
     "AgenciesDirectory": AgenciesDirectory,
+    "Subscription": Subscription,
+    "SubscriptionRequired": SubscriptionRequired,
 }
 
 export const pagesConfig = {
