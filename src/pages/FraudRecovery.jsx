@@ -135,18 +135,26 @@ export default function FraudRecovery() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="cases" className="w-full">
-        <TabsList className="bg-[#1a2332] border border-cyan-500/20">
+        <TabsList className="bg-[#1a2332] border border-cyan-500/20 flex-wrap h-auto">
           <TabsTrigger value="cases">
             <FileText className="w-4 h-4 mr-2" />
             My Cases
           </TabsTrigger>
+          <TabsTrigger value="ai">
+            <Shield className="w-4 h-4 mr-2" />
+            AI Assistant
+          </TabsTrigger>
           <TabsTrigger value="trace">
             <Search className="w-4 h-4 mr-2" />
-            Blockchain Tracer
+            Multi-Chain Trace
+          </TabsTrigger>
+          <TabsTrigger value="legal">
+            <FileText className="w-4 h-4 mr-2" />
+            Legal Docs
           </TabsTrigger>
           <TabsTrigger value="recovery">
             <TrendingUp className="w-4 h-4 mr-2" />
-            Recovery Dashboard
+            Recovery
           </TabsTrigger>
         </TabsList>
 
@@ -197,13 +205,16 @@ export default function FraudRecovery() {
           )}
         </TabsContent>
 
+        <TabsContent value="ai" className="mt-6">
+          <AIRecoveryAssistant selectedCase={selectedCase} />
+        </TabsContent>
+
         <TabsContent value="trace" className="mt-6">
-          <BlockchainTracer
-            selectedCase={selectedCase}
-            traces={traces}
-            onCaseSelect={setSelectedCase}
-            cases={cases}
-          />
+          <MultiBlockchainTracer selectedCase={selectedCase} />
+        </TabsContent>
+
+        <TabsContent value="legal" className="mt-6">
+          <LegalDocumentGenerator selectedCase={selectedCase} />
         </TabsContent>
 
         <TabsContent value="recovery" className="mt-6">
