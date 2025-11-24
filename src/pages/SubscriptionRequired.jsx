@@ -17,7 +17,8 @@ export default function SubscriptionRequired() {
   }, []);
 
   const handleSubscribe = () => {
-    window.location.href = STRIPE_CHECKOUT_URL;
+    // Open Stripe checkout in new browser window
+    window.open(STRIPE_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
   };
 
   const handleViewPlans = () => {

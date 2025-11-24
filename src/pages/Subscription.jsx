@@ -35,7 +35,9 @@ export default function Subscription() {
 
   const handleStartTrial = () => {
     setLoading(true);
-    window.location.href = STRIPE_CHECKOUT_URL;
+    // Open Stripe checkout in new browser window
+    window.open(STRIPE_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setLoading(false), 1000);
   };
 
   if (!user || isLoading) {
