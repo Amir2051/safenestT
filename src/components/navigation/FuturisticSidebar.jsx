@@ -117,6 +117,14 @@ const navigationItems = [
     icon: Settings,
     url: createPageUrl('Settings'),
     glow: 'gray'
+  },
+  {
+    id: 'documentation',
+    title: 'Technical Docs',
+    icon: Server,
+    url: createPageUrl('TechnicalDocumentation'),
+    glow: 'blue',
+    badge: 'DEV'
   }
 ];
 
