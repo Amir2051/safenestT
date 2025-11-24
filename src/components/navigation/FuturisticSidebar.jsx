@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search, Building2
+  Wallet, Search, Building2, CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,14 @@ const navigationItems = [
     icon: Users,
     url: createPageUrl('Referrals'),
     glow: 'pink'
+  },
+  {
+    id: 'subscription',
+    title: 'My Subscription',
+    icon: CreditCard,
+    url: createPageUrl('Subscription'),
+    glow: 'purple',
+    badge: 'PREMIUM'
   },
   {
     id: 'activity',
