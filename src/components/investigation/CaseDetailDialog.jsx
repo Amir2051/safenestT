@@ -17,6 +17,7 @@ import {
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
 import CaseDocuments from "./CaseDocuments.jsx";
+import SuspectEditForm from "./SuspectEditForm.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -278,6 +279,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="victim">Victim Details</TabsTrigger>
               <TabsTrigger value="suspect">Suspect Details</TabsTrigger>
+              <TabsTrigger value="edit-suspect" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
+                <AlertCircle className="w-3 h-3 mr-1" />Edit Suspect
+              </TabsTrigger>
               <TabsTrigger value="evidence">Evidence</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -696,7 +700,17 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="suspect" className="space-y-4">
-              <h3 className="text-white font-semibold text-lg">Suspect Information</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-semibold text-lg">Suspect Information</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab('edit-suspect')}
+                  className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Add / Edit Suspect Info
+                </Button>
+              </div>
               {caseData.suspect_details || caseData.scammer_info ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-[#0f1419] rounded-lg border border-red-500/20">
@@ -714,7 +728,19 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           <p className="text-white">{caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email}</p>
                         </div>
                       )}
-                      {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses) && (
+                      {(caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone) && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Phone / Telegram / WhatsApp</p>
+                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone}</p>
+                        </div>
+                      )}
+                      {(caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location) && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Location</p>
+                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location}</p>
+                        </div>
+                      )}
+                      {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses)?.length > 0 && (
                         <div className="md:col-span-2">
                           <p className="text-xs text-gray-400 mb-2">Wallet Addresses</p>
                           {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses || []).map((wallet, idx) => (
@@ -722,12 +748,111 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           ))}
                         </div>
                       )}
+                      {caseData.scammer_info?.notes && (
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-gray-400 mb-1">Notes</p>
+                          <p className="text-white text-sm">{caseData.scammer_info.notes}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Known Emails */}
+                  {caseData.scammer_info?.known_emails?.length > 0 && (
+                    <div className="p-4 bg-[#0f1419] rounded-lg border border-orange-500/20">
+                      <p className="text-orange-400 font-semibold mb-3">Known Emails</p>
+                      <div className="flex flex-wrap gap-2">
+                        {caseData.scammer_info.known_emails.map((email, idx) => (
+                          <Badge key={idx} className="bg-orange-500/20 text-orange-400 border-orange-500/50">
+                            {email}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Social Media */}
+                  {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles)?.length > 0 && (
+                    <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                      <p className="text-purple-400 font-semibold mb-3">Social Media / Online Presence</p>
+                      <div className="space-y-2">
+                        {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles || []).map((profile, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">{typeof profile === 'string' ? 'Link' : profile.platform}</Badge>
+                            <a 
+                              href={typeof profile === 'string' ? profile : profile.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-cyan-400 hover:underline text-sm"
+                            >
+                              {typeof profile === 'string' ? profile : (profile.url || profile.profile)}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <p className="text-gray-400 text-center py-8">No suspect details available</p>
+                <div className="text-center py-12 bg-[#0f1419] rounded-lg border border-red-500/10">
+                  <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400 mb-4">No suspect details available</p>
+                  <Button
+                    onClick={() => setActiveTab('edit-suspect')}
+                    className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Suspect Information
+                  </Button>
+                </div>
               )}
+            </TabsContent>
+
+            {/* EDIT SUSPECT TAB */}
+            <TabsContent value="edit-suspect" className="space-y-6">
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
+                <h3 className="text-red-400 font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  Add / Edit Suspect Information
+                </h3>
+                <p className="text-gray-400 text-sm mt-1">Enter all known details about the suspect.</p>
+              </div>
+
+              <SuspectEditForm 
+                caseData={caseData} 
+                onSave={async (suspectData) => {
+                  setSaving(true);
+                  try {
+                    await base44.entities.InvestigationCase.update(caseData.id, {
+                      scammer_info: suspectData,
+                      suspect_details: {
+                        primary_suspect: {
+                          name: suspectData.name,
+                          email: suspectData.email,
+                          phone: suspectData.phone,
+                          location: suspectData.location
+                        },
+                        wallet_addresses: suspectData.wallet_addresses,
+                        social_profiles: suspectData.social_media
+                      },
+                      monitored_wallets: [
+                        ...(caseData.monitored_wallets || []),
+                        ...(suspectData.wallet_addresses || [])
+                      ].filter((v, i, a) => a.indexOf(v) === i),
+                      last_activity: new Date().toISOString()
+                    });
+                    toast.success('Suspect information saved successfully!');
+                    setActiveTab('suspect');
+                    onUpdate();
+                  } catch (error) {
+                    console.error('Save error:', error);
+                    toast.error('Failed to save: ' + error.message);
+                  }
+                  setSaving(false);
+                }}
+                onCancel={() => setActiveTab('suspect')}
+                saving={saving}
+              />
             </TabsContent>
 
             <TabsContent value="evidence" className="space-y-4">
