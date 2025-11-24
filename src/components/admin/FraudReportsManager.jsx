@@ -272,8 +272,9 @@ export default function FraudReportsManager() {
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                             <div>
-                              <p className="text-gray-400">Reporter</p>
-                              <p className="text-white font-mono text-xs">{fraudCase.created_by}</p>
+                              <p className="text-gray-400">Created By</p>
+                              <p className="text-white font-semibold text-xs">{fraudCase.created_by_name || 'N/A'}</p>
+                              <p className="text-gray-400 font-mono text-[10px]">{fraudCase.created_by_email || fraudCase.created_by}</p>
                             </div>
                             <div>
                               <p className="text-gray-400">Amount Stolen</p>
@@ -384,8 +385,9 @@ export default function FraudReportsManager() {
               {/* Case Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-[#0f1419] rounded-lg">
-                  <p className="text-gray-400 text-sm mb-1">Reporter</p>
-                  <p className="text-white font-mono text-sm">{selectedCase.created_by}</p>
+                  <p className="text-gray-400 text-sm mb-1">Report Created By</p>
+                  <p className="text-white font-semibold text-sm">{selectedCase.created_by_name || 'N/A'}</p>
+                  <p className="text-gray-400 font-mono text-xs mt-1">{selectedCase.created_by_email || selectedCase.created_by}</p>
                 </div>
                 <div className="p-4 bg-[#0f1419] rounded-lg">
                   <p className="text-gray-400 text-sm mb-1">Amount Stolen</p>
