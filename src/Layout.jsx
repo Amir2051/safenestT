@@ -5,6 +5,7 @@ import { Shield, Bell, Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
+import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 
 export default function Layout({ children, currentPageName }) {
@@ -80,6 +81,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <>
       <ReferralCodeHandler />
+      <RealTimeReferralUpdates user={user} />
       <div 
         className="min-h-screen flex bg-[#000000]"
         onTouchStart={onTouchStart}

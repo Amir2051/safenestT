@@ -47,6 +47,15 @@ Deno.serve(async (req) => {
           last_payment_method_update: new Date().toISOString()
         });
 
+        // Complete referral if user was referred
+        try {
+          await base44.functions.invoke('referralService', {
+            endpoint: 'complete-referral'
+          });
+        } catch (refError) {
+          console.error('Failed to complete referral:', refError);
+        }
+
         return Response.json({ success: true });
       }
 
