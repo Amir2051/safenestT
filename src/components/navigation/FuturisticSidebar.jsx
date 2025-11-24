@@ -122,6 +122,14 @@ const navigationItems = [
 
 const adminItems = [
   {
+    id: 'documentation',
+    title: 'Technical Docs',
+    icon: Server,
+    url: createPageUrl('TechnicalDocumentation'),
+    glow: 'blue',
+    badge: 'DEV'
+  },
+  {
     id: 'admin-dashboard',
     title: 'Admin Dashboard',
     icon: Command,
