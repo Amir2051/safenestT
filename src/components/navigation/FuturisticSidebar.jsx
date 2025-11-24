@@ -30,6 +30,14 @@ const navigationItems = [
     badge: 'AI'
   },
   {
+    id: 'fraud-center',
+    title: 'Crypto Fraud Center',
+    icon: Search,
+    url: createPageUrl('CryptoFraudCenter'),
+    glow: 'red',
+    badge: '🔥'
+  },
+  {
     id: 'vault',
     title: 'Password Vault',
     icon: Lock,
@@ -49,23 +57,7 @@ const navigationItems = [
     title: 'Crypto Protection',
     icon: Wallet,
     url: createPageUrl('CryptoProtection'),
-    glow: 'purple',
-    badge: 'NEW'
-  },
-  {
-    id: 'fraud',
-    title: 'Fraud Recovery',
-    icon: Search,
-    url: createPageUrl('FraudRecovery'),
-    glow: 'red',
-    badge: 'NEW'
-  },
-  {
-    id: 'agencies',
-    title: 'Agencies Directory',
-    icon: Building2,
-    url: createPageUrl('AgenciesDirectory'),
-    glow: 'blue'
+    glow: 'purple'
   },
   {
     id: 'device-care',
@@ -136,22 +128,6 @@ const adminItems = [
     url: createPageUrl('AdminDashboard'),
     glow: 'cyan',
     badge: 'ADMIN'
-  },
-  {
-    id: 'admin-investigation',
-    title: 'Fraud Investigation',
-    icon: Search,
-    url: createPageUrl('AdminInvestigation'),
-    glow: 'red',
-    badge: 'NEW'
-  },
-  {
-    id: 'crypto-tracker',
-    title: 'Crypto Tracker',
-    icon: Activity,
-    url: createPageUrl('CryptoTracker'),
-    glow: 'cyan',
-    badge: 'LIVE'
   },
   {
     id: 'admin-approvals',
