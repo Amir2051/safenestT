@@ -15,6 +15,9 @@ import ReportFraudDialog from "../components/fraud/ReportFraudDialog.jsx";
 import FraudCaseCard from "../components/fraud/FraudCaseCard.jsx";
 import BlockchainTracer from "../components/fraud/BlockchainTracer.jsx";
 import RecoveryDashboard from "../components/fraud/RecoveryDashboard.jsx";
+import AIRecoveryAssistant from "../components/fraud/AIRecoveryAssistant.jsx";
+import MultiBlockchainTracer from "../components/fraud/MultiBlockchainTracer.jsx";
+import LegalDocumentGenerator from "../components/fraud/LegalDocumentGenerator.jsx";
 
 export default function FraudRecovery() {
   const [user, setUser] = useState(null);
