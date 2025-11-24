@@ -47,7 +47,7 @@ export default function Referrals() {
     initUser();
   }, []);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['referral-stats'],
     queryFn: async () => {
       const response = await base44.functions.invoke('referralService', {
@@ -56,7 +56,16 @@ export default function Referrals() {
       return response.data;
     },
     enabled: !!user,
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 10000 // Refresh every 10 seconds for real-time updates
+  });
+
+  const { data: detailedReferrals = [] } = useQuery({
+    queryKey: ['detailed-referrals'],
+    queryFn: async () => {
+      return await base44.entities.Referral.filter({ referrer_email: user.email }, '-created_date', 100);
+    },
+    enabled: !!user,
+    refetchInterval: 10000
   });
 
   const copyReferralCode = () => {
@@ -67,67 +76,61 @@ export default function Referrals() {
   };
 
   const copyReferralLink = () => {
-    const appUrl = window.location.origin;
-    const link = `${appUrl}/onboarding?ref=${referralCode}`;
+    const link = `https://safenestt.com?ref=${referralCode}`;
     navigator.clipboard.writeText(link);
     toast.success('✅ Referral link copied!', { duration: 3000 });
   };
 
   const shareViaEmail = () => {
-    const appUrl = window.location.origin;
-    const subject = encodeURIComponent('🛡️ Join SafeNest - Get 1 Month FREE!');
+    const subject = encodeURIComponent('🛡️ Join SafeNestt - Get 1 Month FREE!');
     const body = encodeURIComponent(
       `Hi!\n\n` +
-      `I'm using SafeNest to protect my property and identity. I think you should try it too!\n\n` +
-      `🎁 Sign up FREE and use my referral code:\n\n` +
-      `Code: ${referralCode}\n\n` +
+      `I'm using SafeNestt to protect my digital identity and assets. I think you should try it too!\n\n` +
+      `🎁 Sign up FREE and use my referral link:\n\n` +
+      `https://safenestt.com?ref=${referralCode}\n\n` +
       `What You Get:\n` +
-      `🏠 Title Protection - Monitor property records\n` +
-      `⚖️ Legal Support - Access to licensed attorneys\n` +
+      `🛡️ Complete Cyber Protection\n` +
       `🔒 Identity Monitor - Dark web scanning\n` +
+      `💰 Fraud Recovery Tools\n` +
       `📱 VPN Protection - Secure browsing\n` +
-      `🤖 AI Assistants - 24/7 support\n\n` +
+      `🤖 AI Security Advisor\n\n` +
       `Plus: 1 MONTH FREE PREMIUM when you sign up!\n\n` +
-      `Join now: ${appUrl}/onboarding?ref=${referralCode}\n\n` +
+      `Join now: https://safenestt.com?ref=${referralCode}\n\n` +
       `Best regards`
     );
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const shareViaSMS = () => {
-    const appUrl = window.location.origin;
     const message = encodeURIComponent(
-      `Protect your property & identity with SafeNest! 🛡️\n\n` +
+      `Protect your digital identity with SafeNestt! 🛡️\n\n` +
       `FREE + 1 Month Premium\n\n` +
-      `Use code: ${referralCode}\n` +
-      `Sign up: ${appUrl}/onboarding?ref=${referralCode}`
+      `Sign up: https://safenestt.com?ref=${referralCode}`
     );
     window.location.href = `sms:?body=${message}`;
   };
 
   const shareViaWhatsApp = () => {
-    const appUrl = window.location.origin;
     const message = encodeURIComponent(
       `Hi! 👋\n\n` +
-      `I'm using SafeNest to protect my property & identity. It's amazing!\n\n` +
-      `🏠 *Title Protection*\n` +
-      `⚖️ *Legal Support*\n` +
+      `I'm using SafeNestt for complete cyber protection. It's amazing!\n\n` +
+      `🛡️ *Cyber Security*\n` +
+      `💰 *Fraud Recovery*\n` +
       `🔒 *Identity Monitor*\n` +
-      `🤖 *AI Assistants*\n\n` +
-      `🎁 Get 1 MONTH FREE with code: *${referralCode}*\n\n` +
-      `Sign up: ${appUrl}/onboarding?ref=${referralCode}\n\n` +
+      `🤖 *AI Security Advisor*\n\n` +
+      `🎁 Get 1 MONTH FREE Premium!\n\n` +
+      `Sign up: https://safenestt.com?ref=${referralCode}\n\n` +
       `You'll love it! 🚀`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
   const shareNative = async () => {
-    const appUrl = window.location.origin;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join SafeNest - Get 1 Month FREE!',
-          text: `Protect your property & identity with SafeNest! Use my code ${referralCode} for 1 MONTH FREE. Sign up: ${appUrl}/onboarding?ref=${referralCode}`
+          title: 'Join SafeNestt - Get 1 Month FREE!',
+          text: `Protect your digital identity with SafeNestt! Get 1 MONTH FREE Premium. Sign up: https://safenestt.com?ref=${referralCode}`
         });
         toast.success('✅ Shared successfully!');
       } catch (error) {
@@ -308,19 +311,42 @@ export default function Referrals() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <Input
-              value={loadingCode ? 'Loading...' : referralCode}
-              readOnly
-              className="bg-[#0f1419] border-cyan-500/20 text-white text-center text-2xl font-bold tracking-widest h-14"
-            />
-            <Button
-              onClick={copyReferralCode}
-              disabled={loadingCode}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-14 px-6"
-            >
-              <Copy className="w-5 h-5" />
-            </Button>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Your Referral Link</label>
+              <div className="flex gap-3">
+                <Input
+                  value={loadingCode ? 'Loading...' : `https://safenestt.com?ref=${referralCode}`}
+                  readOnly
+                  className="bg-[#0f1419] border-cyan-500/20 text-cyan-400 text-sm h-12"
+                />
+                <Button
+                  onClick={copyReferralLink}
+                  disabled={loadingCode}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12 px-6"
+                >
+                  <Copy className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Your Referral Code</label>
+              <div className="flex gap-3">
+                <Input
+                  value={loadingCode ? 'Loading...' : referralCode}
+                  readOnly
+                  className="bg-[#0f1419] border-cyan-500/20 text-white text-center text-2xl font-bold tracking-widest h-14"
+                />
+                <Button
+                  onClick={copyReferralCode}
+                  disabled={loadingCode}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-14 px-6"
+                >
+                  <Copy className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -368,14 +394,25 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      {/* Recent Referrals */}
+      {/* Referral Activity - Real-time tracking */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-cyan-400" />
-              Recent Referrals
+              Referral Activity
+              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 animate-pulse">
+                LIVE
+              </Badge>
             </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => refetchStats()}
+              className="text-cyan-400 hover:bg-cyan-500/10"
+            >
+              Refresh
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -383,35 +420,72 @@ export default function Referrals() {
             <div className="text-center py-8">
               <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
             </div>
-          ) : stats?.recent_referrals && stats.recent_referrals.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recent_referrals.map((referral, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/10"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-400" />
-                      <div>
-                        <p className="text-white font-semibold">{referral.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {new Date(referral.date).toLocaleDateString()}
-                        </p>
+          ) : detailedReferrals && detailedReferrals.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {detailedReferrals.map((referral, idx) => {
+                const getStatusInfo = (status) => {
+                  switch (status) {
+                    case 'completed':
+                    case 'rewarded':
+                      return { icon: CheckCircle, color: 'green', text: 'Completed', bgColor: 'bg-green-500/20', borderColor: 'border-green-500/50' };
+                    case 'pending':
+                      return { icon: Clock, color: 'yellow', text: 'Pending Payment', bgColor: 'bg-yellow-500/20', borderColor: 'border-yellow-500/50' };
+                    case 'verified':
+                      return { icon: Clock, color: 'blue', text: 'Signed Up', bgColor: 'bg-blue-500/20', borderColor: 'border-blue-500/50' };
+                    default:
+                      return { icon: Clock, color: 'gray', text: 'In Progress', bgColor: 'bg-gray-500/20', borderColor: 'border-gray-500/50' };
+                  }
+                };
+                
+                const statusInfo = getStatusInfo(referral.status);
+                const StatusIcon = statusInfo.icon;
+                
+                return (
+                  <div
+                    key={idx}
+                    className="bg-[#0f1419] rounded-lg p-4 border border-cyan-500/10 hover:border-cyan-500/30 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className={`w-10 h-10 rounded-lg ${statusInfo.bgColor} border ${statusInfo.borderColor} flex items-center justify-center flex-shrink-0`}>
+                          <StatusIcon className={`w-5 h-5 text-${statusInfo.color}-400`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold truncate">{referral.referred_name || referral.referred_email}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {referral.referred_email}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge className={`${statusInfo.bgColor} text-${statusInfo.color}-400 ${statusInfo.borderColor} border text-xs`}>
+                              {statusInfo.text}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {new Date(referral.signup_date || referral.created_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      {referral.bonus_granted && (
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/50 flex-shrink-0">
+                          +{referral.bonus_months || 1}mo
+                        </Badge>
+                      )}
                     </div>
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
-                      +{referral.bonus_months} month{referral.bonus_months > 1 ? 's' : ''}
-                    </Badge>
+                    
+                    {referral.status === 'pending' && (
+                      <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-400">
+                        ⏳ Waiting for payment method to be added
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">
               <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-white font-semibold text-lg">No referrals yet</p>
-              <p className="text-gray-400 text-sm mt-1">Share your code to start earning rewards!</p>
+              <p className="text-gray-400 text-sm mt-1">Share your link to start earning rewards!</p>
             </div>
           )}
         </CardContent>

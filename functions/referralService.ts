@@ -187,48 +187,22 @@ Deno.serve(async (req) => {
           trial_ends: trialEnds.toISOString()
         });
         
-        // Calculate referrer's bonus based on tier
-        const newReferralsCount = (referrer.referrals_count || 0) + 1;
-        const newTier = calculateTier(newReferralsCount);
-        const bonusMonths = calculateBonusMonths(newTier);
+        // Don't award bonus yet - wait for payment method
+        const currentTier = calculateTier(referrer.referrals_count || 0);
+        const bonusMonths = calculateBonusMonths(currentTier);
         
-        // Extend referrer's trial/subscription
-        let referrerTrialEnds = referrer.trial_ends 
-          ? new Date(referrer.trial_ends) 
-          : new Date();
-        
-        if (referrerTrialEnds < new Date()) {
-          referrerTrialEnds = new Date();
-        }
-        
-        referrerTrialEnds.setMonth(referrerTrialEnds.getMonth() + bonusMonths);
-        
-        // Update referrer
-        await base44.asServiceRole.entities.User.update(referrer.id, {
-          referrals_count: newReferralsCount,
-          total_bonus_months_earned: (referrer.total_bonus_months_earned || 0) + bonusMonths,
-          referral_tier: newTier,
-          subscription_plan: 'basic',
-          payment_status: 'trial',
-          trial_ends: referrerTrialEnds.toISOString()
-        });
-        
-        // Create referral record
+        // Create referral record - pending until payment method added
         await base44.asServiceRole.entities.Referral.create({
           referrer_email: referrer.email,
           referrer_code: referral_code.toUpperCase(),
           referred_email: user.email,
           referred_name: user.full_name,
           referral_source: 'signup',
-          status: 'completed',
+          status: 'pending', // pending until payment method added
           signup_date: new Date().toISOString(),
           verified_date: new Date().toISOString(),
-          completed_date: new Date().toISOString(),
-          rewarded_date: new Date().toISOString(),
-          completion_action: 'signup_completed',
-          bonus_granted: true,
+          bonus_granted: false,
           bonus_type: 'premium_days',
-          bonus_value: bonusMonths * 30,
           bonus_months: bonusMonths
         });
         
@@ -236,18 +210,18 @@ Deno.serve(async (req) => {
         try {
           await base44.integrations.Core.SendEmail({
             to: referrer.email,
-            subject: '🎉 Someone Used Your SafeNest Referral Code!',
+            subject: '🎉 Someone Used Your SafeNestt Referral Link!',
             body: `
               <h2>Great News!</h2>
-              <p><strong>${user.full_name}</strong> just signed up using your referral code!</p>
-              <h3>Your Rewards:</h3>
+              <p><strong>${user.full_name}</strong> just signed up using your referral link!</p>
+              <h3>Next Steps:</h3>
               <ul>
-                <li>✅ +${bonusMonths} month${bonusMonths > 1 ? 's' : ''} of free premium access</li>
-                <li>🏆 Total Referrals: ${newReferralsCount}</li>
-                <li>⭐ Tier: ${newTier.toUpperCase()}</li>
+                <li>⏳ They need to add a payment method to complete signup</li>
+                <li>✅ Once completed, you'll receive ${bonusMonths} month${bonusMonths > 1 ? 's' : ''} of free premium</li>
+                <li>🔔 We'll notify you when it's complete!</li>
               </ul>
-              <p>Keep sharing your code to unlock even more rewards!</p>
-              <p><a href="https://app.safenest.com/referrals">View Your Referrals</a></p>
+              <p>Keep sharing your link to earn more rewards!</p>
+              <p><a href="https://safenestt.com/referrals">View Your Referrals</a></p>
             `
           });
         } catch (emailError) {
@@ -258,18 +232,18 @@ Deno.serve(async (req) => {
         try {
           await base44.integrations.Core.SendEmail({
             to: user.email,
-            subject: '🎁 Welcome to SafeNest - 1 Month Free!',
+            subject: '🎁 Welcome to SafeNestt - 1 Month Free!',
             body: `
-              <h2>Welcome to SafeNest!</h2>
-              <p>Thanks for signing up using ${referrer.full_name}'s referral code!</p>
+              <h2>Welcome to SafeNestt!</h2>
+              <p>Thanks for signing up using ${referrer.full_name}'s referral link!</p>
               <h3>Your Bonus:</h3>
               <ul>
-                <li>✅ 1 month of FREE premium access</li>
-                <li>🛡️ Full access to all security features</li>
-                <li>📊 No credit card required</li>
+                <li>🎁 1 month of FREE premium access</li>
+                <li>🛡️ Complete cyber protection</li>
+                <li>⏳ Add payment method to activate</li>
               </ul>
-              <p>Your free month expires on: <strong>${trialEnds.toLocaleDateString()}</strong></p>
-              <p><a href="https://app.safenest.com/dashboard">Get Started</a></p>
+              <p>After adding payment, your 7-day trial starts. No charges during trial!</p>
+              <p><a href="https://safenestt.com/dashboard">Get Started</a></p>
             `
           });
         } catch (emailError) {
@@ -416,6 +390,118 @@ Deno.serve(async (req) => {
         });
       } catch (error) {
         console.error('Track click error:', error);
+        return Response.json({ error: error.message }, { status: 500 });
+      }
+    }
+    
+    // POST /referral/complete - Complete referral when payment method added
+    if (endpoint === 'complete-referral') {
+      try {
+        const user = await base44.auth.me();
+        if (!user || !user.referred_by) {
+          return Response.json({ success: false, message: 'No referral to complete' });
+        }
+        
+        // Find pending referral
+        const referrals = await base44.asServiceRole.entities.Referral.filter({
+          referred_email: user.email,
+          status: 'pending'
+        });
+        
+        if (referrals.length === 0) {
+          return Response.json({ success: false, message: 'No pending referral' });
+        }
+        
+        const referral = referrals[0];
+        
+        // Find referrer
+        const referrers = await base44.asServiceRole.entities.User.filter({
+          email: referral.referrer_email
+        });
+        
+        if (referrers.length === 0) {
+          return Response.json({ success: false, message: 'Referrer not found' });
+        }
+        
+        const referrer = referrers[0];
+        
+        // Calculate bonus
+        const newReferralsCount = (referrer.referrals_count || 0) + 1;
+        const newTier = calculateTier(newReferralsCount);
+        const bonusMonths = calculateBonusMonths(newTier);
+        
+        // Extend referrer's subscription
+        let referrerTrialEnds = referrer.trial_ends 
+          ? new Date(referrer.trial_ends) 
+          : new Date();
+        
+        if (referrerTrialEnds < new Date()) {
+          referrerTrialEnds = new Date();
+        }
+        
+        referrerTrialEnds.setMonth(referrerTrialEnds.getMonth() + bonusMonths);
+        
+        // Update referrer with bonus
+        await base44.asServiceRole.entities.User.update(referrer.id, {
+          referrals_count: newReferralsCount,
+          total_bonus_months_earned: (referrer.total_bonus_months_earned || 0) + bonusMonths,
+          referral_tier: newTier,
+          trial_ends: referrerTrialEnds.toISOString()
+        });
+        
+        // Update referral to completed
+        await base44.asServiceRole.entities.Referral.update(referral.id, {
+          status: 'completed',
+          completed_date: new Date().toISOString(),
+          rewarded_date: new Date().toISOString(),
+          bonus_granted: true,
+          completion_action: 'payment_method_added'
+        });
+        
+        // Send notification to referrer
+        try {
+          await base44.integrations.Core.SendEmail({
+            to: referrer.email,
+            subject: '🎉 Referral Bonus Unlocked!',
+            body: `
+              <h2>Congratulations!</h2>
+              <p><strong>${user.full_name}</strong> completed their signup!</p>
+              <h3>Your Rewards:</h3>
+              <ul>
+                <li>✅ +${bonusMonths} month${bonusMonths > 1 ? 's' : ''} of free premium added</li>
+                <li>🏆 Total Referrals: ${newReferralsCount}</li>
+                <li>⭐ Current Tier: ${newTier.toUpperCase()}</li>
+                <li>📅 Premium until: ${referrerTrialEnds.toLocaleDateString()}</li>
+              </ul>
+              <p>Keep sharing to earn more!</p>
+              <p><a href="https://safenestt.com/referrals">View Your Referrals</a></p>
+            `
+          });
+        } catch (emailError) {
+          console.error('Failed to send completion email:', emailError);
+        }
+        
+        // Create audit log
+        await base44.asServiceRole.entities.AuditLog.create({
+          action_type: 'referral_completed',
+          action_category: 'referral',
+          description: `Referral completed - ${bonusMonths} months awarded to ${referrer.email}`,
+          metadata: {
+            referrer: referrer.email,
+            referred: user.email,
+            bonus_months: bonusMonths,
+            new_tier: newTier
+          },
+          severity: 'info'
+        });
+        
+        return Response.json({
+          success: true,
+          bonus_months: bonusMonths,
+          referrer_name: referrer.full_name
+        });
+      } catch (error) {
+        console.error('Complete referral error:', error);
         return Response.json({ error: error.message }, { status: 500 });
       }
     }
