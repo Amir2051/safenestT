@@ -27,74 +27,123 @@ export default function CaseDocuments({ caseData, onUpdate }) {
   const [activeTab, setActiveTab] = useState("documents");
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [generating, setGenerating] = useState(null); // Track which doc is generating
+  const [generating, setGenerating] = useState(null);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [submissionOpen, setSubmissionOpen] = useState(false);
   const [localDocuments, setLocalDocuments] = useState(caseData.case_documents || {});
+  const [refreshKey, setRefreshKey] = useState(0);
   
   const queryClient = useQueryClient();
 
+  // Sync local documents when caseData changes
+  useEffect(() => {
+    if (caseData.case_documents) {
+      setLocalDocuments(caseData.case_documents);
+    }
+  }, [caseData.case_documents]);
+
   const documents = localDocuments;
 
-  const generateDocument = async (docType, e) => {
+  const generateDocument = async (docType, e, autoOpen = false) => {
     if (e) e.stopPropagation();
     setGenerating(docType);
+    
     try {
       const docContent = await generateDocumentContent(docType, caseData);
       
+      if (!docContent || !docContent.sections || docContent.sections.length === 0) {
+        throw new Error('Document generation returned empty content');
+      }
+      
+      const newDoc = {
+        content: docContent,
+        generated_at: new Date().toISOString(),
+        status: 'generated',
+        document_id: `${caseData.id}_${docType}_${Date.now()}`
+      };
+      
       const updatedDocs = {
         ...localDocuments,
-        [docType]: {
-          content: docContent,
-          generated_at: new Date().toISOString(),
-          status: 'generated'
-        }
+        [docType]: newDoc
       };
 
+      // Update local state immediately for instant UI feedback
       setLocalDocuments(updatedDocs);
+      setRefreshKey(prev => prev + 1);
 
+      // Persist to database
       await base44.entities.InvestigationCase.update(caseData.id, {
         case_documents: updatedDocs,
         last_activity: new Date().toISOString()
       });
 
+      toast.success(`${DOCUMENT_TYPES.find(d => d.id === docType)?.name} generated successfully`);
+      
+      // Auto-open the document viewer after generation
+      if (autoOpen) {
+        setSelectedDoc(docType);
+        setViewerOpen(true);
+      }
+      
       onUpdate();
-      toast.success(`${DOCUMENT_TYPES.find(d => d.id === docType)?.name} generated`);
+      return newDoc;
     } catch (error) {
-      toast.error("Failed to generate document: " + error.message);
-      console.error(error);
+      console.error('Document generation error:', error);
+      toast.error(`Failed to generate document: ${error.message}`, {
+        action: {
+          label: 'Retry',
+          onClick: () => generateDocument(docType, null, autoOpen)
+        }
+      });
+      return null;
+    } finally {
+      setGenerating(null);
     }
-    setGenerating(null);
   };
 
   const generateAllDocuments = async () => {
     setGeneratingAll(true);
+    const errors = [];
+    
     try {
-      const allDocs = {};
+      const allDocs = { ...localDocuments };
       
       for (const docType of DOCUMENT_TYPES) {
-        const content = await generateDocumentContent(docType.id, caseData);
-        allDocs[docType.id] = {
-          content,
-          generated_at: new Date().toISOString(),
-          status: 'generated'
-        };
+        try {
+          const content = await generateDocumentContent(docType.id, caseData);
+          allDocs[docType.id] = {
+            content,
+            generated_at: new Date().toISOString(),
+            status: 'generated',
+            document_id: `${caseData.id}_${docType.id}_${Date.now()}`
+          };
+          // Update UI progressively
+          setLocalDocuments({ ...allDocs });
+        } catch (docError) {
+          console.error(`Error generating ${docType.id}:`, docError);
+          errors.push(docType.name);
+        }
       }
-
-      setLocalDocuments(allDocs);
 
       await base44.entities.InvestigationCase.update(caseData.id, {
         case_documents: allDocs,
         last_activity: new Date().toISOString()
       });
 
+      setRefreshKey(prev => prev + 1);
       onUpdate();
-      toast.success("All documents generated successfully!");
+      
+      if (errors.length > 0) {
+        toast.warning(`Generated with ${errors.length} error(s): ${errors.join(', ')}`);
+      } else {
+        toast.success("All documents generated successfully!");
+      }
     } catch (error) {
-      toast.error("Failed to generate documents: " + error.message);
-      console.error(error);
+      console.error('Bulk generation error:', error);
+      toast.error(`Failed to generate documents: ${error.message}`);
+    } finally {
+      setGeneratingAll(false);
     }
-    setGeneratingAll(false);
   };
 
   const handleTransactionsImported = async (transactions) => {
@@ -135,14 +184,36 @@ export default function CaseDocuments({ caseData, onUpdate }) {
 
   const openDocument = (docType, e) => {
     if (e) e.stopPropagation();
+    
+    const doc = documents[docType];
+    if (!doc || !doc.content) {
+      toast.error('Document not generated yet. Click Generate first.');
+      return;
+    }
+    
     setSelectedDoc(docType);
     setViewerOpen(true);
   };
 
+  const generateAndOpen = async (docType, e) => {
+    if (e) e.stopPropagation();
+    await generateDocument(docType, null, true);
+  };
+
   const getDocStatus = (docType) => {
     const doc = documents[docType];
-    if (!doc || !doc.content) return 'not_generated';
+    if (!doc || !doc.content || !doc.content.sections) return 'not_generated';
     return doc.status || 'generated';
+  };
+
+  const handleDocumentUpdate = () => {
+    setRefreshKey(prev => prev + 1);
+    onUpdate();
+  };
+
+  const closeViewer = () => {
+    setViewerOpen(false);
+    setSelectedDoc(null);
   };
 
   return (
@@ -224,14 +295,15 @@ export default function CaseDocuments({ caseData, onUpdate }) {
                             className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
                           >
                             <Eye className="w-3 h-3 mr-1" />
-                            View
+                            View & Edit
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={(e) => generateDocument(docType.id, e)}
+                            onClick={(e) => generateDocument(docType.id, e, false)}
                             disabled={generating === docType.id || generatingAll}
                             className="border-gray-500/30 text-gray-400 hover:bg-gray-500/10"
+                            title="Regenerate document"
                           >
                             {generating === docType.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                           </Button>
@@ -239,11 +311,15 @@ export default function CaseDocuments({ caseData, onUpdate }) {
                       ) : (
                         <Button 
                           size="sm"
-                          onClick={(e) => generateDocument(docType.id, e)}
+                          onClick={(e) => generateAndOpen(docType.id, e)}
                           disabled={generating === docType.id || generatingAll}
                           className="w-full bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30"
                         >
-                          {generating === docType.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Generate'}
+                          {generating === docType.id ? (
+                            <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</>
+                          ) : (
+                            'Generate & Open'
+                          )}
                         </Button>
                       )}
                     </div>
@@ -266,13 +342,18 @@ export default function CaseDocuments({ caseData, onUpdate }) {
         </TabsContent>
       </Tabs>
 
-      {viewerOpen && selectedDoc && (
+      {viewerOpen && selectedDoc && documents[selectedDoc]?.content && (
         <DocumentViewer
+          key={`${selectedDoc}-${refreshKey}`}
           caseData={caseData}
           documentType={selectedDoc}
           document={documents[selectedDoc]}
-          onClose={() => setViewerOpen(false)}
-          onUpdate={onUpdate}
+          onClose={closeViewer}
+          onUpdate={handleDocumentUpdate}
+          onSubmit={() => {
+            closeViewer();
+            setSubmissionOpen(true);
+          }}
         />
       )}
 
