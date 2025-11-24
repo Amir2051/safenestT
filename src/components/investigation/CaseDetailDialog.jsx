@@ -154,6 +154,15 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   )}
                 </div>
 
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-purple-400" />
+                    <p className="text-xs text-gray-300 font-medium">Report Created By</p>
+                  </div>
+                  <p className="text-white font-semibold text-base">{caseData.created_by_name || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">{caseData.created_by_email || caseData.created_by || 'N/A'}</p>
+                </div>
+
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="w-4 h-4 text-cyan-400" />

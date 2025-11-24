@@ -146,6 +146,14 @@ export default function DocumentGenerator({ cases }) {
     ${caseData.blockchain ? `<div class="field"><span class="label">Blockchain:</span> <span class="value">${caseData.blockchain}</span></div>` : ''}
   </div>
 
+  <h2>Report Submitted By</h2>
+  <div class="field">
+    <span class="label">Name:</span> <span class="value">${caseData.created_by_name || 'N/A'}</span>
+  </div>
+  <div class="field">
+    <span class="label">Email:</span> <span class="value">${caseData.created_by_email || caseData.created_by || 'N/A'}</span>
+  </div>
+
   <h2>Victim Information</h2>
   <div class="field">
     <span class="label">Name:</span> <span class="value">${caseData.victim_name}</span>
