@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { base44 } from "@/api/base44Client";
+import ReactQuill from "react-quill";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,9 +9,27 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { 
   X, Download, Edit, Save, Printer, FileText, Copy, CheckCircle, 
-  Eye, AlertTriangle, Send, Loader2 
+  Eye, AlertTriangle, Send, Loader2, Image, Upload 
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Quill modules configuration
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'indent': '-1'}, { 'indent': '+1' }],
+    ['blockquote', 'code-block'],
+    ['link'],
+    ['clean']
+  ]
+};
+
+const quillFormats = [
+  'header', 'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet', 'indent', 'blockquote', 'code-block', 'link'
+];
 
 export default function DocumentEditor({ 
   caseData, 
@@ -24,7 +44,10 @@ export default function DocumentEditor({
   const [editedContent, setEditedContent] = useState(null);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(null);
+  const [embeddedImages, setEmbeddedImages] = useState(document?.content?.images || []);
   const printRef = useRef();
+  const fileInputRef = useRef();
 
   // Initialize content
   useEffect(() => {
@@ -66,6 +89,59 @@ export default function DocumentEditor({
   const handleSectionChange = (index, newContent) => {
     const updated = JSON.parse(JSON.stringify(editedContent));
     updated.sections[index].content = newContent;
+    setEditedContent(updated);
+    setHasChanges(true);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (event, sectionIndex) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast.error('Please upload an image or PDF file');
+      return;
+    }
+
+    setUploadingImage(sectionIndex);
+    
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      const newImage = {
+        url: file_url,
+        name: file.name,
+        type: file.type,
+        section: sectionIndex,
+        uploaded_at: new Date().toISOString()
+      };
+
+      const updatedImages = [...embeddedImages, newImage];
+      setEmbeddedImages(updatedImages);
+
+      // Update content to include image reference
+      const updated = JSON.parse(JSON.stringify(editedContent));
+      updated.images = updatedImages;
+      setEditedContent(updated);
+      setHasChanges(true);
+
+      toast.success('File uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload file');
+    }
+    
+    setUploadingImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Remove embedded image
+  const removeImage = (imageIndex) => {
+    const updatedImages = embeddedImages.filter((_, i) => i !== imageIndex);
+    setEmbeddedImages(updatedImages);
+    
+    const updated = JSON.parse(JSON.stringify(editedContent));
+    updated.images = updatedImages;
     setEditedContent(updated);
     setHasChanges(true);
   };
@@ -373,22 +449,98 @@ export default function DocumentEditor({
             >
               <div className="bg-cyan-500/10 px-4 py-3 border-b border-cyan-500/20 flex items-center justify-between">
                 <h3 className="text-white font-semibold">{section.heading}</h3>
-                {editing && section.editable !== false && (
-                  <Badge className="bg-cyan-500/20 text-cyan-400 text-xs">Editable</Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {editing && section.editable !== false && (
+                    <>
+                      <label className="cursor-pointer">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, index)}
+                          disabled={uploadingImage !== null}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-cyan-500/30 text-cyan-400 text-xs"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImage === index}
+                        >
+                          {uploadingImage === index ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <Image className="w-3 h-3 mr-1" />
+                          )}
+                          Add Image
+                        </Button>
+                      </label>
+                      <Badge className="bg-cyan-500/20 text-cyan-400 text-xs">Rich Text</Badge>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="p-4">
                 {editing && section.editable !== false ? (
-                  <Textarea
-                    value={editedContent?.sections?.[index]?.content || section.content}
-                    onChange={(e) => handleSectionChange(index, e.target.value)}
-                    className="bg-[#1a2332] border-cyan-500/30 text-white font-mono text-sm min-h-[200px] w-full resize-y"
-                    placeholder="Enter content..."
-                  />
+                  <div className="rich-text-editor">
+                    <ReactQuill
+                      theme="snow"
+                      value={editedContent?.sections?.[index]?.content || section.content}
+                      onChange={(value) => handleSectionChange(index, value)}
+                      modules={quillModules}
+                      formats={quillFormats}
+                      placeholder="Enter content with formatting..."
+                      className="bg-[#1a2332] text-white rounded-lg"
+                    />
+                  </div>
                 ) : (
-                  <pre className="text-gray-300 text-sm whitespace-pre-wrap font-mono leading-relaxed">
-                    {section.content || 'No content'}
-                  </pre>
+                  <div 
+                    className="text-gray-300 text-sm prose prose-invert prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: section.content || 'No content' }}
+                  />
+                )}
+
+                {/* Section Embedded Images */}
+                {embeddedImages.filter(img => img.section === index).length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-cyan-500/10">
+                    <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                      <Image className="w-3 h-3" /> Attached Files
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {embeddedImages.filter(img => img.section === index).map((img, imgIdx) => (
+                        <div key={imgIdx} className="relative group">
+                          {img.type === 'application/pdf' ? (
+                            <a 
+                              href={img.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="block p-4 bg-[#1a2332] rounded-lg border border-cyan-500/20 hover:border-cyan-500/40"
+                            >
+                              <FileText className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                              <p className="text-xs text-gray-300 truncate text-center">{img.name}</p>
+                            </a>
+                          ) : (
+                            <a href={img.url} target="_blank" rel="noopener noreferrer">
+                              <img 
+                                src={img.url} 
+                                alt={img.name}
+                                className="w-full h-24 object-cover rounded-lg border border-cyan-500/20 hover:border-cyan-500/40"
+                              />
+                            </a>
+                          )}
+                          {editing && (
+                            <button
+                              onClick={() => removeImage(embeddedImages.indexOf(img))}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3 text-white" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -413,6 +565,78 @@ export default function DocumentEditor({
             <p className="text-gray-600 text-xs mt-1">For law enforcement and legal purposes only</p>
           </div>
         </div>
+
+        {/* Rich Text Editor Styles */}
+        <style>{`
+          .rich-text-editor .ql-toolbar {
+            background: #1a2332;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 8px 8px 0 0;
+          }
+          .rich-text-editor .ql-toolbar .ql-stroke {
+            stroke: #9ca3af;
+          }
+          .rich-text-editor .ql-toolbar .ql-fill {
+            fill: #9ca3af;
+          }
+          .rich-text-editor .ql-toolbar .ql-picker {
+            color: #9ca3af;
+          }
+          .rich-text-editor .ql-toolbar button:hover .ql-stroke,
+          .rich-text-editor .ql-toolbar button.ql-active .ql-stroke {
+            stroke: #06b6d4;
+          }
+          .rich-text-editor .ql-toolbar button:hover .ql-fill,
+          .rich-text-editor .ql-toolbar button.ql-active .ql-fill {
+            fill: #06b6d4;
+          }
+          .rich-text-editor .ql-container {
+            background: #1a2332;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            min-height: 200px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+          }
+          .rich-text-editor .ql-editor {
+            color: #e5e7eb;
+            min-height: 180px;
+          }
+          .rich-text-editor .ql-editor.ql-blank::before {
+            color: #6b7280;
+            font-style: normal;
+          }
+          .rich-text-editor .ql-editor h1,
+          .rich-text-editor .ql-editor h2,
+          .rich-text-editor .ql-editor h3 {
+            color: #06b6d4;
+          }
+          .rich-text-editor .ql-editor blockquote {
+            border-left: 4px solid #06b6d4;
+            padding-left: 16px;
+            color: #9ca3af;
+          }
+          .rich-text-editor .ql-editor code,
+          .rich-text-editor .ql-editor pre {
+            background: #0f1419;
+            color: #10b981;
+            border-radius: 4px;
+          }
+          .rich-text-editor .ql-editor a {
+            color: #06b6d4;
+          }
+          .rich-text-editor .ql-snow .ql-picker-options {
+            background: #1a2332;
+            border-color: rgba(6, 182, 212, 0.3);
+          }
+          .rich-text-editor .ql-snow .ql-picker-item {
+            color: #9ca3af;
+          }
+          .rich-text-editor .ql-snow .ql-picker-item:hover {
+            color: #06b6d4;
+          }
+        `}</style>
       </DialogContent>
     </Dialog>
   );
