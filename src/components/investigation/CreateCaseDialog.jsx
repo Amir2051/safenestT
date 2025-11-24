@@ -61,6 +61,8 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
         amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
         status: "new",
         last_activity: new Date().toISOString(),
+        created_by_name: user.full_name,
+        created_by_email: user.email,
         case_notes: [{
           timestamp: new Date().toISOString(),
           author: "system",

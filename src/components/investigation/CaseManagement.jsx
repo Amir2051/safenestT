@@ -137,8 +137,17 @@ export default function CaseManagement({ cases }) {
                           <p className="text-sm text-white font-semibold">{caseItem.victim_name}</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-purple-400" />
+                        <div>
+                          <p className="text-xs text-gray-300 font-medium">Created By</p>
+                          <p className="text-sm text-white font-semibold">{caseItem.created_by_name || 'N/A'}</p>
+                          <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{caseItem.created_by_email || caseItem.created_by}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 md:col-start-3">
                         <DollarSign className="w-4 h-4 text-cyan-400" />
                         <div>
                           <p className="text-xs text-gray-300 font-medium">Amount Stolen</p>
