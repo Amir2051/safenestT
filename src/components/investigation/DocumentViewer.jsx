@@ -1,11 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
-  X, Download, Edit, Save, Printer, FileText, Copy, CheckCircle 
+  X, Download, Edit, Save, Printer, FileText, Copy, CheckCircle, Eye, AlertTriangle 
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,23 +18,47 @@ const DOCUMENT_NAMES = {
   evidence_package: 'Evidence Package'
 };
 
-export default function DocumentViewer({ caseData, documentType, document, onClose, onUpdate }) {
+export default function DocumentViewer({ caseData, documentType, document, onClose, onUpdate, onSubmit }) {
   const [editing, setEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(document?.content || {});
+  const [editedContent, setEditedContent] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const printRef = useRef();
 
-  const content = document?.content || {};
+  // Initialize edited content from document
+  useEffect(() => {
+    if (document?.content) {
+      setEditedContent(JSON.parse(JSON.stringify(document.content)));
+    }
+  }, [document]);
+
+  const content = editedContent || document?.content || {};
   const docName = DOCUMENT_NAMES[documentType] || 'Document';
 
-  const saveChanges = async () => {
+  // Show error if no content
+  if (!document?.content?.sections) {
+    return (
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent className="bg-[#1a2332] border-red-500/20 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-400">Document Not Available</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-300">This document has not been generated yet or is empty.</p>
+          <Button onClick={onClose} className="mt-4">Close</Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const saveChanges = async (closeAfter = false) => {
     setSaving(true);
     try {
-      const docs = caseData.case_documents || {};
+      const docs = { ...(caseData.case_documents || {}) };
       docs[documentType] = {
         ...document,
         content: editedContent,
-        last_edited: new Date().toISOString()
+        last_edited: new Date().toISOString(),
+        status: 'generated'
       };
 
       await base44.entities.InvestigationCase.update(caseData.id, {
@@ -44,9 +68,14 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
 
       onUpdate();
       setEditing(false);
-      toast.success('Document saved');
+      toast.success('Document saved successfully');
+      
+      if (closeAfter) {
+        onClose();
+      }
     } catch (error) {
-      toast.error('Failed to save');
+      console.error('Save error:', error);
+      toast.error('Failed to save: ' + error.message);
     }
     setSaving(false);
   };
@@ -128,6 +157,52 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
     toast.success('Copied to clipboard');
   };
 
+  const previewPDF = () => {
+    setPreviewLoading(true);
+    const printWindow = window.open('', '_blank');
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${content.title || docName} - Preview</title>
+        <style>
+          @media print { @page { margin: 1in; } }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; line-height: 1.8; color: #1f2937; max-width: 800px; margin: 0 auto; }
+          h1 { color: #0891b2; border-bottom: 3px solid #0891b2; padding-bottom: 15px; font-size: 28px; }
+          h2 { color: #374151; margin-top: 35px; font-size: 18px; border-left: 4px solid #0891b2; padding-left: 15px; }
+          pre { background: #f8fafc; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 13px; border: 1px solid #e2e8f0; }
+          .header { text-align: center; margin-bottom: 50px; padding: 30px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; }
+          .header p { margin: 5px 0; color: #64748b; }
+          .footer { margin-top: 50px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          .watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.1; font-size: 60px; transform: rotate(-15deg); }
+        </style>
+      </head>
+      <body>
+        <div class="watermark">PREVIEW</div>
+        <div class="header">
+          <h1>${content.title || docName}</h1>
+          <p><strong>Case #${caseData.case_number}</strong></p>
+          <p>Generated: ${new Date().toLocaleString()}</p>
+          <p>SafeNestt Investigation System</p>
+        </div>
+        ${(content.sections || []).map(section => `
+          <h2>${section.heading}</h2>
+          <pre>${section.content}</pre>
+        `).join('')}
+        <div class="footer">
+          <p>SafeNestt Investigation System - Confidential Legal Document</p>
+          <p>This document is intended for law enforcement and legal purposes only.</p>
+        </div>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    setPreviewLoading(false);
+    toast.success('Preview opened in new tab');
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -137,12 +212,12 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
               <FileText className="w-6 h-6 text-cyan-400" />
               {docName}
             </DialogTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {editing ? (
                 <>
                   <Button
                     size="sm"
-                    onClick={saveChanges}
+                    onClick={() => saveChanges(false)}
                     disabled={saving}
                     className="bg-green-500/20 text-green-400 hover:bg-green-500/30"
                   >
@@ -151,11 +226,21 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
                   </Button>
                   <Button
                     size="sm"
+                    onClick={() => saveChanges(true)}
+                    disabled={saving}
+                    className="bg-green-500 text-white hover:bg-green-600"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Save & Close
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => {
                       setEditing(false);
-                      setEditedContent(document?.content || {});
+                      setEditedContent(JSON.parse(JSON.stringify(document?.content || {})));
                     }}
+                    className="border-gray-500/30"
                   >
                     Cancel
                   </Button>
@@ -170,6 +255,16 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={previewPDF}
+                    disabled={previewLoading}
+                    className="border-purple-500/30 text-purple-400"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Preview PDF
                   </Button>
                   <Button
                     size="sm"
@@ -195,6 +290,15 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
                     <Download className="w-4 h-4 mr-1" />
                     Download
                   </Button>
+                  {onSubmit && (
+                    <Button
+                      size="sm"
+                      onClick={onSubmit}
+                      className="bg-gradient-to-r from-red-500 to-orange-500 text-white"
+                    >
+                      Submit to Authorities
+                    </Button>
+                  )}
                 </>
               )}
               <Button variant="ghost" size="icon" onClick={onClose}>
@@ -225,34 +329,53 @@ export default function DocumentViewer({ caseData, documentType, document, onClo
 
           {/* Document Sections */}
           <div className="space-y-6">
-            {(editing ? editedContent.sections : content.sections || []).map((section, index) => (
+            {(content.sections || []).map((section, index) => (
               <div 
                 key={index}
                 className="bg-[#0f1419] rounded-lg border border-cyan-500/10 overflow-hidden"
               >
-                <div className="bg-cyan-500/10 px-4 py-2 border-b border-cyan-500/20">
+                <div className="bg-cyan-500/10 px-4 py-2 border-b border-cyan-500/20 flex items-center justify-between">
                   <h3 className="text-white font-semibold">{section.heading}</h3>
+                  {editing && (
+                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 text-xs">
+                      Editing
+                    </Badge>
+                  )}
                 </div>
                 <div className="p-4">
-                  {editing ? (
+                  {editing && editedContent?.sections?.[index] ? (
                     <Textarea
                       value={editedContent.sections[index].content}
                       onChange={(e) => {
-                        const updated = { ...editedContent };
+                        const updated = JSON.parse(JSON.stringify(editedContent));
                         updated.sections[index].content = e.target.value;
                         setEditedContent(updated);
                       }}
-                      className="bg-[#1a2332] border-cyan-500/30 text-white font-mono text-sm min-h-[150px]"
+                      className="bg-[#1a2332] border-cyan-500/30 text-white font-mono text-sm min-h-[150px] w-full"
+                      placeholder="Enter content..."
                     />
                   ) : (
-                    <pre className="text-gray-300 text-sm whitespace-pre-wrap font-mono leading-relaxed">
-                      {section.content}
+                    <pre className="text-gray-300 text-sm whitespace-pre-wrap font-mono leading-relaxed break-words">
+                      {section.content || 'No content available'}
                     </pre>
                   )}
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Imported Transactions Warning */}
+          {documentType === 'transaction_log' && (!content.transactions || content.transactions.length === 0) && (
+            <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-yellow-400 font-semibold">No Transactions Imported</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Import an Etherscan CSV to populate this document with transaction data.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Document Footer */}
           <div className="mt-8 pt-6 border-t border-cyan-500/20 text-center">
