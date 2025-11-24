@@ -30,6 +30,29 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
     setLoading(true);
 
     try {
+      const user = await base44.auth.me();
+      const plan = user?.subscription_plan || 'free';
+      
+      // Check case limit for non-premium users
+      if (plan !== 'premium_unlimited') {
+        const existingCases = await base44.entities.InvestigationCase.list();
+        const userCases = existingCases.filter(c => c.created_by === user.email);
+        
+        const limits = {
+          free: 1,
+          basic: 3,
+          elite: 10
+        };
+        
+        const limit = limits[plan] || 0;
+        
+        if (userCases.length >= limit) {
+          toast.error(`Case limit reached. Upgrade to Premium Unlimited for unlimited cases.`);
+          setLoading(false);
+          return;
+        }
+      }
+      
       const caseNumber = `CASE-${Date.now()}`;
       
       await base44.entities.InvestigationCase.create({

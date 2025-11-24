@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Shield, Check, Zap, Lock, Bot, 
-  TrendingUp, CreditCard, Star, Sparkles, AlertTriangle
+  TrendingUp, CreditCard, Star, Sparkles, AlertTriangle, Crown
 } from "lucide-react";
 
 export default function Upgrade() {
@@ -51,6 +51,28 @@ export default function Upgrade() {
         "✅ Automated security fixes",
         "✅ Access to future AI-driven features",
         "✅ Early access to new features"
+      ]
+    },
+    premium_unlimited: {
+      name: "Premium Unlimited",
+      price: "$24.99",
+      period: "month",
+      checkoutUrl: "https://buy.stripe.com/premium-unlimited-placeholder",
+      color: "from-amber-500 to-orange-500",
+      icon: Star,
+      premium: true,
+      features: [
+        "🌟 Everything in Elite Plan",
+        "✅ Unlimited case submissions",
+        "✅ Full protection & monitoring of stolen funds",
+        "✅ Free 1-on-1 consultation for recovery guidance",
+        "✅ Agency reporting tools & alerts",
+        "✅ Priority investigation support",
+        "✅ Direct access to fraud recovery team",
+        "✅ Blockchain tracing & analysis",
+        "✅ Law enforcement coordination",
+        "✅ Dedicated account manager",
+        "✅ White-glove service"
       ]
     }
   };
@@ -126,7 +148,7 @@ export default function Upgrade() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-6">
             <h3 className="text-white font-semibold text-xl mb-6 text-center">Feature Comparison</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-[#0f1419] rounded-lg p-5 border border-gray-600">
                 <h4 className="text-white font-semibold mb-4 text-lg">🆓 Free Tier</h4>
                 <ul className="space-y-2 text-sm">
@@ -180,6 +202,29 @@ export default function Upgrade() {
                   <li className="text-purple-400">⭐ Future AI features</li>
                 </ul>
               </div>
+              
+              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg p-5 border-2 border-amber-500/40 relative">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-1">
+                    <Crown className="w-3 h-3 mr-1 inline" />
+                    PREMIUM
+                  </Badge>
+                </div>
+                <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2 mt-2">
+                  🌟 Premium Unlimited
+                  <Badge className="bg-amber-500/20 text-amber-400 text-xs">$24.99/mo</Badge>
+                </h4>
+                <ul className="space-y-2 text-sm">
+                  <li className="text-green-400">✅ Everything in Elite</li>
+                  <li className="text-amber-400">🌟 Unlimited case submissions</li>
+                  <li className="text-amber-400">🌟 Full fund protection</li>
+                  <li className="text-amber-400">🌟 Free 1-on-1 consultation</li>
+                  <li className="text-amber-400">🌟 Agency reporting tools</li>
+                  <li className="text-amber-400">🌟 Priority investigation</li>
+                  <li className="text-amber-400">🌟 Dedicated manager</li>
+                  <li className="text-amber-400">🌟 White-glove service</li>
+                </ul>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -205,7 +250,7 @@ export default function Upgrade() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {Object.entries(PLANS).map(([key, plan]) => {
             const Icon = plan.icon;
             const isCurrentPlan = currentPlan === key && isActive;

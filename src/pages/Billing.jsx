@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CreditCard, Calendar, AlertTriangle, CheckCircle, Clock,
-  RefreshCw, XCircle, TrendingUp, Loader2, ExternalLink
+  RefreshCw, XCircle, TrendingUp, Loader2, ExternalLink, Crown
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -200,18 +200,44 @@ export default function Billing() {
                 <CreditCard className="w-5 h-5 mr-2" />
                 Add Payment Method - Elite ($19.99/mo)
               </Button>
+              <Button
+                onClick={() => handleUpdatePayment('premium_unlimited')}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
+              >
+                <CreditCard className="w-5 h-5 mr-2" />
+                Add Payment Method - Premium Unlimited ($24.99/mo)
+              </Button>
             </>
           )}
 
           {info.has_payment_method && (
             <>
               {info.subscription_plan === 'basic' && (
+                <>
+                  <Button
+                    onClick={() => handleUpdatePayment('elite')}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
+                  >
+                    <TrendingUp className="w-5 h-5 mr-2" />
+                    Upgrade to Elite - $19.99/mo
+                  </Button>
+                  <Button
+                    onClick={() => handleUpdatePayment('premium_unlimited')}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
+                  >
+                    <Crown className="w-5 h-5 mr-2" />
+                    Upgrade to Premium Unlimited - $24.99/mo
+                  </Button>
+                </>
+              )}
+              
+              {info.subscription_plan === 'elite' && (
                 <Button
-                  onClick={() => handleUpdatePayment('elite')}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
+                  onClick={() => handleUpdatePayment('premium_unlimited')}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
                 >
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  Upgrade to Elite - $19.99/mo
+                  <Crown className="w-5 h-5 mr-2" />
+                  Upgrade to Premium Unlimited - $24.99/mo
                 </Button>
               )}
               
@@ -260,7 +286,7 @@ export default function Billing() {
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Basic Plan: $9.99/month - Elite Plan: $19.99/month</span>
+              <span>Basic: $9.99/mo • Elite: $19.99/mo • Premium Unlimited: $24.99/mo</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
