@@ -28,14 +28,20 @@ export default function SubscriptionGuard({ children }) {
   useEffect(() => {
     if (!user || !subscriptionInfo) return;
 
-    // Allow access to subscription page and public pages
-    const publicPages = ['/Subscription', '/PaymentSuccess', '/PaymentOnboarding', '/AccessDenied', '/PendingApproval', '/WelcomeOnboarding'];
+    // Allow access to subscription-related and public pages
+    const publicPages = ['/Subscription', '/PaymentSuccess', '/PaymentOnboarding', '/PaymentRequired', '/AccessDenied', '/PendingApproval', '/WelcomeOnboarding'];
     const isPublicPage = publicPages.some(page => location.pathname.includes(page));
     
     if (isPublicPage) return;
 
-    // Check if user has active subscription or trial
-    const hasAccess = subscriptionInfo.subscription_status === 'active' || subscriptionInfo.is_trial_active;
+    // Check if payment method is required but not added
+    if (subscriptionInfo.requires_payment) {
+      navigate(createPageUrl('PaymentRequired'));
+      return;
+    }
+
+    // Check if user has active subscription or trial with payment method
+    const hasAccess = (subscriptionInfo.subscription_status === 'active' || subscriptionInfo.is_trial_active) && subscriptionInfo.has_payment_method;
 
     if (!hasAccess) {
       navigate(createPageUrl('Subscription'));

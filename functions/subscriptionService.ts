@@ -13,15 +13,17 @@ Deno.serve(async (req) => {
 
     switch (endpoint) {
       case 'init-trial': {
-        // Initialize 14-day trial for new user
+        // Initialize 7-day trial for new user
         const trialStart = new Date();
-        const trialEnd = new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         await base44.auth.updateMe({
           subscription_plan: 'trial',
           subscription_status: 'trial',
           trial_started: trialStart.toISOString(),
           trial_ends: trialEnd.toISOString(),
+          has_payment_method: false,
+          payment_required: true,
           trial_notification_sent: {
             trial_start: false,
             trial_48h: false,
@@ -36,6 +38,18 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'set-payment-method': {
+        // Called after user adds payment via Stripe
+        await base44.auth.updateMe({
+          has_payment_method: true,
+          stripe_customer_id: params.customer_id,
+          payment_method_id: params.payment_method_id,
+          last_payment_method_update: new Date().toISOString()
+        });
+
+        return Response.json({ success: true });
+      }
+
       case 'get-subscription-info': {
         const now = new Date();
         const trialEnd = user.trial_ends ? new Date(user.trial_ends) : null;
@@ -45,15 +59,18 @@ Deno.serve(async (req) => {
         return Response.json({
           subscription_plan: user.subscription_plan,
           subscription_status: user.subscription_status,
-          has_payment_method: user.has_payment_method,
+          has_payment_method: user.has_payment_method || false,
+          payment_required: user.payment_required || false,
           trial_ends: user.trial_ends,
+          next_billing_date: user.next_billing_date,
           days_left: daysLeft,
           hours_left: hoursLeft,
           billing_cycle_anchor: user.billing_cycle_anchor,
           payment_failed: user.payment_failed,
           is_trial_active: user.subscription_status === 'trial' && trialEnd > now,
           is_premium: user.subscription_plan === 'basic' || user.subscription_plan === 'elite',
-          can_access_premium: (user.subscription_status === 'trial' || user.subscription_status === 'active')
+          can_access_premium: (user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method,
+          requires_payment: !user.has_payment_method && user.payment_required
         });
       }
 

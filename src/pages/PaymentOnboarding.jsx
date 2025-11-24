@@ -52,8 +52,12 @@ export default function PaymentOnboarding() {
   };
 
   const handleSkip = () => {
-    toast.info('You can add payment method later from Settings → Billing');
-    navigate('/Dashboard');
+    // Only allow skip if user already has payment method
+    if (subscriptionInfo?.has_payment_method) {
+      navigate('/Dashboard');
+    } else {
+      toast.error('Payment method is required to use SafeNestt');
+    }
   };
 
   if (loading || !user || !subscriptionInfo) {
@@ -232,15 +236,12 @@ export default function PaymentOnboarding() {
           </CardContent>
         </Card>
 
-        {/* Skip Option */}
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            onClick={handleSkip}
-            className="text-gray-400 hover:text-white"
-          >
-            I'll add payment later
-          </Button>
+        {/* Info Message */}
+        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-center">
+          <p className="text-gray-300 text-sm">
+            <Lock className="w-4 h-4 inline mr-2" />
+            Payment method required to access SafeNestt features
+          </p>
         </div>
       </div>
     </div>

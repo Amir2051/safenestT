@@ -55,6 +55,7 @@ import InvestigationHub from './pages/InvestigationHub';
 import AgenciesDirectory from './pages/AgenciesDirectory';
 import Subscription from './pages/Subscription';
 import SubscriptionRequired from './pages/SubscriptionRequired';
+import PaymentRequired from './pages/PaymentRequired';
 import __Layout from './Layout.jsx';
 
 
@@ -116,6 +117,7 @@ export const PAGES = {
     "AgenciesDirectory": AgenciesDirectory,
     "Subscription": Subscription,
     "SubscriptionRequired": SubscriptionRequired,
+    "PaymentRequired": PaymentRequired,
 }
 
 export const pagesConfig = {
