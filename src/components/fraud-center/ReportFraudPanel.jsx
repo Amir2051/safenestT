@@ -22,10 +22,16 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
     victim_name: user?.full_name || '',
     victim_email: user?.email || '',
     victim_phone: '',
+    victim_address: '',
     amount_stolen_usd: '',
     cryptocurrency: '',
     blockchain: '',
     scammer_wallet: '',
+    scammer_name: '',
+    scammer_email: '',
+    scammer_phone: '',
+    scammer_telegram: '',
+    scammer_website: '',
     incident_date: '',
     description: ''
   });
@@ -57,6 +63,8 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
       case 2:
         return formData.victim_name && formData.amount_stolen_usd;
       case 3:
+        return true; // Suspect info is optional
+      case 4:
         return formData.description;
       default:
         return true;
@@ -79,7 +87,26 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
         amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
         cryptocurrency: formData.cryptocurrency,
         blockchain: formData.blockchain,
+        victim_contact_info: {
+          primary_email: formData.victim_email,
+          phone: formData.victim_phone,
+          address: formData.victim_address
+        },
         scammer_info: {
+          name: formData.scammer_name,
+          email: formData.scammer_email,
+          phone: formData.scammer_phone,
+          telegram: formData.scammer_telegram,
+          website: formData.scammer_website,
+          wallet_addresses: formData.scammer_wallet ? [formData.scammer_wallet] : [],
+          known_emails: formData.scammer_email ? [formData.scammer_email] : []
+        },
+        suspect_details: {
+          primary_suspect: {
+            name: formData.scammer_name,
+            email: formData.scammer_email,
+            phone: formData.scammer_phone
+          },
           wallet_addresses: formData.scammer_wallet ? [formData.scammer_wallet] : []
         },
         monitored_wallets: formData.scammer_wallet ? [formData.scammer_wallet] : [],
@@ -92,7 +119,7 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
       });
 
       toast.success('Fraud case reported successfully!');
-      setStep(4); // Success step
+      setStep(5); // Success step
       
       setTimeout(() => {
         if (onCaseCreated) onCaseCreated();
@@ -110,7 +137,7 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
     <div className="max-w-3xl mx-auto">
       {/* Progress Steps */}
       <div className="flex items-center justify-center mb-8">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <React.Fragment key={s}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
               step >= s 
@@ -119,15 +146,15 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
             }`}>
               {step > s ? <CheckCircle className="w-5 h-5" /> : s}
             </div>
-            {s < 3 && (
+            {s < 4 && (
               <div className={`w-20 h-1 ${step > s ? 'bg-cyan-500' : 'bg-gray-700'}`} />
             )}
           </React.Fragment>
         ))}
       </div>
 
-      {/* Step 4: Success */}
-      {step === 4 && (
+      {/* Step 5: Success */}
+      {step === 5 && (
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/30">
           <CardContent className="p-12 text-center">
             <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -229,7 +256,7 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <User className="w-5 h-5 text-cyan-400" />
-              Step 2: Victim & Financial Details
+              Step 2: Victim Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -240,15 +267,17 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
                   value={formData.victim_name}
                   onChange={(e) => handleChange('victim_name', e.target.value)}
                   className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  placeholder="Full name"
                 />
               </div>
               <div>
-                <Label className="text-white mb-2 block">Email</Label>
+                <Label className="text-white mb-2 block">Victim Email *</Label>
                 <Input
                   type="email"
                   value={formData.victim_email}
                   onChange={(e) => handleChange('victim_email', e.target.value)}
                   className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  placeholder="victim@email.com"
                 />
               </div>
             </div>
@@ -260,15 +289,16 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
                   value={formData.victim_phone}
                   onChange={(e) => handleChange('victim_phone', e.target.value)}
                   className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  placeholder="+1 234 567 8900"
                 />
               </div>
               <div>
-                <Label className="text-white mb-2 block">Incident Date</Label>
+                <Label className="text-white mb-2 block">Address</Label>
                 <Input
-                  type="date"
-                  value={formData.incident_date}
-                  onChange={(e) => handleChange('incident_date', e.target.value)}
+                  value={formData.victim_address}
+                  onChange={(e) => handleChange('victim_address', e.target.value)}
                   className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  placeholder="City, State, Country"
                 />
               </div>
             </div>
@@ -288,12 +318,12 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
                 </div>
               </div>
               <div>
-                <Label className="text-white mb-2 block">Scammer Wallet Address</Label>
+                <Label className="text-white mb-2 block">Incident Date</Label>
                 <Input
-                  value={formData.scammer_wallet}
-                  onChange={(e) => handleChange('scammer_wallet', e.target.value)}
-                  placeholder="0x..."
-                  className="bg-[#0f1419] border-cyan-500/30 text-white font-mono text-sm"
+                  type="date"
+                  value={formData.incident_date}
+                  onChange={(e) => handleChange('incident_date', e.target.value)}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white"
                 />
               </div>
             </div>
@@ -314,13 +344,106 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
         </Card>
       )}
 
-      {/* Step 3: Description & Submit */}
+      {/* Step 3: Suspect Information */}
       {step === 3 && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Step 3: Suspect Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg mb-2">
+              <p className="text-gray-300 text-sm">Enter any information you have about the scammer/suspect. All fields are optional.</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white mb-2 block">Suspect Name / Alias</Label>
+                <Input
+                  value={formData.scammer_name}
+                  onChange={(e) => handleChange('scammer_name', e.target.value)}
+                  className="bg-[#0f1419] border-red-500/30 text-white"
+                  placeholder="Name or alias used"
+                />
+              </div>
+              <div>
+                <Label className="text-white mb-2 block">Suspect Email</Label>
+                <Input
+                  type="email"
+                  value={formData.scammer_email}
+                  onChange={(e) => handleChange('scammer_email', e.target.value)}
+                  className="bg-[#0f1419] border-red-500/30 text-white"
+                  placeholder="scammer@email.com"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white mb-2 block">Suspect Phone / WhatsApp</Label>
+                <Input
+                  value={formData.scammer_phone}
+                  onChange={(e) => handleChange('scammer_phone', e.target.value)}
+                  className="bg-[#0f1419] border-red-500/30 text-white"
+                  placeholder="+1 234 567 8900"
+                />
+              </div>
+              <div>
+                <Label className="text-white mb-2 block">Telegram Handle</Label>
+                <Input
+                  value={formData.scammer_telegram}
+                  onChange={(e) => handleChange('scammer_telegram', e.target.value)}
+                  className="bg-[#0f1419] border-red-500/30 text-white"
+                  placeholder="@username"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white mb-2 block">Scammer Wallet Address</Label>
+                <Input
+                  value={formData.scammer_wallet}
+                  onChange={(e) => handleChange('scammer_wallet', e.target.value)}
+                  placeholder="0x..."
+                  className="bg-[#0f1419] border-red-500/30 text-white font-mono text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-white mb-2 block">Scammer Website / Platform</Label>
+                <Input
+                  value={formData.scammer_website}
+                  onChange={(e) => handleChange('scammer_website', e.target.value)}
+                  className="bg-[#0f1419] border-red-500/30 text-white"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(2)} className="border-gray-500/30">
+                Back
+              </Button>
+              <Button
+                onClick={() => setStep(4)}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600"
+              >
+                Continue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 4: Description & Submit */}
+      {step === 4 && (
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-purple-400" />
-              Step 3: Incident Description
+              Step 4: Incident Description
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -354,19 +477,27 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
                   <span className="text-white ml-2">{formData.victim_name}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Blockchain:</span>
-                  <span className="text-white ml-2">{formData.blockchain || 'N/A'}</span>
+                  <span className="text-gray-400">Victim Email:</span>
+                  <span className="text-white ml-2">{formData.victim_email || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Suspect:</span>
+                  <span className="text-white ml-2">{formData.scammer_name || 'Unknown'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Suspect Email:</span>
+                  <span className="text-white ml-2">{formData.scammer_email || 'N/A'}</span>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setStep(2)} className="border-gray-500/30">
+              <Button variant="outline" onClick={() => setStep(3)} className="border-gray-500/30">
                 Back
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!validateStep(3) || submitting}
+                disabled={!validateStep(4) || submitting}
                 className="bg-gradient-to-r from-red-500 to-orange-600"
               >
                 {submitting ? (
