@@ -44,13 +44,14 @@ export default function Settings() {
 
   const updateUserMutation = useMutation({
     mutationFn: async (data) => {
-      // Mark profile as completed if username and phone are filled
+      // Mark profile as completed if username is filled
       const updateData = { ...data };
-      if (data.username && data.phone) {
+      if (data.username && data.username.trim()) {
         updateData.onboarding_checklist = {
           ...(user.onboarding_checklist || {}),
           profile_completed: true
         };
+        updateData.onboarding_completed = true;
       }
       
       const result = await base44.auth.updateMe(updateData);
@@ -117,13 +118,19 @@ export default function Settings() {
     },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
-      setFormData(prev => ({
-        ...prev,
-        username: updatedUser.username || updatedUser.full_name || prev.username
-      }));
+      setFormData({
+        username: updatedUser.username || updatedUser.full_name || '',
+        phone: updatedUser.phone || '',
+        monitored_emails: updatedUser.monitored_emails || [],
+        vpn_enabled: updatedUser.vpn_enabled || false,
+        two_factor_enabled: updatedUser.two_factor_enabled || false,
+      });
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-      toast.success('✅ Settings saved successfully!');
+      toast.success('✅ Settings saved successfully!', {
+        description: 'Your profile has been updated',
+        duration: 3000,
+      });
     },
     onError: () => {
       toast.error('Failed to save settings');
@@ -236,45 +243,47 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-gray-300">Username</Label>
+                <Label className="text-white font-semibold mb-2 block">Username *</Label>
                 <Input
                   value={formData.username}
                   onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                  className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
-                  placeholder="johndoe"
+                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  placeholder="Enter your username"
                 />
+                <p className="text-xs text-gray-400 mt-1">This will be your display name</p>
               </div>
               
               <div>
-                <Label className="text-gray-300">Email</Label>
+                <Label className="text-white font-semibold mb-2 block">Email</Label>
                 <Input
                   value={user.email}
                   disabled
-                  className="bg-[#0f1419] border-cyan-500/20 text-gray-400 mt-2"
+                  className="bg-[#0f1419]/50 border-gray-600/30 text-gray-300"
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-gray-400 mt-1">Email address cannot be changed</p>
               </div>
 
               <div>
-                <Label className="text-gray-300">Phone Number</Label>
+                <Label className="text-white font-semibold mb-2 block">Phone Number</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                   placeholder="+1 (555) 123-4567"
                 />
+                <p className="text-xs text-gray-400 mt-1">Used for account recovery and alerts</p>
               </div>
 
               <div>
-                <Label className="text-gray-300 mb-2 block">Subscription Plan</Label>
+                <Label className="text-white font-semibold mb-2 block">Subscription Plan</Label>
                 <Badge className={`${
-                  user.subscription_plan === 'premium' 
+                  user.subscription_plan === 'premium' || user.subscription_plan === 'basic' || user.subscription_plan === 'elite'
                     ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/50' 
                     : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
                 } border text-sm py-1.5 px-3`}>
-                  {user.subscription_plan === 'premium' ? '✨ Premium' : '🆓 Free'}
+                  {user.subscription_plan === 'premium' || user.subscription_plan === 'basic' || user.subscription_plan === 'elite' ? '✨ Premium' : user.subscription_plan === 'trial' ? '🎁 Trial' : '🆓 Free'}
                 </Badge>
-                {user.subscription_plan !== 'premium' && (
+                {(user.subscription_plan === 'free' || !user.subscription_plan) && (
                   <p className="text-xs text-gray-400 mt-2">
                     Upgrade to Premium for advanced features
                   </p>
