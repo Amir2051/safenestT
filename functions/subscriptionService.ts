@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
         const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24))) : 0;
         const hoursLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60))) : 0;
 
+        const isTrialCancelled = user.subscription_status === 'trial_cancelled';
+        const trialStillActive = isTrialCancelled && trialEnd > now;
+
         return Response.json({
           subscription_plan: user.subscription_plan,
           subscription_status: user.subscription_status,
@@ -63,13 +66,16 @@ Deno.serve(async (req) => {
           payment_required: user.payment_required || false,
           trial_ends: user.trial_ends,
           next_billing_date: user.next_billing_date,
+          cancelled_at: user.cancelled_at,
           days_left: daysLeft,
           hours_left: hoursLeft,
           billing_cycle_anchor: user.billing_cycle_anchor,
           payment_failed: user.payment_failed,
-          is_trial_active: user.subscription_status === 'trial' && trialEnd > now,
+          is_trial_active: (user.subscription_status === 'trial' || isTrialCancelled) && trialEnd > now,
+          is_trial_cancelled: isTrialCancelled,
+          trial_still_active: trialStillActive,
           is_premium: user.subscription_plan === 'basic' || user.subscription_plan === 'elite',
-          can_access_premium: (user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method,
+          can_access_premium: ((user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method) || trialStillActive,
           requires_payment: !user.has_payment_method && user.payment_required
         });
       }
@@ -194,13 +200,29 @@ Deno.serve(async (req) => {
       }
 
       case 'cancel-subscription': {
-        // In production, this would call Stripe API to cancel
-        await base44.auth.updateMe({
-          subscription_status: 'canceled',
-          subscription_plan: 'free'
-        });
+        // Cancel subscription - sync with Stripe in production
+        const isTrial = user.subscription_status === 'trial';
+        
+        if (isTrial) {
+          // Cancel during trial - maintain access until trial ends
+          await base44.auth.updateMe({
+            subscription_status: 'trial_cancelled',
+            subscription_plan: 'trial',
+            cancelled_at: new Date().toISOString()
+          });
+        } else {
+          // Cancel active subscription
+          await base44.auth.updateMe({
+            subscription_status: 'canceled',
+            subscription_plan: 'free',
+            cancelled_at: new Date().toISOString()
+          });
+        }
 
-        return Response.json({ success: true });
+        return Response.json({ 
+          success: true,
+          message: isTrial ? 'Trial cancelled. Access until trial ends.' : 'Subscription cancelled.'
+        });
       }
 
       default:

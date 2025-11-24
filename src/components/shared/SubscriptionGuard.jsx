@@ -41,7 +41,11 @@ export default function SubscriptionGuard({ children }) {
     }
 
     // Check if user has active subscription or trial with payment method
-    const hasAccess = (subscriptionInfo.subscription_status === 'active' || subscriptionInfo.is_trial_active) && subscriptionInfo.has_payment_method;
+    // Also allow access if trial was cancelled but still active
+    const hasAccess = (
+      (subscriptionInfo.subscription_status === 'active' || subscriptionInfo.is_trial_active) && 
+      subscriptionInfo.has_payment_method
+    ) || subscriptionInfo.trial_still_active;
 
     if (!hasAccess) {
       navigate(createPageUrl('Subscription'));

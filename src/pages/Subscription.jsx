@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Shield, CheckCircle, Sparkles, CreditCard, Clock,
-  Lock, Zap, TrendingUp, Users, Star, ExternalLink
+  Lock, Zap, TrendingUp, Users, Star, ExternalLink, AlertTriangle
 } from "lucide-react";
+import { toast } from "sonner";
 
 const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
 
 export default function Subscription() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -38,9 +41,32 @@ export default function Subscription() {
     setTimeout(() => setLoading(false), 1000);
   };
 
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      const response = await base44.functions.invoke('subscriptionService', {
+        endpoint: 'cancel-subscription'
+      });
+      toast.success(response.data.message);
+      setShowCancelDialog(false);
+      // Reload subscription info
+      const subResponse = await base44.functions.invoke('subscriptionService', {
+        endpoint: 'get-subscription-info'
+      });
+      window.location.reload();
+    } catch (error) {
+      toast.error('Failed to cancel: ' + error.message);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const isSubscribed = subscriptionInfo?.subscription_status === 'active';
   const isOnTrial = subscriptionInfo?.is_trial_active;
+  const isTrialCancelled = subscriptionInfo?.is_trial_cancelled;
+  const trialStillActive = subscriptionInfo?.trial_still_active;
   const daysLeft = subscriptionInfo?.days_left || 0;
+  const canCancel = (isOnTrial && !isTrialCancelled) || isSubscribed;
 
   return (
     <div className="min-h-screen p-6 lg:p-8 bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a]">
@@ -288,6 +314,68 @@ export default function Subscription() {
           </div>
         </div>
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <Card className="max-w-lg w-full bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/30">
+            <CardContent className="p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-400" />
+                </div>
+                <h3 className="text-white font-bold text-xl">Cancel Subscription?</h3>
+              </div>
+              
+              <p className="text-gray-300 mb-6">
+                {isOnTrial ? (
+                  <>
+                    Are you sure you want to cancel your subscription? You will lose access to all premium features after your free trial ends on{' '}
+                    <span className="font-semibold text-white">
+                      {subscriptionInfo?.trial_ends ? new Date(subscriptionInfo.trial_ends).toLocaleDateString() : 'N/A'}
+                    </span>.
+                  </>
+                ) : (
+                  'Are you sure you want to cancel your subscription? You will lose access to all premium features at the end of your billing period.'
+                )}
+              </p>
+
+              {isOnTrial && (
+                <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg mb-6">
+                  <p className="text-cyan-400 text-sm">
+                    ℹ️ You'll keep access until {subscriptionInfo?.trial_ends ? new Date(subscriptionInfo.trial_ends).toLocaleDateString() : 'N/A'}. No charges will occur.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowCancelDialog(false)}
+                  variant="outline"
+                  className="flex-1 border-gray-500/30"
+                  disabled={cancelling}
+                >
+                  Keep Subscription
+                </Button>
+                <Button
+                  onClick={handleCancelSubscription}
+                  disabled={cancelling}
+                  className="flex-1 bg-red-500 hover:bg-red-600"
+                >
+                  {cancelling ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    'Yes, Cancel'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
