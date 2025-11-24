@@ -44,12 +44,17 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
               >
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex-1">
-                    <h3 className="text-white font-bold mb-2">{fraudCase.case_title}</h3>
+                    <h3 className="text-white font-bold mb-2">{fraudCase.case_title || fraudCase.case_number}</h3>
                     <div className="flex items-center gap-2 mb-2">
                       <Badge className={statusColors[fraudCase.status] || statusColors.reported}>
                         {fraudCase.status}
                       </Badge>
-                      <Badge variant="outline">{fraudCase.fraud_type}</Badge>
+                      {fraudCase.case_type && (
+                        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">
+                          {fraudCase.case_type}
+                        </Badge>
+                      )}
+                      {fraudCase.fraud_type && <Badge variant="outline">{fraudCase.fraud_type}</Badge>}
                     </div>
                   </div>
                   {isSelected && (
@@ -76,13 +81,18 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">
-                    Reported: {new Date(fraudCase.created_date).toLocaleDateString()}
-                  </span>
-                  <span className="text-gray-400">
-                    By: {fraudCase.created_by}
-                  </span>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-400 text-xs">Reported Date</p>
+                    <p className="text-white">
+                      {new Date(fraudCase.created_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Created By</p>
+                    <p className="text-white font-semibold">{fraudCase.created_by_name || 'N/A'}</p>
+                    <p className="text-gray-400 text-[10px] truncate">{fraudCase.created_by_email || fraudCase.created_by}</p>
+                  </div>
                 </div>
 
                 {fundSupport > 0 && (

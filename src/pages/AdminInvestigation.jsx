@@ -37,9 +37,40 @@ export default function AdminInvestigation() {
     });
   }, [navigate]);
 
-  const { data: fraudCases = [], isLoading } = useQuery({
+  const { data: fraudCases = [], isLoading: loadingFraud } = useQuery({
+    queryKey: ['fraud-cases'],
+    queryFn: async () => {
+      const cases = await base44.asServiceRole.entities.FraudCase.list('-created_date');
+      // Fetch user details for each case
+      const users = await base44.asServiceRole.entities.User.list();
+      return cases.map(c => {
+        const creator = users.find(u => u.email === c.created_by);
+        return {
+          ...c,
+          created_by_name: creator?.full_name,
+          created_by_email: creator?.email || c.created_by
+        };
+      });
+    },
+    enabled: !!user && (user.role === 'admin' || user.is_admin),
+    refetchInterval: 30000
+  });
+
+  const { data: investigationCases = [], isLoading: loadingInvestigation } = useQuery({
     queryKey: ['investigation-cases'],
-    queryFn: () => base44.asServiceRole.entities.FraudCase.list('-created_date'),
+    queryFn: async () => {
+      const cases = await base44.asServiceRole.entities.InvestigationCase.list('-created_date');
+      // Fetch user details for each case
+      const users = await base44.asServiceRole.entities.User.list();
+      return cases.map(c => {
+        const creator = users.find(u => u.email === c.created_by);
+        return {
+          ...c,
+          created_by_name: creator?.full_name,
+          created_by_email: creator?.email || c.created_by
+        };
+      });
+    },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
     refetchInterval: 30000
   });
@@ -50,7 +81,7 @@ export default function AdminInvestigation() {
     enabled: !!user && (user.role === 'admin' || user.is_admin)
   });
 
-  if (!user || isLoading) {
+  if (!user || loadingFraud || loadingInvestigation) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
@@ -58,9 +89,15 @@ export default function AdminInvestigation() {
     );
   }
 
-  const activeCases = fraudCases.filter(c => c.status !== 'closed' && c.status !== 'recovered');
-  const totalRecovered = fraudCases.reduce((sum, c) => 
-    sum + (c.amount_stolen_usd * (c.recovery_progress || 0)) / 100, 0
+  // Combine both case types
+  const allCases = [
+    ...fraudCases.map(c => ({ ...c, case_type: 'fraud' })),
+    ...investigationCases.map(c => ({ ...c, case_type: 'investigation' }))
+  ].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+
+  const activeCases = allCases.filter(c => c.status !== 'closed' && c.status !== 'recovered');
+  const totalRecovered = allCases.reduce((sum, c) => 
+    sum + ((c.amount_stolen_usd || 0) * (c.recovery_progress || 0)) / 100, 0
   );
   const totalFundBalance = recoveryFunds
     .filter(f => f.transaction_type === 'contribution' && f.status === 'confirmed')
@@ -103,7 +140,7 @@ export default function AdminInvestigation() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400 mb-1">Total Cases</p>
-                <p className="text-2xl font-bold text-orange-400">{fraudCases.length}</p>
+                <p className="text-2xl font-bold text-orange-400">{allCases.length}</p>
               </div>
               <Database className="w-8 h-8 text-orange-400" />
             </div>
@@ -170,7 +207,7 @@ export default function AdminInvestigation() {
 
         <TabsContent value="cases" className="mt-6">
           <CaseManager 
-            cases={fraudCases}
+            cases={allCases}
             onSelectCase={setSelectedCase}
             selectedCase={selectedCase}
             recoveryFunds={recoveryFunds}
