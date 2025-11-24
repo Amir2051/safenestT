@@ -459,10 +459,16 @@ export default function Settings() {
                     <p className="text-xs text-gray-400">Secure your internet connection</p>
                   </div>
                 </div>
-                <Switch
-                  checked={formData.vpn_enabled}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, vpn_enabled: checked }))}
-                />
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${formData.vpn_enabled ? 'text-green-400' : 'text-gray-500'}`}>
+                    {formData.vpn_enabled ? 'ON' : 'OFF'}
+                  </span>
+                  <Switch
+                    checked={formData.vpn_enabled}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, vpn_enabled: checked }))}
+                    className="data-[state=checked]:bg-green-500"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
@@ -475,10 +481,16 @@ export default function Settings() {
                     <p className="text-xs text-gray-400">Add an extra layer of security</p>
                   </div>
                 </div>
-                <Switch
-                  checked={formData.two_factor_enabled}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, two_factor_enabled: checked }))}
-                />
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${formData.two_factor_enabled ? 'text-purple-400' : 'text-gray-500'}`}>
+                    {formData.two_factor_enabled ? 'ON' : 'OFF'}
+                  </span>
+                  <Switch
+                    checked={formData.two_factor_enabled}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, two_factor_enabled: checked }))}
+                    className="data-[state=checked]:bg-purple-500"
+                  />
+                </div>
               </div>
 
               <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
