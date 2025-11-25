@@ -57,6 +57,7 @@ import Subscription from './pages/Subscription';
 import SubscriptionRequired from './pages/SubscriptionRequired';
 import PaymentRequired from './pages/PaymentRequired';
 import CryptoFraudCenter from './pages/CryptoFraudCenter';
+import ReportedScams from './pages/ReportedScams';
 import __Layout from './Layout.jsx';
 
 
@@ -120,6 +121,7 @@ export const PAGES = {
     "SubscriptionRequired": SubscriptionRequired,
     "PaymentRequired": PaymentRequired,
     "CryptoFraudCenter": CryptoFraudCenter,
+    "ReportedScams": ReportedScams,
 }
 
 export const pagesConfig = {

@@ -83,6 +83,13 @@ const navigationItems = [
     badge: 'LIVE'
   },
   {
+    id: 'reported-scams',
+    title: 'Reported Scams',
+    icon: AlertTriangle,
+    url: createPageUrl('ReportedScams'),
+    glow: 'red'
+  },
+  {
     id: 'invitations',
     title: 'Referrals',
     icon: Users,
