@@ -20,52 +20,21 @@ export default function ReportedScams() {
     initialData: [],
   });
 
-  const { data: fraudCases = [], isLoading: fraudLoading } = useQuery({
-    queryKey: ['public-fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.list('-created_date', 200),
-    initialData: [],
-  });
-
-  // Combine scam database and fraud cases
-  const allScams = [
-    ...scamDatabase.map(s => ({
-      id: s.id,
-      type: 'scam',
-      identifier: s.identifier,
-      scam_type: s.scam_type,
-      blockchain: s.blockchain,
-      risk_level: s.risk_level || 'medium',
-      description: s.scam_description,
-      victim_count: s.victim_count || 1,
-      total_stolen_usd: s.total_stolen_usd || 0,
-      first_reported: s.first_reported || s.created_date,
-      verified: s.verified,
-      status: s.status
-    })),
-    ...fraudCases.map(f => ({
-      id: f.id,
-      type: 'fraud_case',
-      identifier: f.scammer_wallet,
-      scam_type: f.fraud_type,
-      blockchain: f.blockchain,
-      risk_level: 'high',
-      description: f.description,
-      victim_count: 1,
-      total_stolen_usd: f.amount_stolen_usd || 0,
-      first_reported: f.incident_date || f.created_date,
-      verified: false,
-      status: f.status,
-      case_title: f.case_title
-    }))
-  ];
-
-  // Remove duplicates by identifier
-  const uniqueScams = allScams.reduce((acc, curr) => {
-    if (!acc.find(s => s.identifier === curr.identifier)) {
-      acc.push(curr);
-    }
-    return acc;
-  }, []);
+  // Only show ScamDatabase entries on Reported Scams page
+  const uniqueScams = scamDatabase.map(s => ({
+    id: s.id,
+    type: 'scam',
+    identifier: s.identifier,
+    scam_type: s.scam_type,
+    blockchain: s.blockchain,
+    risk_level: s.risk_level || 'medium',
+    description: s.scam_description,
+    victim_count: s.victim_count || 1,
+    total_stolen_usd: s.total_stolen_usd || 0,
+    first_reported: s.first_reported || s.created_date,
+    verified: s.verified,
+    status: s.status
+  }));
 
   const filteredScams = uniqueScams.filter(scam => 
     scam.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,7 +59,7 @@ export default function ReportedScams() {
     }
   };
 
-  if (isLoading || fraudLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
