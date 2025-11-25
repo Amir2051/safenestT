@@ -16,19 +16,61 @@ export default function ReportedScams() {
 
   const { data: scamDatabase = [], isLoading } = useQuery({
     queryKey: ['scam-database'],
-    queryFn: () => base44.entities.ScamDatabase.filter({ verified: true }, '-created_date', 100),
+    queryFn: () => base44.entities.ScamDatabase.list('-created_date', 200),
     initialData: [],
   });
 
-  const { data: fraudCases = [] } = useQuery({
+  const { data: fraudCases = [], isLoading: fraudLoading } = useQuery({
     queryKey: ['public-fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.filter({ status: { $ne: 'closed' } }, '-created_date', 50),
+    queryFn: () => base44.entities.FraudCase.list('-created_date', 200),
     initialData: [],
   });
 
-  const filteredScams = scamDatabase.filter(scam => 
+  // Combine scam database and fraud cases
+  const allScams = [
+    ...scamDatabase.map(s => ({
+      id: s.id,
+      type: 'scam',
+      identifier: s.identifier,
+      scam_type: s.scam_type,
+      blockchain: s.blockchain,
+      risk_level: s.risk_level || 'medium',
+      description: s.scam_description,
+      victim_count: s.victim_count || 1,
+      total_stolen_usd: s.total_stolen_usd || 0,
+      first_reported: s.first_reported || s.created_date,
+      verified: s.verified,
+      status: s.status
+    })),
+    ...fraudCases.map(f => ({
+      id: f.id,
+      type: 'fraud_case',
+      identifier: f.scammer_wallet,
+      scam_type: f.fraud_type,
+      blockchain: f.blockchain,
+      risk_level: 'high',
+      description: f.description,
+      victim_count: 1,
+      total_stolen_usd: f.amount_stolen_usd || 0,
+      first_reported: f.incident_date || f.created_date,
+      verified: false,
+      status: f.status,
+      case_title: f.case_title
+    }))
+  ];
+
+  // Remove duplicates by identifier
+  const uniqueScams = allScams.reduce((acc, curr) => {
+    if (!acc.find(s => s.identifier === curr.identifier)) {
+      acc.push(curr);
+    }
+    return acc;
+  }, []);
+
+  const filteredScams = uniqueScams.filter(scam => 
     scam.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    scam.scam_description?.toLowerCase().includes(searchTerm.toLowerCase())
+    scam.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    scam.case_title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getRiskColor = (level) => {
@@ -48,7 +90,7 @@ export default function ReportedScams() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || fraudLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
@@ -73,14 +115,14 @@ export default function ReportedScams() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-red-400">{scamDatabase.length}</p>
-            <p className="text-xs text-gray-400">Verified Scams</p>
+            <p className="text-3xl font-bold text-red-400">{uniqueScams.length}</p>
+            <p className="text-xs text-gray-400">Reported Scams</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-orange-500/20">
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-orange-400">
-              {scamDatabase.filter(s => s.risk_level === 'critical' || s.risk_level === 'high').length}
+              {uniqueScams.filter(s => s.risk_level === 'critical' || s.risk_level === 'high').length}
             </p>
             <p className="text-xs text-gray-400">High Risk</p>
           </CardContent>
@@ -88,7 +130,7 @@ export default function ReportedScams() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-purple-400">
-              {scamDatabase.reduce((sum, s) => sum + (s.victim_count || 0), 0)}
+              {uniqueScams.reduce((sum, s) => sum + (s.victim_count || 0), 0)}
             </p>
             <p className="text-xs text-gray-400">Reported Victims</p>
           </CardContent>
@@ -96,7 +138,7 @@ export default function ReportedScams() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-cyan-400">
-              ${(scamDatabase.reduce((sum, s) => sum + (s.total_stolen_usd || 0), 0) / 1000000).toFixed(1)}M
+              ${(uniqueScams.reduce((sum, s) => sum + (s.total_stolen_usd || 0), 0) / 1000000).toFixed(2)}M
             </p>
             <p className="text-xs text-gray-400">Total Stolen</p>
           </CardContent>
@@ -130,7 +172,7 @@ export default function ReportedScams() {
 
       {/* Scam List */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-white">Verified Scams ({filteredScams.length})</h2>
+        <h2 className="text-xl font-bold text-white">All Reported Scams ({filteredScams.length})</h2>
         
         {filteredScams.length === 0 ? (
           <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
@@ -158,20 +200,33 @@ export default function ReportedScams() {
                             {scam.risk_level?.toUpperCase()}
                           </Badge>
                           <Badge variant="outline" className="text-gray-400 border-gray-600">
-                            {scam.scam_type}
+                            {scam.scam_type?.replace('_', ' ')}
                           </Badge>
                           {scam.blockchain && scam.blockchain !== 'n/a' && (
                             <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">
                               {scam.blockchain}
                             </Badge>
                           )}
+                          {scam.verified && (
+                            <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                              VERIFIED
+                            </Badge>
+                          )}
+                          {scam.case_title && (
+                            <Badge variant="outline" className="text-purple-400 border-purple-500/50">
+                              Case
+                            </Badge>
+                          )}
                         </div>
+                        {scam.case_title && (
+                          <p className="text-purple-300 text-sm font-semibold mb-1">{scam.case_title}</p>
+                        )}
                         <p className="text-white font-mono text-sm break-all mb-2">
                           {scam.identifier}
                         </p>
-                        {scam.scam_description && (
+                        {scam.description && (
                           <p className="text-gray-400 text-sm line-clamp-2">
-                            {scam.scam_description}
+                            {scam.description}
                           </p>
                         )}
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
@@ -233,12 +288,25 @@ export default function ReportedScams() {
                   {selectedCase.risk_level?.toUpperCase()} RISK
                 </Badge>
                 <Badge variant="outline" className="text-gray-400 border-gray-600">
-                  {selectedCase.scam_type}
+                  {selectedCase.scam_type?.replace('_', ' ')}
                 </Badge>
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
-                  VERIFIED
-                </Badge>
+                {selectedCase.verified ? (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                    VERIFIED
+                  </Badge>
+                ) : (
+                  <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
+                    REPORTED
+                  </Badge>
+                )}
               </div>
+
+              {selectedCase.case_title && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Case Title</p>
+                  <p className="text-purple-300 font-semibold">{selectedCase.case_title}</p>
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-gray-400 mb-1">Identifier</p>
@@ -247,10 +315,10 @@ export default function ReportedScams() {
                 </p>
               </div>
 
-              {selectedCase.scam_description && (
+              {selectedCase.description && (
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Description</p>
-                  <p className="text-gray-300 text-sm">{selectedCase.scam_description}</p>
+                  <p className="text-gray-300 text-sm">{selectedCase.description}</p>
                 </div>
               )}
 
