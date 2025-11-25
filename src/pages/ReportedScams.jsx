@@ -269,15 +269,15 @@ export default function ReportedScams() {
 
       {/* Detail Modal */}
       {selectedCase && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="bg-[#1a2332] border-cyan-500/20 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedCase(null)}>
+          <Card className="bg-[#1a2332] border-cyan-500/20 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <CardHeader className="border-b border-cyan-500/20">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-white flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-red-400" />
                   Scam Details
                 </CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedCase(null)}>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCase(null)} className="text-gray-400 hover:text-white hover:bg-gray-700">
                   ✕
                 </Button>
               </div>
