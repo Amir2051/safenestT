@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search, Building2, CreditCard
+  Wallet, Search, Building2, CreditCard, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,13 @@ const navigationItems = [
     icon: AlertTriangle,
     url: createPageUrl('ReportedScams'),
     glow: 'red'
+  },
+  {
+    id: 'my-cases',
+    title: 'My Cases',
+    icon: FileText,
+    url: createPageUrl('MyCases'),
+    glow: 'cyan'
   },
   {
     id: 'invitations',
