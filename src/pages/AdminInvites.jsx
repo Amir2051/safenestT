@@ -138,7 +138,7 @@ export default function AdminInvites() {
               ADMIN
             </Badge>
           </h1>
-          <p className="text-gray-400 mt-1">Create and manage invitation links for SaFenestT</p>
+          <p className="text-gray-400 mt-1">Create and manage invitation links for SafeNestT</p>
         </div>
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
