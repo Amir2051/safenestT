@@ -29,14 +29,7 @@ const navigationItems = [
     glow: 'purple',
     badge: 'AI'
   },
-  {
-    id: 'fraud-center',
-    title: 'Crypto Fraud Center',
-    icon: Search,
-    url: createPageUrl('CryptoFraudCenter'),
-    glow: 'red',
-    badge: '🔥'
-  },
+
   {
     id: 'vault',
     title: 'Password Vault',
@@ -121,6 +114,14 @@ const navigationItems = [
 ];
 
 const adminItems = [
+  {
+    id: 'fraud-center',
+    title: 'Crypto Fraud Center',
+    icon: Search,
+    url: createPageUrl('CryptoFraudCenter'),
+    glow: 'red',
+    badge: 'ADMIN'
+  },
   {
     id: 'admin-dashboard',
     title: 'Admin Dashboard',
