@@ -397,16 +397,34 @@ export default function ScamReporter() {
                 <Label className="text-white font-semibold mb-2 block">Fraud Type *</Label>
                 <Select value={formData.fraud_type} onValueChange={(v) => setFormData({...formData, fraud_type: v})}>
                   <SelectTrigger className="bg-[#0f1419] border-purple-500/30 text-white h-12">
-                    <SelectValue />
+                    <SelectValue>
+                      <span className={`font-semibold ${
+                        formData.fraud_type === 'crypto_theft' ? 'text-red-400' :
+                        formData.fraud_type === 'phishing' ? 'text-orange-400' :
+                        formData.fraud_type === 'fake_exchange' ? 'text-yellow-400' :
+                        formData.fraud_type === 'rug_pull' ? 'text-pink-400' :
+                        formData.fraud_type === 'romance_scam' ? 'text-purple-400' :
+                        formData.fraud_type === 'investment_scam' ? 'text-cyan-400' :
+                        'text-gray-300'
+                      }`}>
+                        {formData.fraud_type === 'crypto_theft' ? '🔴 Crypto Theft' :
+                         formData.fraud_type === 'phishing' ? '🟠 Phishing Attack' :
+                         formData.fraud_type === 'fake_exchange' ? '🟡 Fake Exchange' :
+                         formData.fraud_type === 'rug_pull' ? '🩷 Rug Pull' :
+                         formData.fraud_type === 'romance_scam' ? '🟣 Romance Scam' :
+                         formData.fraud_type === 'investment_scam' ? '🔵 Investment Scam' :
+                         '⚪ Other'}
+                      </span>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a2332] border-cyan-500/30">
-                    <SelectItem value="crypto_theft">Crypto Theft</SelectItem>
-                    <SelectItem value="phishing">Phishing Attack</SelectItem>
-                    <SelectItem value="fake_exchange">Fake Exchange</SelectItem>
-                    <SelectItem value="rug_pull">Rug Pull</SelectItem>
-                    <SelectItem value="romance_scam">Romance Scam</SelectItem>
-                    <SelectItem value="investment_scam">Investment Scam</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="crypto_theft" className="text-red-400 font-semibold focus:bg-red-500/20 focus:text-red-300">🔴 Crypto Theft</SelectItem>
+                    <SelectItem value="phishing" className="text-orange-400 font-semibold focus:bg-orange-500/20 focus:text-orange-300">🟠 Phishing Attack</SelectItem>
+                    <SelectItem value="fake_exchange" className="text-yellow-400 font-semibold focus:bg-yellow-500/20 focus:text-yellow-300">🟡 Fake Exchange</SelectItem>
+                    <SelectItem value="rug_pull" className="text-pink-400 font-semibold focus:bg-pink-500/20 focus:text-pink-300">🩷 Rug Pull</SelectItem>
+                    <SelectItem value="romance_scam" className="text-purple-400 font-semibold focus:bg-purple-500/20 focus:text-purple-300">🟣 Romance Scam</SelectItem>
+                    <SelectItem value="investment_scam" className="text-cyan-400 font-semibold focus:bg-cyan-500/20 focus:text-cyan-300">🔵 Investment Scam</SelectItem>
+                    <SelectItem value="other" className="text-gray-300 font-semibold focus:bg-gray-500/20 focus:text-gray-200">⚪ Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
