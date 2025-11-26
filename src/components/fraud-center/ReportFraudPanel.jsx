@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle, User, Wallet, DollarSign, Calendar, FileText,
-  Upload, Send, Loader2, CheckCircle, Shield
+  Upload, Send, Loader2, CheckCircle, Shield, Scale
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,7 +34,9 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
     scammer_telegram: '',
     scammer_website: '',
     incident_date: '',
-    description: ''
+    description: '',
+    law_enforcement_authorized: false,
+    authorization_full_name: ''
   });
 
   const fraudTypes = [
@@ -65,7 +68,7 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
       case 3:
         return true; // Suspect info is optional
       case 4:
-        return formData.description;
+        return formData.description && (!formData.law_enforcement_authorized || formData.authorization_full_name);
       default:
         return true;
     }
@@ -77,6 +80,44 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
     try {
       const caseNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
       
+      // Create FraudCase for user's My Cases
+      await base44.entities.FraudCase.create({
+        case_title: formData.case_title,
+        fraud_type: formData.fraud_type,
+        amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
+        blockchain: formData.blockchain,
+        scammer_wallet: formData.scammer_wallet,
+        victim_contact_info: {
+          name: formData.victim_name,
+          email: formData.victim_email,
+          phone: formData.victim_phone,
+          address: formData.victim_address
+        },
+        suspect_details: {
+          name: formData.scammer_name,
+          email: formData.scammer_email,
+          phone: formData.scammer_phone,
+          websites: formData.scammer_website ? [formData.scammer_website] : [],
+          social_media: formData.scammer_telegram ? [{ platform: 'Telegram', profile: formData.scammer_telegram }] : []
+        },
+        incident_date: formData.incident_date || new Date().toISOString(),
+        description: formData.description,
+        status: 'reported',
+        admin_contact_status: 'Pending',
+        case_priority: parseFloat(formData.amount_stolen_usd) > 50000 ? 'high' : 
+                  parseFloat(formData.amount_stolen_usd) > 10000 ? 'medium' : 'low',
+        law_enforcement_authorization: formData.law_enforcement_authorized ? {
+          authorized: true,
+          authorized_date: new Date().toISOString(),
+          authorized_agencies: ['FBI', 'IC3', 'FTC'],
+          full_name: formData.authorization_full_name,
+          signature_confirmation: true
+        } : {
+          authorized: false
+        }
+      });
+
+      // Also create InvestigationCase for admin tracking
       await base44.entities.InvestigationCase.create({
         case_number: caseNumber,
         case_title: formData.case_title,
@@ -457,6 +498,44 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
               />
             </div>
 
+            {/* Law Enforcement Authorization */}
+            <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Scale className="w-5 h-5 text-purple-400" />
+                Law Enforcement Authorization
+              </h4>
+              <p className="text-gray-300 text-sm mb-4">
+                By checking this box, you authorize SafeNestT to act as your representative and contact law enforcement agencies (including FBI, IC3, and other relevant authorities) on your behalf regarding this fraud case.
+              </p>
+              
+              <div className="flex items-start space-x-3 mb-4">
+                <Checkbox
+                  id="law_enforcement_auth"
+                  checked={formData.law_enforcement_authorized}
+                  onCheckedChange={(checked) => handleChange('law_enforcement_authorized', checked)}
+                  className="mt-1 border-purple-500 data-[state=checked]:bg-purple-500"
+                />
+                <label htmlFor="law_enforcement_auth" className="text-sm text-white leading-relaxed cursor-pointer">
+                  I hereby authorize SafeNestT and its representatives to contact law enforcement agencies, including but not limited to the FBI, IC3 (Internet Crime Complaint Center), FTC, and other relevant federal, state, or local authorities on my behalf. I understand that SafeNestT may share my case details, personal information, and evidence with these agencies to assist in the investigation and potential recovery of my stolen assets.
+                </label>
+              </div>
+
+              {formData.law_enforcement_authorized && (
+                <div className="mt-4 p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <Label className="text-white mb-2 block">Full Legal Name (Electronic Signature) *</Label>
+                  <Input
+                    value={formData.authorization_full_name}
+                    onChange={(e) => handleChange('authorization_full_name', e.target.value)}
+                    placeholder="Enter your full legal name to confirm authorization"
+                    className="bg-[#0f1419] border-purple-500/30 text-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    By typing your name above, you are providing your electronic signature confirming this authorization. Date: {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Summary */}
             <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
               <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
@@ -487,6 +566,12 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
                 <div>
                   <span className="text-gray-400">Suspect Email:</span>
                   <span className="text-white ml-2">{formData.scammer_email || 'N/A'}</span>
+                </div>
+                <div className="col-span-2 mt-2 pt-2 border-t border-cyan-500/20">
+                  <span className="text-gray-400">Law Enforcement Authorization:</span>
+                  <span className={`ml-2 font-semibold ${formData.law_enforcement_authorized ? 'text-green-400' : 'text-gray-500'}`}>
+                    {formData.law_enforcement_authorized ? `✓ Authorized (${formData.authorization_full_name})` : 'Not Authorized'}
+                  </span>
                 </div>
               </div>
             </div>
