@@ -59,6 +59,7 @@ import PaymentRequired from './pages/PaymentRequired';
 import CryptoFraudCenter from './pages/CryptoFraudCenter';
 import ReportedScams from './pages/ReportedScams';
 import MyCases from './pages/MyCases';
+import TrackingPage from './pages/TrackingPage';
 import __Layout from './Layout.jsx';
 
 
@@ -124,6 +125,7 @@ export const PAGES = {
     "CryptoFraudCenter": CryptoFraudCenter,
     "ReportedScams": ReportedScams,
     "MyCases": MyCases,
+    "TrackingPage": TrackingPage,
 }
 
 export const pagesConfig = {
