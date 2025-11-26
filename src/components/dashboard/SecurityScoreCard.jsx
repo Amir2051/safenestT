@@ -29,7 +29,11 @@ export default function SecurityScoreCard({ score, alerts, passwords, user }) {
       
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
-          <Shield className="w-5 h-5 text-cyan-400" />
+          <img 
+            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/12b8ed3f3_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg" 
+            alt="SafeNestT" 
+            className="w-6 h-6 object-contain rounded"
+          />
           Security Health Score
         </CardTitle>
       </CardHeader>
