@@ -66,26 +66,35 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Link disabled' }, { status: 403 });
       }
 
-      // Get IP from headers
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+      // Get IP from client data first, fallback to headers
+      const ip = visitor_data?.client_ip || 
+                 req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                  req.headers.get('x-real-ip') || 
                  req.headers.get('cf-connecting-ip') ||
                  'Unknown';
 
-      // Fetch geo data from IP
-      let geoData = { country: 'Unknown', city: 'Unknown', region: 'Unknown' };
-      try {
-        const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city`);
-        const geo = await geoResponse.json();
-        if (geo.status === 'success') {
-          geoData = {
-            country: geo.country || 'Unknown',
-            city: geo.city || 'Unknown',
-            region: geo.regionName || 'Unknown'
-          };
+      // Use client-provided geo data if available, otherwise try to fetch
+      let geoData = { 
+        country: visitor_data?.client_country || 'Unknown', 
+        city: visitor_data?.client_city || 'Unknown', 
+        region: visitor_data?.client_region || 'Unknown' 
+      };
+      
+      // If no client geo data, try server-side lookup
+      if (geoData.country === 'Unknown' && ip !== 'Unknown') {
+        try {
+          const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
+          if (geoResponse.ok) {
+            const geo = await geoResponse.json();
+            geoData = {
+              country: geo.country_name || 'Unknown',
+              city: geo.city || 'Unknown',
+              region: geo.region || 'Unknown'
+            };
+          }
+        } catch (e) {
+          console.error('Geo lookup failed:', e);
         }
-      } catch (e) {
-        console.error('Geo lookup failed:', e);
       }
 
       // Parse user agent
