@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -12,12 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function MyCases() {
   const [user, setUser] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
+  const [editingCase, setEditingCase] = useState(null);
+  const [editFormData, setEditFormData] = useState(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -28,6 +37,72 @@ export default function MyCases() {
     queryFn: () => base44.entities.FraudCase.filter({}, '-created_date'),
     enabled: !!user,
   });
+
+  const updateCaseMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.FraudCase.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-fraud-cases'] });
+      toast.success('Case updated successfully!');
+      setEditingCase(null);
+      setEditFormData(null);
+    },
+    onError: (error) => {
+      toast.error('Failed to update case: ' + error.message);
+    }
+  });
+
+  const startEditing = (caseItem) => {
+    setEditingCase(caseItem);
+    setEditFormData({
+      case_title: caseItem.case_title || '',
+      description: caseItem.description || '',
+      scammer_wallet: caseItem.scammer_wallet || '',
+      amount_stolen_usd: caseItem.amount_stolen_usd || 0,
+      blockchain: caseItem.blockchain || '',
+      suspect_name: caseItem.suspect_details?.name || '',
+      suspect_email: caseItem.suspect_details?.email || '',
+      suspect_phone: caseItem.suspect_details?.phone || '',
+      law_enforcement_authorized: caseItem.law_enforcement_authorization?.authorized || false,
+      authorization_full_name: caseItem.law_enforcement_authorization?.full_name || ''
+    });
+    setSelectedCase(null);
+  };
+
+  const handleEditSave = () => {
+    if (!editFormData.case_title) {
+      toast.error('Case title is required');
+      return;
+    }
+    if (editFormData.law_enforcement_authorized && !editFormData.authorization_full_name) {
+      toast.error('Please provide your full legal name for authorization');
+      return;
+    }
+
+    const updateData = {
+      case_title: editFormData.case_title,
+      description: editFormData.description,
+      scammer_wallet: editFormData.scammer_wallet,
+      amount_stolen_usd: parseFloat(editFormData.amount_stolen_usd) || 0,
+      blockchain: editFormData.blockchain,
+      suspect_details: {
+        ...editingCase.suspect_details,
+        name: editFormData.suspect_name,
+        email: editFormData.suspect_email,
+        phone: editFormData.suspect_phone
+      },
+      law_enforcement_authorization: editFormData.law_enforcement_authorized ? {
+        authorized: true,
+        authorized_date: editingCase.law_enforcement_authorization?.authorized_date || new Date().toISOString(),
+        authorized_agencies: ['FBI', 'IC3', 'FTC'],
+        full_name: editFormData.authorization_full_name,
+        signature_confirmation: true
+      } : {
+        authorized: false
+      }
+    };
+
+    updateCaseMutation.mutate({ id: editingCase.id, data: updateData });
+  };
 
   if (!user) {
     return (
@@ -200,6 +275,7 @@ export default function MyCases() {
                         </div>
                       </div>
 
+                      <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -212,6 +288,19 @@ export default function MyCases() {
                         <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(caseItem);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
                     </div>
                   </div>
                 );
@@ -220,6 +309,183 @@ export default function MyCases() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Case Modal */}
+      <Dialog open={!!editingCase} onOpenChange={() => { setEditingCase(null); setEditFormData(null); }}>
+        <DialogContent className="bg-[#1a2332] border-cyan-500/20 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-cyan-400" />
+              Edit Case
+            </DialogTitle>
+          </DialogHeader>
+
+          {editFormData && (
+            <div className="space-y-6">
+              {/* Case Title */}
+              <div>
+                <Label className="text-white mb-2 block">Case Title *</Label>
+                <Input
+                  value={editFormData.case_title}
+                  onChange={(e) => setEditFormData({...editFormData, case_title: e.target.value})}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  placeholder="Case title"
+                />
+              </div>
+
+              {/* Financial Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white mb-2 block">Amount Stolen (USD)</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.amount_stolen_usd}
+                    onChange={(e) => setEditFormData({...editFormData, amount_stolen_usd: e.target.value})}
+                    className="bg-[#0f1419] border-cyan-500/30 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white mb-2 block">Blockchain</Label>
+                  <Select value={editFormData.blockchain} onValueChange={(v) => setEditFormData({...editFormData, blockchain: v})}>
+                    <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white">
+                      <SelectValue placeholder="Select blockchain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ethereum">Ethereum</SelectItem>
+                      <SelectItem value="bitcoin">Bitcoin</SelectItem>
+                      <SelectItem value="bsc">BSC</SelectItem>
+                      <SelectItem value="polygon">Polygon</SelectItem>
+                      <SelectItem value="solana">Solana</SelectItem>
+                      <SelectItem value="tron">Tron</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Scammer Wallet */}
+              <div>
+                <Label className="text-white mb-2 block">Scammer Wallet Address</Label>
+                <Input
+                  value={editFormData.scammer_wallet}
+                  onChange={(e) => setEditFormData({...editFormData, scammer_wallet: e.target.value})}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white font-mono"
+                  placeholder="0x..."
+                />
+              </div>
+
+              {/* Suspect Details */}
+              <div className="p-4 bg-[#0f1419] rounded-lg border border-orange-500/20">
+                <h4 className="text-orange-400 font-semibold mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Suspect Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Name</Label>
+                    <Input
+                      value={editFormData.suspect_name}
+                      onChange={(e) => setEditFormData({...editFormData, suspect_name: e.target.value})}
+                      className="bg-[#1a2332] border-orange-500/20 text-white mt-1"
+                      placeholder="Suspect name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Email</Label>
+                    <Input
+                      value={editFormData.suspect_email}
+                      onChange={(e) => setEditFormData({...editFormData, suspect_email: e.target.value})}
+                      className="bg-[#1a2332] border-orange-500/20 text-white mt-1"
+                      placeholder="Suspect email"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Phone</Label>
+                    <Input
+                      value={editFormData.suspect_phone}
+                      onChange={(e) => setEditFormData({...editFormData, suspect_phone: e.target.value})}
+                      className="bg-[#1a2332] border-orange-500/20 text-white mt-1"
+                      placeholder="Suspect phone"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label className="text-white mb-2 block">Description</Label>
+                <Textarea
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white min-h-[120px]"
+                  placeholder="Describe what happened..."
+                />
+              </div>
+
+              {/* Law Enforcement Authorization */}
+              <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-purple-400" />
+                  Law Enforcement Authorization
+                </h4>
+                <p className="text-gray-300 text-sm mb-4">
+                  Authorize SafeNestT to contact law enforcement agencies (FBI, IC3, FTC) on your behalf.
+                </p>
+                
+                <div className="flex items-start space-x-3 mb-4">
+                  <Checkbox
+                    id="edit_law_enforcement_auth"
+                    checked={editFormData.law_enforcement_authorized}
+                    onCheckedChange={(checked) => setEditFormData({...editFormData, law_enforcement_authorized: checked})}
+                    className="mt-1 border-purple-500 data-[state=checked]:bg-purple-500"
+                  />
+                  <label htmlFor="edit_law_enforcement_auth" className="text-sm text-white leading-relaxed cursor-pointer">
+                    I authorize SafeNestT to contact law enforcement agencies on my behalf regarding this fraud case.
+                  </label>
+                </div>
+
+                {editFormData.law_enforcement_authorized && (
+                  <div className="mt-4 p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                    <Label className="text-white mb-2 block">Full Legal Name (Electronic Signature) *</Label>
+                    <Input
+                      value={editFormData.authorization_full_name}
+                      onChange={(e) => setEditFormData({...editFormData, authorization_full_name: e.target.value})}
+                      placeholder="Enter your full legal name"
+                      className="bg-[#0f1419] border-purple-500/30 text-white"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">
+                      Electronic signature confirmation. Date: {new Date().toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700/50">
+                <Button
+                  variant="outline"
+                  onClick={() => { setEditingCase(null); setEditFormData(null); }}
+                  className="border-gray-500/30"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleEditSave}
+                  disabled={updateCaseMutation.isPending}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                >
+                  {updateCaseMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" />Save Changes</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Case Detail Modal */}
       <Dialog open={!!selectedCase} onOpenChange={() => setSelectedCase(null)}>
@@ -232,6 +498,19 @@ export default function MyCases() {
 
           {selectedCase && (
             <div className="space-y-6">
+              {/* Edit Button in Detail View */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                  onClick={() => startEditing(selectedCase)}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit Case
+                </Button>
+              </div>
+
               {/* Status Badges */}
               <div className="flex items-center gap-3 flex-wrap">
                 <Badge className={`${statusConfig[selectedCase.status]?.color || statusConfig.reported.color} border`}>
