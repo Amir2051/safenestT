@@ -19,6 +19,7 @@ import RecommendedAgencies from "./RecommendedAgencies.jsx";
 import CaseDocuments from "./CaseDocuments.jsx";
 import SuspectEditForm from "./SuspectEditForm.jsx";
 import TrackingToolsPanel from "@/components/admin/TrackingToolsPanel.jsx";
+import AgencyReportGenerator from "./AgencyReportGenerator.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -291,6 +292,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <Shield className="w-3 h-3 mr-1" />IP Tracker
               </TabsTrigger>
               <TabsTrigger value="agencies">Agencies</TabsTrigger>
+              <TabsTrigger value="reports" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                <FileText className="w-3 h-3 mr-1" />Generate Reports
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
@@ -951,6 +955,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="agencies" className="space-y-4">
               <RecommendedAgencies caseData={caseData} />
+            </TabsContent>
+
+            <TabsContent value="reports" className="space-y-4">
+              <AgencyReportGenerator caseData={caseData} onReportGenerated={onUpdate} />
             </TabsContent>
           </Tabs>
         </div>
