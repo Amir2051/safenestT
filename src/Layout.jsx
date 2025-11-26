@@ -170,12 +170,16 @@ export default function Layout({ children, currentPageName }) {
               </button>
 
               <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/30">
-                <Shield className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <div>
-                  <h1 className="text-white font-bold text-sm tracking-wider">SafeNestT</h1>
-                  <p className="text-cyan-400 text-[10px] font-mono">// SECURED //</p>
-                </div>
-              </div>
+                    <img 
+                      src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg" 
+                      alt="SafeNestT" 
+                      className="w-8 h-8 rounded object-contain"
+                    />
+                    <div>
+                      <h1 className="text-white font-bold text-sm tracking-wider">SafeNestT</h1>
+                      <p className="text-cyan-400 text-[10px] font-mono">// SECURED //</p>
+                    </div>
+                  </div>
             </div>
 
             <div className="flex items-center gap-4">
