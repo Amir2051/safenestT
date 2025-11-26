@@ -18,6 +18,7 @@ import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
 import CaseDocuments from "./CaseDocuments.jsx";
 import SuspectEditForm from "./SuspectEditForm.jsx";
+import TrackingToolsPanel from "@/components/admin/TrackingToolsPanel.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -285,7 +286,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="evidence">Evidence</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="tracking">Tracking</TabsTrigger>
+              <TabsTrigger value="tracking">Wallet Tracking</TabsTrigger>
+              <TabsTrigger value="technical-tools" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                <Shield className="w-3 h-3 mr-1" />IP Tracker
+              </TabsTrigger>
               <TabsTrigger value="agencies">Agencies</TabsTrigger>
             </TabsList>
 
@@ -936,6 +940,13 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               ) : (
                 <p className="text-gray-400 text-center py-8">No wallets monitored</p>
               )}
+            </TabsContent>
+
+            <TabsContent value="technical-tools" className="space-y-4">
+              <TrackingToolsPanel 
+                caseId={caseData.id} 
+                caseTitle={caseData.case_title || 'Case'} 
+              />
             </TabsContent>
 
             <TabsContent value="agencies" className="space-y-4">
