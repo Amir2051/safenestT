@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Loader2, CheckCircle, User, Phone, Mail, Wallet, Calendar, Upload, X, FileText } from "lucide-react";
+import { AlertTriangle, Loader2, CheckCircle, User, Phone, Mail, Wallet, Calendar, Upload, X, FileText, Scale, ShieldCheck } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export default function ScamReporter() {
@@ -35,7 +36,9 @@ export default function ScamReporter() {
     currency_type: 'USD',
     blockchain: 'ethereum',
     description: '',
-    incident_date: ''
+    incident_date: '',
+    law_enforcement_authorized: false,
+    authorization_full_name: ''
   });
 
   useEffect(() => {
@@ -146,7 +149,16 @@ export default function ScamReporter() {
         })),
         status: 'reported',
         admin_contact_status: 'Pending',
-        case_priority: formData.amount_stolen >= 10000 ? 'high' : formData.amount_stolen >= 1000 ? 'medium' : 'low'
+        case_priority: formData.amount_stolen >= 10000 ? 'high' : formData.amount_stolen >= 1000 ? 'medium' : 'low',
+        law_enforcement_authorization: formData.law_enforcement_authorized ? {
+          authorized: true,
+          authorized_date: new Date().toISOString(),
+          authorized_agencies: ['FBI', 'IC3', 'FTC'],
+          full_name: formData.authorization_full_name,
+          signature_confirmation: true
+        } : {
+          authorized: false
+        }
       };
 
       await base44.entities.FraudCase.create(caseData);
@@ -170,7 +182,9 @@ export default function ScamReporter() {
           currency_type: 'USD',
           blockchain: 'ethereum',
           description: '',
-          incident_date: ''
+          incident_date: '',
+          law_enforcement_authorized: false,
+          authorization_full_name: ''
         });
         setEvidenceFiles([]);
       }, 3000);
@@ -453,6 +467,47 @@ export default function ScamReporter() {
                 className="bg-[#0f1419] border-purple-500/30 text-white placeholder:text-gray-500 min-h-[180px]"
                 required
               />
+            </div>
+          </div>
+
+          {/* Law Enforcement Authorization Section */}
+          <div className="space-y-4 pt-4 border-t border-gray-700/50">
+            <div className="flex items-center gap-2 mb-4">
+              <Scale className="w-5 h-5 text-purple-400" />
+              <h3 className="text-lg font-bold text-white">Law Enforcement Authorization</h3>
+            </div>
+            
+            <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+              <p className="text-gray-300 text-sm mb-4">
+                By checking this box, you authorize SafeNestT to act as your representative and contact law enforcement agencies (including FBI, IC3, and other relevant authorities) on your behalf regarding this fraud case.
+              </p>
+              
+              <div className="flex items-start space-x-3 mb-4">
+                <Checkbox
+                  id="law_enforcement_auth"
+                  checked={formData.law_enforcement_authorized}
+                  onCheckedChange={(checked) => setFormData({...formData, law_enforcement_authorized: checked})}
+                  className="mt-1 border-purple-500 data-[state=checked]:bg-purple-500"
+                />
+                <label htmlFor="law_enforcement_auth" className="text-sm text-white leading-relaxed cursor-pointer">
+                  I hereby authorize SafeNestT and its representatives to contact law enforcement agencies, including but not limited to the FBI, IC3 (Internet Crime Complaint Center), FTC, and other relevant federal, state, or local authorities on my behalf. I understand that SafeNestT may share my case details, personal information, and evidence with these agencies to assist in the investigation and potential recovery of my stolen assets.
+                </label>
+              </div>
+
+              {formData.law_enforcement_authorized && (
+                <div className="mt-4 p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <Label className="text-white mb-2 block">Full Legal Name (Electronic Signature) *</Label>
+                  <Input
+                    value={formData.authorization_full_name}
+                    onChange={(e) => setFormData({...formData, authorization_full_name: e.target.value})}
+                    placeholder="Enter your full legal name to confirm authorization"
+                    className="bg-[#0f1419] border-purple-500/30 text-white h-12"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    By typing your name above, you are providing your electronic signature confirming this authorization. Date: {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
