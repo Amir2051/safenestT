@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck
 } from "lucide-react";
 
 export default function MyCases() {
@@ -185,11 +185,19 @@ export default function MyCases() {
                           </span>
                         </div>
 
-                        {caseItem.scammer_wallet && (
-                          <p className="text-gray-500 text-xs font-mono mt-2 truncate">
-                            Scammer: {caseItem.scammer_wallet}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          {caseItem.scammer_wallet && (
+                            <p className="text-gray-500 text-xs font-mono truncate">
+                              Scammer: {caseItem.scammer_wallet}
+                            </p>
+                          )}
+                          {caseItem.law_enforcement_authorization?.authorized && (
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border text-xs">
+                              <Scale className="w-3 h-3 mr-1" />
+                              Law Enforcement Authorized
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       <Button
@@ -317,6 +325,41 @@ export default function MyCases() {
                       </a>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Law Enforcement Authorization */}
+              {selectedCase.law_enforcement_authorization && (
+                <div className={`p-4 rounded-lg border ${
+                  selectedCase.law_enforcement_authorization.authorized 
+                    ? 'bg-purple-500/10 border-purple-500/30' 
+                    : 'bg-gray-500/10 border-gray-500/30'
+                }`}>
+                  <h4 className={`font-semibold mb-2 flex items-center gap-2 ${
+                    selectedCase.law_enforcement_authorization.authorized ? 'text-purple-400' : 'text-gray-400'
+                  }`}>
+                    <Scale className="w-5 h-5" />
+                    Law Enforcement Authorization
+                  </h4>
+                  {selectedCase.law_enforcement_authorization.authorized ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 font-semibold">Authorized</span>
+                      </div>
+                      <p className="text-gray-300">
+                        <span className="text-gray-400">Signed by:</span> {selectedCase.law_enforcement_authorization.full_name}
+                      </p>
+                      <p className="text-gray-300">
+                        <span className="text-gray-400">Date:</span> {new Date(selectedCase.law_enforcement_authorization.authorized_date).toLocaleString()}
+                      </p>
+                      <p className="text-gray-300">
+                        <span className="text-gray-400">Agencies:</span> {selectedCase.law_enforcement_authorization.authorized_agencies?.join(', ') || 'FBI, IC3, FTC'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">Not authorized to contact law enforcement</p>
+                  )}
                 </div>
               )}
 
