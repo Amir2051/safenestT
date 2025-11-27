@@ -50,6 +50,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
+      const entityName = caseData._entityName || 'InvestigationCase';
+      if (entityName === 'FraudCase') {
+        return await base44.entities.FraudCase.update(caseData.id, updates);
+      }
       return await base44.entities.InvestigationCase.update(caseData.id, updates);
     },
     onSuccess: () => {
@@ -96,7 +100,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const saveEdits = async () => {
     setSaving(true);
     try {
-      await base44.entities.InvestigationCase.update(caseData.id, {
+      const entityName = caseData._entityName || 'InvestigationCase';
+      const updateFn = entityName === 'FraudCase' 
+        ? base44.entities.FraudCase.update 
+        : base44.entities.InvestigationCase.update;
+
+      await updateFn(caseData.id, {
         case_title: editedCase.case_title,
         victim_name: editedCase.victim_name,
         victim_email: editedCase.victim_email,
@@ -835,7 +844,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 onSave={async (suspectData) => {
                   setSaving(true);
                   try {
-                    await base44.entities.InvestigationCase.update(caseData.id, {
+                    const entityName = caseData._entityName || 'InvestigationCase';
+                    const updateFn = entityName === 'FraudCase' 
+                      ? base44.entities.FraudCase.update 
+                      : base44.entities.InvestigationCase.update;
+
+                    await updateFn(caseData.id, {
                       scammer_info: suspectData,
                       suspect_details: {
                         primary_suspect: {

@@ -32,7 +32,10 @@ export default function ActiveCasesPanel({ user }) {
     queryFn: () => base44.entities.FraudCase.list('-created_date', 100)
   });
 
-  const allCases = [...investigationCases, ...fraudCases].sort((a, b) => 
+  const allCases = [
+    ...investigationCases.map(c => ({ ...c, _entityName: 'InvestigationCase' })), 
+    ...fraudCases.map(c => ({ ...c, _entityName: 'FraudCase' }))
+  ].sort((a, b) => 
     new Date(b.created_date) - new Date(a.created_date)
   );
 
