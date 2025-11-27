@@ -20,6 +20,7 @@ import CaseDocuments from "./CaseDocuments.jsx";
 import SuspectEditForm from "./SuspectEditForm.jsx";
 import TrackingToolsPanel from "@/components/admin/TrackingToolsPanel.jsx";
 import AgencyReportGenerator from "./AgencyReportGenerator.jsx";
+import CryptoIntelligenceReport from "./CryptoIntelligenceReport.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -294,6 +295,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="agencies">Agencies</TabsTrigger>
               <TabsTrigger value="reports" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
                 <FileText className="w-3 h-3 mr-1" />Generate Reports
+              </TabsTrigger>
+              <TabsTrigger value="intel-report" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
+                <Shield className="w-3 h-3 mr-1" />Crypto Intel
               </TabsTrigger>
             </TabsList>
 
@@ -959,6 +963,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="reports" className="space-y-4">
               <AgencyReportGenerator caseData={caseData} onReportGenerated={onUpdate} />
+            </TabsContent>
+
+            <TabsContent value="intel-report" className="space-y-4">
+              <CryptoIntelligenceReport caseData={caseData} />
             </TabsContent>
           </Tabs>
         </div>
