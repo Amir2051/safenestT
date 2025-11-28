@@ -18,10 +18,20 @@ export default function DocumentsEvidencePanel({ user }) {
 
   const queryClient = useQueryClient();
 
-  const { data: cases = [], isLoading } = useQuery({
+  const { data: investigationCases = [] } = useQuery({
     queryKey: ['investigation-cases'],
     queryFn: () => base44.entities.InvestigationCase.list('-created_date', 100)
   });
+
+  const { data: fraudCases = [] } = useQuery({
+    queryKey: ['fraud-cases'],
+    queryFn: () => base44.entities.FraudCase.list('-created_date', 100)
+  });
+
+  const cases = [
+    ...investigationCases.map(c => ({ ...c, _entityName: 'InvestigationCase' })),
+    ...fraudCases.map(c => ({ ...c, _entityName: 'FraudCase' }))
+  ].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
   const selectedCaseData = cases.find(c => c.id === selectedCase);
 
@@ -33,20 +43,33 @@ export default function DocumentsEvidencePanel({ user }) {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       
-      const evidenceFiles = selectedCaseData?.evidence_files || [];
-      evidenceFiles.push({
-        name: file.name,
-        url: file_url,
-        type: file.type,
-        uploaded_date: new Date().toISOString()
-      });
+      if (selectedCaseData._entityName === 'FraudCase') {
+        const evidence = selectedCaseData.evidence || [];
+        evidence.push({
+          type: file.type,
+          url: file_url,
+          description: file.name
+        });
+        await base44.entities.FraudCase.update(selectedCase, {
+          evidence: evidence
+        });
+      } else {
+        const evidenceFiles = selectedCaseData?.evidence_files || [];
+        evidenceFiles.push({
+          name: file.name,
+          url: file_url,
+          type: file.type,
+          uploaded_date: new Date().toISOString()
+        });
 
-      await base44.entities.InvestigationCase.update(selectedCase, {
-        evidence_files: evidenceFiles,
-        last_activity: new Date().toISOString()
-      });
+        await base44.entities.InvestigationCase.update(selectedCase, {
+          evidence_files: evidenceFiles,
+          last_activity: new Date().toISOString()
+        });
+      }
 
       queryClient.invalidateQueries(['investigation-cases']);
+      queryClient.invalidateQueries(['fraud-cases']);
       toast.success('Evidence uploaded');
     } catch (error) {
       toast.error('Upload failed');
@@ -57,6 +80,7 @@ export default function DocumentsEvidencePanel({ user }) {
 
   const handleCaseUpdate = () => {
     queryClient.invalidateQueries(['investigation-cases']);
+    queryClient.invalidateQueries(['fraud-cases']);
   };
 
   // Stats
@@ -66,7 +90,7 @@ export default function DocumentsEvidencePanel({ user }) {
   }, 0);
 
   const totalEvidence = cases.reduce((sum, c) => 
-    sum + (c.evidence_files?.length || 0), 0
+    sum + (c.evidence_files?.length || c.evidence?.length || 0), 0
   );
 
   return (
