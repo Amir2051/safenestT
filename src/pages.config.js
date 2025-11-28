@@ -60,6 +60,7 @@ import CryptoFraudCenter from './pages/CryptoFraudCenter';
 import ReportedScams from './pages/ReportedScams';
 import MyCases from './pages/MyCases';
 import TrackingPage from './pages/TrackingPage';
+import ElectraWallet from './pages/ElectraWallet';
 import __Layout from './Layout.jsx';
 
 
@@ -126,6 +127,7 @@ export const PAGES = {
     "ReportedScams": ReportedScams,
     "MyCases": MyCases,
     "TrackingPage": TrackingPage,
+    "ElectraWallet": ElectraWallet,
 }
 
 export const pagesConfig = {
