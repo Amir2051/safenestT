@@ -4,8 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Wallet, QrCode, Eye, EyeOff } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { Loader2, Wallet, QrCode, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function WalletCreator({ onCreated }) {
@@ -58,7 +57,11 @@ export default function WalletCreator({ onCreated }) {
     return (
       <div className="space-y-6 text-center">
         <div className="bg-white p-4 rounded-xl inline-block mx-auto">
-          <QRCodeSVG value={generatedWallet.address} size={200} />
+          <img 
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${generatedWallet.address}`} 
+            alt="Wallet Address QR Code" 
+            className="w-[200px] h-[200px]"
+          />
         </div>
         
         <div className="space-y-4 text-left">
@@ -129,4 +132,3 @@ export default function WalletCreator({ onCreated }) {
 function Alert({children, className}) {
   return <div className={`p-3 rounded-lg flex items-start ${className}`}>{children}</div>
 }
-import { AlertTriangle } from "lucide-react";
