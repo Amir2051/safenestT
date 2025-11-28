@@ -11,7 +11,7 @@ export default function TokenList({ address }) {
   // OR iterate known properties.
   // Assuming we want to show specific tokens or use omni_getallbalancesforaddress if available.
   
-  const { data, isLoading } = useQuery({
+  const { data = [], isLoading } = useQuery({
     queryKey: ['electra-tokens', address],
     queryFn: async () => {
       // Attempt to fetch all balances for address via RPC
