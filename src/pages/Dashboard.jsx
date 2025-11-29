@@ -15,6 +15,7 @@ import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
+import ContactSection from "../components/shared/ContactSection.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 import GettingStartedChecklist from "../components/onboarding/GettingStartedChecklist.jsx";
@@ -492,6 +493,9 @@ export default function Dashboard() {
           <MiaQuickChat user={user} />
         </div>
       </div>
+
+      {/* Contact Section */}
+      <ContactSection />
 
       {/* Upgrade Prompt Modal */}
       {showUpgradePrompt && (user?.subscription_plan === 'free' || user?.subscription_plan === 'trial') && (
