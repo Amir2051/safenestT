@@ -61,6 +61,10 @@ import ReportedScams from './pages/ReportedScams';
 import MyCases from './pages/MyCases';
 import TrackingPage from './pages/TrackingPage';
 import ElectraWallet from './pages/ElectraWallet';
+import VictimPortal from './pages/VictimPortal';
+import IntelligenceCenter from './pages/IntelligenceCenter';
+import LawEnforcementAccess from './pages/LawEnforcementAccess';
+import InvestigationDashboard from './pages/InvestigationDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -128,6 +132,10 @@ export const PAGES = {
     "MyCases": MyCases,
     "TrackingPage": TrackingPage,
     "ElectraWallet": ElectraWallet,
+    "VictimPortal": VictimPortal,
+    "IntelligenceCenter": IntelligenceCenter,
+    "LawEnforcementAccess": LawEnforcementAccess,
+    "InvestigationDashboard": InvestigationDashboard,
 }
 
 export const pagesConfig = {
