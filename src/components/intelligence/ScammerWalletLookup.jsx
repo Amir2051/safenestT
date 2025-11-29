@@ -10,13 +10,41 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-export default function ScammerWalletLookup({ wallets, loading }) {
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+
+export default function ScammerWalletLookup({ wallets: propsWallets, loading: propsLoading }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState(null);
 
+  // Fetch data if not provided via props
+  const { data: fetchedWallets, isLoading } = useQuery({
+    queryKey: ['scammer-wallets'],
+    queryFn: async () => {
+      if (propsWallets) return propsWallets;
+      const scams = await base44.entities.ScamDatabase.list('-created_date', 100);
+      return scams.map(s => ({
+        id: s.id,
+        address: s.identifier,
+        scamCategory: s.scam_type,
+        riskLevel: s.risk_level,
+        verified: s.verified,
+        reportCount: s.victim_count || 1,
+        totalStolen: s.total_stolen_usd || 0,
+        platforms: [s.blockchain],
+        source: s.reported_by,
+        firstReported: s.first_reported || s.created_date
+      }));
+    },
+    enabled: !propsWallets
+  });
+
+  const wallets = propsWallets || fetchedWallets || [];
+  const loading = propsLoading || (isLoading && !propsWallets);
+
   const filteredWallets = wallets.filter(wallet => 
-    wallet.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    wallet.scamCategory.toLowerCase().includes(searchTerm.toLowerCase())
+    (wallet.address?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (wallet.scamCategory?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   const handleCopy = (address, id) => {
