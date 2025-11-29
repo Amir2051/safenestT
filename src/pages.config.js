@@ -65,6 +65,7 @@ import VictimPortal from './pages/VictimPortal';
 import IntelligenceCenter from './pages/IntelligenceCenter';
 import LawEnforcementAccess from './pages/LawEnforcementAccess';
 import InvestigationDashboard from './pages/InvestigationDashboard';
+import ReportScam from './pages/ReportScam';
 import __Layout from './Layout.jsx';
 
 
@@ -136,6 +137,7 @@ export const PAGES = {
     "IntelligenceCenter": IntelligenceCenter,
     "LawEnforcementAccess": LawEnforcementAccess,
     "InvestigationDashboard": InvestigationDashboard,
+    "ReportScam": ReportScam,
 }
 
 export const pagesConfig = {

@@ -22,6 +22,13 @@ const navigationItems = [
     glow: 'cyan'
   },
   {
+    id: 'victim-portal',
+    title: 'Victim Portal',
+    icon: Shield,
+    url: createPageUrl('VictimPortal'),
+    glow: 'blue'
+  },
+  {
     id: 'messages',
     title: 'AI Assistant',
     icon: Bot,
@@ -130,12 +137,28 @@ const navigationItems = [
 
 const adminItems = [
   {
-    id: 'fraud-center',
-    title: 'Crypto Fraud Center',
+    id: 'investigation-portal',
+    title: 'Investigation Portal',
     icon: Search,
-    url: createPageUrl('CryptoFraudCenter'),
+    url: createPageUrl('InvestigationDashboard'),
     glow: 'red',
     badge: 'ADMIN'
+  },
+  {
+    id: 'intel-center',
+    title: 'Intelligence Center',
+    icon: Brain,
+    url: createPageUrl('IntelligenceCenter'),
+    glow: 'purple',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'le-access',
+    title: 'LEO Portal Access',
+    icon: Lock,
+    url: createPageUrl('LawEnforcementAccess'),
+    glow: 'blue',
+    badge: 'LEO'
   },
   {
     id: 'admin-dashboard',
