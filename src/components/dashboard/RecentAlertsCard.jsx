@@ -22,7 +22,7 @@ const severityColors = {
   low: 'bg-blue-500/20 text-blue-400 border-blue-500/50'
 };
 
-export default function RecentAlertsCard({ alerts, isLoading }) {
+export default function RecentAlertsCard({ alerts = [], isLoading }) {
   if (isLoading) {
     return (
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">

@@ -20,7 +20,7 @@ const categoryColors = {
   contract: 'text-pink-400'
 };
 
-export default function ScamAlertsFeed({ alerts, loading }) {
+export default function ScamAlertsFeed({ alerts = [], loading }) {
   if (loading) {
     return (
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
