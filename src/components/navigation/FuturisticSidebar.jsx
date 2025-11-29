@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search, Building2, CreditCard, FileText
+  Wallet, Search, Building2, CreditCard, FileText, Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
