@@ -93,14 +93,7 @@ export default function InvestigationDashboard() {
           </TabsContent>
 
           <TabsContent value="tracking">
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-               <div className="lg:col-span-2">
-                 <CryptoTrackerPanel />
-               </div>
-               <div className="lg:col-span-1">
-                 <AdminCaseActions />
-               </div>
-             </div>
+             <CryptoTrackerPanel />
           </TabsContent>
 
           <TabsContent value="trace">
