@@ -121,6 +121,14 @@ const navigationItems = [
     glow: 'green'
   },
   {
+    id: 'verified-hub',
+    title: 'Verified Investments',
+    icon: Building2,
+    url: createPageUrl('VerifiedHub'),
+    glow: 'blue',
+    badge: 'HUB'
+  },
+  {
     id: 'settings',
     title: 'Settings',
     icon: Settings,
@@ -130,6 +138,22 @@ const navigationItems = [
 ];
 
 const adminItems = [
+  {
+    id: 'admin-verified-companies',
+    title: 'Company Verification',
+    icon: Building2,
+    url: createPageUrl('AdminVerifiedCompanies'),
+    glow: 'blue',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-investment-monitor',
+    title: 'Investment Monitor',
+    icon: Activity,
+    url: createPageUrl('AdminInvestmentMonitor'),
+    glow: 'emerald',
+    badge: 'ADMIN'
+  },
   {
     id: 'investigation-portal',
     title: 'Investigation Portal',
