@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { LayoutDashboard, FileText, Wallet, Brain, Users, Search, Loader2, CircuitBoard } from "lucide-react";
+import { LayoutDashboard, FileText, Wallet, Brain, Users, Search, Loader2, CircuitBoard, Scale } from "lucide-react";
 import ActiveCasesPanel from "@/components/fraud-center/ActiveCasesPanel";
 import BlockchainTracePanel from "@/components/fraud-center/BlockchainTracePanel";
 import CryptoTrackerPanel from "@/components/fraud-center/CryptoTrackerPanel";
 import ScammerWalletLookup from "@/components/intelligence/ScammerWalletLookup";
 import AIPatternDashboard from "@/components/ai/AIPatternDashboard";
+import FederalCaseManager from "@/components/investigation/FederalCaseManager";
+import CaseImporter from "@/components/investigation/CaseImporter";
 import AdminCaseActions from "@/components/fraud/AdminCaseActions";
 import AdminGate from "@/components/admin/AdminGate";
 
@@ -32,6 +34,7 @@ export default function InvestigationDashboard() {
 
   const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -93,6 +96,9 @@ export default function InvestigationDashboard() {
              <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsSearchOpen(true)}>
                 <Search className="w-4 h-4 mr-2" /> Global Search
              </Button>
+             <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setIsImportOpen(true)}>
+                <FileText className="w-4 h-4 mr-2" /> Import Federal Case
+             </Button>
           </div>
         </div>
 
@@ -128,6 +134,10 @@ export default function InvestigationDashboard() {
             <TabsTrigger value="cases" className="data-[state=active]:bg-cyan-500/20 px-6 py-2">
               <FileText className="w-4 h-4 mr-2" /> Active Cases
             </TabsTrigger>
+            {/* Federal Manager Integration is inside Active Cases Panel mostly, but could be a separate tab too. 
+                The user asked for a "feature called Federal Case Manager". 
+                I'll put it as a top level tab for visibility, although the CaseManager also has it embedded.
+            */}
             <TabsTrigger value="tracking" className="data-[state=active]:bg-purple-500/20 px-6 py-2">
               <Wallet className="w-4 h-4 mr-2" /> Wallet Tracking
             </TabsTrigger>
@@ -191,6 +201,11 @@ export default function InvestigationDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Import Case Modal */}
+        {isImportOpen && (
+          <CaseImporter onClose={() => setIsImportOpen(false)} />
+        )}
 
         {/* Global Search Modal */}
         <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>

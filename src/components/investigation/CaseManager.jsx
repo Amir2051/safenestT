@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, DollarSign, TrendingUp, X } from "lucide-react";
 import CollaborationPanel from "@/components/collaboration/CollaborationPanel";
 import CaseRiskWidget from "@/components/ai/CaseRiskWidget";
+import FederalCaseManager from "@/components/investigation/FederalCaseManager";
 
 export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user }) {
   const getCaseFundSupport = (caseId) => {
@@ -130,6 +131,9 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
             <div className="p-4 space-y-6">
               {/* AI Widget */}
               <CaseRiskWidget caseId={selectedCase.id} />
+
+              {/* Federal Case Manager Widget */}
+              <FederalCaseManager selectedCase={selectedCase} />
               
               {/* Collaboration Tools */}
               <div className="h-[500px]">
