@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
     // --- Endpoint: Track Event ---
     if (endpoint === 'track-event') {
       const { event_type, details, severity } = data;
+      
+      // Create behavior event
       await base44.asServiceRole.entities.BehaviorEvent.create({
         actor_id: user.id,
         actor_type: user.role === 'admin' || user.is_admin ? 'admin' : 'user',
@@ -24,6 +26,21 @@ Deno.serve(async (req) => {
         severity: severity || 'info',
         is_processed: false
       });
+
+      // --- Proactive Alert Logic ---
+      // If high/critical severity event, generate Admin Alert immediately
+      if (['critical', 'high'].includes(severity)) {
+        await base44.asServiceRole.entities.AdminScamAlert.create({
+          title: `Suspicious Activity: ${event_type}`,
+          message: `High-risk event detected for user ${user.email}. Details: ${JSON.stringify(details)}`,
+          severity: severity,
+          target_id: user.id,
+          target_type: 'user',
+          source: 'behavior_monitor',
+          status: 'new'
+        });
+      }
+
       return Response.json({ status: 'success' });
     }
 
@@ -98,6 +115,20 @@ Deno.serve(async (req) => {
           target_type: 'case',
           ...llmRes,
           last_analyzed: new Date().toISOString()
+        });
+      }
+
+      // --- Proactive Alert Logic ---
+      // If AI detects Critical Risk, trigger Admin Alert
+      if (llmRes.risk_level === 'critical' || llmRes.risk_score > 85) {
+         await base44.asServiceRole.entities.AdminScamAlert.create({
+          title: `Critical Risk Case Detected: ${fraudCase.case_title}`,
+          message: `AI Engine flagged this case with score ${llmRes.risk_score}. Factors: ${llmRes.factors.join(', ')}`,
+          severity: 'critical',
+          target_id: caseId,
+          target_type: 'case',
+          source: 'ai_engine',
+          status: 'new'
         });
       }
 

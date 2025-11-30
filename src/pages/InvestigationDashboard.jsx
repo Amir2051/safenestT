@@ -17,6 +17,7 @@ import FederalCaseManager from "@/components/investigation/FederalCaseManager";
 import CaseImporter from "@/components/investigation/CaseImporter";
 import AdminCaseActions from "@/components/fraud/AdminCaseActions";
 import AdminGate from "@/components/admin/AdminGate";
+import ProactiveAlertsWidget from "@/components/admin/ProactiveAlertsWidget";
 
 export default function InvestigationDashboard() {
   const { data: stats } = useQuery({
@@ -81,7 +82,8 @@ export default function InvestigationDashboard() {
 
   return (
     <AdminGate>
-    <div className="min-h-screen bg-[#000000] text-white p-6">
+    <div className="min-h-screen bg-[#000000] text-white p-6 relative">
+      <ProactiveAlertsWidget />
       <div className="max-w-[1600px] mx-auto space-y-8">
         
         <div className="flex justify-between items-center">
