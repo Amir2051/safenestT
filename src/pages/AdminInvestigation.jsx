@@ -211,6 +211,7 @@ export default function AdminInvestigation() {
             onSelectCase={setSelectedCase}
             selectedCase={selectedCase}
             recoveryFunds={recoveryFunds}
+            user={user}
           />
         </TabsContent>
 
