@@ -49,6 +49,27 @@ const documentTemplates = [
     description: "Technical wallet tracking and transaction analysis",
     agency: "Law Enforcement",
     icon: FileCheck
+  },
+  {
+    id: "subpoena_request",
+    name: "Subpoena Generator",
+    description: "Draft subpoena for information from ISPs or exchanges",
+    agency: "Court/Legal",
+    icon: FileText
+  },
+  {
+    id: "evidence_request",
+    name: "Evidence Request",
+    description: "Formal request for preservation of evidence",
+    agency: "Service Providers",
+    icon: FileCheck
+  },
+  {
+    id: "case_file_request",
+    name: "Request New Case File",
+    description: "Generate a complete case file request package",
+    agency: "Internal/Legal",
+    icon: FileText
   }
 ];
 
@@ -291,23 +312,41 @@ export default function DocumentGenerator({ cases }) {
             </div>
           </div>
 
-          <Button
-            onClick={generateDocument}
-            disabled={generating || !selectedCase || !selectedTemplate}
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 mr-2" />
-                Generate Document
-              </>
-            )}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={generateDocument}
+              disabled={generating || !selectedCase || !selectedTemplate}
+              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Generate Document
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedCase) {
+                  toast.error("Please select a case");
+                  return;
+                }
+                // Logic to download blank templates
+                toast.success("Downloading template package...");
+                // In a real app, this would trigger a zip download
+              }}
+              variant="outline"
+              className="border-cyan-500/30 text-cyan-400"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Templates
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
