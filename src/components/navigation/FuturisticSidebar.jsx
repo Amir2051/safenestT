@@ -21,13 +21,7 @@ const navigationItems = [
     url: createPageUrl('Dashboard'),
     glow: 'cyan'
   },
-  {
-    id: 'victim-portal',
-    title: 'Victim Portal',
-    icon: Shield,
-    url: createPageUrl('VictimPortal'),
-    glow: 'blue'
-  },
+
   {
     id: 'messages',
     title: 'AI Assistant',
