@@ -84,10 +84,25 @@ export default function DocumentGenerator({ cases }) {
       return;
     }
 
+    const caseData = (cases || []).find(c => c.id === selectedCase);
+    const template = documentTemplates.find(t => t.id === selectedTemplate);
+
+    // Validation
+    if (template.id === 'subpoena_request' && !caseData.scammer_wallet && !caseData.scammer_info?.email) {
+      toast.error("Cannot generate Subpoena: Missing target wallet or email");
+      return;
+    }
+
     setGenerating(true);
     try {
-      const caseData = (cases || []).find(c => c.id === selectedCase);
-      const template = documentTemplates.find(t => t.id === selectedTemplate);
+      // Log the action
+      await base44.entities.InvestigationLog.create({
+        admin_email: 'admin', // Should ideally use actual user email
+        action_type: 'report_generated',
+        description: `Generated ${template.name} for Case ${caseData.case_number}`,
+        fraud_case_id: caseData.id,
+        metadata: { template: template.id }
+      });
 
       const content = generateDocumentContent(caseData, template);
       
@@ -435,12 +450,14 @@ body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padd
               {generating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
+                  Processing...
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Generate Document
+                  {selectedTemplate === 'case_file_request' ? 'Request Case File' : 
+                   selectedTemplate === 'subpoena_request' ? 'Generate Subpoena' : 
+                   'Generate Document'}
                 </>
               )}
             </Button>

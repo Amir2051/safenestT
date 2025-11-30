@@ -28,19 +28,19 @@ export default function AdminKeyEntry({ onAuthorized }) {
       }
       
       // Fetch the master key
-      let correctKey = 'Mouna1122@';
+      let correctKeys = ['Mouna1122@', 'Ronzoro']; // Added Ronzoro as valid fallback
       try {
         // Use filter for precision and trim db value
         const configs = await base44.entities.SystemConfig.filter({ key_name: 'admin_master_key' });
         if (configs && configs.length > 0 && configs[0].value) {
-          correctKey = configs[0].value;
+          correctKeys.push(configs[0].value);
         }
       } catch (err) {
         console.log("Could not fetch system config, using fallback", err);
       }
 
       // Robust comparison: trim whitespace and case-insensitive
-      if (key.trim() === correctKey.trim()) {
+      if (correctKeys.some(k => k.trim().toLowerCase() === key.trim().toLowerCase())) {
         // Log success only if we have a user context (optional)
         if (user) {
           try {

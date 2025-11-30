@@ -92,10 +92,25 @@ export default function LegalDocumentGenerator({ selectedCase }) {
       return;
     }
 
+    // Validation
+    if (selectedDocs.includes('subpoena') && !selectedCase.scammer_wallet && !selectedCase.suspect_details) {
+      toast.error("Cannot generate Subpoena: Missing suspect details");
+      return;
+    }
+
     setGenerating(true);
     const generated = [];
 
     try {
+      // Log the batch action
+      await base44.entities.InvestigationLog.create({
+        admin_email: 'admin',
+        action_type: 'report_generated',
+        description: `Generated ${selectedDocs.length} legal documents for Case ${selectedCase.case_number || selectedCase.id}`,
+        fraud_case_id: selectedCase.id,
+        metadata: { documents: selectedDocs }
+      });
+
       for (const docType of selectedDocs) {
         const doc = documentTypes.find(d => d.id === docType);
         
