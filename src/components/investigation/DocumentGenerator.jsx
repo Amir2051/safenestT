@@ -112,6 +112,120 @@ export default function DocumentGenerator({ cases }) {
   const generateDocumentContent = (caseData, template) => {
     const date = new Date().toLocaleDateString();
     
+    // Specialized Templates
+    if (template.id === 'subpoena_request') {
+      return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SUBPOENA - ${caseData.case_number}</title>
+<style>
+body { font-family: "Times New Roman", Times, serif; max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.5; }
+.header { text-align: center; font-weight: bold; margin-bottom: 40px; }
+.court-info { text-align: center; margin-bottom: 40px; }
+.title { font-size: 24px; font-weight: bold; text-decoration: underline; margin-bottom: 20px; }
+.field { margin: 15px 0; }
+</style>
+</head>
+<body>
+<div class="court-info">
+  UNITED STATES DISTRICT COURT<br>
+  DISTRICT OF [DISTRICT NAME]
+</div>
+<div class="header">
+  <div class="field">CASE NUMBER: ${caseData.case_number}</div>
+  <div class="title">SUBPOENA TO PRODUCE DOCUMENTS, INFORMATION, OR OBJECTS</div>
+</div>
+<p><strong>TO:</strong> [Name of ISP / Exchange / Entity]</p>
+<p><strong>YOU ARE COMMANDED</strong> to produce the following documents, electronically stored information, or objects at the time, date, and place set forth below:</p>
+<p><strong>PLACE:</strong> [Address of Requesting Party]<br>
+<strong>DATE/TIME:</strong> [Date]</p>
+<p><strong>DESCRIPTION OF ITEMS TO BE PRODUCED:</strong></p>
+<ul>
+  <li>All account records, including subscriber information, logs, and IP addresses related to:</li>
+  <li>Wallet Address: ${caseData.scammer_wallet || '[Wallet Address]'}</li>
+  <li>Transaction Hash: ${caseData.transaction_hashes?.[0] || '[Transaction ID]'}</li>
+  <li>Associated Email/Phone: ${caseData.scammer_info?.email || '[Email]'} / ${caseData.scammer_info?.phone || '[Phone]'}</li>
+</ul>
+<br><br>
+<p>_________________________<br>Clerk of Court / Attorney Signature</p>
+</body>
+</html>`;
+    }
+
+    if (template.id === 'evidence_request') {
+      return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Preservation Request - ${caseData.case_number}</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.6; }
+.header { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h2>PRESERVATION OF EVIDENCE REQUEST</h2>
+  <p><strong>Date:</strong> ${date}</p>
+  <p><strong>Re:</strong> Preservation of Records for Case #${caseData.case_number}</p>
+</div>
+<p><strong>Dear Compliance Officer,</strong></p>
+<p>This letter serves as a formal request to preserve all records and other evidence in your possession regarding the following accounts/identifiers pending further legal process:</p>
+<ul>
+  <li><strong>Target User/Account:</strong> ${caseData.scammer_info?.name || 'Unknown User'}</li>
+  <li><strong>Wallet Address:</strong> ${caseData.scammer_wallet}</li>
+  <li><strong>Transaction ID(s):</strong> ${caseData.transaction_hashes?.join(', ') || 'N/A'}</li>
+  <li><strong>Incident Date:</strong> ${caseData.incident_date}</li>
+</ul>
+<p>We request that you take immediate steps to preserve these records for a period of 90 days, as they are critical to an ongoing criminal investigation regarding <strong>${caseData.fraud_type}</strong>.</p>
+<p>Sincerely,</p>
+<p>SafeNestt Investigations Unit</p>
+</body>
+</html>`;
+    }
+
+    if (template.id === 'case_file_request') {
+      return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Case File Request - ${caseData.case_number}</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.6; }
+.header { background: #f0f0f0; padding: 20px; margin-bottom: 30px; border-left: 5px solid #333; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h2>INTERNAL CASE FILE REQUEST</h2>
+  <p><strong>Request ID:</strong> REQ-${Date.now()}</p>
+  <p><strong>Priority:</strong> ${caseData.priority?.toUpperCase()}</p>
+</div>
+<h3>Case Information</h3>
+<ul>
+  <li><strong>Case Number:</strong> ${caseData.case_number}</li>
+  <li><strong>Title:</strong> ${caseData.case_title}</li>
+  <li><strong>Assigned Investigator:</strong> ${caseData.assigned_to || 'Unassigned'}</li>
+</ul>
+<h3>Requested Items</h3>
+<p>Please compile and transfer the full investigative file including:</p>
+<ol>
+  <li>Initial Incident Report</li>
+  <li>Victim Statements & Evidence Log</li>
+  <li>Blockchain Tracing Analysis Reports</li>
+  <li>Correspondence with Law Enforcement (IC3/FBI)</li>
+</ol>
+<p><strong>Reason for Request:</strong> Preparation for legal escalation / subpoena issuance.</p>
+<p><strong>Authorized By:</strong> Admin</p>
+</body>
+</html>`;
+    }
+
+    // Default Generic Template
     let content = `
 <!DOCTYPE html>
 <html>
@@ -331,20 +445,28 @@ export default function DocumentGenerator({ cases }) {
               )}
             </Button>
             <Button
-              onClick={() => {
-                if (!selectedCase) {
-                  toast.error("Please select a case");
-                  return;
-                }
-                // Logic to download blank templates
-                toast.success("Downloading template package...");
-                // In a real app, this would trigger a zip download
-              }}
-              variant="outline"
-              className="border-cyan-500/30 text-cyan-400"
+            onClick={() => {
+              // Generate a blank templates package
+              const templatesContent = documentTemplates.map(t => 
+                `=== ${t.name.toUpperCase()} ===\n\n[Insert Agency Name]\n[Insert Date]\n\nRE: ${t.description}\n\nTo Whom It May Concern,\n\n[Body of the ${t.name} goes here...]\n\nSincerely,\n[Your Name]\n\n`
+              ).join('\n----------------------------------------\n\n');
+
+              const blob = new Blob([templatesContent], { type: 'text/plain' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'SafeNestt_Legal_Templates_Pack.txt';
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              a.remove();
+              toast.success("Templates downloaded successfully");
+            }}
+            variant="outline"
+            className="border-cyan-500/30 text-cyan-400"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Download Templates
+            <Download className="w-4 h-4 mr-2" />
+            Download Templates
             </Button>
           </div>
         </CardContent>

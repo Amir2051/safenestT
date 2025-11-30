@@ -55,7 +55,7 @@ export default function LegalDocumentGenerator({ selectedCase }) {
     },
     {
       id: "subpoena",
-      name: "Subpoena Generator",
+      name: "Subpoena",
       description: "Generate subpoena for ISP or Exchange records",
       agency: "Court"
     },
@@ -231,11 +231,21 @@ Generate a complete, ready-to-file legal document with all necessary sections an
             </Button>
             <Button
               onClick={() => {
-                 if (!selectedCase) {
-                  toast.error("Please select a case");
-                  return;
-                }
-                toast.success("Downloading templates package...");
+                 // Download All Blank Templates
+                 const content = documentTypes.map(d => 
+                   `TEMPLATE: ${d.name.toUpperCase()}\nAGENCY: ${d.agency}\nDESCRIPTION: ${d.description}\n\n[Enter Date]\n[Enter Case Number]\n\nTo Whom It May Concern,\n\n[Insert Body Content Here]\n\nSincerely,\n[Your Name]\n\n`
+                 ).join('====================================\n\n');
+
+                 const blob = new Blob([content], { type: "text/plain" });
+                 const url = window.URL.createObjectURL(blob);
+                 const a = document.createElement("a");
+                 a.href = url;
+                 a.download = "Legal_Templates_Blank.txt";
+                 document.body.appendChild(a);
+                 a.click();
+                 window.URL.revokeObjectURL(url);
+                 a.remove();
+                 toast.success("Templates package downloaded");
               }}
               variant="outline"
               className="border-blue-500/30 text-blue-400"
