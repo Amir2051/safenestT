@@ -466,6 +466,77 @@ export default function AdminUserApprovals() {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Inline Verification Panel */}
+                  {verifyingUser?.id === u.id && actionType !== 'view' && (
+                    <div className="mt-4 pt-4 border-t border-cyan-500/10 animate-in fade-in slide-in-from-top-2">
+                        {/* Extra User Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm bg-black/20 p-3 rounded-lg">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Phone:</span> 
+                                <span className="text-white">{u.phone || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Invited By:</span> 
+                                <span className="text-white">{u.invited_by || 'N/A'}</span>
+                            </div>
+                             <div className="flex justify-between">
+                                <span className="text-gray-500">Registered:</span> 
+                                <span className="text-white">{new Date(u.created_date).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        
+                        {actionType === 'approve' && (
+                             <div className="bg-green-500/5 p-4 rounded-lg mb-4 border border-green-500/20">
+                                <h4 className="text-green-400 text-sm font-bold mb-3 flex items-center gap-2">
+                                    <CheckSquare className="w-4 h-4" /> Verification Checklist
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="flex items-center gap-2 p-2 hover:bg-white/5 rounded transition-colors">
+                                        <Checkbox id={`check1-${u.id}`} checked={verificationChecks.email_valid} onCheckedChange={(c) => setVerificationChecks(p => ({...p, email_valid: c}))} />
+                                        <label htmlFor={`check1-${u.id}`} className="text-gray-300 text-sm cursor-pointer">Valid Email Domain</label>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 hover:bg-white/5 rounded transition-colors">
+                                        <Checkbox id={`check2-${u.id}`} checked={verificationChecks.no_spam_indicators} onCheckedChange={(c) => setVerificationChecks(p => ({...p, no_spam_indicators: c}))} />
+                                        <label htmlFor={`check2-${u.id}`} className="text-gray-300 text-sm cursor-pointer">No Spam Indicators</label>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 hover:bg-white/5 rounded transition-colors">
+                                        <Checkbox id={`check3-${u.id}`} checked={verificationChecks.legitimate_request} onCheckedChange={(c) => setVerificationChecks(p => ({...p, legitimate_request: c}))} />
+                                        <label htmlFor={`check3-${u.id}`} className="text-gray-300 text-sm cursor-pointer">Legitimate Request</label>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 hover:bg-white/5 rounded transition-colors">
+                                        <Checkbox id={`check4-${u.id}`} checked={verificationChecks.reviewed_profile} onCheckedChange={(c) => setVerificationChecks(p => ({...p, reviewed_profile: c}))} />
+                                        <label htmlFor={`check4-${u.id}`} className="text-gray-300 text-sm cursor-pointer">Profile Reviewed</label>
+                                    </div>
+                                </div>
+                             </div>
+                        )}
+
+                        <div className="flex flex-col md:flex-row gap-3 items-end">
+                            <div className="flex-1 w-full">
+                                <Label className="text-xs text-gray-400 mb-1.5 block">
+                                    {actionType === 'approve' ? "Approval Notes (Optional)" : "Reason for Rejection"}
+                                </Label>
+                                <Input 
+                                    placeholder={actionType === 'approve' ? "Add notes..." : "Explain rejection..."} 
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    className="bg-black/20 border-gray-700 text-white"
+                                />
+                            </div>
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <Button variant="ghost" onClick={() => setVerifyingUser(null)} className="flex-1 md:flex-none">Cancel</Button>
+                                <Button 
+                                    onClick={handleSubmitAction}
+                                    disabled={(actionType === 'approve' && !Object.values(verificationChecks).every(Boolean)) || approveMutation.isPending || rejectMutation.isPending}
+                                    className={`flex-1 md:flex-none ${actionType === 'approve' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+                                >
+                                    {approveMutation.isPending || rejectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -474,7 +545,7 @@ export default function AdminUserApprovals() {
       </Card>
 
       {/* Verification Modal */}
-      <Dialog open={!!verifyingUser} onOpenChange={() => setVerifyingUser(null)}>
+      <Dialog open={!!verifyingUser && actionType === 'view'} onOpenChange={() => setVerifyingUser(null)}>
         <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
