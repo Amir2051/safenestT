@@ -34,7 +34,7 @@ export default function MyCases() {
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ['my-fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.filter({}, '-created_date'),
+    queryFn: () => base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date'),
     enabled: !!user,
   });
 
