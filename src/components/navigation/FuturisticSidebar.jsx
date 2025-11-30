@@ -21,6 +21,14 @@ const navigationItems = [
     url: createPageUrl('Dashboard'),
     glow: 'cyan'
   },
+  {
+    id: 'verified-hub',
+    title: 'Verified Investments',
+    icon: Building2,
+    url: createPageUrl('VerifiedHub'),
+    glow: 'blue',
+    badge: 'HUB'
+  },
 
   {
     id: 'messages',
