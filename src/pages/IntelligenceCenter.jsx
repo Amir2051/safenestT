@@ -14,6 +14,7 @@ import {
 import ScammerWalletLookup from "@/components/intelligence/ScammerWalletLookup";
 import ScamAlertsFeed from "@/components/intelligence/ScamAlertsFeed";
 import BlockchainFlowMap from "@/components/investigation/BlockchainFlowMap";
+import AdminGate from "@/components/admin/AdminGate";
 
 export default function IntelligenceCenter() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +33,7 @@ export default function IntelligenceCenter() {
   });
 
   return (
+    <AdminGate>
     <div className="min-h-screen bg-[#000000] text-white p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         
@@ -198,5 +200,6 @@ export default function IntelligenceCenter() {
         </Tabs>
       </div>
     </div>
+    </AdminGate>
   );
 }

@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import AdminGate from "@/components/admin/AdminGate";
 
 export default function AdminUserApprovals() {
   const [user, setUser] = useState(null);
@@ -193,6 +194,7 @@ export default function AdminUserApprovals() {
   const pendingAndRejectedCount = stats.pending + stats.rejected;
 
   return (
+    <AdminGate>
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -686,5 +688,6 @@ export default function AdminUserApprovals() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminGate>
   );
 }

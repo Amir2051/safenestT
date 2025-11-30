@@ -11,6 +11,7 @@ import BlockchainTracePanel from "@/components/fraud-center/BlockchainTracePanel
 import CryptoTrackerPanel from "@/components/fraud-center/CryptoTrackerPanel";
 import ScammerWalletLookup from "@/components/intelligence/ScammerWalletLookup";
 import AdminCaseActions from "@/components/fraud/AdminCaseActions";
+import AdminGate from "@/components/admin/AdminGate";
 
 export default function InvestigationDashboard() {
   const { data: stats } = useQuery({
@@ -27,6 +28,7 @@ export default function InvestigationDashboard() {
   });
 
   return (
+    <AdminGate>
     <div className="min-h-screen bg-[#000000] text-white p-6">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
@@ -107,5 +109,6 @@ export default function InvestigationDashboard() {
 
       </div>
     </div>
+    </AdminGate>
   );
 }

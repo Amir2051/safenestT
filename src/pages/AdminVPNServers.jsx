@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import ServerEditor from "../components/admin/ServerEditor.jsx";
 import ServerHealthMonitor from "../components/admin/ServerHealthMonitor.jsx";
 import ServerPeersList from "../components/admin/ServerPeersList.jsx";
+import AdminGate from "@/components/admin/AdminGate";
 
 export default function AdminVPNServers() {
   const [user, setUser] = useState(null);
@@ -113,6 +114,7 @@ export default function AdminVPNServers() {
     : 100;
 
   return (
+    <AdminGate>
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -428,5 +430,6 @@ export default function AdminVPNServers() {
         />
       )}
     </div>
+    </AdminGate>
   );
 }

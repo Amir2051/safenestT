@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import AdminGate from "@/components/admin/AdminGate";
+
 export default function AdminInvites() {
   const [user, setUser] = useState(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -127,6 +129,7 @@ export default function AdminInvites() {
   };
 
   return (
+    <AdminGate>
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -363,5 +366,6 @@ export default function AdminInvites() {
         </CardContent>
       </Card>
     </div>
+    </AdminGate>
   );
 }
