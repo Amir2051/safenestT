@@ -34,7 +34,10 @@ export default function MyCases() {
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ['my-fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date'),
+    queryFn: () => base44.entities.FraudCase.filter(
+      user.role === 'admin' ? {} : { created_by: user.email }, 
+      '-created_date'
+    ),
     enabled: !!user,
   });
 
@@ -264,6 +267,12 @@ export default function MyCases() {
                           {caseItem.scammer_wallet && (
                             <p className="text-gray-500 text-xs font-mono truncate">
                               Scammer: {caseItem.scammer_wallet}
+                            </p>
+                          )}
+                          {user.role === 'admin' && (
+                            <p className="text-purple-400 text-xs truncate flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              User: {caseItem.created_by}
                             </p>
                           )}
                           {caseItem.law_enforcement_authorization?.authorized && (
