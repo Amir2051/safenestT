@@ -422,13 +422,25 @@ export default function AdminUserApprovals() {
                     <div className="flex gap-2">
                       {u.account_status === 'pending_approval' ? (
                         <>
+                           <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setVerifyingUser(u);
+                              setActionType('view');
+                            }}
+                            className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
                           <Button
                             size="sm"
                             onClick={() => handleVerify(u, 'approve')}
                             className="bg-green-500 hover:bg-green-600"
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
-                            Verify
+                            Approve
                           </Button>
                           <Button
                             size="sm"
