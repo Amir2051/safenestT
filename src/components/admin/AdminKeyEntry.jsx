@@ -28,10 +28,10 @@ export default function AdminKeyEntry({ onAuthorized }) {
       }
       
       // Fetch the master key
-      let correctKey = 'Ronzoro';
+      let correctKey = 'Safenestt';
       try {
         // Only admins can read SystemConfig due to RLS. 
-        // If fetch fails or returns empty, we fallback to 'Ronzoro'
+        // If fetch fails or returns empty, we fallback to 'Safenestt'
         const configs = await base44.entities.SystemConfig.list();
         const masterKeyConfig = configs.find(c => c.key_name === 'admin_master_key');
         if (masterKeyConfig && masterKeyConfig.value) {
