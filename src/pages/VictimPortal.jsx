@@ -27,65 +27,7 @@ export default function VictimPortal() {
           </div>
         </div>
 
-        {/* Main Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-[#0f1419] border-cyan-500/20 hover:border-cyan-500/50 transition-all group">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
-                <AlertTriangle className="w-6 h-6 text-cyan-400" />
-              </div>
-              <CardTitle className="text-white">Report a Scam</CardTitle>
-              <CardDescription className="text-gray-400">
-                File a new report for crypto fraud, phishing, or theft.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to={createPageUrl('ReportScam')}>
-                <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white group-hover:translate-x-1 transition-all">
-                  Start Report <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-[#0f1419] border-purple-500/20 hover:border-purple-500/50 transition-all group">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
-                <Activity className="w-6 h-6 text-purple-400" />
-              </div>
-              <CardTitle className="text-white">Track Case Status</CardTitle>
-              <CardDescription className="text-gray-400">
-                View the timeline and status of your submitted cases.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to={createPageUrl('MyCases')}>
-                <Button variant="outline" className="w-full border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
-                  View My Cases
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#0f1419] border-blue-500/20 hover:border-blue-500/50 transition-all group">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
-                <Upload className="w-6 h-6 text-blue-400" />
-              </div>
-              <CardTitle className="text-white">Upload Evidence</CardTitle>
-              <CardDescription className="text-gray-400">
-                Securely submit documents, screenshots, and logs.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to={createPageUrl('MyCases')}>
-                <Button variant="outline" className="w-full border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
-                  Submit Files
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Status & Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
