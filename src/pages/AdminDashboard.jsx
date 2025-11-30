@@ -20,6 +20,9 @@ import AdminAuditLog from "../components/admin/AdminAuditLog.jsx";
 import UserGroupsManager from "../components/admin/UserGroupsManager.jsx";
 import InviteCodeManager from "../components/admin/InviteCodeManager.jsx";
 import FraudReportsManager from "../components/admin/FraudReportsManager.jsx";
+import AdminGate from "../components/admin/AdminGate.jsx";
+import MasterKeyManagement from "../components/admin/MasterKeyManagement.jsx";
+import AccessHistory from "../components/admin/AccessHistory.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -205,6 +208,10 @@ export default function AdminDashboard() {
             <FileText className="w-4 h-4 mr-2" />
             Audit Log
           </TabsTrigger>
+          <TabsTrigger value="security">
+            <Lock className="w-4 h-4 mr-2" />
+            Admin Security
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="fraud" className="mt-6">
@@ -230,7 +237,15 @@ export default function AdminDashboard() {
         <TabsContent value="audit" className="mt-6">
           <AdminAuditLog />
         </TabsContent>
+
+        <TabsContent value="security" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <MasterKeyManagement />
+            <AccessHistory />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
+    </AdminGate>
   );
 }
