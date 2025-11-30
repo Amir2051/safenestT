@@ -20,22 +20,43 @@ export default function AdminKeyEntry({ onAuthorized }) {
     setError('');
 
     try {
-      const user = await base44.auth.me();
+      let user = null;
+      try {
+        user = await base44.auth.me();
+      } catch (e) {
+        console.log("User not authenticated", e);
+      }
       
       // Fetch the master key
-      const configs = await base44.entities.SystemConfig.list();
-      const masterKeyConfig = configs.find(c => c.key_name === 'admin_master_key');
-      const correctKey = masterKeyConfig ? masterKeyConfig.value : 'Ronzoro'; // Fallback
+      let correctKey = 'Ronzoro';
+      try {
+        // Only admins can read SystemConfig due to RLS. 
+        // If fetch fails or returns empty, we fallback to 'Ronzoro'
+        const configs = await base44.entities.SystemConfig.list();
+        const masterKeyConfig = configs.find(c => c.key_name === 'admin_master_key');
+        if (masterKeyConfig && masterKeyConfig.value) {
+          correctKey = masterKeyConfig.value;
+        }
+      } catch (err) {
+        console.log("Could not fetch system config, using fallback", err);
+      }
 
-      if (key === correctKey) {
-        // Log success
-        await base44.entities.AdminAccessLog.create({
-          admin_email: user.email,
-          status: 'success',
-          timestamp: new Date().toISOString(),
-          action: 'Admin Access Granted',
-          ip_address: 'Unknown' // Client-side IP detection is limited without external service
-        });
+      // Robust comparison: trim whitespace
+      if (key.trim() === correctKey.trim()) {
+        // Log success only if we have a user context (optional)
+        if (user) {
+          try {
+            await base44.entities.AdminAccessLog.create({
+              admin_email: user.email,
+              status: 'success',
+              timestamp: new Date().toISOString(),
+              action: 'Admin Access Granted',
+              ip_address: 'Unknown' 
+            });
+          } catch (logErr) {
+            console.error("Failed to log access", logErr);
+          }
+        }
         
         toast.success('Access Granted');
         onAuthorized();
@@ -44,23 +65,25 @@ export default function AdminKeyEntry({ onAuthorized }) {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         
-        await base44.entities.AdminAccessLog.create({
-          admin_email: user.email,
-          status: 'failure',
-          timestamp: new Date().toISOString(),
-          action: `Failed Access Attempt (${newAttempts})`,
-          ip_address: 'Unknown'
-        });
+        if (user) {
+          try {
+            await base44.entities.AdminAccessLog.create({
+              admin_email: user.email,
+              status: 'failure',
+              timestamp: new Date().toISOString(),
+              action: `Failed Access Attempt (${newAttempts})`,
+              ip_address: 'Unknown'
+            });
 
-        // Send email alert
-        try {
+            // Send email alert
             await base44.integrations.Core.SendEmail({
-                to: user.email, // In a real app this would go to the owner, but for now alert the user or a specific email
+                to: user.email, 
                 subject: "Suspicious Admin Access Attempt",
                 body: `Someone entered a wrong admin key at ${new Date().toLocaleTimeString()}. User: ${user.email}`
             });
-        } catch (emailErr) {
-            console.error("Failed to send alert email", emailErr);
+          } catch (logErr) {
+             console.error("Logging/Alerting failed", logErr);
+          }
         }
 
         setError('Invalid Key. Access Denied.');
