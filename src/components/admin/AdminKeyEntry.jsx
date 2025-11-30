@@ -28,7 +28,7 @@ export default function AdminKeyEntry({ onAuthorized }) {
       }
       
       // Fetch the master key
-      let correctKey = 'Safenestt';
+      let correctKey = 'Mouna1122@';
       try {
         // Use filter for precision and trim db value
         const configs = await base44.entities.SystemConfig.filter({ key_name: 'admin_master_key' });
