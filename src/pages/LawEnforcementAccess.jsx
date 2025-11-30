@@ -76,6 +76,7 @@ export default function LawEnforcementAccess() {
           </CardContent>
         </Card>
       </div>
+      </AdminGate>
     );
   }
 
