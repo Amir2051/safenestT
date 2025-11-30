@@ -66,6 +66,13 @@ import IntelligenceCenter from './pages/IntelligenceCenter';
 import LawEnforcementAccess from './pages/LawEnforcementAccess';
 import InvestigationDashboard from './pages/InvestigationDashboard';
 import ReportScam from './pages/ReportScam';
+import AdminVerifiedCompanies from './pages/AdminVerifiedCompanies';
+import AdminInvestmentMonitor from './pages/AdminInvestmentMonitor';
+import VerifiedHub from './pages/VerifiedHub';
+import CompanyProfile from './pages/CompanyProfile';
+import InvestmentCheckout from './pages/InvestmentCheckout';
+import MyPortfolio from './pages/MyPortfolio';
+import RefundRequest from './pages/RefundRequest';
 import __Layout from './Layout.jsx';
 
 
@@ -138,6 +145,13 @@ export const PAGES = {
     "LawEnforcementAccess": LawEnforcementAccess,
     "InvestigationDashboard": InvestigationDashboard,
     "ReportScam": ReportScam,
+    "AdminVerifiedCompanies": AdminVerifiedCompanies,
+    "AdminInvestmentMonitor": AdminInvestmentMonitor,
+    "VerifiedHub": VerifiedHub,
+    "CompanyProfile": CompanyProfile,
+    "InvestmentCheckout": InvestmentCheckout,
+    "MyPortfolio": MyPortfolio,
+    "RefundRequest": RefundRequest,
 }
 
 export const pagesConfig = {
