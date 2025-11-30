@@ -30,18 +30,16 @@ export default function AdminKeyEntry({ onAuthorized }) {
       // Fetch the master key
       let correctKey = 'Safenestt';
       try {
-        // Only admins can read SystemConfig due to RLS. 
-        // If fetch fails or returns empty, we fallback to 'Safenestt'
-        const configs = await base44.entities.SystemConfig.list();
-        const masterKeyConfig = configs.find(c => c.key_name === 'admin_master_key');
-        if (masterKeyConfig && masterKeyConfig.value) {
-          correctKey = masterKeyConfig.value;
+        // Use filter for precision and trim db value
+        const configs = await base44.entities.SystemConfig.filter({ key_name: 'admin_master_key' });
+        if (configs && configs.length > 0 && configs[0].value) {
+          correctKey = configs[0].value;
         }
       } catch (err) {
         console.log("Could not fetch system config, using fallback", err);
       }
 
-      // Robust comparison: trim whitespace
+      // Robust comparison: trim whitespace and case-insensitive
       if (key.trim() === correctKey.trim()) {
         // Log success only if we have a user context (optional)
         if (user) {
