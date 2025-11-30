@@ -52,6 +52,24 @@ export default function LegalDocumentGenerator({ selectedCase }) {
       name: "Asset Recovery Demand Letter",
       description: "Formal demand letter for return of stolen assets",
       agency: "Scammer/Exchanges"
+    },
+    {
+      id: "subpoena",
+      name: "Subpoena Generator",
+      description: "Generate subpoena for ISP or Exchange records",
+      agency: "Court"
+    },
+    {
+      id: "evidence_req",
+      name: "Evidence Request",
+      description: "Formal request for preservation of evidence",
+      agency: "Service Providers"
+    },
+    {
+      id: "case_file_req",
+      name: "Request New Case File",
+      description: "Generate full case file request package",
+      agency: "Internal"
     }
   ];
 
@@ -193,23 +211,39 @@ Generate a complete, ready-to-file legal document with all necessary sections an
             </div>
           </div>
 
-          <Button
-            onClick={generateDocuments}
-            disabled={!selectedCase || generating || selectedDocs.length === 0}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating {selectedDocs.length} documents...
-              </>
-            ) : (
-              <>
-                <FileText className="w-4 h-4 mr-2" />
-                Generate Legal Documents ({selectedDocs.length})
-              </>
-            )}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={generateDocuments}
+              disabled={!selectedCase || generating || selectedDocs.length === 0}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating {selectedDocs.length} documents...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Generate Documents
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => {
+                 if (!selectedCase) {
+                  toast.error("Please select a case");
+                  return;
+                }
+                toast.success("Downloading templates package...");
+              }}
+              variant="outline"
+              className="border-blue-500/30 text-blue-400"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Templates
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
