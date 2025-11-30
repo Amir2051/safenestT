@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, DollarSign, TrendingUp, X } from "lucide-react";
 import CollaborationPanel from "@/components/collaboration/CollaborationPanel";
+import CaseRiskWidget from "@/components/ai/CaseRiskWidget";
 
 export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user }) {
   const getCaseFundSupport = (caseId) => {
@@ -114,27 +115,33 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
       </Card>
 
       {/* Right Side: Collaboration & Details */}
-      <Card className="lg:col-span-1 bg-[#0f1419] border-l border-gray-800 flex flex-col h-full">
+      <Card className="lg:col-span-1 bg-[#0f1419] border-l border-gray-800 flex flex-col h-full overflow-y-auto">
         {selectedCase ? (
           <>
-            <div className="p-4 border-b border-gray-800 bg-[#1a2332] rounded-t-xl flex justify-between items-center">
+            <div className="p-4 border-b border-gray-800 bg-[#1a2332] rounded-t-xl flex justify-between items-center sticky top-0 z-10">
               <div>
                 <h3 className="font-bold text-white truncate max-w-[200px]">{selectedCase.case_title}</h3>
-                <p className="text-xs text-gray-400">Case Collaboration</p>
+                <p className="text-xs text-gray-400">Case Collaboration & AI</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => onSelectCase(null)}>
                 <X className="w-4 h-4 text-gray-400" />
               </Button>
             </div>
-            <div className="flex-1 overflow-hidden p-4">
-              <CollaborationPanel caseId={selectedCase.id} user={user} />
+            <div className="p-4 space-y-6">
+              {/* AI Widget */}
+              <CaseRiskWidget caseId={selectedCase.id} />
+              
+              {/* Collaboration Tools */}
+              <div className="h-[500px]">
+                 <CollaborationPanel caseId={selectedCase.id} user={user} />
+              </div>
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-6 text-center">
             <AlertCircle className="w-12 h-12 mb-4 opacity-20" />
             <h3 className="text-lg font-semibold mb-2">No Case Selected</h3>
-            <p className="text-sm">Select a case from the list to view details and collaborate with your team.</p>
+            <p className="text-sm">Select a case from the list to view AI analysis and collaborate.</p>
           </div>
         )}
       </Card>

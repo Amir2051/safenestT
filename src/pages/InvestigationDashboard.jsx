@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { LayoutDashboard, FileText, Wallet, Brain, Users, Search, Loader2 } from "lucide-react";
+import { LayoutDashboard, FileText, Wallet, Brain, Users, Search, Loader2, CircuitBoard } from "lucide-react";
 import ActiveCasesPanel from "@/components/fraud-center/ActiveCasesPanel";
 import BlockchainTracePanel from "@/components/fraud-center/BlockchainTracePanel";
 import CryptoTrackerPanel from "@/components/fraud-center/CryptoTrackerPanel";
 import ScammerWalletLookup from "@/components/intelligence/ScammerWalletLookup";
+import AIPatternDashboard from "@/components/ai/AIPatternDashboard";
 import AdminCaseActions from "@/components/fraud/AdminCaseActions";
 import AdminGate from "@/components/admin/AdminGate";
 
@@ -136,6 +137,9 @@ export default function InvestigationDashboard() {
             <TabsTrigger value="intel" className="data-[state=active]:bg-green-500/20 px-6 py-2">
               <Brain className="w-4 h-4 mr-2" /> Intelligence
             </TabsTrigger>
+            <TabsTrigger value="ai-engine" className="data-[state=active]:bg-red-500/20 px-6 py-2">
+              <CircuitBoard className="w-4 h-4 mr-2" /> AI Engine
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cases">
@@ -152,6 +156,10 @@ export default function InvestigationDashboard() {
 
           <TabsContent value="intel">
             <ScammerWalletLookup />
+          </TabsContent>
+
+          <TabsContent value="ai-engine">
+            <AIPatternDashboard />
           </TabsContent>
         </Tabs>
 
