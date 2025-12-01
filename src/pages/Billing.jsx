@@ -31,6 +31,12 @@ export default function Billing() {
     refetchInterval: 10000
   });
 
+  useEffect(() => {
+    if (subscriptionInfo?.has_payment_method && user && !user.payment_method_added) {
+      base44.auth.updateMe({ payment_method_added: true }).catch(() => {});
+    }
+  }, [subscriptionInfo, user]);
+
   const cancelMutation = useMutation({
     mutationFn: async () => {
       const response = await base44.functions.invoke('subscriptionService', {
