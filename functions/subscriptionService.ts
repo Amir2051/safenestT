@@ -1,4 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import Stripe from 'npm:stripe';
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'), {
+  apiVersion: '2023-10-16',
+});
 
 Deno.serve(async (req) => {
   try {
@@ -60,6 +65,32 @@ Deno.serve(async (req) => {
       }
 
       case 'get-subscription-info': {
+        // Ensure Stripe customer exists
+        let stripeCustomerId = user.stripe_customer_id;
+        if (!stripeCustomerId && user.email) {
+           const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+           if (customers.data.length > 0) {
+             stripeCustomerId = customers.data[0].id;
+           } else {
+             const newCustomer = await stripe.customers.create({
+               email: user.email,
+               name: user.full_name,
+               metadata: { user_id: user.id }
+             });
+             stripeCustomerId = newCustomer.id;
+           }
+           await base44.auth.updateMe({ stripe_customer_id: stripeCustomerId });
+        }
+
+        let paymentMethods = [];
+        if (stripeCustomerId) {
+           const methods = await stripe.paymentMethods.list({
+             customer: stripeCustomerId,
+             type: 'card',
+           });
+           paymentMethods = methods.data;
+        }
+
         const now = new Date();
         const trialEnd = user.trial_ends ? new Date(user.trial_ends) : null;
         const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24))) : 0;
@@ -85,7 +116,8 @@ Deno.serve(async (req) => {
           trial_still_active: trialStillActive,
           is_premium: user.subscription_plan === 'basic' || user.subscription_plan === 'elite',
           can_access_premium: ((user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method) || trialStillActive,
-          requires_payment: !user.has_payment_method && user.payment_required
+          requires_payment: !user.has_payment_method && user.payment_required,
+          payment_methods: paymentMethods
         });
       }
 
@@ -195,8 +227,40 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'create-setup-session': {
+        // Ensure customer
+        let stripeCustomerId = user.stripe_customer_id;
+        if (!stripeCustomerId) {
+            const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+            if (customers.data.length > 0) {
+                stripeCustomerId = customers.data[0].id;
+            } else {
+                const newCustomer = await stripe.customers.create({
+                    email: user.email,
+                    name: user.full_name,
+                    metadata: { user_id: user.id }
+                });
+                stripeCustomerId = newCustomer.id;
+            }
+            await base44.auth.updateMe({ stripe_customer_id: stripeCustomerId });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'setup',
+            customer: stripeCustomerId,
+            success_url: `${req.headers.get('origin')}/Billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
+            cancel_url: `${req.headers.get('origin')}/Billing?status=cancel`,
+        });
+
+        return Response.json({ url: session.url });
+      }
+
       case 'get-checkout-url': {
         const { plan } = params;
+        // Fallback URLs if products not synced, but better to use createCheckoutSession for subscriptions if possible.
+        // For now, keeping the static links for plans as they were, but ideally we should use dynamic sessions too.
+        // But the user asked specifically about "Add Payment Method" screen fixing.
         const checkoutUrls = {
           basic: 'https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a',
           elite: 'https://buy.stripe.com/14AfZacYa62u0vVaY14gg09'
