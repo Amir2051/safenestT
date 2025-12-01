@@ -108,11 +108,11 @@ export default function Billing() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3 flex-wrap">
-            <CreditCard className="w-8 h-8 text-cyan-400" />
-            Billing & Payment Methods
+          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 flex-wrap break-words">
+            <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0" />
+            <span>Billing & Payments</span>
           </h1>
-          <p className="text-gray-400 mt-1">Manage your subscription and saved cards</p>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">Manage your subscription and saved cards</p>
         </div>
 
         {/* Current Plan */}
@@ -174,35 +174,43 @@ export default function Billing() {
         {/* Payment Methods */}
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
           <CardHeader>
-             <div className="flex items-center justify-between">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <CardTitle className="text-white">Payment Methods</CardTitle>
                <Button 
                  onClick={handleAddCard} 
                  disabled={processing}
-                 className="bg-purple-600 hover:bg-purple-700"
+                 className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto h-auto py-3 sm:py-2 whitespace-normal"
                >
-                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                 Add Card
+                 {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                 Add Payment Method
                </Button>
              </div>
           </CardHeader>
           <CardContent className="space-y-4">
              {paymentMethods.length === 0 ? (
-               <div className="text-center py-8 border border-dashed border-gray-700 rounded-lg">
+               <div className="text-center py-8 border border-dashed border-gray-700 rounded-lg px-4">
                  <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                 <p className="text-gray-400">No payment methods saved</p>
-                 <p className="text-xs text-gray-500 mt-1">Add a card to subscribe to premium plans</p>
+                 <p className="text-gray-400 text-lg font-medium">No payment methods saved</p>
+                 <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto">Add a card to secure your subscription and enable premium features.</p>
+                 <Button 
+                    onClick={handleAddCard} 
+                    disabled={processing}
+                    variant="outline"
+                    className="mt-4 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  >
+                    Add Card Now
+                  </Button>
                </div>
              ) : (
                <div className="space-y-3">
                  {paymentMethods.map((pm) => (
-                   <div key={pm.id} className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-gray-700">
-                     <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center">
+                   <div key={pm.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-gray-700 gap-4">
+                     <div className="flex items-center gap-3 w-full sm:w-auto">
+                       <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0">
                          <CreditCard className="w-6 h-6 text-white" />
                        </div>
-                       <div>
-                         <p className="text-white font-semibold capitalize">
+                       <div className="overflow-hidden">
+                         <p className="text-white font-semibold capitalize truncate">
                            {pm.card.brand} •••• {pm.card.last4}
                          </p>
                          <p className="text-xs text-gray-400">
@@ -210,7 +218,9 @@ export default function Billing() {
                          </p>
                        </div>
                      </div>
-                     <Badge className="bg-gray-700 text-gray-300">Saved</Badge>
+                     <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                        <Badge className="bg-green-900/30 text-green-400 border-green-500/30">Active</Badge>
+                     </div>
                    </div>
                  ))}
                </div>

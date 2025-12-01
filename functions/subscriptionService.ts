@@ -251,6 +251,7 @@ Deno.serve(async (req) => {
             customer: stripeCustomerId,
             success_url: `${req.headers.get('origin')}/Billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
             cancel_url: `${req.headers.get('origin')}/Billing?status=cancel`,
+            billing_address_collection: 'auto',
         });
 
         return Response.json({ url: session.url });
