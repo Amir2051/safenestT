@@ -41,12 +41,17 @@ export default function Subscription() {
     setTimeout(() => setLoading(false), 1000);
   };
 
-  const handleCyberMonday = () => {
-    setLoadingCyber(true);
-    // Using the yearly plan URL for Cyber Monday deal
-    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
-    setTimeout(() => setLoadingCyber(false), 1000);
-  };
+  useEffect(() => {
+    // Load Stripe script for buy button
+    const script = document.createElement('script');
+    script.src = "https://js.stripe.com/v3/buy-button.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    }
+  }, []);
 
   const handleCancelSubscription = async () => {
     setCancelling(true);
@@ -93,27 +98,23 @@ export default function Subscription() {
                     <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full text-white font-bold text-sm mb-2 border border-white/30">
                         LIMITED TIME OFFER
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg break-words">
                         Cyber Monday Mega Deal!
                     </h2>
-                    <p className="text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug">
+                    <p className="text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug break-words">
                         Save big on your yearly SafeNestt subscription — today only!
                     </p>
-                    <p className="text-white/80 text-sm md:text-base max-w-2xl mx-auto">
+                    <p className="text-white/80 text-sm md:text-base max-w-2xl mx-auto break-words whitespace-normal">
                         Unlock a full year of protection, case support, and scam prevention tools for a special Cyber Monday price. 
                         Subscribe now and secure faster case handling, priority assistance, and exclusive premium features. 
                         This offer expires soon — don’t miss your chance to save and stay protected all year long.
                     </p>
-                    <div className="pt-4">
-                        <Button 
-                            onClick={handleCyberMonday}
-                            disabled={loadingCyber}
-                            size="lg"
-                            className="bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-700 font-bold text-lg px-8 py-6 rounded-full shadow-xl transform transition hover:scale-105"
+                    <div className="pt-4 flex justify-center">
+                        <stripe-buy-button
+                          buy-button-id="buy_btn_1SZZg42NepP24ReEBhqi0Azg"
+                          publishable-key="pk_live_51RLCv82NepP24ReEPGqkFjk0fMWC5R6bGkgQdX9IxlwoD0KF0bXGEPLhIllgmQ6Kr5Wkjl3N121HvnCCGSXdjKjS007lrnb8R7"
                         >
-                            {loadingCyber ? <Clock className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
-                            Get Cyber Monday Deal
-                        </Button>
+                        </stripe-buy-button>
                     </div>
                 </div>
             </div>
