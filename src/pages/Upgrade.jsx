@@ -12,47 +12,6 @@ export default function Upgrade() {
   const [user, setUser] = useState(null);
 
   const PLANS = {
-    basic: {
-      name: "Basic Plan",
-      price: "$9.99",
-      period: "month",
-      checkoutUrl: "https://buy.stripe.com/14AfZacYa62u0vVaY14gg09",
-      color: "from-blue-500 to-cyan-500",
-      icon: Shield,
-      features: [
-        "✅ Full scam-check access",
-        "✅ Phone number verification",
-        "✅ Identity report tools",
-        "✅ Basic protection alerts",
-        "✅ Password breach monitoring",
-        "✅ Unlimited vault storage",
-        "✅ Dark web scan reports",
-        "✅ Priority email support",
-        "✅ Single-device usage"
-      ]
-    },
-    elite: {
-      name: "Elite Plan",
-      price: "$19.99",
-      period: "month",
-      checkoutUrl: "https://buy.stripe.com/eVq00ccYabmO92r5DH4gg0a",
-      color: "from-purple-500 to-pink-500",
-      icon: Sparkles,
-      popular: true,
-      features: [
-        "✨ Everything in Basic Plan",
-        "✅ Advanced scam pattern detection",
-        "✅ Multi-device support (up to 5 devices)",
-        "✅ Priority protection alerts",
-        "✅ Premium identity verification tools",
-        "✅ Credit card breach monitoring",
-        "✅ 24/7 priority support",
-        "✅ AI-powered threat analysis",
-        "✅ Automated security fixes",
-        "✅ Access to future AI-driven features",
-        "✅ Early access to new features"
-      ]
-    },
     premium_unlimited: {
       name: "Premium Unlimited",
       price: "$24.99",
@@ -61,18 +20,20 @@ export default function Upgrade() {
       color: "from-amber-500 to-orange-500",
       icon: Star,
       premium: true,
+      popular: true,
       features: [
-        "🌟 Everything in Elite Plan",
-        "✅ Unlimited case submissions",
-        "✅ Full protection & monitoring of stolen funds",
-        "✅ Free 1-on-1 consultation for recovery guidance",
-        "✅ Agency reporting tools & alerts",
-        "✅ Priority investigation support",
-        "✅ Direct access to fraud recovery team",
-        "✅ Blockchain tracing & analysis",
-        "✅ Law enforcement coordination",
-        "✅ Dedicated account manager",
-        "✅ White-glove service"
+        "🌟 Full scam-check access & Identity report tools",
+        "🌟 Advanced scam pattern detection",
+        "🌟 Multi-device support (Unlimited)",
+        "🌟 Unlimited case submissions",
+        "🌟 Full protection & monitoring of stolen funds",
+        "🌟 Free 1-on-1 consultation for recovery guidance",
+        "🌟 Agency reporting tools & alerts",
+        "🌟 Priority investigation support",
+        "🌟 Direct access to fraud recovery team",
+        "🌟 Blockchain tracing & analysis",
+        "🌟 Law enforcement coordination",
+        "🌟 dedicated account manager & White-glove service"
       ]
     }
   };
@@ -163,67 +124,37 @@ export default function Upgrade() {
                 </ul>
               </div>
               
-              <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-5 border-2 border-blue-500/40">
-                <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                  💎 Basic Plan
-                  <Badge className="bg-blue-500/20 text-blue-400 text-xs">$9.99/mo</Badge>
-                </h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="text-green-400">✅ Everything in Free</li>
-                  <li className="text-cyan-400">✨ Full scam-check access</li>
-                  <li className="text-cyan-400">✨ Phone verification</li>
-                  <li className="text-cyan-400">✨ Identity report tools</li>
-                  <li className="text-cyan-400">✨ Basic protection alerts</li>
-                  <li className="text-cyan-400">✨ Unlimited vault</li>
-                  <li className="text-cyan-400">✨ Single-device usage</li>
-                  <li className="text-red-400">❌ Multi-device support</li>
-                </ul>
-              </div>
-              
-              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-5 border-2 border-purple-500/40 relative">
+              <div className="col-span-3 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg p-8 border-2 border-amber-500/40 relative">
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1">
-                    <Star className="w-3 h-3 mr-1 inline" />
-                    BEST VALUE
+                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 text-sm">
+                    <Crown className="w-4 h-4 mr-1 inline" />
+                    ULTIMATE PROTECTION
                   </Badge>
                 </div>
-                <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2 mt-2">
-                  ✨ Elite Plan
-                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">$19.99/mo</Badge>
-                </h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="text-green-400">✅ Everything in Basic</li>
-                  <li className="text-purple-400">⭐ Advanced scam detection</li>
-                  <li className="text-purple-400">⭐ Multi-device (up to 5)</li>
-                  <li className="text-purple-400">⭐ Priority alerts</li>
-                  <li className="text-purple-400">⭐ Premium identity tools</li>
-                  <li className="text-purple-400">⭐ AI threat analysis</li>
-                  <li className="text-purple-400">⭐ 24/7 support</li>
-                  <li className="text-purple-400">⭐ Future AI features</li>
-                </ul>
-              </div>
-              
-              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg p-5 border-2 border-amber-500/40 relative">
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-1">
-                    <Crown className="w-3 h-3 mr-1 inline" />
-                    PREMIUM
-                  </Badge>
+                <div className="text-center mb-6">
+                  <h4 className="text-white font-bold text-2xl flex items-center justify-center gap-2 mt-2">
+                    🌟 Premium Unlimited
+                  </h4>
+                  <p className="text-amber-400 font-semibold mt-1">$24.99/mo</p>
                 </div>
-                <h4 className="text-white font-semibold mb-4 text-lg flex items-center gap-2 mt-2">
-                  🌟 Premium Unlimited
-                  <Badge className="bg-amber-500/20 text-amber-400 text-xs">$24.99/mo</Badge>
-                </h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="text-green-400">✅ Everything in Elite</li>
-                  <li className="text-amber-400">🌟 Unlimited case submissions</li>
-                  <li className="text-amber-400">🌟 Full fund protection</li>
-                  <li className="text-amber-400">🌟 Free 1-on-1 consultation</li>
-                  <li className="text-amber-400">🌟 Agency reporting tools</li>
-                  <li className="text-amber-400">🌟 Priority investigation</li>
-                  <li className="text-amber-400">🌟 Dedicated manager</li>
-                  <li className="text-amber-400">🌟 White-glove service</li>
-                </ul>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <ul className="space-y-2 text-sm">
+                      <li className="text-green-400">✅ Everything in Free</li>
+                      <li className="text-amber-400">🌟 Full scam-check access</li>
+                      <li className="text-amber-400">🌟 Multi-device support (Unlimited)</li>
+                      <li className="text-amber-400">🌟 Advanced scam pattern detection</li>
+                      <li className="text-amber-400">🌟 Unlimited case submissions</li>
+                      <li className="text-amber-400">🌟 Full fund protection & monitoring</li>
+                   </ul>
+                   <ul className="space-y-2 text-sm">
+                      <li className="text-amber-400">🌟 Free 1-on-1 recovery consultation</li>
+                      <li className="text-amber-400">🌟 Agency reporting tools & alerts</li>
+                      <li className="text-amber-400">🌟 Priority investigation support</li>
+                      <li className="text-amber-400">🌟 Direct access to fraud recovery team</li>
+                      <li className="text-amber-400">🌟 Dedicated account manager</li>
+                   </ul>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -251,83 +182,85 @@ export default function Upgrade() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {Object.entries(PLANS).map(([key, plan]) => {
-            const Icon = plan.icon;
-            const isCurrentPlan = currentPlan === key && isActive;
-            
-            return (
-              <Card
-                key={key}
-                className={`relative bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 transition-all hover:scale-105 ${
-                  plan.popular ? 'border-purple-500/50 lg:scale-105' : 'border-cyan-500/20'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1.5 text-sm">
-                      <Star className="w-3 h-3 mr-1" />
-                      MOST POPULAR
-                    </Badge>
-                  </div>
-                )}
-
-                <CardHeader className="text-center pt-8">
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.color} flex items-center justify-center mx-auto mb-4 shadow-lg`}>
-                    <Icon className="w-8 h-8 text-white" />
-                  </div>
-                  <CardTitle className="text-2xl font-bold text-white mb-2">
-                    {plan.name}
-                  </CardTitle>
-                  <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-5xl font-bold text-white">{plan.price}</span>
-                    <span className="text-gray-400">/{plan.period}</span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${plan.color} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-gray-300 text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    onClick={() => handleSubscribe(key, plan.checkoutUrl)}
-                    disabled={isCurrentPlan}
-                    className={`w-full py-6 text-lg font-semibold ${
-                      isCurrentPlan
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : `bg-gradient-to-r ${plan.color} hover:opacity-90 shadow-lg`
-                    }`}
-                  >
-                    {isCurrentPlan ? (
-                      <>
-                        <Check className="w-5 h-5 mr-2" />
-                        Current Plan
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        Subscribe Now
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="text-center pt-4 border-t border-gray-700">
-                    <div className="flex items-center justify-center gap-2 text-gray-400 text-xs">
-                      <Lock className="w-3 h-3" />
-                      <span>Payments secured by Stripe</span>
+          <div className="lg:col-span-3 flex justify-center">
+            {Object.entries(PLANS).map(([key, plan]) => {
+              const Icon = plan.icon;
+              const isCurrentPlan = currentPlan === key && isActive;
+              
+              return (
+                <Card
+                  key={key}
+                  className={`relative max-w-2xl w-full bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-2 transition-all ${
+                    plan.popular ? 'border-amber-500/50' : 'border-cyan-500/20'
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-2 text-md">
+                        <Star className="w-4 h-4 mr-2" />
+                        ALL-IN-ONE SOLUTION
+                      </Badge>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  )}
+
+                  <CardHeader className="text-center pt-10">
+                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${plan.color} flex items-center justify-center mx-auto mb-6 shadow-lg`}>
+                      <Icon className="w-10 h-10 text-white" />
+                    </div>
+                    <CardTitle className="text-3xl font-bold text-white mb-2">
+                      {plan.name}
+                    </CardTitle>
+                    <div className="flex items-baseline justify-center gap-2">
+                      <span className="text-6xl font-bold text-white">{plan.price}</span>
+                      <span className="text-gray-400 text-xl">/{plan.period}</span>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-8 p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {plan.features.map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                            <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${plan.color} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                            <Check className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="text-gray-300 text-base">{feature}</span>
+                        </div>
+                        ))}
+                    </div>
+
+                    <Button
+                      onClick={() => handleSubscribe(key, plan.checkoutUrl)}
+                      disabled={isCurrentPlan}
+                      className={`w-full py-8 text-xl font-bold rounded-xl ${
+                        isCurrentPlan
+                          ? 'bg-gray-600 cursor-not-allowed'
+                          : `bg-gradient-to-r ${plan.color} hover:opacity-90 shadow-lg shadow-amber-500/20`
+                      }`}
+                    >
+                      {isCurrentPlan ? (
+                        <>
+                          <Check className="w-6 h-6 mr-3" />
+                          Current Plan
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-6 h-6 mr-3" />
+                          Get Full Protection Now
+                        </>
+                      )}
+                    </Button>
+
+                    <div className="text-center pt-4 border-t border-gray-700">
+                      <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+                        <Lock className="w-4 h-4" />
+                        <span>Payments secured by Stripe • 30-day money-back guarantee</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">

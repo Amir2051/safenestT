@@ -34,10 +34,10 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
             <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-white font-semibold text-sm">Unlock {feature}</p>
-              <p className="text-gray-400 text-xs">Upgrade to premium starting at $9.99/month</p>
+              <p className="text-gray-400 text-xs">Get full protection for $24.99/month</p>
             </div>
             <Link to={createPageUrl("Upgrade")}>
-              <Button size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+              <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
                 Upgrade
                 <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
@@ -79,26 +79,21 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
           </div>
 
           {/* Pricing */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-center">
-              <p className="text-xs text-gray-400 mb-1">Basic Plan</p>
-              <p className="text-2xl font-bold text-white">$9.99</p>
-              <p className="text-xs text-gray-400">/month</p>
-            </div>
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 text-center relative">
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
-                Popular
+          <div className="mb-6">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 text-center relative">
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-xs bg-amber-500 text-white px-3 py-0.5 rounded-full font-bold">
+                ALL-IN-ONE
               </div>
-              <p className="text-xs text-gray-400 mb-1">Elite Plan</p>
-              <p className="text-2xl font-bold text-white">$19.99</p>
+              <p className="text-xs text-gray-400 mb-1">Premium Unlimited</p>
+              <p className="text-3xl font-bold text-white">$24.99</p>
               <p className="text-xs text-gray-400">/month</p>
             </div>
           </div>
 
           {/* CTA */}
           <Link to={createPageUrl("Upgrade")}>
-            <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 py-6 text-lg font-semibold">
-              View All Plans
+            <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 py-6 text-lg font-semibold">
+              Get Premium Access
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>

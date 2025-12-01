@@ -191,62 +191,17 @@ export default function Billing() {
         </CardHeader>
         <CardContent className="space-y-3">
           {!info.has_payment_method && (
-            <>
-              <Button
-                onClick={() => handleUpdatePayment('basic')}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12"
-              >
-                <CreditCard className="w-5 h-5 mr-2" />
-                Add Payment Method - Basic ($9.99/mo)
-              </Button>
-              <Button
-                onClick={() => handleUpdatePayment('elite')}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
-              >
-                <CreditCard className="w-5 h-5 mr-2" />
-                Add Payment Method - Elite ($19.99/mo)
-              </Button>
-              <Button
-                onClick={() => handleUpdatePayment('premium_unlimited')}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
-              >
-                <CreditCard className="w-5 h-5 mr-2" />
-                Add Payment Method - Premium Unlimited ($24.99/mo)
-              </Button>
-            </>
+            <Button
+              onClick={() => handleUpdatePayment('premium_unlimited')}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
+            >
+              <CreditCard className="w-5 h-5 mr-2" />
+              Add Payment Method - Premium Unlimited ($24.99/mo)
+            </Button>
           )}
 
           {info.has_payment_method && (
             <>
-              {info.subscription_plan === 'basic' && (
-                <>
-                  <Button
-                    onClick={() => handleUpdatePayment('elite')}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
-                  >
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Upgrade to Elite - $19.99/mo
-                  </Button>
-                  <Button
-                    onClick={() => handleUpdatePayment('premium_unlimited')}
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
-                  >
-                    <Crown className="w-5 h-5 mr-2" />
-                    Upgrade to Premium Unlimited - $24.99/mo
-                  </Button>
-                </>
-              )}
-              
-              {info.subscription_plan === 'elite' && (
-                <Button
-                  onClick={() => handleUpdatePayment('premium_unlimited')}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
-                >
-                  <Crown className="w-5 h-5 mr-2" />
-                  Upgrade to Premium Unlimited - $24.99/mo
-                </Button>
-              )}
-              
               <Button
                 onClick={() => handleUpdatePayment(info.subscription_plan)}
                 variant="outline"
