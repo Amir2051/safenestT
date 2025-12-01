@@ -7,7 +7,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Send, Mic, Paperclip, Sparkles, User } from "lucide-react";
 import MessageBubble from "@/components/collaboration/WorkspaceChat"; // Reuse or generic bubble
 import ReactMarkdown from "react-markdown";
-import { cn } from "@/utils";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
 import { toast } from "sonner";
 
 // Simple Message Bubble component inline to avoid dependency issues if the other one is complex
