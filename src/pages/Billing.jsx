@@ -110,9 +110,9 @@ export default function Billing() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 flex-wrap break-words">
             <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0" />
-            <span>Billing & Payments</span>
+            <span>Subscription & Billing</span>
           </h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">Manage your subscription and saved cards</p>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">Manage your subscription and payment details</p>
         </div>
 
         {/* Current Plan */}
@@ -182,7 +182,7 @@ export default function Billing() {
                  className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto h-auto py-3 sm:py-2 whitespace-normal"
                >
                  {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                 Add Payment Method
+                 Subscribe
                </Button>
              </div>
           </CardHeader>
@@ -198,7 +198,7 @@ export default function Billing() {
                     variant="outline"
                     className="mt-4 border-gray-600 text-gray-300 hover:bg-gray-800"
                   >
-                    Add Card Now
+                    Subscribe
                   </Button>
                </div>
              ) : (

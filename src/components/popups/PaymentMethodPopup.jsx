@@ -56,7 +56,7 @@ export default function PaymentMethodPopup({ user, onUpdate }) {
             onClick={handleAddPayment}
             className="bg-purple-600 hover:bg-purple-700"
           >
-            Add Payment Method
+            Subscribe
           </Button>
         </div>
       </DialogContent>
