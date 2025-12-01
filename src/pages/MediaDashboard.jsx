@@ -33,18 +33,88 @@ export default function MediaDashboard() {
     initialData: []
   });
 
-  // Helper for creating new items (simplified)
+  const [isLogMeetingOpen, setIsLogMeetingOpen] = useState(false);
+  const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+  const [isScriptOpen, setIsScriptOpen] = useState(false);
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+
+  // Meeting State
+  const [meetingData, setMeetingData] = useState({ title: "", date: "", type: "internal", notes: "" });
+  // Campaign State
+  const [campaignData, setCampaignData] = useState({ name: "", description: "", status: "planning", start_date: "" });
+  // Script State
+  const [scriptData, setScriptData] = useState({ title: "", topic: "", type: "press_release", tone: "Professional" });
+  // Suggestion State
+  const [suggestData, setSuggestData] = useState({ project_name: "", description: "" });
+
+  const createMeetingMutation = useMutation({
+    mutationFn: (data) => base44.entities.MeetingLog.create(data),
+    onSuccess: () => {
+        queryClient.invalidateQueries(['meeting-logs']);
+        toast.success("Meeting logged successfully");
+        setIsLogMeetingOpen(false);
+        setMeetingData({ title: "", date: "", type: "internal", notes: "" });
+    }
+  });
+
   const createProjectMutation = useMutation({
     mutationFn: (data) => base44.entities.MediaProject.create(data),
     onSuccess: () => {
         queryClient.invalidateQueries(['media-projects']);
-        toast.success("Project created");
+        toast.success("Campaign created");
+        setIsNewCampaignOpen(false);
+        setCampaignData({ name: "", description: "", status: "planning", start_date: "" });
+    }
+  });
+
+  const analyzeMeetingMutation = useMutation({
+    mutationFn: async (meeting) => {
+        const res = await base44.functions.invoke('mediaAI', {
+            endpoint: 'analyze_meeting',
+            meeting_id: meeting.id,
+            notes: meeting.notes,
+            title: meeting.title
+        });
+        return res.data;
+    },
+    onSuccess: (data) => {
+        queryClient.invalidateQueries(['meeting-logs']);
+        toast.success("Analysis complete!");
+    }
+  });
+
+  const generateScriptMutation = useMutation({
+    mutationFn: async (data) => {
+        const res = await base44.functions.invoke('mediaAI', {
+            endpoint: 'generate_script',
+            ...data
+        });
+        return res.data;
+    },
+    onSuccess: () => {
+        toast.success("Script generated and saved to Scripts!");
+        setIsScriptOpen(false);
+    }
+  });
+
+  const suggestMediaMutation = useMutation({
+    mutationFn: async (data) => {
+        const res = await base44.functions.invoke('mediaAI', {
+            endpoint: 'media_suggestions',
+            ...data
+        });
+        return res.data;
+    },
+    onSuccess: (data) => {
+        // Show result in a simple alert or modal for now
+        alert("Suggestions:\n\n" + data.suggestions);
+        setIsSuggestOpen(false);
     }
   });
 
   return (
     <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white">
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start mb-8 gap-4">
         <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Megaphone className="w-8 h-8 text-pink-500" />
@@ -54,13 +124,85 @@ export default function MediaDashboard() {
                 Welcome back, {user?.full_name}. Role: <span className="text-pink-400">{user?.job_title || 'Admin'}</span>
             </p>
         </div>
-        <div className="flex gap-3">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-                <Calendar className="w-4 h-4 mr-2" /> Log Meeting
-            </Button>
-            <Button className="bg-pink-600 hover:bg-pink-700">
-                <Plus className="w-4 h-4 mr-2" /> New Campaign
-            </Button>
+        <div className="flex flex-wrap gap-3">
+            <Dialog open={isLogMeetingOpen} onOpenChange={setIsLogMeetingOpen}>
+                <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Calendar className="w-4 h-4 mr-2" /> Log Meeting
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a2332] border-gray-700 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Log New Meeting</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <Input placeholder="Meeting Title" value={meetingData.title} onChange={(e) => setMeetingData({...meetingData, title: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input type="date" value={meetingData.date} onChange={(e) => setMeetingData({...meetingData, date: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input placeholder="Notes / Transcript" value={meetingData.notes} onChange={(e) => setMeetingData({...meetingData, notes: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Button onClick={() => createMeetingMutation.mutate(meetingData)} className="w-full bg-blue-600">Save Meeting</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isNewCampaignOpen} onOpenChange={setIsNewCampaignOpen}>
+                <DialogTrigger asChild>
+                    <Button className="bg-pink-600 hover:bg-pink-700">
+                        <Plus className="w-4 h-4 mr-2" /> New Campaign
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a2332] border-gray-700 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Create Media Campaign</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <Input placeholder="Campaign Name" value={campaignData.name} onChange={(e) => setCampaignData({...campaignData, name: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input placeholder="Description" value={campaignData.description} onChange={(e) => setCampaignData({...campaignData, description: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input type="date" placeholder="Start Date" value={campaignData.start_date} onChange={(e) => setCampaignData({...campaignData, start_date: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Button onClick={() => createProjectMutation.mutate(campaignData)} className="w-full bg-pink-600">Create Campaign</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isScriptOpen} onOpenChange={setIsScriptOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500/10">
+                        <mic className="w-4 h-4 mr-2" /> Generate Script
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a2332] border-gray-700 text-white">
+                    <DialogHeader>
+                        <DialogTitle>AI Script Generator</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <Input placeholder="Script Title" value={scriptData.title} onChange={(e) => setScriptData({...scriptData, title: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input placeholder="Topic / Key Points" value={scriptData.topic} onChange={(e) => setScriptData({...scriptData, topic: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input placeholder="Tone (e.g. Professional, Urgent)" value={scriptData.tone} onChange={(e) => setScriptData({...scriptData, tone: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Button onClick={() => generateScriptMutation.mutate(scriptData)} disabled={generateScriptMutation.isPending} className="w-full bg-purple-600">
+                            {generateScriptMutation.isPending ? 'Generating...' : 'Generate Script'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isSuggestOpen} onOpenChange={setIsSuggestOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="border-green-500 text-green-400 hover:bg-green-500/10">
+                        <Search className="w-4 h-4 mr-2" /> Media Suggestions
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a2332] border-gray-700 text-white">
+                    <DialogHeader>
+                        <DialogTitle>AI Media Strategy</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <Input placeholder="Project Name" value={suggestData.project_name} onChange={(e) => setSuggestData({...suggestData, project_name: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Input placeholder="Brief Description" value={suggestData.description} onChange={(e) => setSuggestData({...suggestData, description: e.target.value})} className="bg-[#0f1419] border-gray-600" />
+                        <Button onClick={() => suggestMediaMutation.mutate(suggestData)} disabled={suggestMediaMutation.isPending} className="w-full bg-green-600">
+                            {suggestMediaMutation.isPending ? 'Thinking...' : 'Get Suggestions'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
       </div>
 
@@ -145,9 +287,19 @@ export default function MediaDashboard() {
                                     <div>
                                         <h4 className="font-medium text-white">{meeting.title}</h4>
                                         <p className="text-sm text-gray-400">{new Date(meeting.date).toLocaleDateString()} • {meeting.type}</p>
+                                        {meeting.ai_summary && <p className="text-xs text-green-400 mt-1">✓ AI Analyzed</p>}
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="text-gray-400">View AI Summary</Button>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        size="sm" 
+                                        onClick={() => analyzeMeetingMutation.mutate(meeting)}
+                                        disabled={analyzeMeetingMutation.isPending}
+                                        className="bg-purple-600 hover:bg-purple-700 text-xs"
+                                    >
+                                        {analyzeMeetingMutation.isPending ? 'Analyzing...' : 'Analyze Meeting'}
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                         {meetings.length === 0 && (

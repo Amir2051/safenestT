@@ -54,51 +54,40 @@ export default function MediaDirectorAI() {
     const init = async () => {
         const u = await base44.auth.me();
         setUser(u);
-        // Create or get conversation
-        try {
-            // List conversations to see if one exists for this user + agent
-            const convs = await base44.agents.listConversations({ agent_name: 'media_director_assistant' });
-            if (convs && convs.length > 0) {
-                setConversationId(convs[0].id);
-                // subscribe to it
-            } else {
-                const newConv = await base44.agents.createConversation({
-                    agent_name: 'media_director_assistant',
-                    metadata: { name: `Media Chat - ${u.full_name}` }
-                });
-                setConversationId(newConv.id);
-            }
-        } catch (e) {
-            console.error("Failed to init chat", e);
-        }
+        // Initial system message
+        setMessages([{ role: 'system', content: "Hello! I am your Media Director AI. I can help you analyze meetings, draft scripts, and plan campaigns. How can I assist you today?" }]);
     };
     init();
   }, []);
 
-  useEffect(() => {
-    if (!conversationId) return;
-
-    const unsubscribe = base44.agents.subscribeToConversation(conversationId, (data) => {
-        setMessages(data.messages);
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    });
-    return () => unsubscribe();
-  }, [conversationId]);
-
   const handleSend = async () => {
-    if (!input.trim() || !conversationId) return;
+    if (!input.trim()) return;
     const msg = input;
     setInput("");
     setLoading(true);
+    
+    // Add user message immediately
+    const newMessages = [...messages, { role: "user", content: msg }];
+    setMessages(newMessages);
+
     try {
-        await base44.agents.addMessage(conversationId, {
-            role: "user",
-            content: msg
+        // Format history for OpenAI (exclude system greeting if needed, or map it)
+        const history = newMessages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }));
+
+        const response = await base44.functions.invoke('mediaAI', {
+            endpoint: 'chat',
+            message: msg,
+            history: history
         });
+
+        if (response.data.reply) {
+            setMessages(prev => [...prev, { role: "assistant", content: response.data.reply }]);
+        } else {
+            toast.error("No response from AI");
+        }
     } catch (e) {
-        toast.error("Failed to send message");
+        console.error(e);
+        toast.error("Failed to send message: " + e.message);
     } finally {
         setLoading(false);
     }

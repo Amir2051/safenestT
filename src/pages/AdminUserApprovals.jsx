@@ -242,25 +242,40 @@ export default function AdminUserApprovals() {
           <p className="text-gray-400 mt-1">Verify users and assign employee roles</p>
         </div>
 
-        {pendingAndRejectedCount > 0 && (
-          <Button
-            onClick={handleBulkApprove}
-            disabled={bulkApproveMutation.isPending}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-          >
-            {bulkApproveMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Approving...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approve All ({pendingAndRejectedCount})
-              </>
+        <div className="flex gap-2">
+            <Button
+                onClick={async () => {
+                    const res = await base44.functions.invoke('mediaAI', { endpoint: 'generate_employee_ids' });
+                    toast.success(res.data.message);
+                    queryClient.invalidateQueries(['all-users']);
+                }}
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+            >
+                <Briefcase className="w-4 h-4 mr-2" />
+                Generate Employee IDs
+            </Button>
+
+            {pendingAndRejectedCount > 0 && (
+            <Button
+                onClick={handleBulkApprove}
+                disabled={bulkApproveMutation.isPending}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+            >
+                {bulkApproveMutation.isPending ? (
+                <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Approving...
+                </>
+                ) : (
+                <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve All ({pendingAndRejectedCount})
+                </>
+                )}
+            </Button>
             )}
-          </Button>
-        )}
+        </div>
       </div>
 
       {/* Stats */}
