@@ -408,8 +408,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
               <NavItem key={item.id} item={item} />
             ))}
 
-            {/* Media Director Navigation */}
-            {user?.role === 'admin' && user?.job_title === 'Media Director' && (
+            {/* Media Director Navigation - Show if user is admin (with title) OR if user is not admin but has title */}
+            {(user?.job_title === 'Media Director' || (user?.role === 'admin' && user?.job_title === 'Media Director')) && (
               <div className="space-y-2 pt-4 border-t border-gray-800/50">
                 <div className="px-4 mb-2">
                   <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
