@@ -7,6 +7,8 @@ import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
+import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
+import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -50,6 +52,10 @@ export default function Layout({ children, currentPageName }) {
     setIsMobileMenuOpen(false);
   };
 
+  const handleUserUpdate = () => {
+    base44.auth.me().then(setUser).catch(() => {});
+  };
+
   // Swipe gesture handlers
   const minSwipeDistance = 50;
 
@@ -82,6 +88,8 @@ export default function Layout({ children, currentPageName }) {
     <>
       <ReferralCodeHandler />
       <RealTimeReferralUpdates user={user} />
+      <ProfileCompletionPopup user={user} onUpdate={handleUserUpdate} />
+      <PaymentMethodPopup user={user} onUpdate={handleUserUpdate} />
       <div 
         className="min-h-screen flex bg-[#000000]"
         onTouchStart={onTouchStart}

@@ -449,7 +449,7 @@ export default function AdminUserApprovals() {
                             className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                           >
                             <UserX className="w-4 h-4 mr-1" />
-                            Reject
+                            Deny
                           </Button>
                         </>
                       ) : u.account_status === 'rejected' ? (
@@ -527,10 +527,10 @@ export default function AdminUserApprovals() {
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                             <div className="flex-1 w-full">
                                 <Label className="text-xs text-gray-400 mb-1.5 block">
-                                    {actionType === 'approve' ? "Approval Notes (Optional)" : "Reason for Rejection"}
+                                    {actionType === 'approve' ? "Approval Notes (Optional)" : "Reason for Denial"}
                                 </Label>
                                 <Input 
-                                    placeholder={actionType === 'approve' ? "Add notes..." : "Explain rejection..."} 
+                                    placeholder={actionType === 'approve' ? "Add notes..." : "Explain denial..."} 
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
                                     className="bg-black/20 border-gray-700 text-white"
@@ -543,7 +543,7 @@ export default function AdminUserApprovals() {
                                     disabled={(actionType === 'approve' && !Object.values(verificationChecks).every(Boolean)) || approveMutation.isPending || rejectMutation.isPending}
                                     className={`flex-1 md:flex-none ${actionType === 'approve' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
                                 >
-                                    {approveMutation.isPending || rejectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
+                                    {approveMutation.isPending || rejectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (actionType === 'approve' ? 'Confirm Approval' : 'Confirm Denial')}
                                 </Button>
                             </div>
                         </div>
