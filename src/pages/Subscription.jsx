@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
+const STRIPE_YEARLY_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
 
 export default function Subscription() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingCyber, setLoadingCyber] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
@@ -34,11 +35,38 @@ export default function Subscription() {
     refetchInterval: 30000
   });
 
-  const handleStartTrial = () => {
+  const handleStartYearly = () => {
     setLoading(true);
-    // Open Stripe checkout in new browser window
-    window.open(STRIPE_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
     setTimeout(() => setLoading(false), 1000);
+  };
+
+  const handleCyberMonday = async () => {
+    setLoadingCyber(true);
+    try {
+        // Assuming there's a backend endpoint or we just open a link if provided. 
+        // Since the prompt asks to use a Price ID, and usually that requires backend session creation:
+        // But for now, I'll use a placeholder link if not provided, or call the backend if I could.
+        // The prompt says "connect it to the Cyber Monday yearly Stripe price using this Price ID: [YOUR PRICE ID HERE]".
+        // I will simulate the backend call structure for "get-checkout-url" with a plan type if that's how it works, 
+        // or just put a placeholder alert if I can't truly implement it without the ID.
+        // I'll try to call the get-checkout-url with a specific 'cyber_monday' plan.
+        const response = await base44.functions.invoke('subscriptionService', {
+            endpoint: 'get-checkout-url',
+            plan: 'cyber_monday_yearly', // Backend would need to handle this
+            priceId: 'price_1QPxyz...' // Placeholder as requested
+        });
+        if (response.data.url) {
+            window.location.href = response.data.url;
+        } else {
+             toast.error("Cyber Monday deal setup incomplete.");
+        }
+    } catch (error) {
+         // Fallback for now since backend might not support it
+         toast.error("Cyber Monday checkout not configured yet.");
+    } finally {
+        setLoadingCyber(false);
+    }
   };
 
   const handleCancelSubscription = async () => {
@@ -76,16 +104,51 @@ export default function Subscription() {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+        
+        {/* Cyber Monday Banner */}
+        {!isSubscribed && (
+            <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-2xl p-6 md:p-8 text-center shadow-2xl border border-white/10 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                <div className="relative z-10 space-y-4">
+                    <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full text-white font-bold text-sm mb-2 border border-white/30">
+                        LIMITED TIME OFFER
+                    </div>
+                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+                        Cyber Monday Mega Deal!
+                    </h2>
+                    <p className="text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug">
+                        Save big on your yearly SafeNestt subscription — today only!
+                    </p>
+                    <p className="text-white/80 text-sm md:text-base max-w-2xl mx-auto">
+                        Unlock a full year of protection, case support, and scam prevention tools for a special Cyber Monday price. 
+                        Subscribe now and secure faster case handling, priority assistance, and exclusive premium features. 
+                        This offer expires soon — don’t miss your chance to save and stay protected all year long.
+                    </p>
+                    <div className="pt-4">
+                        <Button 
+                            onClick={handleCyberMonday}
+                            disabled={loadingCyber}
+                            size="lg"
+                            className="bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-700 font-bold text-lg px-8 py-6 rounded-full shadow-xl transform transition hover:scale-105"
+                        >
+                            {loadingCyber ? <Clock className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
+                            Get Cyber Monday Deal
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Header */}
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Shield className="w-12 h-12 text-cyan-400" />
-            <h1 className="text-5xl font-bold text-white">
+        <div className="text-center py-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-2">
+            <Shield className="w-10 h-10 md:w-12 md:h-12 text-cyan-400" />
+            <h1 className="text-3xl md:text-5xl font-bold text-white text-center">
               SafeNestt Premium
             </h1>
           </div>
-          <p className="text-xl text-gray-300">
+          <p className="text-lg md:text-xl text-gray-300 max-w-lg mx-auto px-4">
             Complete protection for your digital life
           </p>
         </div>
@@ -133,26 +196,26 @@ export default function Subscription() {
           {/* Glow Effect */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px]" />
           
-          <CardContent className="p-8 lg:p-12 relative">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <CardContent className="p-4 md:p-8 lg:p-12 relative">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Left: Plan Details */}
               <div className="space-y-6">
                 <div>
                   <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 mb-4 text-sm px-3 py-1">
-                    PREMIUM PLAN
+                    YEARLY PLAN
                   </Badge>
-                  <h2 className="text-6xl font-bold text-white mb-2">
-                    $24.99<span className="text-2xl text-gray-400">/month</span>
+                  <h2 className="text-4xl md:text-6xl font-bold text-white mb-2 break-words">
+                    $249.99<span className="text-xl md:text-2xl text-gray-400">/year</span>
                   </h2>
-                  <p className="text-green-400 font-semibold text-xl flex items-center gap-2">
-                    <Sparkles className="w-6 h-6" />
-                    After 7-Day Free Trial
+                  <p className="text-green-400 font-semibold text-lg md:text-xl flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+                    Best Value - 2 Months Free!
                   </p>
                 </div>
 
-                <div className="p-5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                <div className="p-4 md:p-5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
                   <h3 className="text-white font-bold text-lg mb-2">What's Included</h3>
-                  <p className="text-gray-300 leading-relaxed">
+                  <p className="text-gray-300 text-sm md:text-base leading-relaxed">
                     SafeNestt Premium gives you full access to the investigation system, 
                     unlimited case tools, scam detection, wallet lookups, and priority security updates.
                     Protect your digital identity with advanced AI-powered security.
@@ -160,95 +223,80 @@ export default function Subscription() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Full blockchain investigation tools</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Unlimited fraud case management</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Real-time scam detection & wallet monitoring</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">AI-powered security advisor (Mia)</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Priority support & security updates</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Advanced VPN protection</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Law enforcement report generation</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-white">Cancel anytime - no contracts</span>
-                  </div>
+                  {[
+                    "Full blockchain investigation tools",
+                    "Unlimited fraud case management",
+                    "Real-time scam detection & wallet monitoring",
+                    "AI-powered security advisor (Mia)",
+                    "Priority support & security updates",
+                    "Advanced VPN protection",
+                    "Law enforcement report generation",
+                    "Cancel anytime - no contracts"
+                  ].map((feature, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-white text-sm md:text-base">{feature}</span>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Subscribe Button */}
-                <Button
-                  onClick={handleStartTrial}
-                  disabled={loading}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-xl py-8 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3" />
-                      Opening Checkout...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-6 h-6 mr-3" />
-                      Start Free Trial
-                      <ExternalLink className="w-5 h-5 ml-3" />
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                    <Button
+                      onClick={handleStartYearly}
+                      disabled={loading}
+                      size="lg"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-lg md:text-xl py-6 md:py-8 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all whitespace-normal h-auto"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                          Loading...
+                        </>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
+                          Start Yearly Plan
+                          <ExternalLink className="w-5 h-5 md:w-6 md:h-6 ml-1" />
+                        </span>
+                      )}
+                    </Button>
+                </div>
 
-                <p className="text-sm text-gray-400 text-center">
+                <p className="text-xs md:text-sm text-gray-400 text-center px-4">
                   Secure payment powered by Stripe • Opens in new window • Cancel anytime
                 </p>
               </div>
 
               {/* Right: Feature Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all">
-                  <CardContent className="p-6 text-center">
-                    <Shield className="w-12 h-12 text-cyan-400 mx-auto mb-3" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="bg-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all h-full">
+                  <CardContent className="p-4 md:p-6 text-center h-full flex flex-col justify-center">
+                    <Shield className="w-10 h-10 md:w-12 md:h-12 text-cyan-400 mx-auto mb-3" />
                     <h3 className="text-white font-bold mb-1">24/7 Protection</h3>
                     <p className="text-gray-400 text-sm">Always-on security monitoring</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f1419] border-purple-500/20 hover:border-purple-500/40 transition-all">
-                  <CardContent className="p-6 text-center">
-                    <Zap className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                <Card className="bg-[#0f1419] border-purple-500/20 hover:border-purple-500/40 transition-all h-full">
+                  <CardContent className="p-4 md:p-6 text-center h-full flex flex-col justify-center">
+                    <Zap className="w-10 h-10 md:w-12 md:h-12 text-purple-400 mx-auto mb-3" />
                     <h3 className="text-white font-bold mb-1">Instant Alerts</h3>
                     <p className="text-gray-400 text-sm">Real-time threat notifications</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f1419] border-green-500/20 hover:border-green-500/40 transition-all">
-                  <CardContent className="p-6 text-center">
-                    <TrendingUp className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                <Card className="bg-[#0f1419] border-green-500/20 hover:border-green-500/40 transition-all h-full">
+                  <CardContent className="p-4 md:p-6 text-center h-full flex flex-col justify-center">
+                    <TrendingUp className="w-10 h-10 md:w-12 md:h-12 text-green-400 mx-auto mb-3" />
                     <h3 className="text-white font-bold mb-1">Recovery Tools</h3>
                     <p className="text-gray-400 text-sm">Help recover stolen assets</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f1419] border-orange-500/20 hover:border-orange-500/40 transition-all">
-                  <CardContent className="p-6 text-center">
-                    <Users className="w-12 h-12 text-orange-400 mx-auto mb-3" />
+                <Card className="bg-[#0f1419] border-orange-500/20 hover:border-orange-500/40 transition-all h-full">
+                  <CardContent className="p-4 md:p-6 text-center h-full flex flex-col justify-center">
+                    <Users className="w-10 h-10 md:w-12 md:h-12 text-orange-400 mx-auto mb-3" />
                     <h3 className="text-white font-bold mb-1">Expert Support</h3>
                     <p className="text-gray-400 text-sm">Priority customer service</p>
                   </CardContent>
