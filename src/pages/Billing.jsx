@@ -193,10 +193,10 @@ export default function Billing() {
           {!info.has_payment_method && (
             <Button
               onClick={() => handleUpdatePayment('premium_unlimited')}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-12"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 h-auto py-4 whitespace-normal text-left flex items-center justify-center"
             >
-              <CreditCard className="w-5 h-5 mr-2" />
-              Add Payment Method - Premium Unlimited ($24.99/mo)
+              <CreditCard className="w-5 h-5 mr-2 flex-shrink-0" />
+              <span className="truncate sm:whitespace-normal">Add Payment Method - Premium Unlimited ($24.99/mo)</span>
             </Button>
           )}
 
@@ -243,19 +243,7 @@ export default function Billing() {
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Your trial period is 14 days with full access to all features</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Basic: $9.99/mo • Elite: $19.99/mo • Premium Unlimited: $24.99/mo</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Billing starts automatically when your trial ends</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-              <span>You can cancel anytime before the trial ends with no charge</span>
+              <span>Premium Unlimited: $24.99/mo</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
