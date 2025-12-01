@@ -139,8 +139,21 @@ const navigationItems = [
 ];
 
 const mediaNavItems = [
-   { icon: Megaphone, label: "Media Command", path: "/MediaDashboard", color: "pink" },
-   { icon: Sparkles, label: "Media AI Agent", path: "/MediaDirectorAI", color: "purple" },
+   { 
+     id: 'media-command', 
+     title: "Media Command", 
+     icon: Megaphone, 
+     url: createPageUrl('MediaDashboard'), 
+     glow: "pink" 
+   },
+   { 
+     id: 'media-ai', 
+     title: "Media AI Agent", 
+     icon: Sparkles, 
+     url: createPageUrl('MediaDirectorAI'), 
+     glow: "purple", 
+     badge: 'AI' 
+   },
 ];
 
 const adminItems = [
@@ -238,6 +251,78 @@ const glowColors = {
   orange: 'shadow-orange-500/50 border-orange-500/50'
 };
 
+const NavItem = ({ item, activeItem, onNavClick }) => {
+    const isActive = activeItem === item.id;
+    const Icon = item.icon;
+    const glow = glowColors[item.glow] || glowColors.cyan;
+    
+    return (
+      <motion.div
+        key={item.id}
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="relative"
+      >
+        {isActive && (
+          <motion.div
+            layoutId="activeIndicator"
+            className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-purple-500 rounded-r-full ${glow}`}
+            initial={false}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          />
+        )}
+        
+        <button
+          onClick={() => onNavClick(item)}
+          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-300 group touch-manipulation ${
+            isActive
+              ? `bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/50 ${glow}`
+              : 'bg-gray-900/30 border border-gray-700/30 hover:border-cyan-500/30 hover:bg-gray-800/50'
+          }`}
+        >
+          <div className={`relative ${isActive ? 'animate-pulse-glow' : ''}`}>
+            <Icon className={`w-5 h-5 ${
+              isActive ? 'text-cyan-400' : 'text-gray-400 group-hover:text-cyan-400'
+            } transition-colors`} />
+            {isActive && (
+              <div className="absolute inset-0 blur-md bg-cyan-400 opacity-50" />
+            )}
+          </div>
+          
+          <span className={`flex-1 text-left text-sm font-medium tracking-wide ${
+            isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'
+          } transition-colors leading-relaxed`}>
+            {item.label || item.title}
+          </span>
+          
+          {item.badge && (
+            <Badge className={`text-[9px] px-1.5 py-0.5 ${
+              item.badge === 'ADMIN'
+                ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                : item.badge === 'AI'
+                ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                : item.badge === 'SCAN'
+                ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                : item.badge === 'NEW'
+                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
+                : item.badge === 'LEO'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                : item.badge === 'HUB'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
+            } border`}>
+              {item.badge}
+            </Badge>
+          )}
+          
+          {isActive && (
+            <ChevronRight className="w-4 h-4 text-cyan-400 animate-pulse" />
+          )}
+        </button>
+      </motion.div>
+    );
+};
+
 export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -246,15 +331,13 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const [lastLogin, setLastLogin] = useState(null);
 
   useEffect(() => {
-    const allItems = user?.role === 'admin' || user?.is_admin
-      ? [...navigationItems, ...adminItems]
-      : navigationItems;
+    const allItems = [...navigationItems, ...adminItems, ...mediaNavItems];
     
     const current = allItems.find(item => location.pathname === item.url);
     if (current) {
       setActiveItem(current.id);
     }
-  }, [location.pathname, user]);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (user) {
@@ -276,10 +359,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
     }
   };
 
-  const allMenuItems = user?.role === 'admin' || user?.is_admin
-    ? [...navigationItems, ...adminItems]
-    : navigationItems;
-
   const statusConfig = {
     optimal: { color: 'text-green-400', glow: 'shadow-green-500/50', label: 'Optimal' },
     good: { color: 'text-blue-400', glow: 'shadow-blue-500/50', label: 'Good' },
@@ -288,78 +367,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   };
 
   const status = statusConfig[securityStatus] || statusConfig.optimal;
-
-  const NavItem = ({ item }) => {
-      const isActive = activeItem === item.id;
-      const Icon = item.icon;
-      const glow = glowColors[item.glow] || glowColors.cyan;
-      
-      return (
-        <motion.div
-          key={item.id}
-          initial={{ x: -50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          className="relative"
-        >
-          {isActive && (
-            <motion.div
-              layoutId="activeIndicator"
-              className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-purple-500 rounded-r-full ${glow}`}
-              initial={false}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            />
-          )}
-          
-          <button
-            onClick={() => handleNavClick(item)}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-300 group touch-manipulation ${
-              isActive
-                ? `bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/50 ${glow}`
-                : 'bg-gray-900/30 border border-gray-700/30 hover:border-cyan-500/30 hover:bg-gray-800/50'
-            }`}
-          >
-            <div className={`relative ${isActive ? 'animate-pulse-glow' : ''}`}>
-              <Icon className={`w-5 h-5 ${
-                isActive ? 'text-cyan-400' : 'text-gray-400 group-hover:text-cyan-400'
-              } transition-colors`} />
-              {isActive && (
-                <div className="absolute inset-0 blur-md bg-cyan-400 opacity-50" />
-              )}
-            </div>
-            
-            <span className={`flex-1 text-left text-sm font-medium tracking-wide ${
-              isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'
-            } transition-colors leading-relaxed`}>
-              {item.label || item.title}
-            </span>
-            
-            {item.badge && (
-              <Badge className={`text-[9px] px-1.5 py-0.5 ${
-                item.badge === 'ADMIN'
-                  ? 'bg-red-500/20 text-red-400 border-red-500/50'
-                  : item.badge === 'AI'
-                  ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-                  : item.badge === 'SCAN'
-                  ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                  : item.badge === 'NEW'
-                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
-                  : item.badge === 'LEO'
-                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                  : item.badge === 'HUB'
-                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                  : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
-              } border`}>
-                {item.badge}
-              </Badge>
-            )}
-            
-            {isActive && (
-              <ChevronRight className="w-4 h-4 text-cyan-400 animate-pulse" />
-            )}
-          </button>
-        </motion.div>
-      );
-  };
 
   return (
     <motion.div
@@ -405,7 +412,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
           <AnimatePresence>
             {navigationItems.map((item) => (
-              <NavItem key={item.id} item={item} />
+              <NavItem 
+                key={item.id} 
+                item={item} 
+                activeItem={activeItem} 
+                onNavClick={handleNavClick} 
+              />
             ))}
 
             {/* Media Director Navigation - Show if user is admin (with title) OR if user is not admin but has title */}
@@ -415,7 +427,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
                 </div>
                 {mediaNavItems.map((item) => (
-                  <NavItem key={item.path} item={item} />
+                  <NavItem 
+                    key={item.id} 
+                    item={item} 
+                    activeItem={activeItem} 
+                    onNavClick={handleNavClick} 
+                  />
                 ))}
               </div>
             )}
@@ -427,7 +444,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Zone</span>
                 </div>
                 {adminItems.map((item) => (
-                  <NavItem key={item.id} item={item} />
+                  <NavItem 
+                    key={item.id} 
+                    item={item} 
+                    activeItem={activeItem} 
+                    onNavClick={handleNavClick} 
+                  />
                 ))}
               </div>
             )}
