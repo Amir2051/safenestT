@@ -41,32 +41,11 @@ export default function Subscription() {
     setTimeout(() => setLoading(false), 1000);
   };
 
-  const handleCyberMonday = async () => {
+  const handleCyberMonday = () => {
     setLoadingCyber(true);
-    try {
-        // Assuming there's a backend endpoint or we just open a link if provided. 
-        // Since the prompt asks to use a Price ID, and usually that requires backend session creation:
-        // But for now, I'll use a placeholder link if not provided, or call the backend if I could.
-        // The prompt says "connect it to the Cyber Monday yearly Stripe price using this Price ID: [YOUR PRICE ID HERE]".
-        // I will simulate the backend call structure for "get-checkout-url" with a plan type if that's how it works, 
-        // or just put a placeholder alert if I can't truly implement it without the ID.
-        // I'll try to call the get-checkout-url with a specific 'cyber_monday' plan.
-        const response = await base44.functions.invoke('subscriptionService', {
-            endpoint: 'get-checkout-url',
-            plan: 'cyber_monday_yearly', // Backend would need to handle this
-            priceId: 'price_1QPxyz...' // Placeholder as requested
-        });
-        if (response.data.url) {
-            window.location.href = response.data.url;
-        } else {
-             toast.error("Cyber Monday deal setup incomplete.");
-        }
-    } catch (error) {
-         // Fallback for now since backend might not support it
-         toast.error("Cyber Monday checkout not configured yet.");
-    } finally {
-        setLoadingCyber(false);
-    }
+    // Using the yearly plan URL for Cyber Monday deal
+    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setLoadingCyber(false), 1000);
   };
 
   const handleCancelSubscription = async () => {
