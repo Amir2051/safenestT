@@ -73,6 +73,8 @@ import CompanyProfile from './pages/CompanyProfile';
 import InvestmentCheckout from './pages/InvestmentCheckout';
 import MyPortfolio from './pages/MyPortfolio';
 import RefundRequest from './pages/RefundRequest';
+import MediaDirectorAI from './pages/MediaDirectorAI';
+import MediaDashboard from './pages/MediaDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -152,6 +154,8 @@ export const PAGES = {
     "InvestmentCheckout": InvestmentCheckout,
     "MyPortfolio": MyPortfolio,
     "RefundRequest": RefundRequest,
+    "MediaDirectorAI": MediaDirectorAI,
+    "MediaDashboard": MediaDashboard,
 }
 
 export const pagesConfig = {
