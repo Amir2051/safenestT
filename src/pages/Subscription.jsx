@@ -41,17 +41,7 @@ export default function Subscription() {
     setTimeout(() => setLoading(false), 1000);
   };
 
-  useEffect(() => {
-    // Load Stripe script for buy button
-    const script = document.createElement('script');
-    script.src = "https://js.stripe.com/v3/buy-button.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    }
-  }, []);
+  // Stripe script removed as we are using direct link
 
   const handleCancelSubscription = async () => {
     setCancelling(true);
@@ -92,29 +82,39 @@ export default function Subscription() {
         
         {/* Cyber Monday Banner */}
         {!isSubscribed && (
-            <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-2xl p-6 md:p-8 text-center shadow-2xl border border-white/10 relative overflow-hidden group">
+            <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-2xl p-4 sm:p-6 md:p-8 text-center shadow-2xl border border-white/10 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                <div className="relative z-10 space-y-4">
-                    <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full text-white font-bold text-sm mb-2 border border-white/30">
-                        LIMITED TIME OFFER
+                <div className="relative z-10 flex flex-col h-full">
+                    <div className="mb-3">
+                         <div className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white font-bold text-xs sm:text-sm border border-white/30">
+                            LIMITED TIME OFFER
+                        </div>
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg break-words">
+                    
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg break-words leading-tight mb-2">
                         Cyber Monday Mega Deal!
                     </h2>
-                    <p className="text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug break-words">
+                    
+                    <p className="text-base sm:text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug break-words mb-3">
                         Save big on your yearly SafeNestt subscription — today only!
                     </p>
-                    <p className="text-white/80 text-sm md:text-base max-w-2xl mx-auto break-words whitespace-normal">
+                    
+                    <p className="text-white/80 text-xs sm:text-sm md:text-base max-w-2xl mx-auto break-words whitespace-normal leading-relaxed mb-6">
                         Unlock a full year of protection, case support, and scam prevention tools for a special Cyber Monday price. 
                         Subscribe now and secure faster case handling, priority assistance, and exclusive premium features. 
                         This offer expires soon — don’t miss your chance to save and stay protected all year long.
                     </p>
-                    <div className="pt-4 flex justify-center">
-                        <stripe-buy-button
-                          buy-button-id="buy_btn_1SZZg42NepP24ReEBhqi0Azg"
-                          publishable-key="pk_live_51RLCv82NepP24ReEPGqkFjk0fMWC5R6bGkgQdX9IxlwoD0KF0bXGEPLhIllgmQ6Kr5Wkjl3N121HvnCCGSXdjKjS007lrnb8R7"
+                    
+                    <div className="mt-auto flex justify-center w-full">
+                        <Button 
+                            onClick={handleCyberMonday}
+                            disabled={loadingCyber}
+                            size="lg"
+                            className="w-full sm:w-auto bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-700 font-bold text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-xl transform transition hover:scale-105 whitespace-normal h-auto min-h-[3rem]"
                         >
-                        </stripe-buy-button>
+                            {loadingCyber ? <Clock className="w-5 h-5 animate-spin mr-2 flex-shrink-0" /> : <Sparkles className="w-5 h-5 mr-2 flex-shrink-0" />}
+                            <span>Get Cyber Monday Deal</span>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -184,8 +184,8 @@ export default function Subscription() {
                   <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 mb-4 text-sm px-3 py-1">
                     YEARLY PLAN
                   </Badge>
-                  <h2 className="text-4xl md:text-6xl font-bold text-white mb-2 break-words">
-                    $249.99<span className="text-xl md:text-2xl text-gray-400">/year</span>
+                  <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-2 break-words">
+                    $249.99<span className="text-lg md:text-2xl text-gray-400">/year</span>
                   </h2>
                   <p className="text-green-400 font-semibold text-lg md:text-xl flex items-center gap-2">
                     <Sparkles className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
@@ -226,7 +226,7 @@ export default function Subscription() {
                       onClick={handleStartYearly}
                       disabled={loading}
                       size="lg"
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-lg md:text-xl py-6 md:py-8 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all whitespace-normal h-auto"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-6 md:py-8 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all whitespace-normal h-auto min-h-[3.5rem]"
                     >
                       {loading ? (
                         <>
