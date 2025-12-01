@@ -8,13 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Briefcase, Calendar, Mic, Plus, Video, Users, 
-  BarChart3, Radio, Megaphone, Search 
+  BarChart3, Radio, Megaphone, Search, PlayCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import CampaignDetailDialog from "@/components/media/CampaignDetailDialog";
 
 export default function MediaDashboard() {
   const [user, setUser] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -26,6 +29,16 @@ export default function MediaDashboard() {
     queryFn: () => base44.entities.MediaProject.list(),
     initialData: []
   });
+
+  const handleProjectClick = (project) => {
+      setSelectedProject(project);
+      setIsDetailOpen(true);
+  };
+
+  const myCampaigns = projects.filter(p => 
+      (p.assigned_staff || []).includes(user?.id) || 
+      p.assigned_to === user?.id // fallback for backward compatibility
+  );
 
   const { data: meetings } = useQuery({
     queryKey: ['meeting-logs'],
@@ -244,12 +257,23 @@ export default function MediaDashboard() {
         </TabsList>
 
         <TabsContent value="projects" className="space-y-4">
+            {user?.role !== 'admin' && user?.job_title !== 'Media Director' && (
+                <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg mb-4">
+                    <h3 className="text-blue-300 font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Staff View</h3>
+                    <p className="text-sm text-gray-400">You are viewing campaigns assigned to you.</p>
+                </div>
+            )}
+            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {projects.map(project => (
-                    <Card key={project.id} className="bg-[#1a2332] border-gray-700 hover:border-pink-500/50 transition-all">
+                {(user?.role === 'admin' || user?.job_title === 'Media Director' ? projects : myCampaigns).map(project => (
+                    <Card 
+                        key={project.id} 
+                        onClick={() => handleProjectClick(project)}
+                        className="bg-[#1a2332] border-gray-700 hover:border-pink-500/50 transition-all cursor-pointer group"
+                    >
                         <CardHeader>
                             <div className="flex justify-between items-start">
-                                <CardTitle className="text-white truncate">{project.name}</CardTitle>
+                                <CardTitle className="text-white truncate group-hover:text-pink-400 transition-colors">{project.name}</CardTitle>
                                 <Badge className={
                                     project.status === 'active' ? 'bg-green-900 text-green-300' : 
                                     'bg-gray-700 text-gray-300'
@@ -257,22 +281,33 @@ export default function MediaDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-gray-400 line-clamp-3 mb-4">{project.description}</p>
-                            <div className="flex flex-wrap gap-2">
+                            <p className="text-sm text-gray-400 line-clamp-3 mb-4">{project.description || "No description provided."}</p>
+                            <div className="flex flex-wrap gap-2 mb-3">
                                 {project.media_channels?.map(ch => (
                                     <Badge key={ch} variant="outline" className="border-gray-600 text-gray-400">{ch}</Badge>
                                 ))}
                             </div>
+                            <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-700 pt-3">
+                                <span>{(project.assigned_staff || []).length} Staff Assigned</span>
+                                <span className="flex items-center gap-1 group-hover:text-pink-400"><PlayCircle className="w-3 h-3" /> Open</span>
+                            </div>
                         </CardContent>
                     </Card>
                 ))}
-                {projects.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-gray-500">
-                        No active media projects found.
+                {(user?.role === 'admin' || user?.job_title === 'Media Director' ? projects : myCampaigns).length === 0 && (
+                    <div className="col-span-full text-center py-12 text-gray-500 border-2 border-dashed border-gray-800 rounded-lg">
+                        <Megaphone className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        No campaigns found. {user?.role !== 'admin' ? "You haven't been assigned to any yet." : "Create one to get started."}
                     </div>
                 )}
             </div>
         </TabsContent>
+
+        <CampaignDetailDialog 
+            project={selectedProject} 
+            open={isDetailOpen} 
+            onOpenChange={setIsDetailOpen} 
+        />
 
         <TabsContent value="meetings" className="space-y-4">
              <Card className="bg-[#1a2332] border-gray-700">
