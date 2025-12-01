@@ -41,6 +41,12 @@ export default function Subscription() {
     setTimeout(() => setLoading(false), 1000);
   };
 
+  const handleCyberMonday = () => {
+    setLoadingCyber(true);
+    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setLoadingCyber(false), 1000);
+  };
+
   // Stripe script removed as we are using direct link
 
   const handleCancelSubscription = async () => {
