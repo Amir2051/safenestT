@@ -36,7 +36,12 @@ Deno.serve(async (req) => {
         if (users.length === 0) break;
 
         const user = users[0];
-        const planName = session.metadata?.plan || 'basic';
+        let planName = session.metadata?.plan || 'basic';
+
+        // Check for Cyber Monday Deal (Amount: 24999 cents)
+        if (session.amount_total === 24999) {
+          planName = 'premium';
+        }
 
         await base44.asServiceRole.entities.User.update(user.id, {
           has_payment_method: true,
