@@ -193,14 +193,14 @@ export default function Subscription() {
               <div className="space-y-6">
                 <div>
                   <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 mb-4 text-sm px-3 py-1">
-                    YEARLY PLAN
+                    MONTHLY PLAN
                   </Badge>
                   <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-2 break-words">
-                    $249.99<span className="text-lg md:text-2xl text-gray-400">/year</span>
+                    $24.99<span className="text-lg md:text-2xl text-gray-400">/month</span>
                   </h2>
                   <p className="text-green-400 font-semibold text-lg md:text-xl flex items-center gap-2">
                     <Sparkles className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-                    Best Value - 2 Months Free!
+                    Full Access • Cancel Anytime
                   </p>
                 </div>
 
@@ -247,7 +247,7 @@ export default function Subscription() {
                       ) : (
                         <span className="flex items-center justify-center gap-2">
                           <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
-                          Start Yearly Plan
+                          Start Premium Plan
                           <ExternalLink className="w-5 h-5 md:w-6 md:h-6 ml-1" />
                         </span>
                       )}
