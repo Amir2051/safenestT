@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,9 +148,15 @@ export default function PaymentSuccess() {
           <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
             Thank You! 🎉
           </h1>
-          <p className="text-2xl text-green-400 font-semibold mb-2">
-            Your SafeNest protection is now active
-          </p>
+          {user.subscription_plan === 'premium' || user.subscription_plan === 'elite' ? (
+              <p className="text-2xl text-green-400 font-semibold mb-2">
+                Your Cyber Monday subscription is active. Thank you for supporting SafeNestT.
+              </p>
+          ) : (
+              <p className="text-2xl text-green-400 font-semibold mb-2">
+                Your SafeNest protection is now active
+              </p>
+          )}
           <p className="text-gray-400 mb-8 text-lg">
             You now have full access to {planName} features
           </p>
