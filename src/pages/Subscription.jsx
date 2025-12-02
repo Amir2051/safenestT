@@ -36,10 +36,24 @@ export default function Subscription() {
     refetchInterval: 30000
   });
 
-  const handleStartYearly = () => {
+  const handleSubscribe = async (priceId) => {
     setLoading(true);
-    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
-    setTimeout(() => setLoading(false), 1000);
+    try {
+      const response = await base44.functions.invoke('subscriptionService', {
+        endpoint: 'create-checkout-session',
+        priceId: priceId
+      });
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        toast.error("Failed to start checkout");
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error starting checkout");
+      setLoading(false);
+    }
   };
 
   const handleCyberMonday = () => {
@@ -231,24 +245,37 @@ export default function Subscription() {
                   ))}
                 </div>
 
-                {/* Subscribe Button */}
-                <div className="space-y-3">
+                {/* Subscribe Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4">
                     <Button
-                      onClick={handleStartYearly}
+                      onClick={() => handleSubscribe('price_1SX1qu2NepP24ReEsfIJaoFb')} // Monthly
                       disabled={loading}
                       size="lg"
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-6 md:py-8 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all whitespace-normal h-auto min-h-[3.5rem]"
+                      className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-6 shadow-lg shadow-cyan-500/30"
                     >
                       {loading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
-                          Loading...
-                        </>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                       ) : (
-                        <span className="flex items-center justify-center gap-2">
-                          <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
-                          Start Premium Plan
-                          <ExternalLink className="w-5 h-5 md:w-6 md:h-6 ml-1" />
+                        <span className="flex flex-col items-center leading-tight">
+                          <span className="text-lg">Monthly</span>
+                          <span className="text-sm opacity-90">$24.99/mo</span>
+                        </span>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={() => handleSubscribe('price_1SZZGO2NepP24ReEVV6UKZoL')} // Yearly
+                      disabled={loading}
+                      size="lg"
+                      variant="outline"
+                      className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 font-bold py-6"
+                    >
+                      {loading ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-cyan-400" />
+                      ) : (
+                        <span className="flex flex-col items-center leading-tight">
+                          <span className="text-lg">Yearly</span>
+                          <span className="text-sm opacity-90">$249.99/yr</span>
                         </span>
                       )}
                     </Button>

@@ -257,6 +257,44 @@ Deno.serve(async (req) => {
         return Response.json({ url: session.url });
       }
 
+      case 'create-checkout-session': {
+        const { priceId } = params;
+        
+        let stripeCustomerId = user.stripe_customer_id;
+        if (!stripeCustomerId) {
+             // Create customer if missing (logic duplicated for safety)
+             const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+             if (customers.data.length > 0) {
+                 stripeCustomerId = customers.data[0].id;
+             } else {
+                 const newCustomer = await stripe.customers.create({
+                     email: user.email,
+                     name: user.full_name,
+                     metadata: { user_id: user.id }
+                 });
+                 stripeCustomerId = newCustomer.id;
+             }
+             await base44.auth.updateMe({ stripe_customer_id: stripeCustomerId });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+             customer: stripeCustomerId,
+             line_items: [
+                 {
+                     price: priceId,
+                     quantity: 1,
+                 },
+             ],
+             mode: 'subscription',
+             success_url: `${req.headers.get('origin')}/PaymentSuccess?session_id={CHECKOUT_SESSION_ID}`,
+             cancel_url: `${req.headers.get('origin')}/Subscription?status=cancel`,
+             billing_address_collection: 'auto',
+             allow_promotion_codes: true,
+        });
+
+        return Response.json({ url: session.url });
+      }
+
       case 'get-checkout-url': {
         const { plan } = params;
         // Fallback URLs if products not synced, but better to use createCheckoutSession for subscriptions if possible.
