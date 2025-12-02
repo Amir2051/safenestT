@@ -34,25 +34,23 @@ export default function VerifiedHub() {
 
   if (loadingUser) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>;
 
-  // Restrict access for non-admins
-  if (!user || (user.role !== 'admin' && !user.is_admin)) {
-     return (
-        <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800 shadow-lg shadow-cyan-900/20">
-                <Lock className="w-10 h-10 text-slate-500" />
-            </div>
-            <h1 className="text-3xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Verified Investment Hub</h1>
-            <p className="text-xl text-cyan-400 mb-6 font-medium">Inactive - Coming Soon</p>
-            <p className="max-w-md text-slate-400 leading-relaxed">
-                This investment platform is currently under development and restricted to administrative access only. 
-                Please check back later for public launch.
-            </p>
-            <Link to={createPageUrl("Dashboard")}>
-                <Button className="mt-8 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700" variant="outline">Return to Dashboard</Button>
-            </Link>
+  // Restrict access (All Users)
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800 shadow-lg shadow-cyan-900/20">
+            <Lock className="w-10 h-10 text-slate-500" />
         </div>
-     );
-  }
+        <h1 className="text-3xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Verified Investment Hub</h1>
+        <p className="text-xl text-cyan-400 mb-6 font-medium">Inactive - Coming Soon</p>
+        <p className="max-w-md text-slate-400 leading-relaxed">
+            This investment platform is currently under development. 
+            Please check back later for public launch.
+        </p>
+        <Link to={createPageUrl("Dashboard")}>
+            <Button className="mt-8 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700" variant="outline">Return to Dashboard</Button>
+        </Link>
+    </div>
+  );
 
   const industries = ["All", "Tech", "Real Estate", "Crypto", "Energy"];
 
