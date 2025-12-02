@@ -103,7 +103,7 @@ export default function Subscription() {
                     </div>
                     
                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg break-words leading-tight mb-2">
-                        Cyber Monday Mega Deal!
+                        Cyber Monday Deal
                     </h2>
                     
                     <p className="text-base sm:text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug break-words mb-3">
@@ -124,7 +124,7 @@ export default function Subscription() {
                             className="w-full sm:w-auto bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-700 font-bold text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-xl transform transition hover:scale-105 whitespace-normal h-auto min-h-[3rem]"
                         >
                             {loadingCyber ? <Clock className="w-5 h-5 animate-spin mr-2 flex-shrink-0" /> : <Sparkles className="w-5 h-5 mr-2 flex-shrink-0" />}
-                            <span>Get Cyber Monday Deal</span>
+                            <span>Activate Yearly Premium</span>
                         </Button>
                     </div>
                 </div>
