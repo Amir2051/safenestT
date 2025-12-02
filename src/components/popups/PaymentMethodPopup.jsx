@@ -19,7 +19,7 @@ export default function PaymentMethodPopup({ user, onUpdate }) {
   if (!shouldShow) return null;
 
   const handleAddPayment = () => {
-    navigate(createPageUrl("Billing"));
+    navigate(createPageUrl("Subscription"));
     setIsVisible(false);
   };
 
@@ -28,18 +28,18 @@ export default function PaymentMethodPopup({ user, onUpdate }) {
       <DialogContent className="bg-[#1a2332] border-purple-500/20 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <CreditCard className="w-6 h-6 text-purple-400" />
-            Add Payment Method
+            <Sparkles className="w-6 h-6 text-purple-400" />
+            Subscribe to Premium
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Please add a payment method to secure your account and enable premium features.
+            Subscribe now to secure your account and enable premium features.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
            <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20 mb-4">
              <p className="text-sm text-purple-200">
-               Add a card to ensure uninterrupted service. You won't be charged until you upgrade to a premium plan.
+               Choose a plan to ensure uninterrupted service.
              </p>
            </div>
         </div>

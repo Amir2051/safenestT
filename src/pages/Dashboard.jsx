@@ -279,9 +279,9 @@ export default function Dashboard() {
                 </div>
               </div>
               {!subscriptionInfo.has_payment_method && subscriptionInfo.is_trial_active && (
-                <Link to={createPageUrl("Billing")}>
+                <Link to={createPageUrl("Subscription")}>
                   <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
-                    Add Payment Method
+                    Subscribe Now
                   </Button>
                 </Link>
               )}
