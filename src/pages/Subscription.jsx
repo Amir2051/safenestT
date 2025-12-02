@@ -44,7 +44,11 @@ export default function Subscription() {
 
   const handleCyberMonday = () => {
     setLoadingCyber(true);
-    window.open(STRIPE_YEARLY_URL, '_blank', 'noopener,noreferrer');
+    // Append user info for webhook tracking
+    const url = user 
+      ? `${CYBER_MONDAY_URL}?prefilled_email=${encodeURIComponent(user.email)}&client_reference_id=${user.id}`
+      : CYBER_MONDAY_URL;
+    window.open(url, '_blank', 'noopener,noreferrer');
     setTimeout(() => setLoadingCyber(false), 1000);
   };
 
