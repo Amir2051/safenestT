@@ -11,10 +11,10 @@ Deno.serve(async (req) => {
         }
 
         const { endpoint, ...params } = await req.json();
-        const apiKey = Deno.env.get("OPENAI_API_KEY");
+        const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OpenAI");
 
         if (!apiKey) {
-             return Response.json({ error: 'OPENAI_API_KEY not set' }, { status: 500 });
+             return Response.json({ error: 'OpenAI API Key not set (OPENAI_API_KEY or OpenAI secret missing)' }, { status: 500 });
         }
 
         const openai = new OpenAI({ apiKey });
