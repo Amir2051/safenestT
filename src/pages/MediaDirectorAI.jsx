@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Send, Mic, Paperclip, Sparkles, User } from "lucide-react";
-import MessageBubble from "@/components/collaboration/WorkspaceChat"; // Reuse or generic bubble
 import ReactMarkdown from "react-markdown";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -43,45 +43,66 @@ const ChatMessage = ({ message }) => {
 };
 
 export default function MediaDirectorAI() {
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
   const scrollRef = useRef(null);
   const [user, setUser] = useState(null);
+  const queryClient = useQueryClient();
+
+  // Fetch messages from the new MediaMessage collection
+  const { data: messages = [] } = useQuery({
+    queryKey: ['media-messages'],
+    queryFn: () => base44.entities.MediaMessage.list({ sort: { created_date: 1 }, limit: 50 }),
+    refetchInterval: 5000
+  });
 
   useEffect(() => {
     const init = async () => {
         const u = await base44.auth.me();
         setUser(u);
-        // Initial system message
-        setMessages([{ role: 'system', content: "Hello! I am your Media Director AI. I can help you analyze meetings, draft scripts, and plan campaigns. How can I assist you today?" }]);
     };
     init();
   }, []);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+      if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+  }, [messages, loading]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
-    const msg = input;
+    const msgContent = input;
     setInput("");
     setLoading(true);
     
-    // Add user message immediately
-    const newMessages = [...messages, { role: "user", content: msg }];
-    setMessages(newMessages);
-
     try {
-        // Format history for OpenAI (exclude system greeting if needed, or map it)
-        const history = newMessages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }));
+        // 1. Save User Message to Collection
+        await base44.entities.MediaMessage.create({
+            role: 'user',
+            content: msgContent
+        });
+        queryClient.invalidateQueries(['media-messages']);
+
+        // 2. Call AI (with history from current messages)
+        // We construct history from the fetched messages + the one we just sent (which might not be in 'messages' yet if query hasn't refreshed)
+        const history = messages.map(m => ({ role: m.role, content: m.content }));
+        history.push({ role: 'user', content: msgContent });
 
         const response = await base44.functions.invoke('mediaAI', {
             endpoint: 'chat',
-            message: msg,
-            history: history
+            message: msgContent,
+            history: history.slice(-10) // Keep context manageable
         });
 
         if (response.data.reply) {
-            setMessages(prev => [...prev, { role: "assistant", content: response.data.reply }]);
+            // 3. Save AI Response to Collection
+            await base44.entities.MediaMessage.create({
+                role: 'assistant',
+                content: response.data.reply
+            });
+            queryClient.invalidateQueries(['media-messages']);
         } else {
             toast.error("No response from AI");
         }
