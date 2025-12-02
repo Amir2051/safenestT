@@ -1,16 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ShieldCheck } from "lucide-react";
+import { Search, ShieldCheck, Lock } from "lucide-react";
 import CompanyCard from "@/components/investment/CompanyCard";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function VerifiedHub() {
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [industryFilter, setIndustryFilter] = useState("All");
+
+  useEffect(() => {
+    base44.auth.me().then(u => {
+      setUser(u);
+      setLoadingUser(false);
+    }).catch(() => setLoadingUser(false));
+  }, []);
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ['verified-companies-public'],
@@ -19,8 +28,31 @@ export default function VerifiedHub() {
       // Assuming list returns all, we filter client side for now or use filter if supported
       const all = await base44.entities.VerifiedCompany.filter({ verification_status: 'active', is_public: true });
       return all;
-    }
+    },
+    enabled: !!user && (user.role === 'admin' || user.is_admin)
   });
+
+  if (loadingUser) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>;
+
+  // Restrict access for non-admins
+  if (!user || (user.role !== 'admin' && !user.is_admin)) {
+     return (
+        <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800 shadow-lg shadow-cyan-900/20">
+                <Lock className="w-10 h-10 text-slate-500" />
+            </div>
+            <h1 className="text-3xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Verified Investment Hub</h1>
+            <p className="text-xl text-cyan-400 mb-6 font-medium">Inactive - Coming Soon</p>
+            <p className="max-w-md text-slate-400 leading-relaxed">
+                This investment platform is currently under development and restricted to administrative access only. 
+                Please check back later for public launch.
+            </p>
+            <Link to={createPageUrl("Dashboard")}>
+                <Button className="mt-8 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700" variant="outline">Return to Dashboard</Button>
+            </Link>
+        </div>
+     );
+  }
 
   const industries = ["All", "Tech", "Real Estate", "Crypto", "Energy"];
 
