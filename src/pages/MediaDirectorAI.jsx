@@ -53,7 +53,7 @@ export default function MediaDirectorAI() {
   const { data: messages = [] } = useQuery({
     queryKey: ['media-messages'],
     queryFn: () => base44.entities.MediaMessage.list({ sort: { created_date: 1 }, limit: 50 }),
-    refetchInterval: 5000
+    refetchInterval: 2000 // Increased polling frequency for instant-feel updates
   });
 
   useEffect(() => {

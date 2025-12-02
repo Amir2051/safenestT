@@ -22,39 +22,58 @@ Deno.serve(async (req) => {
         if (endpoint === 'chat') {
             const { message, history = [] } = params;
 
-            // Save User Message first
-            await base44.entities.MediaMessage.create({
-                role: 'user',
-                content: message
-            });
+            // 1. Save User Message (Fail-safe)
+            try {
+                await base44.entities.MediaMessage.create({
+                    role: 'user',
+                    content: message
+                });
+            } catch (e) {
+                console.error("Failed to save user message:", e);
+                // Continue execution to ensure response
+            }
             
-            const systemPrompt = `You are an expert Media Director AI Assistant for SafeNestt. 
-            Your role is to assist Souleymane (Media Director) with:
-            1. Analyzing meetings and extracting action items.
-            2. Drafting press releases, scripts, and social media content.
-            3. Suggesting media partnerships and strategies.
-            4. Managing crisis communications.
-            
-            Be professional, strategic, and concise.`;
+            let reply = "";
 
-            const messages = [
-                { role: "system", content: systemPrompt },
-                ...history,
-                { role: "user", content: message }
-            ];
+            try {
+                const systemPrompt = `You are an expert Media Director AI Assistant for SafeNestt. 
+                Your role is to assist Souleymane (Media Director) with:
+                1. Analyzing meetings and extracting action items.
+                2. Drafting press releases, scripts, and social media content.
+                3. Suggesting media partnerships and strategies.
+                4. Managing crisis communications.
+                
+                Be professional, strategic, and concise.`;
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: messages,
-            });
+                const messages = [
+                    { role: "system", content: systemPrompt },
+                    ...history,
+                    { role: "user", content: message }
+                ];
 
-            const reply = completion.choices[0].message.content;
+                // 2. Generate Response (Guaranteed Response Rule)
+                const completion = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: messages,
+                });
 
-            // Save Assistant Response
-            await base44.entities.MediaMessage.create({
-                role: 'assistant',
-                content: reply
-            });
+                reply = completion.choices[0].message.content;
+
+            } catch (error) {
+                console.error("AI Generation Error:", error);
+                // 3. Error Recovery Logic - Simplified Fallback
+                reply = "I encountered a brief processing error, but I am fully active. How can I assist you further?";
+            }
+
+            // 4. Save Assistant Response (Fail-safe)
+            try {
+                await base44.entities.MediaMessage.create({
+                    role: 'assistant',
+                    content: reply
+                });
+            } catch (e) {
+                console.error("Failed to save assistant message:", e);
+            }
 
             return Response.json({ reply });
         }
