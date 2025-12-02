@@ -86,9 +86,9 @@ export default function MediaDirectorAI() {
         queryClient.invalidateQueries(['media-messages']);
 
         // 2. Call AI (with history from current messages)
-        // We construct history from the fetched messages + the one we just sent (which might not be in 'messages' yet if query hasn't refreshed)
+        // Note: 'messages' here is from the previous render, so it doesn't include the new message yet.
+        // The backend function appends the current 'message' to the history, so we don't need to add it here.
         const history = messages.map(m => ({ role: m.role, content: m.content }));
-        history.push({ role: 'user', content: msgContent });
 
         const response = await base44.functions.invoke('mediaAI', {
             endpoint: 'chat',
