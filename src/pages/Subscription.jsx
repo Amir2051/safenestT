@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 const STRIPE_YEARLY_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
+const CYBER_MONDAY_URL = "https://buy.stripe.com/3cI14g9LY2Qi1zZ1nr4gg0c";
 
 export default function Subscription() {
   const [user, setUser] = useState(null);
