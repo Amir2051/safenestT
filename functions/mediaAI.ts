@@ -21,6 +21,12 @@ Deno.serve(async (req) => {
 
         if (endpoint === 'chat') {
             const { message, history = [] } = params;
+
+            // Save User Message first
+            await base44.entities.MediaMessage.create({
+                role: 'user',
+                content: message
+            });
             
             const systemPrompt = `You are an expert Media Director AI Assistant for SafeNestt. 
             Your role is to assist Souleymane (Media Director) with:
@@ -38,13 +44,19 @@ Deno.serve(async (req) => {
             ];
 
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o",
+                model: "gpt-4o-mini",
                 messages: messages,
             });
 
-            return Response.json({ 
-                reply: completion.choices[0].message.content 
+            const reply = completion.choices[0].message.content;
+
+            // Save Assistant Response
+            await base44.entities.MediaMessage.create({
+                role: 'assistant',
+                content: reply
             });
+
+            return Response.json({ reply });
         }
 
         if (endpoint === 'analyze_meeting') {

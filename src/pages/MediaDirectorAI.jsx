@@ -74,34 +74,30 @@ export default function MediaDirectorAI() {
   const handleSend = async () => {
     if (!input.trim()) return;
     const msgContent = input;
+    
+    // Optimistic update
+    const tempUserMsg = { role: 'user', content: msgContent };
+    queryClient.setQueryData(['media-messages'], old => [...(old || []), tempUserMsg]);
+    
     setInput("");
     setLoading(true);
     
     try {
-        // 1. Save User Message to Collection
-        await base44.entities.MediaMessage.create({
-            role: 'user',
-            content: msgContent
-        });
-        queryClient.invalidateQueries(['media-messages']);
-
-        // 2. Call AI (with history from current messages)
-        // Note: 'messages' here is from the previous render, so it doesn't include the new message yet.
-        // The backend function appends the current 'message' to the history, so we don't need to add it here.
+        // Call AI (backend handles saving both user and assistant messages)
         const history = messages.map(m => ({ role: m.role, content: m.content }));
 
         const response = await base44.functions.invoke('mediaAI', {
             endpoint: 'chat',
             message: msgContent,
-            history: history.slice(-10) // Keep context manageable
+            history: history.slice(-10)
         });
 
         if (response.data.reply) {
-            // 3. Save AI Response to Collection
-            await base44.entities.MediaMessage.create({
-                role: 'assistant',
-                content: response.data.reply
-            });
+            // Optimistic update for reply
+            const tempAssistantMsg = { role: 'assistant', content: response.data.reply };
+            queryClient.setQueryData(['media-messages'], old => [...(old || []), tempAssistantMsg]);
+            
+            // Re-sync with server
             queryClient.invalidateQueries(['media-messages']);
         } else {
             toast.error("No response from AI");
@@ -109,6 +105,7 @@ export default function MediaDirectorAI() {
     } catch (e) {
         console.error(e);
         toast.error("Failed to send message: " + e.message);
+        queryClient.invalidateQueries(['media-messages']); // Revert on error
     } finally {
         setLoading(false);
     }
