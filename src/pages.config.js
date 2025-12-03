@@ -75,6 +75,7 @@ import MyPortfolio from './pages/MyPortfolio';
 import RefundRequest from './pages/RefundRequest';
 import MediaDirectorAI from './pages/MediaDirectorAI';
 import MediaDashboard from './pages/MediaDashboard';
+import Cases from './pages/Cases';
 import __Layout from './Layout.jsx';
 
 
@@ -156,6 +157,7 @@ export const PAGES = {
     "RefundRequest": RefundRequest,
     "MediaDirectorAI": MediaDirectorAI,
     "MediaDashboard": MediaDashboard,
+    "Cases": Cases,
 }
 
 export const pagesConfig = {

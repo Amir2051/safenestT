@@ -143,7 +143,7 @@ const caseItems = [
     id: 'case-manager',
     title: 'Client Cases',
     icon: Briefcase,
-    url: '/cases',
+    url: createPageUrl('Cases'),
     glow: 'blue',
     badge: 'NEW'
   }
