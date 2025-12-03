@@ -128,7 +128,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       toast.success('✅ Settings saved successfully!', {
-        description: 'Your profile has been updated',
+        description: 'Your profile has been updated.',
         duration: 3000,
       });
     },
