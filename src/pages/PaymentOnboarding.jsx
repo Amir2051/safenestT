@@ -37,21 +37,11 @@ export default function PaymentOnboarding() {
     }
   };
 
-  const handleSubscribe = async (priceId) => {
-    try {
-      const response = await base44.functions.invoke('subscriptionService', {
-        endpoint: 'create-checkout-session',
-        priceId: priceId
-      });
-
-      if (response.data.url) {
-          window.location.href = response.data.url;
-      } else {
-          toast.error('Failed to create checkout session');
-      }
-    } catch (error) {
-      toast.error('Failed to start checkout: ' + error.message);
-    }
+  const handleSubscribe = (url) => {
+    const finalUrl = user 
+      ? `${url}?prefilled_email=${encodeURIComponent(user.email)}&client_reference_id=${user.id}`
+      : url;
+    window.location.href = finalUrl;
   };
 
   const handleSkip = () => {
@@ -157,7 +147,7 @@ export default function PaymentOnboarding() {
                 <span className="text-gray-300 text-sm">Real-time alerts</span>
               </div>
               <Button
-                onClick={() => handleSubscribe('price_1SX1qu2NepP24ReEsfIJaoFb')}
+                onClick={() => handleSubscribe('https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b')}
                 className="w-full mt-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 h-12 text-lg"
               >
                 Choose Monthly <ArrowRight className="w-5 h-5 ml-2" />
@@ -197,7 +187,7 @@ export default function PaymentOnboarding() {
                 <span className="text-gray-300 text-sm">Priority Support</span>
               </div>
               <Button
-                onClick={() => handleSubscribe('price_1SZZGO2NepP24ReEVV6UKZoL')}
+                onClick={() => handleSubscribe('https://buy.stripe.com/3cI14g9LY2Qi1zZ1nr4gg0c')}
                 className="w-full mt-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12 text-lg"
               >
                 Choose Yearly <ArrowRight className="w-5 h-5 ml-2" />

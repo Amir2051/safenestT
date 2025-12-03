@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const STRIPE_YEARLY_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
-const CYBER_MONDAY_URL = "https://buy.stripe.com/3cI14g9LY2Qi1zZ1nr4gg0c";
+const STRIPE_MONTHLY_URL = "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b";
+const STRIPE_YEARLY_URL = "https://buy.stripe.com/3cI14g9LY2Qi1zZ1nr4gg0c";
 
 export default function Subscription() {
   const [user, setUser] = useState(null);
@@ -36,32 +36,20 @@ export default function Subscription() {
     refetchInterval: 30000
   });
 
-  const handleSubscribe = async (priceId) => {
+  const handleSubscribe = (url) => {
     setLoading(true);
-    try {
-      const response = await base44.functions.invoke('subscriptionService', {
-        endpoint: 'create-checkout-session',
-        priceId: priceId
-      });
-      if (response.data.url) {
-        window.location.href = response.data.url;
-      } else {
-        toast.error("Failed to start checkout");
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error starting checkout");
-      setLoading(false);
-    }
+    const finalUrl = user 
+      ? `${url}?prefilled_email=${encodeURIComponent(user.email)}&client_reference_id=${user.id}`
+      : url;
+    window.location.href = finalUrl;
   };
 
   const handleCyberMonday = () => {
     setLoadingCyber(true);
     // Append user info for webhook tracking
     const url = user 
-      ? `${CYBER_MONDAY_URL}?prefilled_email=${encodeURIComponent(user.email)}&client_reference_id=${user.id}`
-      : CYBER_MONDAY_URL;
+      ? `${STRIPE_YEARLY_URL}?prefilled_email=${encodeURIComponent(user.email)}&client_reference_id=${user.id}`
+      : STRIPE_YEARLY_URL;
     window.open(url, '_blank', 'noopener,noreferrer');
     setTimeout(() => setLoadingCyber(false), 1000);
   };
@@ -248,7 +236,7 @@ export default function Subscription() {
                 {/* Subscribe Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Button
-                      onClick={() => handleSubscribe('price_1SX1qu2NepP24ReEsfIJaoFb')} // Monthly
+                      onClick={() => handleSubscribe(STRIPE_MONTHLY_URL)} // Monthly
                       disabled={loading}
                       size="lg"
                       className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-6 shadow-lg shadow-cyan-500/30"
@@ -264,7 +252,7 @@ export default function Subscription() {
                     </Button>
 
                     <Button
-                      onClick={() => handleSubscribe('price_1SZZGO2NepP24ReEVV6UKZoL')} // Yearly
+                      onClick={() => handleSubscribe(STRIPE_YEARLY_URL)} // Yearly
                       disabled={loading}
                       size="lg"
                       variant="outline"

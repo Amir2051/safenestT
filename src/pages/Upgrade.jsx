@@ -16,7 +16,7 @@ export default function Upgrade() {
       name: "Premium Unlimited",
       price: "$24.99",
       period: "month",
-      checkoutUrl: "https://buy.stripe.com/premium-unlimited-placeholder",
+      checkoutUrl: "https://buy.stripe.com/9B6cMY2jw0Ia3I7feh4gg0b",
       color: "from-amber-500 to-orange-500",
       icon: Star,
       premium: true,
