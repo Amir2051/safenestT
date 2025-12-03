@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Send, Users, Calendar, FileText, Plus, Search, Edit2, Trash2, 
   CheckCircle, Clock, AlertCircle, Sparkles, Copy, ChevronDown, ChevronUp,
-  Mic, Briefcase, Radio, Megaphone
+  Mic, Briefcase, Radio, Megaphone, X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -620,7 +620,7 @@ export default function MediaDashboard() {
                 AI PR Assistant
               </h2>
               <Button variant="ghost" size="icon" onClick={() => setShowAIAssistant(false)} className="text-gray-400 hover:text-white">
-                <Trash2 className="w-5 h-5 rotate-45" /> {/* Using Trash icon temporarily as close, rotated */}
+                <X className="w-5 h-5" />
               </Button>
             </div>
             
