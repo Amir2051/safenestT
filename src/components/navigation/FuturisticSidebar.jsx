@@ -8,7 +8,7 @@ import {
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain,
-  Megaphone, Sparkles
+  Megaphone, Sparkles, Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +136,17 @@ const navigationItems = [
     url: createPageUrl('Settings'),
     glow: 'gray'
   },
+];
+
+const caseItems = [
+  {
+    id: 'case-manager',
+    title: 'Client Cases',
+    icon: Briefcase,
+    url: '/cases',
+    glow: 'blue',
+    badge: 'NEW'
+  }
 ];
 
 const mediaNavItems = [
@@ -419,6 +430,23 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                 onNavClick={handleNavClick} 
               />
             ))}
+
+            {/* Case Management Section */}
+            {(user?.role === 'admin' || user?.is_admin || user?.role === 'moderator' || true) && (
+              <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                <div className="px-4 mb-2">
+                  <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Case Management</span>
+                </div>
+                {caseItems.map((item) => (
+                  <NavItem 
+                    key={item.id} 
+                    item={item} 
+                    activeItem={activeItem} 
+                    onNavClick={handleNavClick} 
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Media Director Navigation - Show for Media Directors OR Admins */}
             {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
