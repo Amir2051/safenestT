@@ -153,7 +153,7 @@ a professional cybersecurity and crypto theft recovery agency that traces stolen
 
 Never shift to unrelated topics, and always keep the brand voice consistent with SafeNestt’s real services.
 
-User Request: ${prompt}`
+User Request: ${prompt}`,
         add_context_from_internet: false
       });
       
