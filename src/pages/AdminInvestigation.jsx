@@ -88,6 +88,20 @@ export default function AdminInvestigation() {
             Advanced blockchain forensics & law enforcement reporting
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            if (confirm("Run Case ID Migration? This will assign SN- IDs to old cases.")) {
+              base44.functions.invoke('caseManagement', { action: 'migrate' })
+                .then(res => toast.success(`Migrated ${res.data.migrated_count} cases`))
+                .catch(err => toast.error("Migration failed"));
+            }
+          }}
+          className="border-cyan-500/30 text-cyan-400"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Run ID Migration
+        </Button>
       </div>
 
       {/* Stats */}

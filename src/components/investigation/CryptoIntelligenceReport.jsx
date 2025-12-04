@@ -18,7 +18,7 @@ export default function CryptoIntelligenceReport({ caseData }) {
         You are a senior crypto investigator. Write a formal cover letter for a law enforcement referral (FBI/IC3) regarding a cryptocurrency fraud case.
         
         Case Details:
-        - ID: ${caseData.case_number || caseData.id}
+        - SafeNest Case ID: ${caseData.case_number}
         - Victim: ${caseData.victim_name}
         - Loss: $${caseData.amount_stolen_usd?.toLocaleString()}
         - Type: ${caseData.fraud_type}
@@ -98,7 +98,7 @@ export default function CryptoIntelligenceReport({ caseData }) {
           </div>
           <div className="text-right">
             <p className="font-mono text-sm text-slate-500">Date: {new Date().toLocaleDateString()}</p>
-            <p className="font-mono text-sm text-slate-500">Case ID: {caseData.case_number || caseData.id.slice(0,8)}</p>
+            <p className="font-mono text-lg font-bold text-slate-800">ID: {caseData.case_number}</p>
             <Badge className="bg-red-100 text-red-800 border-red-200 mt-2">LAW ENFORCEMENT SENSITIVE</Badge>
           </div>
         </div>

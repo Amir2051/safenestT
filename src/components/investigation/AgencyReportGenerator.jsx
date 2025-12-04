@@ -170,7 +170,8 @@ Make it professional, detailed, and ready for law enforcement review.`,
 
   const buildReportData = (caseData, agencyType) => {
     return {
-      case_reference: caseData.case_number || caseData.id,
+      case_reference: caseData.case_number, // Use SafeNest ID
+      case_id_internal: caseData.id,
       case_title: caseData.case_title,
       report_date: new Date().toISOString(),
       
@@ -249,7 +250,8 @@ Make it professional, detailed, and ready for law enforcement review.`,
         <body>
           <div class="header">
             <h1>${generatedReport?.agency_name}</h1>
-            <p>Case: ${caseData.case_title || caseData.case_number}</p>
+            <p>SafeNest Case ID: <strong>${caseData.case_number}</strong></p>
+            <p>Case Title: ${caseData.case_title}</p>
             <p>Generated: ${new Date().toLocaleString()}</p>
           </div>
           <pre>${editedContent}</pre>

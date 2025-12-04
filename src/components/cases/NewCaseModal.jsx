@@ -26,15 +26,17 @@ export default function NewCaseModal({ onCaseCreated }) {
 
   const createCaseMutation = useMutation({
     mutationFn: async (data) => {
-      return await base44.entities.ClientCase.create({
-        ...data,
-        amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
-        status: "Pending"
+      // Use backend function to create case with auto-generated ID
+      const response = await base44.functions.invoke('caseManagement', { 
+        action: 'create', 
+        data: data 
       });
+      if (response.data.error) throw new Error(response.data.error);
+      return response.data.case;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['client-cases'] });
-      toast.success("Case created successfully");
+      toast.success(`Case created: ${data.case_number}`);
       setIsOpen(false);
       setFormData({
         client_name: "",

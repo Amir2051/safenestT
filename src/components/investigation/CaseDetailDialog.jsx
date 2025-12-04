@@ -439,6 +439,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </div>
 
               {/* Case Info Section */}
+              <div className="mb-4">
+                 <Label className="text-gray-300 mb-2 block">SafeNest Case ID</Label>
+                 <Input
+                    value={editedCase.case_number || 'Generating...'}
+                    disabled
+                    className="bg-[#1a2332] border-cyan-500/20 text-cyan-400 font-mono font-bold"
+                 />
+              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-300 mb-2 block">Case Title *</Label>
