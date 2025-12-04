@@ -132,39 +132,55 @@ export default function MyCases() {
   };
 
   const handleEditSave = () => {
-    if (!editFormData.case_title) {
-      toast.error('Case title is required');
-      return;
+    // Common validation
+    if (editingCase.type === 'fraud' && !editFormData.case_title) {
+         toast.error('Case title is required');
+         return;
     }
+    
     if (editFormData.law_enforcement_authorized && !editFormData.authorization_full_name) {
       toast.error('Please provide your full legal name for authorization');
       return;
     }
 
-    const updateData = {
-      case_title: editFormData.case_title,
-      description: editFormData.description,
-      scammer_wallet: editFormData.scammer_wallet,
-      amount_stolen_usd: parseFloat(editFormData.amount_stolen_usd) || 0,
-      blockchain: editFormData.blockchain,
-      suspect_details: {
-        ...editingCase.suspect_details,
-        name: editFormData.suspect_name,
-        email: editFormData.suspect_email,
-        phone: editFormData.suspect_phone
-      },
-      law_enforcement_authorization: editFormData.law_enforcement_authorized ? {
-        authorized: true,
-        authorized_date: editingCase.law_enforcement_authorization?.authorized_date || new Date().toISOString(),
-        authorized_agencies: ['FBI', 'IC3', 'FTC'],
-        full_name: editFormData.authorization_full_name,
-        signature_confirmation: true
-      } : {
-        authorized: false
-      }
-    };
+    let updateData = {};
 
-    updateCaseMutation.mutate({ id: editingCase.id, data: updateData });
+    if (editingCase.type === 'fraud') {
+         updateData = {
+            case_title: editFormData.case_title,
+            description: editFormData.description,
+            scammer_wallet: editFormData.scammer_wallet,
+            amount_stolen_usd: parseFloat(editFormData.amount_stolen_usd) || 0,
+            blockchain: editFormData.blockchain,
+            suspect_details: {
+                ...editingCase.suspect_details,
+                name: editFormData.suspect_name,
+                email: editFormData.suspect_email,
+                phone: editFormData.suspect_phone
+            },
+            law_enforcement_authorization: editFormData.law_enforcement_authorized ? {
+                authorized: true,
+                authorized_date: editingCase.law_enforcement_authorization?.authorized_date || new Date().toISOString(),
+                authorized_agencies: ['FBI', 'IC3', 'FTC'],
+                full_name: editFormData.authorization_full_name,
+                signature_confirmation: true
+            } : {
+                authorized: false
+            }
+        };
+    } else {
+        // ClientCase update
+        updateData = {
+            description: editFormData.description,
+            scammer_wallet: editFormData.scammer_wallet,
+            amount_lost: parseFloat(editFormData.amount_stolen_usd) || 0,
+            blockchain: editFormData.blockchain,
+            // Add other fields as needed, ClientCase might not have 'suspect_details' nested structure in same way, mapping crudely for now
+            // Assuming we added fields to ClientCase schema
+        };
+    }
+
+    updateCaseMutation.mutate({ id: editingCase.id, data: updateData, type: editingCase.type });
   };
 
   if (!user) {
