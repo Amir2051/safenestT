@@ -218,17 +218,11 @@ export default function MyCases() {
   };
 
   const stats = {
-    total: cases.length,
-    pending: cases.filter(c => c.admin_contact_status === 'Pending').length,
-    inProgress: cases.filter(c => c.admin_contact_status === 'In Progress' || c.admin_contact_status === 'Contacted').length,
-    resolved: cases.filter(c => c.admin_contact_status === 'Resolved').length,
-    totalLost: cases.reduce((sum, c) => sum + (c.amount_stolen_usd || c.amount_stolen || 0), 0)
-  };
-
-  // Combine stats for active investigations
-  const activeStats = {
-      count: activeInvestigations.length,
-      critical: activeInvestigations.filter(c => c.urgency === 'Critical').length
+    total: allCases.length,
+    pending: allCases.filter(c => c.status === 'Pending' || c.status === 'reported').length,
+    inProgress: allCases.filter(c => c.status === 'In Progress' || c.status === 'investigating' || c.status === 'traced').length,
+    resolved: allCases.filter(c => c.status === 'Resolved' || c.status === 'recovered').length,
+    totalLost: allCases.reduce((sum, c) => sum + (c.amount || 0), 0)
   };
 
   return (
