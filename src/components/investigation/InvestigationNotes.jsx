@@ -26,17 +26,31 @@ export default function InvestigationNotes({ caseId, caseData, onUpdate }) {
         confidential
       });
 
-      return await base44.entities.InvestigationCase.update(caseId, {
-        case_notes: notes,
-        last_activity: new Date().toISOString()
+      // Use backend function for reliability
+      const response = await base44.functions.invoke('caseManagement', {
+        action: 'update',
+        data: {
+          id: caseId,
+          entityName: caseData._entityName || 'ClientCase',
+          updates: {
+            case_notes: notes,
+            last_activity: new Date().toISOString()
+          }
+        }
       });
+      
+      if (response.data.error) throw new Error(response.data.error);
+      return response.data.case;
     },
     onSuccess: () => {
-      onUpdate();
-      toast.success("Note added");
+      if (onUpdate) onUpdate();
+      toast.success("Note added successfully");
       setNoteText("");
       setNoteType("investigation");
       setIsConfidential(false);
+    },
+    onError: (err) => {
+      toast.error("Failed to add note: " + err.message);
     }
   });
 

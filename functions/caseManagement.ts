@@ -56,13 +56,46 @@ Deno.serve(async (req) => {
             };
 
             const newCase = await base44.entities.ClientCase.create(caseData);
-            
-            // Trigger prioritization in background (fire and forget effectively, or await)
-            // We can call the existing function if needed, or just return.
-            // The frontend handles the AI call separately in previous code, but we can do it here.
-            // For now, let's just return the case.
-            
             return Response.json({ success: true, case: newCase });
+        }
+
+        if (action === 'update') {
+            // Robust update using service role
+            const { id, updates } = data;
+            if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
+
+            console.log(`[CaseUpdate] Updating case ${id} with:`, JSON.stringify(updates));
+
+            // Ensure numeric fields are numbers
+            if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
+            if (updates.amount_stolen_usd !== undefined) updates.amount_stolen_usd = parseFloat(updates.amount_stolen_usd) || 0;
+            if (updates.recovery_amount !== undefined) updates.recovery_amount = parseFloat(updates.recovery_amount) || 0;
+            if (updates.investigation_progress !== undefined) updates.investigation_progress = parseInt(updates.investigation_progress) || 0;
+
+            // Always update metadata
+            updates.last_activity = new Date().toISOString();
+            updates.updated_date = new Date().toISOString();
+
+            try {
+                // Use service role to bypass strict RLS if needed, ensuring admin can always edit
+                // We assume 'data.entityName' is passed, default to ClientCase
+                const entityName = data.entityName || 'ClientCase';
+                
+                let updatedCase;
+                if (entityName === 'FraudCase') {
+                    updatedCase = await base44.asServiceRole.entities.FraudCase.update(id, updates);
+                } else if (entityName === 'InvestigationCase') {
+                    updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
+                } else {
+                    updatedCase = await base44.asServiceRole.entities.ClientCase.update(id, updates);
+                }
+
+                console.log(`[CaseUpdate] Success:`, updatedCase.id);
+                return Response.json({ success: true, case: updatedCase });
+            } catch (err) {
+                console.error(`[CaseUpdate] Error:`, err);
+                return Response.json({ error: err.message, details: err }, { status: 500 });
+            }
         }
 
         if (action === 'migrate') {

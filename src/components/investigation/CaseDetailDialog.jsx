@@ -57,26 +57,31 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     created_date: caseData.created_date
   });
 
+  // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      // Default to ClientCase if no entity name provided or if it matches ClientCase
-      if (!caseData._entityName || caseData._entityName === 'ClientCase') {
-         return await base44.entities.ClientCase.update(caseData.id, updates);
+      const response = await base44.functions.invoke('caseManagement', {
+        action: 'update',
+        data: {
+          id: caseData.id,
+          entityName: caseData._entityName || 'ClientCase',
+          updates: updates
+        }
+      });
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
-      const entityName = caseData._entityName;
-      if (entityName === 'FraudCase') {
-        return await base44.entities.FraudCase.update(caseData.id, updates);
-      }
-      if (entityName === 'InvestigationCase') {
-        return await base44.entities.InvestigationCase.update(caseData.id, updates);
-      }
-      // Fallback to ClientCase
-      return await base44.entities.ClientCase.update(caseData.id, updates);
+      return response.data.case;
     },
     onSuccess: () => {
-      onUpdate();
-      toast.success("Case updated");
+      if (onUpdate) onUpdate();
+      toast.success("Case Updated Successfully");
       setEditing(false);
+    },
+    onError: (err) => {
+      console.error("Update failed", err);
+      toast.error("Update Failed: " + err.message);
     }
   });
 
@@ -117,9 +122,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const saveEdits = async () => {
     setSaving(true);
     try {
-      // Default to ClientCase for updates as it's the primary entity
-      const updateFn = base44.entities.ClientCase.update;
-
       const updates = {
         // Direct bindings to ClientCase schema
         client_name: editedCase.client_name,
@@ -128,7 +130,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         amount_lost: parseFloat(editedCase.amount_lost) || 0,
         
         // Additional fields
-        case_number: editedCase.case_number, // Ensure Case ID is preserved/updated
+        case_number: editedCase.case_number,
+        case_title: editedCase.case_title,
         description: editedCase.description,
         status: editedCase.status,
         urgency: editedCase.urgency,
@@ -150,24 +153,13 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         law_enforcement_authorization: editedCase.law_enforcement_authorization,
         
         // Metadata
-        last_activity: new Date().toISOString(),
-        // Don't manually set updated_date, DB handles it
+        last_activity: new Date().toISOString()
       };
 
-      // Perform the update
-      await updateFn(caseData.id, updates);
-      
-      // Force refresh across all related queries
-      // We invalidate liberally to ensure global sync
-      // Using the global base44 client or passed props if needed, but here we rely on onUpdate
-      
-      toast.success("Case Updated Successfully");
-      setEditing(false);
-      if (onUpdate) onUpdate();
+      await updateCaseMutation.mutateAsync(updates);
       
     } catch (error) {
-      console.error('Save error:', error);
-      toast.error("Failed to save: " + error.message);
+      // Error handled in mutation onError
     }
     setSaving(false);
   };
@@ -1018,8 +1010,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               onSave={async (suspectData) => {
                 setSaving(true);
                 try {
-                  // Update ClientCase directly
-                  await base44.entities.ClientCase.update(caseData.id, {
+                  await updateCaseMutation.mutateAsync({
                     scammer_info: suspectData,
                     // Sync monitored wallets
                     monitored_wallets: [
@@ -1031,10 +1022,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
                   toast.success('Suspect information saved successfully!');
                   setActiveTab('suspect');
-                  if (onUpdate) onUpdate();
                 } catch (error) {
-                  console.error('Save error:', error);
-                  toast.error('Failed to save: ' + error.message);
+                  // Error handled in mutation
                 }
                 setSaving(false);
               }}
