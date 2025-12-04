@@ -64,6 +64,28 @@ const navigationItems = [
     glow: 'purple'
   },
   {
+    id: 'device-care',
+    title: 'Device Protection',
+    icon: Smartphone,
+    url: createPageUrl('DeviceCare'),
+    glow: 'green',
+    badge: 'SCAN'
+  },
+  {
+    id: 'device-security',
+    title: 'Device Security',
+    icon: Smartphone,
+    url: createPageUrl('DeviceSecurity'),
+    glow: 'green'
+  },
+  {
+    id: 'vpn',
+    title: 'VPN Protection',
+    icon: Wifi,
+    url: createPageUrl('VPNPage'),
+    glow: 'emerald'
+  },
+  {
     id: 'fraud-tracking',
     title: 'Fraud Tracking',
     icon: AlertTriangle,
@@ -172,28 +194,6 @@ const investigationItems = [
     url: createPageUrl('DigitalForensics'),
     glow: 'cyan',
     badge: 'TOOLS'
-  },
-  {
-    id: 'device-security',
-    title: 'Device Security',
-    icon: Smartphone,
-    url: createPageUrl('DeviceSecurity'),
-    glow: 'green'
-  },
-  {
-    id: 'device-care',
-    title: 'Device Protection',
-    icon: Smartphone,
-    url: createPageUrl('DeviceCare'),
-    glow: 'green',
-    badge: 'SCAN'
-  },
-  {
-    id: 'vpn',
-    title: 'VPN Protection',
-    icon: Wifi,
-    url: createPageUrl('VPNPage'),
-    glow: 'emerald'
   }
 ];
 
