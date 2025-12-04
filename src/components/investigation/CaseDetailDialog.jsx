@@ -30,31 +30,41 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editedCase, setEditedCase] = useState({
-    case_title: caseData.case_title || '',
-    victim_name: caseData.victim_name || '',
-    victim_email: caseData.victim_email || '',
-    victim_phone: caseData.victim_phone || '',
-    amount_stolen_usd: caseData.amount_stolen_usd || 0,
+    case_title: caseData.case_title || caseData.case_number || '',
+    victim_name: caseData.victim_name || caseData.client_name || '',
+    victim_email: caseData.victim_email || caseData.client_email || '',
+    victim_phone: caseData.victim_phone || caseData.phone_number || '',
+    amount_stolen_usd: caseData.amount_stolen_usd || caseData.amount_lost || 0,
     cryptocurrency: caseData.cryptocurrency || '',
     blockchain: caseData.blockchain || '',
     description: caseData.description || '',
     status: caseData.status || 'new',
-    priority: caseData.priority || caseData.case_priority || 'medium',
+    priority: caseData.priority || caseData.case_priority || caseData.urgency || 'medium',
     investigation_progress: caseData.investigation_progress || 0,
     ic3_complaint_number: caseData.ic3_complaint_number || '',
     federal_case_number: caseData.federal_case_number || '',
     recovery_amount: caseData.recovery_amount || 0,
     monitored_wallets: caseData.monitored_wallets || [],
-    scammer_info: caseData.scammer_info || {}
+    scammer_info: caseData.scammer_info || {},
+    scammer_wallet: caseData.scammer_wallet || '', // Added for ClientCase
+    law_enforcement_authorization: caseData.law_enforcement_authorization || { authorized: false, agencies: [], full_name: '' }
   });
 
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      const entityName = caseData._entityName || 'InvestigationCase';
+      // Default to ClientCase if no entity name provided or if it matches ClientCase
+      if (!caseData._entityName || caseData._entityName === 'ClientCase') {
+         return await base44.entities.ClientCase.update(caseData.id, updates);
+      }
+      const entityName = caseData._entityName;
       if (entityName === 'FraudCase') {
         return await base44.entities.FraudCase.update(caseData.id, updates);
       }
-      return await base44.entities.InvestigationCase.update(caseData.id, updates);
+      if (entityName === 'InvestigationCase') {
+        return await base44.entities.InvestigationCase.update(caseData.id, updates);
+      }
+      // Fallback to ClientCase
+      return await base44.entities.ClientCase.update(caseData.id, updates);
     },
     onSuccess: () => {
       onUpdate();
@@ -105,12 +115,23 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         ? base44.entities.FraudCase.update 
         : base44.entities.InvestigationCase.update;
 
-      await updateFn(caseData.id, {
+      const updates = {
+        // Shared/InvestigationCase fields
         case_title: editedCase.case_title,
         victim_name: editedCase.victim_name,
         victim_email: editedCase.victim_email,
         victim_phone: editedCase.victim_phone,
         amount_stolen_usd: parseFloat(editedCase.amount_stolen_usd) || 0,
+        
+        // ClientCase mappings
+        client_name: editedCase.victim_name,
+        client_email: editedCase.victim_email,
+        phone_number: editedCase.victim_phone,
+        amount_lost: parseFloat(editedCase.amount_stolen_usd) || 0,
+        scammer_wallet: editedCase.scammer_wallet, // Ensure this is saved
+        urgency: editedCase.priority,
+
+        // Common
         cryptocurrency: editedCase.cryptocurrency,
         blockchain: editedCase.blockchain,
         description: editedCase.description,
@@ -123,8 +144,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
         monitored_wallets: editedCase.monitored_wallets,
         scammer_info: editedCase.scammer_info,
-        last_activity: new Date().toISOString()
-      });
+        law_enforcement_authorization: editedCase.law_enforcement_authorization,
+        last_activity: new Date().toISOString(),
+        updated_date: new Date().toISOString()
+      };
+
+      await updateFn(caseData.id, updates);
       
       toast.success("Case updated successfully!");
       setEditing(false);
@@ -435,16 +460,18 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="In Review">In Review</SelectItem>
                       <SelectItem value="investigating">Investigating</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
                       <SelectItem value="documented">Documented</SelectItem>
                       <SelectItem value="submitted">Submitted</SelectItem>
                       <SelectItem value="law_enforcement">Law Enforcement</SelectItem>
+                      <SelectItem value="Called">Called</SelectItem>
                       <SelectItem value="recovering">Recovering</SelectItem>
                       <SelectItem value="recovered">Recovered</SelectItem>
+                      <SelectItem value="Resolved">Resolved</SelectItem>
                       <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_review">In Review</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -637,6 +664,68 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       style={{ width: `${editedCase.investigation_progress || 0}%` }}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Law Enforcement Authorization - Editable */}
+              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                <h4 className="text-purple-400 font-semibold mb-4 flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Law Enforcement Authorization
+                </h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="le_auth"
+                      checked={editedCase.law_enforcement_authorization?.authorized || false}
+                      onChange={(e) => setEditedCase({
+                        ...editedCase,
+                        law_enforcement_authorization: {
+                          ...editedCase.law_enforcement_authorization,
+                          authorized: e.target.checked,
+                          authorized_date: e.target.checked ? new Date().toISOString() : null
+                        }
+                      })}
+                      className="w-4 h-4 rounded border-purple-500/50 bg-[#1a2332]"
+                    />
+                    <Label htmlFor="le_auth" className="text-white cursor-pointer">Authorized by Client</Label>
+                  </div>
+                  
+                  {editedCase.law_enforcement_authorization?.authorized && (
+                    <>
+                      <div>
+                        <Label className="text-gray-300 mb-2 block">Full Legal Name (Signature)</Label>
+                        <Input
+                          value={editedCase.law_enforcement_authorization?.full_name || ''}
+                          onChange={(e) => setEditedCase({
+                            ...editedCase,
+                            law_enforcement_authorization: {
+                              ...editedCase.law_enforcement_authorization,
+                              full_name: e.target.value
+                            }
+                          })}
+                          className="bg-[#1a2332] border-purple-500/30 text-white"
+                          placeholder="Enter full legal name"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label className="text-gray-300 mb-2 block">Authorized Agencies (comma separated)</Label>
+                        <Input
+                          value={editedCase.law_enforcement_authorization?.agencies?.join(', ') || 'FBI, IC3, FTC'}
+                          onChange={(e) => setEditedCase({
+                            ...editedCase,
+                            law_enforcement_authorization: {
+                              ...editedCase.law_enforcement_authorization,
+                              agencies: e.target.value.split(',').map(s => s.trim())
+                            }
+                          })}
+                          className="bg-[#1a2332] border-purple-500/30 text-white"
+                          placeholder="FBI, IC3, FTC, Local Police"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import NewCaseModal from "../components/cases/NewCaseModal";
-import CaseDetailDrawer from "../components/cases/CaseDetailDrawer";
+import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import CaseAssignmentModal from "../components/cases/CaseAssignmentModal";
 
 export default function Cases() {
@@ -36,8 +36,14 @@ export default function Cases() {
     enabled: !!user
   });
 
-  const openCaseDetail = (id) => {
-    setSelectedCaseId(id);
+  const openCaseDetail = (caseItem) => {
+    // Find the full object if we only have ID, but here we pass the object
+    if (typeof caseItem === 'string') {
+       const found = cases.find(c => c.id === caseItem);
+       if (found) setSelectedCaseId(found);
+    } else {
+       setSelectedCaseId(caseItem);
+    }
     setIsDetailOpen(true);
   };
 
@@ -213,14 +219,14 @@ export default function Cases() {
               <Card 
                 key={caseItem.id} 
                 className="bg-[#1a2332] border-gray-700 hover:border-blue-500/50 transition-all cursor-pointer group"
-                onClick={() => openCaseDetail(caseItem.id)}
-              >
+                onClick={() => openCaseDetail(caseItem)}
+                >
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-3">
                         <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
-                          {caseItem.client_name}
+                          {caseItem.case_title || caseItem.client_name || 'Untitled Case'}
                         </h3>
                         {caseItem.priority_score !== undefined && (
                           <Badge className={`
@@ -274,8 +280,8 @@ export default function Cases() {
                       
                       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <CaseAssignmentModal caseId={caseItem.id} />
-                        <Button size="sm" variant="ghost" onClick={() => openCaseDetail(caseItem.id)}>
-                          View Details
+                        <Button size="sm" variant="ghost" onClick={() => openCaseDetail(caseItem)}>
+                          Manage Case
                         </Button>
                       </div>
                     </div>
@@ -295,14 +301,19 @@ export default function Cases() {
         </TabsContent>
       </Tabs>
 
-      <CaseDetailDrawer 
-        caseId={selectedCaseId} 
-        isOpen={isDetailOpen} 
-        onClose={() => {
-          setIsDetailOpen(false);
-          setSelectedCaseId(null);
-        }} 
-      />
+      {isDetailOpen && selectedCaseId && (
+        <CaseDetailDialog 
+          caseData={selectedCaseId} 
+          onClose={() => {
+            setIsDetailOpen(false);
+            setSelectedCaseId(null);
+          }} 
+          onUpdate={() => {
+             // Invalidate queries to refresh list
+             base44.entities.ClientCase.list(); // Trigger fetch implicitly or use queryClient
+          }}
+        />
+      )}
     </div>
   );
 }
