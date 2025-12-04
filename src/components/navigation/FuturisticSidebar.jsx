@@ -497,7 +497,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             )}
 
             {/* Investigation Suite */}
-            {(user?.role === 'admin' || user?.is_admin || true) && (
+            {(user?.role === 'admin' || user?.is_admin) && (
                <div className="space-y-2 pt-4 border-t border-gray-800/50">
                 <div className="px-4 mb-2">
                   <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
