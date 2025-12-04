@@ -55,26 +55,23 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
       
       const caseNumber = `CASE-${Date.now()}`;
       
-      // Create initial case documents structure
-      const initialDocuments = {
-        case_summary: null,
-        victim_statement: null,
-        transaction_log: null,
-        transaction_analysis: null,
-        scammer_profile: null,
-        evidence_package: null
-      };
-
-      await base44.entities.InvestigationCase.create({
-        ...formData,
+      await base44.entities.ClientCase.create({
+        client_name: formData.victim_name,
+        client_email: formData.victim_email,
+        phone_number: formData.victim_phone,
+        issue_type: formData.fraud_type,
+        amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
+        cryptocurrency: formData.cryptocurrency,
+        blockchain: formData.blockchain,
+        transaction_date: formData.incident_date,
+        description: formData.description,
+        priority: formData.priority,
+        urgency: formData.priority === 'critical' ? 'Critical' : formData.priority === 'high' ? 'High' : 'Medium',
+        
         case_number: caseNumber,
-        amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
-        status: "new",
-        last_activity: new Date().toISOString(),
+        status: "Pending",
         created_by_name: user.full_name,
         created_by_email: user.email,
-        case_documents: initialDocuments,
-        imported_transactions: [],
         case_notes: [{
           timestamp: new Date().toISOString(),
           author: "system",
