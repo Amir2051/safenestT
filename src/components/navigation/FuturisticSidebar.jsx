@@ -64,12 +64,11 @@ const navigationItems = [
     glow: 'purple'
   },
   {
-    id: 'device-care',
-    title: 'Device Protection',
-    icon: Smartphone,
-    url: createPageUrl('DeviceCare'),
-    glow: 'green',
-    badge: 'SCAN'
+    id: 'fraud-tracking',
+    title: 'Fraud Tracking',
+    icon: AlertTriangle,
+    url: createPageUrl('FraudTracking'),
+    glow: 'orange'
   },
   {
     id: 'web-vpn',
@@ -77,13 +76,6 @@ const navigationItems = [
     icon: Globe,
     url: createPageUrl('WebVPN'),
     glow: 'cyan'
-  },
-  {
-    id: 'vpn',
-    title: 'VPN Protection',
-    icon: Wifi,
-    url: createPageUrl('VPNPage'),
-    glow: 'emerald'
   },
   {
     id: 'alerts',
@@ -182,18 +174,26 @@ const investigationItems = [
     badge: 'TOOLS'
   },
   {
-    id: 'fraud-tracking',
-    title: 'Fraud Tracking',
-    icon: AlertTriangle,
-    url: createPageUrl('FraudTracking'),
-    glow: 'orange'
-  },
-  {
     id: 'device-security',
     title: 'Device Security',
     icon: Smartphone,
     url: createPageUrl('DeviceSecurity'),
     glow: 'green'
+  },
+  {
+    id: 'device-care',
+    title: 'Device Protection',
+    icon: Smartphone,
+    url: createPageUrl('DeviceCare'),
+    glow: 'green',
+    badge: 'SCAN'
+  },
+  {
+    id: 'vpn',
+    title: 'VPN Protection',
+    icon: Wifi,
+    url: createPageUrl('VPNPage'),
+    glow: 'emerald'
   }
 ];
 
@@ -497,7 +497,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             )}
 
             {/* Investigation Suite */}
-            {(user?.role === 'admin' || user?.is_admin) && (
                <div className="space-y-2 pt-4 border-t border-gray-800/50">
                 <div className="px-4 mb-2">
                   <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
@@ -511,7 +510,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   />
                 ))}
               </div>
-            )}
 
             {/* Media Director Navigation - Show for Media Directors OR Admins */}
             {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
