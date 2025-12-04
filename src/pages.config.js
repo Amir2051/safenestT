@@ -81,6 +81,7 @@ import DigitalForensics from './pages/DigitalForensics';
 import FraudTracking from './pages/FraudTracking';
 import DeviceSecurity from './pages/DeviceSecurity';
 import ClientProtection from './pages/ClientProtection';
+import CaseDocumentManager from './pages/CaseDocumentManager';
 import __Layout from './Layout.jsx';
 
 
@@ -168,6 +169,7 @@ export const PAGES = {
     "FraudTracking": FraudTracking,
     "DeviceSecurity": DeviceSecurity,
     "ClientProtection": ClientProtection,
+    "CaseDocumentManager": CaseDocumentManager,
 }
 
 export const pagesConfig = {
