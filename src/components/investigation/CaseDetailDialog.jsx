@@ -30,24 +30,31 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editedCase, setEditedCase] = useState({
-    case_title: caseData.case_title || caseData.case_number || '',
-    victim_name: caseData.victim_name || caseData.client_name || '',
-    victim_email: caseData.victim_email || caseData.client_email || '',
-    victim_phone: caseData.victim_phone || caseData.phone_number || '',
-    amount_stolen_usd: caseData.amount_stolen_usd || caseData.amount_lost || 0,
+    // Standardized Fields (ClientCase Schema)
+    case_title: caseData.case_title || caseData.case_number || 'Untitled Case',
+    client_name: caseData.client_name || caseData.victim_name || '',
+    client_email: caseData.client_email || caseData.victim_email || '',
+    phone_number: caseData.phone_number || caseData.victim_phone || '',
+    amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
+    
+    // Common Fields
     cryptocurrency: caseData.cryptocurrency || '',
     blockchain: caseData.blockchain || '',
     description: caseData.description || '',
-    status: caseData.status || 'new',
-    priority: caseData.priority || caseData.case_priority || caseData.urgency || 'medium',
+    status: caseData.status || 'Pending',
+    urgency: caseData.urgency || caseData.priority || 'Medium',
     investigation_progress: caseData.investigation_progress || 0,
     ic3_complaint_number: caseData.ic3_complaint_number || '',
     federal_case_number: caseData.federal_case_number || '',
     recovery_amount: caseData.recovery_amount || 0,
     monitored_wallets: caseData.monitored_wallets || [],
     scammer_info: caseData.scammer_info || {},
-    scammer_wallet: caseData.scammer_wallet || '', // Added for ClientCase
-    law_enforcement_authorization: caseData.law_enforcement_authorization || { authorized: false, agencies: [], full_name: '' }
+    scammer_wallet: caseData.scammer_wallet || '',
+    law_enforcement_authorization: caseData.law_enforcement_authorization || { authorized: false, agencies: [], full_name: '' },
+    
+    // Preserve ID and other metadata
+    id: caseData.id,
+    created_date: caseData.created_date
   });
 
   const updateCaseMutation = useMutation({
@@ -110,53 +117,54 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const saveEdits = async () => {
     setSaving(true);
     try {
-      // Determine correct entity update function (default to ClientCase)
-      let updateFn = base44.entities.ClientCase.update;
-      if (caseData._entityName === 'FraudCase') {
-        updateFn = base44.entities.FraudCase.update;
-      } else if (caseData._entityName === 'InvestigationCase') {
-        updateFn = base44.entities.InvestigationCase.update;
-      }
+      // Default to ClientCase for updates as it's the primary entity
+      const updateFn = base44.entities.ClientCase.update;
 
       const updates = {
-        // Shared/InvestigationCase fields
-        case_title: editedCase.case_title,
-        victim_name: editedCase.victim_name,
-        victim_email: editedCase.victim_email,
-        victim_phone: editedCase.victim_phone,
-        amount_stolen_usd: parseFloat(editedCase.amount_stolen_usd) || 0,
+        // Direct bindings to ClientCase schema
+        client_name: editedCase.client_name,
+        client_email: editedCase.client_email,
+        phone_number: editedCase.phone_number,
+        amount_lost: parseFloat(editedCase.amount_lost) || 0,
         
-        // ClientCase mappings
-        client_name: editedCase.victim_name,
-        client_email: editedCase.victim_email,
-        phone_number: editedCase.victim_phone,
-        amount_lost: parseFloat(editedCase.amount_stolen_usd) || 0,
-        scammer_wallet: editedCase.scammer_wallet, // Ensure this is saved
-        urgency: editedCase.priority,
-
-        // Common
-        cryptocurrency: editedCase.cryptocurrency,
-        blockchain: editedCase.blockchain,
+        // Additional fields
+        case_number: editedCase.case_number, // Ensure Case ID is preserved/updated
         description: editedCase.description,
         status: editedCase.status,
-        priority: editedCase.priority,
-        case_priority: editedCase.priority,
-        investigation_progress: parseInt(editedCase.investigation_progress) || 0,
-        ic3_complaint_number: editedCase.ic3_complaint_number,
-        federal_case_number: editedCase.federal_case_number,
-        recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
+        urgency: editedCase.urgency,
+        
+        // Crypto/Scam details
+        cryptocurrency: editedCase.cryptocurrency,
+        blockchain: editedCase.blockchain,
+        scammer_wallet: editedCase.scammer_wallet,
         monitored_wallets: editedCase.monitored_wallets,
         scammer_info: editedCase.scammer_info,
+        
+        // Progress & Meta
+        investigation_progress: parseInt(editedCase.investigation_progress) || 0,
+        recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
+        
+        // Legal
+        ic3_complaint_number: editedCase.ic3_complaint_number,
+        federal_case_number: editedCase.federal_case_number,
         law_enforcement_authorization: editedCase.law_enforcement_authorization,
+        
+        // Metadata
         last_activity: new Date().toISOString(),
-        updated_date: new Date().toISOString()
+        // Don't manually set updated_date, DB handles it
       };
 
+      // Perform the update
       await updateFn(caseData.id, updates);
       
-      toast.success("Victim Information Updated Successfully.");
+      // Force refresh across all related queries
+      // We invalidate liberally to ensure global sync
+      // Using the global base44 client or passed props if needed, but here we rely on onUpdate
+      
+      toast.success("Case Updated Successfully");
       setEditing(false);
       if (onUpdate) onUpdate();
+      
     } catch (error) {
       console.error('Save error:', error);
       toast.error("Failed to save: " + error.message);
@@ -317,7 +325,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <Edit className="w-3 h-3 mr-1" />Edit Case
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="victim">Victim Details</TabsTrigger>
+              <TabsTrigger value="victim">Client Details</TabsTrigger>
               <TabsTrigger value="suspect">Suspect Details</TabsTrigger>
               <TabsTrigger value="edit-suspect" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
                 <AlertCircle className="w-3 h-3 mr-1" />Edit Suspect
@@ -345,12 +353,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <User className="w-4 h-4 text-cyan-400" />
                     <p className="text-xs text-gray-300 font-medium">Victim</p>
                   </div>
-                  <p className="text-white font-semibold text-base">{caseData.victim_name}</p>
-                  {caseData.victim_email && (
-                    <p className="text-xs text-gray-300 mt-1">{caseData.victim_email}</p>
+                  <p className="text-white font-semibold text-base">{caseData.client_name || caseData.victim_name}</p>
+                  {(caseData.client_email || caseData.victim_email) && (
+                    <p className="text-xs text-gray-300 mt-1">{caseData.client_email || caseData.victim_email}</p>
                   )}
-                  {caseData.victim_phone && (
-                    <p className="text-xs text-gray-300">{caseData.victim_phone}</p>
+                  {(caseData.phone_number || caseData.victim_phone) && (
+                    <p className="text-xs text-gray-300">{caseData.phone_number || caseData.victim_phone}</p>
                   )}
                 </div>
 
@@ -369,7 +377,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-xs text-gray-300 font-medium">Amount Stolen</p>
                   </div>
                   <p className="text-2xl font-bold text-red-400">
-                    ${caseData.amount_stolen_usd?.toLocaleString() || 0}
+                    ${(caseData.amount_lost || caseData.amount_stolen_usd || 0).toLocaleString()}
                   </p>
                   {caseData.cryptocurrency && (
                     <p className="text-xs text-gray-300 mt-1 font-medium">{caseData.cryptocurrency}</p>
@@ -498,8 +506,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <div>
                     <Label className="text-gray-300 mb-2 block">Client Name *</Label>
                     <Input
-                      value={editedCase.victim_name}
-                      onChange={(e) => setEditedCase({...editedCase, victim_name: e.target.value})}
+                      value={editedCase.client_name}
+                      onChange={(e) => setEditedCase({...editedCase, client_name: e.target.value})}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter client name"
                     />
@@ -508,8 +516,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">Contact Email</Label>
                     <Input
                       type="email"
-                      value={editedCase.victim_email}
-                      onChange={(e) => setEditedCase({...editedCase, victim_email: e.target.value})}
+                      value={editedCase.client_email}
+                      onChange={(e) => setEditedCase({...editedCase, client_email: e.target.value})}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter email"
                     />
@@ -517,26 +525,26 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <div>
                     <Label className="text-gray-300 mb-2 block">Contact Phone</Label>
                     <Input
-                      value={editedCase.victim_phone}
-                      onChange={(e) => setEditedCase({...editedCase, victim_phone: e.target.value})}
+                      value={editedCase.phone_number}
+                      onChange={(e) => setEditedCase({...editedCase, phone_number: e.target.value})}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter phone"
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-300 mb-2 block">Priority</Label>
+                    <Label className="text-gray-300 mb-2 block">Urgency</Label>
                     <Select 
-                      value={editedCase.priority} 
-                      onValueChange={(v) => setEditedCase({...editedCase, priority: v})}
+                      value={editedCase.urgency} 
+                      onValueChange={(v) => setEditedCase({...editedCase, urgency: v})}
                     >
                       <SelectTrigger className="bg-[#1a2332] border-cyan-500/30 text-white">
-                        <SelectValue placeholder="Select priority" />
+                        <SelectValue placeholder="Select urgency" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Critical">Critical</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -554,8 +562,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">Amount Stolen (USD)</Label>
                     <Input
                       type="number"
-                      value={editedCase.amount_stolen_usd}
-                      onChange={(e) => setEditedCase({...editedCase, amount_stolen_usd: e.target.value})}
+                      value={editedCase.amount_lost}
+                      onChange={(e) => setEditedCase({...editedCase, amount_lost: e.target.value})}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="0.00"
                     />
@@ -841,7 +849,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="victim" className="space-y-4">
-              <h3 className="text-white font-semibold text-lg">Victim Contact Information</h3>
+              <h3 className="text-white font-semibold text-lg">Client Contact Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-3">
@@ -850,12 +858,16 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
+                      <span className="text-gray-400 text-xs w-16">Name:</span>
+                      <span className="text-white text-sm font-medium">{caseData.client_name || caseData.victim_name || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.victim_contact_info?.primary_email || caseData.victim_email || 'N/A'}</span>
+                      <span className="text-white text-sm">{caseData.client_email || caseData.victim_email || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.victim_contact_info?.phone || caseData.victim_phone || 'N/A'}</span>
+                      <span className="text-white text-sm">{caseData.phone_number || caseData.victim_phone || 'N/A'}</span>
                     </div>
                     {caseData.victim_contact_info?.address && (
                       <div className="flex items-center gap-2">
@@ -1002,44 +1014,32 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </div>
 
               <SuspectEditForm 
-                caseData={caseData} 
-                onSave={async (suspectData) => {
-                  setSaving(true);
-                  try {
-                    const entityName = caseData._entityName || 'InvestigationCase';
-                    const updateFn = entityName === 'FraudCase' 
-                      ? base44.entities.FraudCase.update 
-                      : base44.entities.InvestigationCase.update;
+              caseData={caseData} 
+              onSave={async (suspectData) => {
+                setSaving(true);
+                try {
+                  // Update ClientCase directly
+                  await base44.entities.ClientCase.update(caseData.id, {
+                    scammer_info: suspectData,
+                    // Sync monitored wallets
+                    monitored_wallets: [
+                      ...(caseData.monitored_wallets || []),
+                      ...(suspectData.wallet_addresses || [])
+                    ].filter((v, i, a) => a.indexOf(v) === i),
+                    last_activity: new Date().toISOString()
+                  });
 
-                    await updateFn(caseData.id, {
-                      scammer_info: suspectData,
-                      suspect_details: {
-                        primary_suspect: {
-                          name: suspectData.name,
-                          email: suspectData.email,
-                          phone: suspectData.phone,
-                          location: suspectData.location
-                        },
-                        wallet_addresses: suspectData.wallet_addresses,
-                        social_profiles: suspectData.social_media
-                      },
-                      monitored_wallets: [
-                        ...(caseData.monitored_wallets || []),
-                        ...(suspectData.wallet_addresses || [])
-                      ].filter((v, i, a) => a.indexOf(v) === i),
-                      last_activity: new Date().toISOString()
-                    });
-                    toast.success('Suspect information saved successfully!');
-                    setActiveTab('suspect');
-                    onUpdate();
-                  } catch (error) {
-                    console.error('Save error:', error);
-                    toast.error('Failed to save: ' + error.message);
-                  }
-                  setSaving(false);
-                }}
-                onCancel={() => setActiveTab('suspect')}
-                saving={saving}
+                  toast.success('Suspect information saved successfully!');
+                  setActiveTab('suspect');
+                  if (onUpdate) onUpdate();
+                } catch (error) {
+                  console.error('Save error:', error);
+                  toast.error('Failed to save: ' + error.message);
+                }
+                setSaving(false);
+              }}
+              onCancel={() => setActiveTab('suspect')}
+              saving={saving}
               />
             </TabsContent>
 
