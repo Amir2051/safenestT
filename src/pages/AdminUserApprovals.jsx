@@ -654,7 +654,6 @@ export default function AdminUserApprovals() {
                   <Button
                     onClick={handleSubmitAction}
                     disabled={
-                      (actionType === 'approve' && !allChecksComplete) ||
                       approveMutation.isPending || 
                       rejectMutation.isPending
                     }
