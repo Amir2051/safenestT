@@ -149,6 +149,46 @@ const caseItems = [
   }
 ];
 
+const investigationItems = [
+  {
+    id: 'client-protection',
+    title: 'Protection Dashboard',
+    icon: ShieldCheck,
+    url: createPageUrl('ClientProtection'),
+    glow: 'blue'
+  },
+  {
+    id: 'threat-intel',
+    title: 'Threat Intelligence',
+    icon: Globe,
+    url: createPageUrl('ThreatIntelligence'),
+    glow: 'purple',
+    badge: 'INTEL'
+  },
+  {
+    id: 'forensics',
+    title: 'Digital Forensics',
+    icon: Search,
+    url: createPageUrl('DigitalForensics'),
+    glow: 'cyan',
+    badge: 'TOOLS'
+  },
+  {
+    id: 'fraud-tracking',
+    title: 'Fraud Tracking',
+    icon: AlertTriangle,
+    url: createPageUrl('FraudTracking'),
+    glow: 'orange'
+  },
+  {
+    id: 'device-security',
+    title: 'Device Security',
+    icon: Smartphone,
+    url: createPageUrl('DeviceSecurity'),
+    glow: 'green'
+  }
+];
+
 const mediaNavItems = [
    { 
      id: 'media-command', 
@@ -438,6 +478,23 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Case Management</span>
                 </div>
                 {caseItems.map((item) => (
+                  <NavItem 
+                    key={item.id} 
+                    item={item} 
+                    activeItem={activeItem} 
+                    onNavClick={handleNavClick} 
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Investigation Suite */}
+            {(user?.role === 'admin' || user?.is_admin || true) && (
+               <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                <div className="px-4 mb-2">
+                  <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
+                </div>
+                {investigationItems.map((item) => (
                   <NavItem 
                     key={item.id} 
                     item={item} 

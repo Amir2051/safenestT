@@ -76,6 +76,11 @@ import RefundRequest from './pages/RefundRequest';
 import MediaDirectorAI from './pages/MediaDirectorAI';
 import MediaDashboard from './pages/MediaDashboard';
 import Cases from './pages/Cases';
+import ThreatIntelligence from './pages/ThreatIntelligence';
+import DigitalForensics from './pages/DigitalForensics';
+import FraudTracking from './pages/FraudTracking';
+import DeviceSecurity from './pages/DeviceSecurity';
+import ClientProtection from './pages/ClientProtection';
 import __Layout from './Layout.jsx';
 
 
@@ -158,6 +163,11 @@ export const PAGES = {
     "MediaDirectorAI": MediaDirectorAI,
     "MediaDashboard": MediaDashboard,
     "Cases": Cases,
+    "ThreatIntelligence": ThreatIntelligence,
+    "DigitalForensics": DigitalForensics,
+    "FraudTracking": FraudTracking,
+    "DeviceSecurity": DeviceSecurity,
+    "ClientProtection": ClientProtection,
 }
 
 export const pagesConfig = {
