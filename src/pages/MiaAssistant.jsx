@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -190,15 +189,27 @@ Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${user
 
   return (
     <div className="h-screen flex flex-col bg-[#0f1419]">
+      {/* Animation Styles */}
+      <style>{`
+        @keyframes mia-float {
+          0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.3)); }
+          50% { transform: translateY(-5px) scale(1.05); filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.5)); }
+        }
+        .mia-avatar {
+          animation: mia-float 4s ease-in-out infinite;
+        }
+      `}</style>
       {/* Header */}
       <div className="border-b border-[#1a2332] p-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
-                <Bot className="w-7 h-7 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-[#0f1419]" />
+            <div className="relative w-14 h-14">
+              <img 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+                alt="Mia" 
+                className="w-full h-full object-cover rounded-xl mia-avatar"
+              />
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-[#0f1419]" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Mia AI Assistant</h1>
@@ -223,8 +234,12 @@ Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${user
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-24 h-24 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Bot className="w-12 h-12 text-green-400" />
+              <div className="w-40 h-40 mx-auto mb-6 relative">
+                <img 
+                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+                  alt="Mia" 
+                  className="w-full h-full object-cover rounded-full mia-avatar"
+                />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Hi {user?.full_name?.split(' ')[0] || 'there'}! I'm Mia 👋
@@ -257,8 +272,12 @@ Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${user
                   className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                       <img 
+                         src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+                         alt="Mia" 
+                         className="w-full h-full object-cover"
+                       />
                     </div>
                   )}
                   <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-1' : ''}`}>
@@ -300,8 +319,12 @@ Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${user
               ))}
               {isLoading && (
                 <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
+                    <img 
+                      src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+                      alt="Mia" 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div className="bg-[#1a2332] border border-cyan-500/20 rounded-2xl px-4 py-3">
                     <div className="flex gap-1">

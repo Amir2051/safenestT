@@ -32,9 +32,21 @@ export default function MiaQuickChat({ user }) {
       
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
-          <div className="relative">
-            <Bot className="w-5 h-5 text-green-400" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <style>{`
+            @keyframes mia-float-sm {
+              0%, 100% { transform: translateY(0); }
+              50% { transform: translateY(-3px); }
+            }
+            .mia-avatar-sm {
+              animation: mia-float-sm 3s ease-in-out infinite;
+            }
+          `}</style>
+          <div className="relative w-8 h-8 mr-2">
+            <img 
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+              alt="Mia" 
+              className="w-full h-full object-cover rounded-full mia-avatar-sm"
+            />
           </div>
           Mia AI Assistant
         </CardTitle>
@@ -43,8 +55,12 @@ export default function MiaQuickChat({ user }) {
         {/* Mia's Message */}
         <div className="bg-[#0f1419] rounded-lg p-4 border border-green-500/20">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-green-500/30">
+               <img 
+                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f8114b33b_013D1AC5-B180-4014-B68A-7E182E608B24.png" 
+                 alt="Mia" 
+                 className="w-full h-full object-cover"
+               />
             </div>
             <div>
               <p className="text-sm text-white mb-2">{getMessage()}</p>
