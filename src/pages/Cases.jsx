@@ -53,7 +53,8 @@ export default function Cases() {
       const matchesSearch = 
         c.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.client_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.issue_type.toLowerCase().includes(searchTerm.toLowerCase());
+        c.issue_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.case_number?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = selectedStatus === "all" || c.status === selectedStatus;
       const matchesUrgency = selectedUrgency === "all" || c.urgency === selectedUrgency;
