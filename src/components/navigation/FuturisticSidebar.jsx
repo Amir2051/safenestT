@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import LiveClock from "@/components/shared/LiveClock";
 
 const navigationItems = [
   {
@@ -572,7 +573,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             </div>
             <div className="mt-2 pt-2 border-t border-gray-700/50">
               <p className="text-[10px] text-gray-500 font-mono">
-                Last: {lastLogin ? new Date(lastLogin).toLocaleString() : 'N/A'}
+                <LiveClock label="Last: " />
               </p>
             </div>
           </div>

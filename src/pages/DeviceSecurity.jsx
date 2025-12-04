@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Smartphone, ShieldAlert, Radio, Scan, CheckCircle } from "lucide-react";
+import LiveClock from "@/components/shared/LiveClock";
 
 export default function DeviceSecurity() {
   return (
@@ -30,7 +31,7 @@ export default function DeviceSecurity() {
                             <CheckCircle className="w-5 h-5 text-green-400" />
                             <div>
                                 <p className="font-semibold text-white">No Malware Detected</p>
-                                <p className="text-xs text-gray-400">Last scan: 2 minutes ago</p>
+                                <p className="text-xs text-gray-400">Last scan: <LiveClock /></p>
                             </div>
                         </div>
                         <Button size="sm" variant="outline" className="border-green-500/30 text-green-400">Scan Now</Button>
