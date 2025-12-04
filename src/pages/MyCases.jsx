@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity
 } from "lucide-react";
 import { toast } from "sonner";
 
