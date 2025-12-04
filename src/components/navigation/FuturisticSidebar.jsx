@@ -146,6 +146,14 @@ const caseItems = [
     url: createPageUrl('Cases'),
     glow: 'blue',
     badge: 'NEW'
+  },
+  {
+    id: 'case-docs',
+    title: 'Document Manager',
+    icon: FileText,
+    url: createPageUrl('CaseDocumentManager'),
+    glow: 'cyan',
+    badge: 'NEW'
   }
 ];
 
