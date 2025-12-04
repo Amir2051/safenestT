@@ -17,6 +17,8 @@ import {
   Shield, AlertTriangle, CheckCircle, Loader2, ChevronRight,
   Briefcase, Building2, DollarSign, Calendar
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function CaseDocumentManager() {
   const [selectedCase, setSelectedCase] = useState(null);
