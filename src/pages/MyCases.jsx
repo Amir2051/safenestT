@@ -192,12 +192,21 @@ export default function MyCases() {
   }
 
   const statusConfig = {
+    // Standard statuses
+    pending: { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50', icon: Clock, label: 'Pending' },
+    'in review': { color: 'bg-orange-500/20 text-orange-400 border-orange-500/50', icon: Eye, label: 'In Review' },
+    'in progress': { color: 'bg-blue-500/20 text-blue-400 border-blue-500/50', icon: Activity, label: 'In Progress' },
+    called: { color: 'bg-purple-500/20 text-purple-400 border-purple-500/50', icon: Phone, label: 'Called' },
+    resolved: { color: 'bg-green-500/20 text-green-400 border-green-500/50', icon: CheckCircle, label: 'Resolved' },
+    closed: { color: 'bg-gray-500/20 text-gray-400 border-gray-500/50', icon: FileText, label: 'Closed' },
+    
+    // Legacy/Other
+    new: { color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50', icon: Clock, label: 'New' },
     reported: { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50', icon: Clock, label: 'Reported' },
     investigating: { color: 'bg-blue-500/20 text-blue-400 border-blue-500/50', icon: Eye, label: 'Investigating' },
     traced: { color: 'bg-purple-500/20 text-purple-400 border-purple-500/50', icon: Wallet, label: 'Traced' },
     recovering: { color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50', icon: DollarSign, label: 'Recovering' },
-    recovered: { color: 'bg-green-500/20 text-green-400 border-green-500/50', icon: CheckCircle, label: 'Recovered' },
-    closed: { color: 'bg-gray-500/20 text-gray-400 border-gray-500/50', icon: FileText, label: 'Closed' }
+    recovered: { color: 'bg-green-500/20 text-green-400 border-green-500/50', icon: CheckCircle, label: 'Recovered' }
   };
 
   const adminStatusConfig = {
