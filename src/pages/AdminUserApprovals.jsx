@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
   UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, 
-  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck
+  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck, Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
