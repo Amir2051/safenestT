@@ -180,7 +180,7 @@ export default function MyCases() {
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardContent className="p-4 text-center">
             <FileText className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-white">{stats.total}</p>
+            <p className="text-3xl font-bold text-white">{stats.total + activeStats.count}</p>
             <p className="text-sm text-gray-400">Total Cases</p>
           </CardContent>
         </Card>
