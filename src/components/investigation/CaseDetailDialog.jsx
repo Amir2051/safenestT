@@ -110,10 +110,13 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const saveEdits = async () => {
     setSaving(true);
     try {
-      const entityName = caseData._entityName || 'InvestigationCase';
-      const updateFn = entityName === 'FraudCase' 
-        ? base44.entities.FraudCase.update 
-        : base44.entities.InvestigationCase.update;
+      // Determine correct entity update function (default to ClientCase)
+      let updateFn = base44.entities.ClientCase.update;
+      if (caseData._entityName === 'FraudCase') {
+        updateFn = base44.entities.FraudCase.update;
+      } else if (caseData._entityName === 'InvestigationCase') {
+        updateFn = base44.entities.InvestigationCase.update;
+      }
 
       const updates = {
         // Shared/InvestigationCase fields
@@ -151,9 +154,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
       await updateFn(caseData.id, updates);
       
-      toast.success("Case updated successfully!");
+      toast.success("Victim Information Updated Successfully.");
       setEditing(false);
-      onUpdate();
+      if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Save error:', error);
       toast.error("Failed to save: " + error.message);

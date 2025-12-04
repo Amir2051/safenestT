@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Search, Filter, Plus, Clock, CheckCircle2, AlertTriangle, 
   Phone, User, MoreHorizontal, ArrowUpRight, Shield, Sparkles
@@ -25,6 +25,7 @@ export default function Cases() {
   const [selectedCaseId, setSelectedCaseId] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all_cases");
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -310,8 +311,7 @@ export default function Cases() {
             setSelectedCaseId(null);
           }} 
           onUpdate={() => {
-             // Invalidate queries to refresh list
-             base44.entities.ClientCase.list(); // Trigger fetch implicitly or use queryClient
+             queryClient.invalidateQueries({ queryKey: ['client-cases'] });
           }}
         />
       )}

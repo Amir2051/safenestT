@@ -211,6 +211,8 @@ export default function CaseManagement({ cases }) {
           onClose={() => setSelectedCase(null)}
           onUpdate={() => {
             queryClient.invalidateQueries({ queryKey: ['investigation-cases'] });
+            queryClient.invalidateQueries({ queryKey: ['client-cases-admin'] });
+            queryClient.invalidateQueries({ queryKey: ['client-cases'] });
           }}
         />
       )}
