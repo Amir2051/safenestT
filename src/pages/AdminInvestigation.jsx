@@ -37,42 +37,15 @@ export default function AdminInvestigation() {
     });
   }, [navigate]);
 
-  const { data: fraudCases = [], isLoading: loadingFraud } = useQuery({
-    queryKey: ['fraud-cases'],
+  const { data: clientCases = [], isLoading: loadingCases } = useQuery({
+    queryKey: ['client-cases-admin'],
     queryFn: async () => {
-      const cases = await base44.asServiceRole.entities.FraudCase.list('-created_date');
-      // Fetch user details for each case
-      const users = await base44.asServiceRole.entities.User.list();
-      return cases.map(c => {
-        const creator = users.find(u => u.email === c.created_by);
-        return {
-          ...c,
-          created_by_name: creator?.full_name,
-          created_by_email: creator?.email || c.created_by
-        };
-      });
+      // Use asServiceRole to ensure we get ALL cases regardless of RLS (though admin RLS allows it)
+      const cases = await base44.asServiceRole.entities.ClientCase.list('-created_date');
+      return cases;
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
-    refetchInterval: 30000
-  });
-
-  const { data: investigationCases = [], isLoading: loadingInvestigation } = useQuery({
-    queryKey: ['investigation-cases'],
-    queryFn: async () => {
-      const cases = await base44.asServiceRole.entities.InvestigationCase.list('-created_date');
-      // Fetch user details for each case
-      const users = await base44.asServiceRole.entities.User.list();
-      return cases.map(c => {
-        const creator = users.find(u => u.email === c.created_by);
-        return {
-          ...c,
-          created_by_name: creator?.full_name,
-          created_by_email: creator?.email || c.created_by
-        };
-      });
-    },
-    enabled: !!user && (user.role === 'admin' || user.is_admin),
-    refetchInterval: 30000
+    refetchInterval: 10000
   });
 
   const { data: recoveryFunds = [] } = useQuery({
