@@ -213,9 +213,44 @@ export default function MyCases() {
       </div>
 
       {/* Cases List */}
+      {activeInvestigations.length > 0 && (
+        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-blue-500/20 mb-6">
+            <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-blue-400" />
+                    Active Investigations
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {activeInvestigations.map(c => (
+                    <div key={c.id} className="p-4 bg-[#0f1419] rounded-lg border border-blue-500/10">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-white font-bold">{c.client_name}</h3>
+                                <Badge variant="outline" className="mt-1 border-blue-500/30 text-blue-400">
+                                    {c.status}
+                                </Badge>
+                            </div>
+                            <div className="text-right text-sm text-gray-400">
+                                <p>Urgency: <span className={c.urgency === 'High' || c.urgency === 'Critical' ? 'text-red-400' : 'text-yellow-400'}>{c.urgency}</span></p>
+                                <p>Updated: {new Date(c.updated_date || c.created_date).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        {c.notes && (
+                            <div className="mt-3 p-3 bg-blue-900/10 rounded border border-blue-500/10 text-sm text-gray-300">
+                                <p className="text-blue-400 text-xs font-bold mb-1">CASE UPDATE:</p>
+                                {c.notes}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+      )}
+
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
-          <CardTitle className="text-white">Your Submitted Cases</CardTitle>
+          <CardTitle className="text-white">Reported Scams History</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
