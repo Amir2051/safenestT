@@ -50,14 +50,6 @@ const navigationItems = [
   },
 
   {
-    id: 'electra',
-    title: 'Electra Wallet',
-    icon: Wallet,
-    url: createPageUrl('ElectraWallet'),
-    glow: 'purple',
-    badge: 'NEW'
-  },
-  {
     id: 'crypto',
     title: 'Crypto Protection',
     icon: Wallet,
@@ -78,6 +70,14 @@ const navigationItems = [
     icon: Smartphone,
     url: createPageUrl('DeviceSecurity'),
     glow: 'green'
+  },
+  {
+    id: 'electra',
+    title: 'Electra Wallet',
+    icon: Wallet,
+    url: createPageUrl('ElectraWallet'),
+    glow: 'purple',
+    badge: 'NEW'
   },
   {
     id: 'vpn',

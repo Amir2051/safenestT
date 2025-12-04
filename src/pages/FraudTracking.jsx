@@ -125,32 +125,56 @@ export default function FraudTracking() {
                               <thead className="bg-gray-800/50 text-gray-400">
                                 <tr>
                                   <th className="p-3">Hash</th>
-                                  <th className="p-3">Type</th>
+                                  <th className="p-3">From / To</th>
                                   <th className="p-3">Value</th>
+                                  <th className="p-3">Gas</th>
+                                  <th className="p-3">Status</th>
                                   <th className="p-3">Time</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-800">
-                                {scanData.transactions.slice(0, 5).map((tx) => (
+                                {scanData.transactions.map((tx) => (
                                   <tr key={tx.hash} className="hover:bg-gray-800/30">
                                     <td className="p-3 text-cyan-400">
                                       <a href={`https://etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
-                                        {tx.hash.substring(0, 10)}... <ExternalLink className="w-3 h-3" />
+                                        {tx.hash.substring(0, 8)}... <ExternalLink className="w-3 h-3" />
                                       </a>
                                     </td>
                                     <td className="p-3">
-                                      {tx.from.toLowerCase() === address.toLowerCase() 
-                                        ? <Badge variant="outline" className="text-red-400 border-red-500/30">OUT</Badge>
-                                        : <Badge variant="outline" className="text-green-400 border-green-500/30">IN</Badge>
-                                      }
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-1 text-xs">
+                                          <span className="text-gray-500">From:</span>
+                                          <span className="font-mono text-gray-300">{tx.from.substring(0, 6)}...{tx.from.substring(38)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-xs">
+                                          <span className="text-gray-500">To:</span>
+                                          <span className="font-mono text-gray-300">{tx.to ? `${tx.to.substring(0, 6)}...${tx.to.substring(38)}` : 'Contract'}</span>
+                                        </div>
+                                      </div>
                                     </td>
-                                    <td className="p-3 text-white">{tx.value} ETH</td>
-                                    <td className="p-3 text-gray-400">{new Date(tx.timeStamp * 1000).toLocaleDateString()}</td>
+                                    <td className="p-3 text-white font-mono">{tx.value} ETH</td>
+                                    <td className="p-3 text-gray-400 text-xs">
+                                      <div>Price: {tx.gasPrice}</div>
+                                      <div>Used: {tx.gasUsed}</div>
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="flex flex-col gap-1">
+                                        {tx.isError === '0' ? (
+                                          <Badge variant="outline" className="text-green-400 border-green-500/30">Success</Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-red-400 border-red-500/30">Failed</Badge>
+                                        )}
+                                        <span className="text-[10px] text-gray-500">{tx.confirmations} confs</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-gray-400 text-xs">
+                                      {new Date(tx.timeStamp * 1000).toLocaleString()}
+                                    </td>
                                   </tr>
                                 ))}
                                 {scanData.transactions.length === 0 && (
                                   <tr>
-                                    <td colSpan="4" className="p-4 text-center text-gray-500">No recent transactions</td>
+                                    <td colSpan="6" className="p-4 text-center text-gray-500">No transactions found</td>
                                   </tr>
                                 )}
                               </tbody>
