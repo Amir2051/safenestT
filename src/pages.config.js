@@ -82,6 +82,7 @@ import FraudTracking from './pages/FraudTracking';
 import DeviceSecurity from './pages/DeviceSecurity';
 import ClientProtection from './pages/ClientProtection';
 import CaseDocumentManager from './pages/CaseDocumentManager';
+import CryptoWalletChecker from './pages/CryptoWalletChecker';
 import __Layout from './Layout.jsx';
 
 
@@ -170,6 +171,7 @@ export const PAGES = {
     "DeviceSecurity": DeviceSecurity,
     "ClientProtection": ClientProtection,
     "CaseDocumentManager": CaseDocumentManager,
+    "CryptoWalletChecker": CryptoWalletChecker,
 }
 
 export const pagesConfig = {

@@ -249,6 +249,14 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
+    id: 'wallet-checker',
+    title: 'Crypto Wallet Checker',
+    icon: Wallet,
+    url: createPageUrl('CryptoWalletChecker'),
+    glow: 'orange',
+    badge: 'TOOL'
+  },
+  {
     id: 'le-access',
     title: 'LEO Portal Access',
     icon: Lock,
