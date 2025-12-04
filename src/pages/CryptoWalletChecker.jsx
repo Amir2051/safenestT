@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { 
   Search, Copy, FileText, Shield, AlertTriangle, 
-  Wallet, ArrowRight, ArrowLeft, ExternalLink, Loader2 
+  Wallet, ArrowRight, ArrowLeft, ExternalLink, Loader2, Brain 
 } from "lucide-react";
 
 export default function CryptoWalletChecker() {
@@ -19,10 +19,10 @@ export default function CryptoWalletChecker() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
 
-  // Auto-scan if address provided in URL
   useEffect(() => {
     const urlAddress = searchParams.get("address");
     if (urlAddress && !data) {
+      setAddress(urlAddress);
       handleScan(urlAddress);
     }
   }, [searchParams]);
@@ -59,7 +59,6 @@ export default function CryptoWalletChecker() {
     
     try {
       const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
       let y = 20;
 
       // Header
@@ -145,7 +144,7 @@ export default function CryptoWalletChecker() {
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={copyData} disabled={!data}>
-              <Copy className="w-4 h-4 mr-2" /> Copy Raw Data
+              <Copy className="w-4 h-4 mr-2" /> Copy Data
             </Button>
             <Button className="bg-blue-600 hover:bg-blue-700" onClick={generateReport} disabled={!data}>
               <FileText className="w-4 h-4 mr-2" /> Generate Report

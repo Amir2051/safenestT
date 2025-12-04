@@ -33,6 +33,7 @@ export default async function handler(req) {
 
   try {
     // Fetch data in parallel
+    // We fetch: Balance, Normal Tx, ERC20 Tx, ERC721 Tx
     const [balanceRes, txRes, tokenRes, erc721Res] = await Promise.all([
       fetch(`${BASE_URL}?module=account&action=balance&address=${address}&tag=latest&apikey=${API_KEY}`),
       fetch(`${BASE_URL}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${API_KEY}`),
@@ -56,7 +57,8 @@ export default async function handler(req) {
       to: tx.to,
       value: (parseInt(tx.value) / 1e18).toFixed(4),
       isError: tx.isError,
-      functionName: tx.functionName
+      functionName: tx.functionName,
+      input: tx.input
     })) : [];
 
     // Calculate counts
@@ -71,7 +73,10 @@ export default async function handler(req) {
     if (outgoingCount > incomingCount * 2 && outgoingCount > 10) risks.push("High outgoing activity (Possible drainage)");
     if (transactions.some(tx => tx.isError === '1')) risks.push("Failed transactions detected");
     if (contractInteractions.length > 0) risks.push(`${contractInteractions.length} contract interactions detected`);
-
+    
+    // Check for phishing/scam reports (Simulation/Placeholder as Etherscan API free tier doesn't give risk score directly without pro features sometimes, but we can infer or use external lists if we had them. For now, basic heuristic.)
+    // Note: Real fraud checking often requires specific intelligence APIs (like Chainalysis or specialized endpoints). 
+    
     return new Response(JSON.stringify({
       address,
       balance,
@@ -96,9 +101,3 @@ export default async function handler(req) {
     });
   }
 }
-
-// Etherscan API endpoints:
-// Balance: module=account&action=balance
-// Normal Tx: module=account&action=txlist
-// ERC20: module=account&action=tokentx
-// ERC721: module=account&action=tokennfttx
