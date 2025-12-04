@@ -19,6 +19,46 @@ Deno.serve(async (req) => {
 
         const openai = new OpenAI({ apiKey });
 
+        // Handle Media Director AI Tool (manage_media)
+        if (params.action && ['upload', 'retrieve', 'list', 'delete'].includes(params.action)) {
+            const { action, media_id, media_type, file_name, file_url, description, user_id: target_user_id } = params;
+            
+            if (action === 'upload') {
+                if (!file_url || !media_type) {
+                    return Response.json({ error: 'file_url and media_type are required for upload' }, { status: 400 });
+                }
+                const newMedia = await base44.entities.MediaFile.create({
+                    file_name,
+                    file_url,
+                    media_type,
+                    description,
+                    user_id: target_user_id || user.id
+                });
+                return Response.json({ status: 'success', media: newMedia, message: 'Media uploaded successfully' });
+            }
+
+            if (action === 'list') {
+                const filters = {};
+                if (media_type) filters.media_type = media_type;
+                if (target_user_id) filters.user_id = target_user_id;
+                
+                const files = await base44.entities.MediaFile.filter(filters, '-created_date', 50);
+                return Response.json({ status: 'success', files });
+            }
+
+            if (action === 'retrieve') {
+                if (!media_id) return Response.json({ error: 'media_id required' }, { status: 400 });
+                const file = await base44.entities.MediaFile.get(media_id);
+                return Response.json({ status: 'success', file });
+            }
+
+            if (action === 'delete') {
+                if (!media_id) return Response.json({ error: 'media_id required' }, { status: 400 });
+                await base44.entities.MediaFile.delete(media_id);
+                return Response.json({ status: 'success', message: 'Media deleted successfully' });
+            }
+        }
+
         if (endpoint === 'chat') {
             const { message, history = [] } = params;
 
