@@ -41,6 +41,15 @@ export default function MyCases() {
     enabled: !!user,
   });
 
+  const { data: activeInvestigations = [] } = useQuery({
+    queryKey: ['my-client-cases'],
+    queryFn: () => base44.entities.ClientCase.filter(
+        { client_email: user.email },
+        '-created_date'
+    ),
+    enabled: !!user
+  });
+
   const updateCaseMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.FraudCase.update(id, data),
     onSuccess: () => {
