@@ -54,7 +54,7 @@ export default function AdminInvestigation() {
     enabled: !!user && (user.role === 'admin' || user.is_admin)
   });
 
-  if (!user || loadingFraud || loadingInvestigation) {
+  if (!user || loadingCases) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
@@ -62,15 +62,11 @@ export default function AdminInvestigation() {
     );
   }
 
-  // Combine both case types
-  const allCases = [
-    ...fraudCases.map(c => ({ ...c, case_type: 'fraud' })),
-    ...investigationCases.map(c => ({ ...c, case_type: 'investigation' }))
-  ].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  const allCases = clientCases;
 
-  const activeCases = allCases.filter(c => c.status !== 'closed' && c.status !== 'recovered');
-  const totalRecovered = allCases.reduce((sum, c) => 
-    sum + ((c.amount_stolen_usd || 0) * (c.recovery_progress || 0)) / 100, 0
+  const activeCases = allCases.filter(c => c.status !== 'Closed' && c.status !== 'Resolved');
+  const totalRecovered = allCases.filter(c => c.status === 'Resolved').reduce((sum, c) => 
+    sum + (c.amount_lost || 0), 0
   );
   const totalFundBalance = recoveryFunds
     .filter(f => f.transaction_type === 'contribution' && f.status === 'confirmed')
