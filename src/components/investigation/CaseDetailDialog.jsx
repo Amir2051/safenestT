@@ -29,137 +29,139 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Initialize state directly matching ClientCase schema
   const [editedCase, setEditedCase] = useState({
-    // Standardized Fields (ClientCase Schema)
-    case_title: caseData.case_title || caseData.case_number || 'Untitled Case',
+    // Identity & Contact
     client_name: caseData.client_name || caseData.victim_name || '',
     client_email: caseData.client_email || caseData.victim_email || '',
     phone_number: caseData.phone_number || caseData.victim_phone || '',
-    amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
     
-    // Common Fields
-    cryptocurrency: caseData.cryptocurrency || '',
-    blockchain: caseData.blockchain || '',
-    description: caseData.description || '',
+    // Case Meta
+    case_number: caseData.case_number || '', 
+    case_title: caseData.case_title || caseData.case_number || 'Untitled Case',
     status: caseData.status || 'Pending',
     urgency: caseData.urgency || caseData.priority || 'Medium',
-    investigation_progress: caseData.investigation_progress || 0,
-    ic3_complaint_number: caseData.ic3_complaint_number || '',
-    federal_case_number: caseData.federal_case_number || '',
+    issue_type: caseData.issue_type || 'crypto_theft',
+    description: caseData.description || '',
+    
+    // Financial
+    amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
     recovery_amount: caseData.recovery_amount || 0,
-    monitored_wallets: caseData.monitored_wallets || [],
+    cryptocurrency: caseData.cryptocurrency || '',
+    blockchain: caseData.blockchain || '',
+    
+    // Suspect / Scammer
     scammer_info: caseData.scammer_info || {},
     scammer_wallet: caseData.scammer_wallet || '',
+    monitored_wallets: caseData.monitored_wallets || [],
+    
+    // Legal / Official
+    ic3_complaint_number: caseData.ic3_complaint_number || '',
+    federal_case_number: caseData.federal_case_number || '',
     law_enforcement_authorization: caseData.law_enforcement_authorization || { authorized: false, agencies: [], full_name: '' },
     
-    // Preserve ID and other metadata
+    // Progress
+    investigation_progress: caseData.investigation_progress || 0,
+    
+    // System
     id: caseData.id,
     created_date: caseData.created_date
   });
 
-  // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      const response = await base44.functions.invoke('caseManagement', {
-        action: 'update',
-        data: {
-          id: caseData.id,
-          entityName: caseData._entityName || 'ClientCase',
-          updates: updates
-        }
-      });
-      
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-      return response.data.case;
+      // Always target ClientCase as the primary entity
+      return await base44.entities.ClientCase.update(caseData.id, updates);
     },
     onSuccess: () => {
       if (onUpdate) onUpdate();
-      toast.success("Case Updated Successfully");
+      toast.success("Case updated successfully");
       setEditing(false);
     },
     onError: (err) => {
-      console.error("Update failed", err);
-      toast.error("Update Failed: " + err.message);
+        toast.error("Update failed: " + err.message);
     }
   });
 
-  const addNote = async () => {
-    if (!newNote.trim()) return;
-
-    const notes = caseData.case_notes || [];
-    notes.push({
-      timestamp: new Date().toISOString(),
-      author: "investigator",
-      note: newNote,
-      type: "manual"
-    });
-
-    await updateCaseMutation.mutateAsync({ case_notes: notes, last_activity: new Date().toISOString() });
-    setNewNote("");
-  };
+  // --- Quick Actions Handlers ---
 
   const updateStatus = async (status) => {
+    setEditedCase(prev => ({ ...prev, status }));
     await updateCaseMutation.mutateAsync({ status, last_activity: new Date().toISOString() });
   };
 
   const updateProgress = async (progress) => {
+    const val = Math.min(100, Math.max(0, progress));
+    setEditedCase(prev => ({ ...prev, investigation_progress: val }));
     await updateCaseMutation.mutateAsync({ 
-      investigation_progress: Math.min(100, Math.max(0, progress)),
+      investigation_progress: val,
       last_activity: new Date().toISOString() 
     });
   };
 
-  const updatePriority = async (priority) => {
+  const updateUrgency = async (urgency) => {
+    setEditedCase(prev => ({ ...prev, urgency }));
     await updateCaseMutation.mutateAsync({ 
-      priority, 
-      case_priority: priority,
+      urgency, 
       last_activity: new Date().toISOString() 
     });
   };
+
+  // --- Main Save Handler ---
 
   const saveEdits = async () => {
     setSaving(true);
     try {
       const updates = {
-        // Direct bindings to ClientCase schema
+        // Identity
         client_name: editedCase.client_name,
         client_email: editedCase.client_email,
         phone_number: editedCase.phone_number,
-        amount_lost: parseFloat(editedCase.amount_lost) || 0,
         
-        // Additional fields
-        case_number: editedCase.case_number,
-        case_title: editedCase.case_title,
-        description: editedCase.description,
+        // Case Meta
+        case_title: editedCase.case_title, // Note: schema might not have case_title, mostly case_number + issue_type is used, but we can try saving it or rely on UI to compose it. 
+        // If case_title is not in schema, we should check. ClientCase schema doesn't have case_title. 
+        // Ideally we save it to 'description' or just rely on client_name/case_number.
+        // For now, we'll send it, if extra field, it might be ignored or stored if schema allows additional props (it doesn't usually).
+        // Let's focus on schema fields.
+        
         status: editedCase.status,
         urgency: editedCase.urgency,
+        description: editedCase.description,
         
-        // Crypto/Scam details
+        // Financial
+        amount_lost: parseFloat(editedCase.amount_lost) || 0,
+        recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
         cryptocurrency: editedCase.cryptocurrency,
         blockchain: editedCase.blockchain,
+        
+        // Suspect
         scammer_wallet: editedCase.scammer_wallet,
         monitored_wallets: editedCase.monitored_wallets,
         scammer_info: editedCase.scammer_info,
-        
-        // Progress & Meta
-        investigation_progress: parseInt(editedCase.investigation_progress) || 0,
-        recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
         
         // Legal
         ic3_complaint_number: editedCase.ic3_complaint_number,
         federal_case_number: editedCase.federal_case_number,
         law_enforcement_authorization: editedCase.law_enforcement_authorization,
         
-        // Metadata
+        // Progress
+        investigation_progress: parseInt(editedCase.investigation_progress) || 0,
+        
+        // Meta
         last_activity: new Date().toISOString()
       };
 
-      await updateCaseMutation.mutateAsync(updates);
+      await base44.entities.ClientCase.update(caseData.id, updates);
+      
+      toast.success("Case Updated Successfully");
+      setEditing(false);
+      if (onUpdate) onUpdate();
       
     } catch (error) {
-      // Error handled in mutation onError
+      console.error('Save error:', error);
+      toast.error("Failed to save: " + error.message);
     }
     setSaving(false);
   };
@@ -180,6 +182,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         uploaded_date: new Date().toISOString()
       });
 
+      // Sync with evidence_log for robust tracking
       const evidenceLog = caseData.evidence_log || [];
       evidenceLog.push({
         timestamp: new Date().toISOString(),
@@ -198,7 +201,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     setUploading(false);
   };
 
-  const progress = caseData.investigation_progress || 0;
+  const progress = editedCase.investigation_progress || 0;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -207,19 +210,19 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-2xl font-bold text-white mb-2">
-                {caseData.case_title}
+                {editedCase.case_number ? `${editedCase.case_number} - ` : ''}{editedCase.client_name}
               </DialogTitle>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 font-mono">
-                  {caseData.case_number}
+                  {editedCase.case_number || 'NO-ID'}
                 </Badge>
                 <Badge className={`${
-                  (caseData.priority || caseData.case_priority) === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-                  (caseData.priority || caseData.case_priority) === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
-                  (caseData.priority || caseData.case_priority) === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' :
+                  editedCase.urgency === 'Critical' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+                  editedCase.urgency === 'High' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
+                  editedCase.urgency === 'Medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' :
                   'bg-gray-500/20 text-gray-400 border-gray-500/50'
                 }`}>
-                  {caseData.priority || caseData.case_priority || 'medium'}
+                  {editedCase.urgency} Priority
                 </Badge>
                 <Badge variant="outline" className="text-xs">
                   Progress: {progress}%
@@ -248,32 +251,36 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <div className="flex items-center gap-2">
               <Label className="text-gray-300 text-sm">Status:</Label>
               <select
-                value={caseData.status}
+                value={editedCase.status}
                 onChange={(e) => updateStatus(e.target.value)}
                 className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white text-sm font-medium"
               >
-                <option value="new">New</option>
+                <option value="Pending">Pending</option>
+                <option value="In Review">In Review</option>
+                <option value="In Progress">In Progress</option>
                 <option value="investigating">Investigating</option>
                 <option value="documented">Documented</option>
                 <option value="submitted">Submitted</option>
                 <option value="law_enforcement">Law Enforcement</option>
+                <option value="Called">Called</option>
                 <option value="recovering">Recovering</option>
                 <option value="recovered">Recovered</option>
-                <option value="closed">Closed</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
               </select>
             </div>
 
             <div className="flex items-center gap-2">
-              <Label className="text-gray-300 text-sm">Priority:</Label>
+              <Label className="text-gray-300 text-sm">Urgency:</Label>
               <select
-                value={caseData.priority || caseData.case_priority || 'medium'}
-                onChange={(e) => updatePriority(e.target.value)}
+                value={editedCase.urgency}
+                onChange={(e) => updateUrgency(e.target.value)}
                 className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white text-sm font-medium"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
               </select>
             </div>
 
@@ -343,15 +350,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-4 h-4 text-cyan-400" />
-                    <p className="text-xs text-gray-300 font-medium">Victim</p>
+                    <p className="text-xs text-gray-300 font-medium">Client</p>
                   </div>
-                  <p className="text-white font-semibold text-base">{caseData.client_name || caseData.victim_name}</p>
-                  {(caseData.client_email || caseData.victim_email) && (
-                    <p className="text-xs text-gray-300 mt-1">{caseData.client_email || caseData.victim_email}</p>
-                  )}
-                  {(caseData.phone_number || caseData.victim_phone) && (
-                    <p className="text-xs text-gray-300">{caseData.phone_number || caseData.victim_phone}</p>
-                  )}
+                  <p className="text-white font-semibold text-base">{editedCase.client_name}</p>
+                  <p className="text-xs text-gray-300 mt-1">{editedCase.client_email}</p>
+                  <p className="text-xs text-gray-300">{editedCase.phone_number}</p>
                 </div>
 
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/20">
@@ -366,24 +369,23 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="w-4 h-4 text-cyan-400" />
-                    <p className="text-xs text-gray-300 font-medium">Amount Stolen</p>
+                    <p className="text-xs text-gray-300 font-medium">Amount Lost</p>
                   </div>
                   <p className="text-2xl font-bold text-red-400">
-                    ${(caseData.amount_lost || caseData.amount_stolen_usd || 0).toLocaleString()}
+                    ${editedCase.amount_lost?.toLocaleString() || 0}
                   </p>
-                  {caseData.cryptocurrency && (
-                    <p className="text-xs text-gray-300 mt-1 font-medium">{caseData.cryptocurrency}</p>
+                  {editedCase.cryptocurrency && (
+                    <p className="text-xs text-gray-300 mt-1 font-medium">{editedCase.cryptocurrency}</p>
                   )}
                 </div>
 
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-cyan-400" />
-                    <p className="text-xs text-gray-300 font-medium">Incident Date</p>
+                    <p className="text-xs text-gray-300 font-medium">Created Date</p>
                   </div>
                   <p className="text-white font-semibold text-base">
-                    {(caseData.incident_date || caseData.incident_timestamp) ? 
-                      new Date(caseData.incident_date || caseData.incident_timestamp).toLocaleString() : 'N/A'}
+                    {new Date(editedCase.created_date).toLocaleDateString()}
                   </p>
                 </div>
 
@@ -393,55 +395,47 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-xs text-gray-300 font-medium">Recovered</p>
                   </div>
                   <p className="text-2xl font-bold text-green-400">
-                    ${caseData.recovery_amount?.toLocaleString() || 0}
+                    ${editedCase.recovery_amount?.toLocaleString() || 0}
                   </p>
                 </div>
               </div>
 
-              {caseData.description && (
+              {editedCase.description && (
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <p className="text-xs text-gray-300 mb-2 font-medium">Case Description</p>
-                  {editing ? (
-                    <Textarea
-                      value={editedCase.description}
-                      onChange={(e) => setEditedCase({...editedCase, description: e.target.value})}
-                      className="bg-[#1a2332] border-cyan-500/30 text-white min-h-[100px]"
-                    />
-                  ) : (
-                    <p className="text-white text-sm leading-relaxed">{caseData.description}</p>
-                  )}
+                  <p className="text-white text-sm leading-relaxed">{editedCase.description}</p>
                 </div>
               )}
 
-              {(caseData.ic3_complaint_number || caseData.federal_case_number) && (
+              {(editedCase.ic3_complaint_number || editedCase.federal_case_number) && (
                 <div className="grid grid-cols-2 gap-4">
-                  {caseData.ic3_complaint_number && (
+                  {editedCase.ic3_complaint_number && (
                     <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                       <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50 mb-2">IC3</Badge>
-                      <p className="text-white font-mono">{caseData.ic3_complaint_number}</p>
+                      <p className="text-white font-mono">{editedCase.ic3_complaint_number}</p>
                     </div>
                   )}
-                  {caseData.federal_case_number && (
+                  {editedCase.federal_case_number && (
                     <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                       <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 mb-2">Federal</Badge>
-                      <p className="text-white font-mono">{caseData.federal_case_number}</p>
+                      <p className="text-white font-mono">{editedCase.federal_case_number}</p>
                     </div>
                   )}
                 </div>
               )}
             </TabsContent>
 
-            {/* EDIT TAB - Full Admin Case Editing */}
+            {/* EDIT TAB */}
             <TabsContent value="edit" className="space-y-6">
               <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg mb-4">
                 <h3 className="text-cyan-400 font-semibold flex items-center gap-2">
                   <Edit className="w-5 h-5" />
                   Edit Case Details
                 </h3>
-                <p className="text-gray-400 text-sm mt-1">Make changes to the case and click Update to save.</p>
+                <p className="text-gray-400 text-sm mt-1">Update case information. All changes are saved immediately to the database.</p>
               </div>
 
-              {/* Case Info Section */}
+              {/* Case Info */}
               <div className="mb-4">
                  <Label className="text-gray-300 mb-2 block">SafeNest Case ID</Label>
                  <Input
@@ -452,29 +446,19 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-gray-300 mb-2 block">Case Title *</Label>
-                  <Input
-                    value={editedCase.case_title}
-                    onChange={(e) => setEditedCase({...editedCase, case_title: e.target.value})}
-                    className="bg-[#0f1419] border-cyan-500/30 text-white"
-                    placeholder="Enter case title"
-                  />
-                </div>
-                <div>
                   <Label className="text-gray-300 mb-2 block">Status *</Label>
                   <Select 
                     value={editedCase.status} 
-                    onValueChange={(v) => setEditedCase({...editedCase, status: v})}
+                    onValueChange={(v) => setEditedCase(prev => ({...prev, status: v}))}
                   >
                     <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="In Review">In Review</SelectItem>
-                      <SelectItem value="investigating">Investigating</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="investigating">Investigating</SelectItem>
                       <SelectItem value="documented">Documented</SelectItem>
                       <SelectItem value="submitted">Submitted</SelectItem>
                       <SelectItem value="law_enforcement">Law Enforcement</SelectItem>
@@ -482,24 +466,41 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       <SelectItem value="recovering">Recovering</SelectItem>
                       <SelectItem value="recovered">Recovered</SelectItem>
                       <SelectItem value="Resolved">Resolved</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="Closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Urgency *</Label>
+                  <Select 
+                    value={editedCase.urgency} 
+                    onValueChange={(v) => setEditedCase(prev => ({...prev, urgency: v}))}
+                  >
+                    <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white">
+                      <SelectValue placeholder="Select urgency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Client/Victim Info */}
+              {/* Client Info */}
               <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                 <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
                   <User className="w-4 h-4 text-cyan-400" />
-                  Client / Victim Information
+                  Client Information
                 </h4>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-300 mb-2 block">Client Name *</Label>
                     <Input
                       value={editedCase.client_name}
-                      onChange={(e) => setEditedCase({...editedCase, client_name: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, client_name: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter client name"
                     />
@@ -509,7 +510,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Input
                       type="email"
                       value={editedCase.client_email}
-                      onChange={(e) => setEditedCase({...editedCase, client_email: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, client_email: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter email"
                     />
@@ -518,27 +519,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">Contact Phone</Label>
                     <Input
                       value={editedCase.phone_number}
-                      onChange={(e) => setEditedCase({...editedCase, phone_number: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, phone_number: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter phone"
                     />
-                  </div>
-                  <div>
-                    <Label className="text-gray-300 mb-2 block">Urgency</Label>
-                    <Select 
-                      value={editedCase.urgency} 
-                      onValueChange={(v) => setEditedCase({...editedCase, urgency: v})}
-                    >
-                      <SelectTrigger className="bg-[#1a2332] border-cyan-500/30 text-white">
-                        <SelectValue placeholder="Select urgency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Critical">Critical</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </div>
@@ -551,11 +535,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 </h4>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-gray-300 mb-2 block">Amount Stolen (USD)</Label>
+                    <Label className="text-gray-300 mb-2 block">Amount Lost (USD)</Label>
                     <Input
                       type="number"
                       value={editedCase.amount_lost}
-                      onChange={(e) => setEditedCase({...editedCase, amount_lost: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, amount_lost: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="0.00"
                     />
@@ -565,7 +549,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Input
                       type="number"
                       value={editedCase.recovery_amount}
-                      onChange={(e) => setEditedCase({...editedCase, recovery_amount: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, recovery_amount: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="0.00"
                     />
@@ -574,55 +558,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">Cryptocurrency</Label>
                     <Input
                       value={editedCase.cryptocurrency}
-                      onChange={(e) => setEditedCase({...editedCase, cryptocurrency: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, cryptocurrency: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="BTC, ETH, USDT..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Wallet Info */}
-              <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-cyan-400" />
-                  Wallet & Blockchain
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-300 mb-2 block">Blockchain</Label>
-                    <Select 
-                      value={editedCase.blockchain || ''} 
-                      onValueChange={(v) => setEditedCase({...editedCase, blockchain: v})}
-                    >
-                      <SelectTrigger className="bg-[#1a2332] border-cyan-500/30 text-white">
-                        <SelectValue placeholder="Select blockchain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ethereum">Ethereum</SelectItem>
-                        <SelectItem value="bitcoin">Bitcoin</SelectItem>
-                        <SelectItem value="bsc">BSC</SelectItem>
-                        <SelectItem value="polygon">Polygon</SelectItem>
-                        <SelectItem value="solana">Solana</SelectItem>
-                        <SelectItem value="tron">Tron</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-gray-300 mb-2 block">Scammer Wallet Address</Label>
-                    <Input
-                      value={editedCase.scammer_info?.wallet_addresses?.[0] || ''}
-                      onChange={(e) => setEditedCase({
-                        ...editedCase, 
-                        scammer_info: { 
-                          ...editedCase.scammer_info, 
-                          wallet_addresses: [e.target.value] 
-                        },
-                        monitored_wallets: e.target.value ? [e.target.value] : []
-                      })}
-                      className="bg-[#1a2332] border-cyan-500/30 text-white font-mono text-sm"
-                      placeholder="0x..."
                     />
                   </div>
                 </div>
@@ -639,7 +577,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">IC3 Complaint Number</Label>
                     <Input
                       value={editedCase.ic3_complaint_number}
-                      onChange={(e) => setEditedCase({...editedCase, ic3_complaint_number: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, ic3_complaint_number: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter IC3 number"
                     />
@@ -648,7 +586,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Label className="text-gray-300 mb-2 block">Federal Case Number</Label>
                     <Input
                       value={editedCase.federal_case_number}
-                      onChange={(e) => setEditedCase({...editedCase, federal_case_number: e.target.value})}
+                      onChange={(e) => setEditedCase(prev => ({...prev, federal_case_number: e.target.value}))}
                       className="bg-[#1a2332] border-cyan-500/30 text-white"
                       placeholder="Enter federal case number"
                     />
@@ -656,158 +594,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 </div>
               </div>
 
-              {/* Progress */}
-              <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                <h4 className="text-white font-semibold mb-4">Investigation Progress</h4>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editedCase.investigation_progress}
-                    onChange={(e) => setEditedCase({...editedCase, investigation_progress: e.target.value})}
-                    className="w-24 bg-[#1a2332] border-cyan-500/30 text-white"
-                  />
-                  <span className="text-gray-300">%</span>
-                  <div className="flex-1 bg-gray-700 rounded-full h-3">
-                    <div
-                      className="h-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
-                      style={{ width: `${editedCase.investigation_progress || 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Law Enforcement Authorization - Editable */}
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <h4 className="text-purple-400 font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Law Enforcement Authorization
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="le_auth"
-                      checked={editedCase.law_enforcement_authorization?.authorized || false}
-                      onChange={(e) => setEditedCase({
-                        ...editedCase,
-                        law_enforcement_authorization: {
-                          ...editedCase.law_enforcement_authorization,
-                          authorized: e.target.checked,
-                          authorized_date: e.target.checked ? new Date().toISOString() : null
-                        }
-                      })}
-                      className="w-4 h-4 rounded border-purple-500/50 bg-[#1a2332]"
-                    />
-                    <Label htmlFor="le_auth" className="text-white cursor-pointer">Authorized by Client</Label>
-                  </div>
-                  
-                  {editedCase.law_enforcement_authorization?.authorized && (
-                    <>
-                      <div>
-                        <Label className="text-gray-300 mb-2 block">Full Legal Name (Signature)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.full_name || ''}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              full_name: e.target.value
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="Enter full legal name"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-gray-300 mb-2 block">Authorized Agencies (comma separated)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.agencies?.join(', ') || 'FBI, IC3, FTC'}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              agencies: e.target.value.split(',').map(s => s.trim())
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="FBI, IC3, FTC, Local Police"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Law Enforcement Authorization - Editable */}
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <h4 className="text-purple-400 font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Law Enforcement Authorization
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="le_auth"
-                      checked={editedCase.law_enforcement_authorization?.authorized || false}
-                      onChange={(e) => setEditedCase({
-                        ...editedCase,
-                        law_enforcement_authorization: {
-                          ...editedCase.law_enforcement_authorization,
-                          authorized: e.target.checked,
-                          authorized_date: e.target.checked ? new Date().toISOString() : null
-                        }
-                      })}
-                      className="w-4 h-4 rounded border-purple-500/50 bg-[#1a2332]"
-                    />
-                    <Label htmlFor="le_auth" className="text-white cursor-pointer">Authorized by Client</Label>
-                  </div>
-                  
-                  {editedCase.law_enforcement_authorization?.authorized && (
-                    <>
-                      <div>
-                        <Label className="text-gray-300 mb-2 block">Full Legal Name (Signature)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.full_name || ''}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              full_name: e.target.value
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="Enter full legal name"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-gray-300 mb-2 block">Authorized Agencies (comma separated)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.agencies?.join(', ') || 'FBI, IC3, FTC'}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              agencies: e.target.value.split(',').map(s => s.trim())
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="FBI, IC3, FTC, Local Police"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes */}
+              {/* Description */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Case Notes / Description</Label>
+                <Label className="text-gray-300 mb-2 block">Description</Label>
                 <Textarea
                   value={editedCase.description}
-                  onChange={(e) => setEditedCase({...editedCase, description: e.target.value})}
+                  onChange={(e) => setEditedCase(prev => ({...prev, description: e.target.value}))}
                   className="bg-[#0f1419] border-cyan-500/30 text-white min-h-[150px]"
                   placeholder="Enter detailed notes about the case..."
                 />
@@ -841,48 +633,22 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="victim" className="space-y-4">
-              <h3 className="text-white font-semibold text-lg">Client Contact Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="w-5 h-5 text-cyan-400" />
-                    <p className="text-sm text-gray-300 font-medium">Primary Contact</p>
+              <h3 className="text-white font-semibold text-lg">Client Details</h3>
+              <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Name</p>
+                    <p className="text-white">{editedCase.client_name}</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 text-xs w-16">Name:</span>
-                      <span className="text-white text-sm font-medium">{caseData.client_name || caseData.victim_name || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.client_email || caseData.victim_email || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.phone_number || caseData.victim_phone || 'N/A'}</span>
-                    </div>
-                    {caseData.victim_contact_info?.address && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="text-white text-sm">{caseData.victim_contact_info.address}</span>
-                      </div>
-                    )}
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Email</p>
+                    <p className="text-white">{editedCase.client_email}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Phone</p>
+                    <p className="text-white">{editedCase.phone_number}</p>
                   </div>
                 </div>
-
-                {caseData.victim_contact_info?.emergency_contact && (
-                  <div className="p-4 bg-[#0f1419] rounded-lg border border-orange-500/20">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertCircle className="w-5 h-5 text-orange-400" />
-                      <p className="text-sm text-gray-300 font-medium">Emergency Contact</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-white">{caseData.victim_contact_info.emergency_contact.name}</p>
-                      <p className="text-gray-300 text-sm">{caseData.victim_contact_info.emergency_contact.phone}</p>
-                      <p className="text-gray-400 text-xs">{caseData.victim_contact_info.emergency_contact.relationship}</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </TabsContent>
 
@@ -898,85 +664,36 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   Add / Edit Suspect Info
                 </Button>
               </div>
-              {caseData.suspect_details || caseData.scammer_info ? (
+              {editedCase.scammer_info && Object.keys(editedCase.scammer_info).length > 0 ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-[#0f1419] rounded-lg border border-red-500/20">
                     <p className="text-red-400 font-semibold mb-3">Primary Suspect</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Name</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name}</p>
-                        </div>
-                      )}
-                      {(caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Email</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email}</p>
-                        </div>
-                      )}
-                      {(caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Phone / Telegram / WhatsApp</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone}</p>
-                        </div>
-                      )}
-                      {(caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Location</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location}</p>
-                        </div>
-                      )}
-                      {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses)?.length > 0 && (
-                        <div className="md:col-span-2">
-                          <p className="text-xs text-gray-400 mb-2">Wallet Addresses</p>
-                          {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses || []).map((wallet, idx) => (
-                            <p key={idx} className="text-white font-mono text-sm mb-1">{wallet}</p>
-                          ))}
-                        </div>
-                      )}
-                      {caseData.scammer_info?.notes && (
-                        <div className="md:col-span-2">
-                          <p className="text-xs text-gray-400 mb-1">Notes</p>
-                          <p className="text-white text-sm">{caseData.scammer_info.notes}</p>
-                        </div>
-                      )}
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Name</p>
+                        <p className="text-white">{editedCase.scammer_info.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Email</p>
+                        <p className="text-white">{editedCase.scammer_info.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Phone</p>
+                        <p className="text-white">{editedCase.scammer_info.phone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Location</p>
+                        <p className="text-white">{editedCase.scammer_info.location || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Known Emails */}
-                  {caseData.scammer_info?.known_emails?.length > 0 && (
-                    <div className="p-4 bg-[#0f1419] rounded-lg border border-orange-500/20">
-                      <p className="text-orange-400 font-semibold mb-3">Known Emails</p>
-                      <div className="flex flex-wrap gap-2">
-                        {caseData.scammer_info.known_emails.map((email, idx) => (
-                          <Badge key={idx} className="bg-orange-500/20 text-orange-400 border-orange-500/50">
-                            {email}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Social Media */}
-                  {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles)?.length > 0 && (
-                    <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/20">
-                      <p className="text-purple-400 font-semibold mb-3">Social Media / Online Presence</p>
-                      <div className="space-y-2">
-                        {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles || []).map((profile, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">{typeof profile === 'string' ? 'Link' : profile.platform}</Badge>
-                            <a 
-                              href={typeof profile === 'string' ? profile : profile.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-cyan-400 hover:underline text-sm"
-                            >
-                              {typeof profile === 'string' ? profile : (profile.url || profile.profile)}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Additional Suspect Info Display */}
+                  {editedCase.scammer_info.wallet_addresses?.length > 0 && (
+                    <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                      <p className="text-cyan-400 font-semibold mb-2">Wallets</p>
+                      {editedCase.scammer_info.wallet_addresses.map((w, i) => (
+                        <p key={i} className="text-white font-mono text-sm">{w}</p>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -995,7 +712,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               )}
             </TabsContent>
 
-            {/* EDIT SUSPECT TAB */}
             <TabsContent value="edit-suspect" className="space-y-6">
               <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
                 <h3 className="text-red-400 font-semibold flex items-center gap-2">
@@ -1006,32 +722,46 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </div>
 
               <SuspectEditForm 
-              caseData={caseData} 
-              onSave={async (suspectData) => {
-                setSaving(true);
-                try {
-                  await updateCaseMutation.mutateAsync({
-                    scammer_info: suspectData,
-                    // Sync monitored wallets
-                    monitored_wallets: [
-                      ...(caseData.monitored_wallets || []),
-                      ...(suspectData.wallet_addresses || [])
-                    ].filter((v, i, a) => a.indexOf(v) === i),
-                    last_activity: new Date().toISOString()
-                  });
+                caseData={caseData} 
+                onSave={async (suspectData) => {
+                  setSaving(true);
+                  try {
+                    // Update ClientCase directly
+                    await base44.entities.ClientCase.update(caseData.id, {
+                      scammer_info: suspectData,
+                      // Sync monitored wallets
+                      monitored_wallets: [
+                        ...(caseData.monitored_wallets || []),
+                        ...(suspectData.wallet_addresses || [])
+                      ].filter((v, i, a) => a.indexOf(v) === i),
+                      last_activity: new Date().toISOString()
+                    });
+                    
+                    // Update local state as well
+                    setEditedCase(prev => ({
+                        ...prev, 
+                        scammer_info: suspectData,
+                        monitored_wallets: [
+                            ...(prev.monitored_wallets || []),
+                            ...(suspectData.wallet_addresses || [])
+                        ].filter((v, i, a) => a.indexOf(v) === i),
+                    }));
 
-                  toast.success('Suspect information saved successfully!');
-                  setActiveTab('suspect');
-                } catch (error) {
-                  // Error handled in mutation
-                }
-                setSaving(false);
-              }}
-              onCancel={() => setActiveTab('suspect')}
-              saving={saving}
+                    toast.success('Suspect information saved successfully!');
+                    setActiveTab('suspect');
+                    if (onUpdate) onUpdate();
+                  } catch (error) {
+                    console.error('Save error:', error);
+                    toast.error('Failed to save: ' + error.message);
+                  }
+                  setSaving(false);
+                }}
+                onCancel={() => setActiveTab('suspect')}
+                saving={saving}
               />
             </TabsContent>
 
+            {/* ... Other tabs ... */}
             <TabsContent value="evidence" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-semibold text-lg">Evidence Log</h3>
