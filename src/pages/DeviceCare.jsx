@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +9,7 @@ import {
   AlertTriangle, Sparkles, TrendingUp, Cpu, HardDrive, Activity, Database
 } from "lucide-react";
 import { toast } from "sonner";
+import LiveClock from "@/components/shared/LiveClock";
 
 import ScanRadar from "../components/devicecare/ScanRadar.jsx";
 import CleanupResults from "../components/devicecare/CleanupResults.jsx";
@@ -457,7 +457,7 @@ Be encouraging and explain what was found. Sign as "Mia 🤖"`;
               <div>
                 <p className="text-xs text-gray-400 mb-1">Last Scan</p>
                 <p className="text-sm font-bold text-white">
-                  {lastScan ? new Date(lastScan.created_date).toLocaleDateString() : 'Never'}
+                  <LiveClock />
                 </p>
               </div>
               <Clock className="w-8 h-8 text-cyan-400" />
