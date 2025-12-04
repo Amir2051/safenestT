@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCurrentTimestamp } from '@/components/shared/timeUtils';
+import { getCurrentTimestamp } from './timeUtils';
 
 const LiveClock = ({ label = "", className = "" }) => {
   const [time, setTime] = useState(getCurrentTimestamp());
