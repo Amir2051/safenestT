@@ -16,6 +16,9 @@ import NewCaseModal from "../components/cases/NewCaseModal";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import CaseAssignmentModal from "../components/cases/CaseAssignmentModal";
 
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+
 export default function Cases() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,10 +29,18 @@ export default function Cases() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all_cases");
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
+    base44.auth.me().then(userData => {
+      if (userData.role !== 'admin' && !userData.is_admin) {
+        navigate(createPageUrl("Dashboard"));
+      }
+      setUser(userData);
+    }).catch(() => {
+      navigate(createPageUrl("Dashboard"));
+    });
+  }, [navigate]);
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ['client-cases'],

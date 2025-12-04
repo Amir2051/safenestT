@@ -26,11 +26,25 @@ export default function CaseDocumentManager() {
   const [formData, setFormData] = useState({});
 
   const queryClient = useQueryClient();
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate(); // Needs import in next step if missing
+
+  useEffect(() => {
+    base44.auth.me().then(userData => {
+      if (userData.role !== 'admin' && !userData.is_admin) {
+        navigate(createPageUrl("Dashboard"));
+      }
+      setUser(userData);
+    }).catch(() => {
+      navigate(createPageUrl("Dashboard"));
+    });
+  }, [navigate]);
 
   // 1. Fetch Cases
   const { data: cases = [], isLoading: loadingCases } = useQuery({
     queryKey: ['client-cases'],
     queryFn: () => base44.entities.ClientCase.list('-created_date'),
+    enabled: !!user
   });
 
   // 2. Fetch Documents for Selected Case
