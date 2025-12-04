@@ -42,16 +42,22 @@ export default function ReportScam() {
       
       // Prepare Case Data
       const caseData = {
-        ...formData,
-        victim_contact_info: {
-            ...formData.victim_contact_info,
-            email: formData.victim_contact_info.email || user?.email,
-            name: formData.victim_contact_info.name || user?.full_name
-        },
-        status: 'reported',
-        recovery_progress: 0,
-        traced_wallets: [],
-        exchanges_notified: [],
+        client_name: formData.victim_contact_info.name || user?.full_name,
+        client_email: formData.victim_contact_info.email || user?.email,
+        phone_number: formData.victim_contact_info.phone,
+        issue_type: formData.fraud_type,
+        status: 'Pending',
+        urgency: 'Medium',
+        description: formData.description,
+        amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
+        blockchain: formData.blockchain,
+        scammer_wallet: formData.scammer_wallet,
+        victim_wallet: formData.victim_wallet,
+        cryptocurrency: formData.cryptocurrency,
+        transaction_date: formData.incident_date,
+        case_number: `CASE-${Date.now()}`,
+        created_by_name: user?.full_name,
+        created_by_email: user?.email,
         case_notes: [{
           timestamp: new Date().toISOString(),
           note: 'Case submitted via Victim Portal',
@@ -59,7 +65,7 @@ export default function ReportScam() {
         }]
       };
 
-      await base44.entities.FraudCase.create(caseData);
+      await base44.entities.ClientCase.create(caseData);
 
       // Trigger AI Analysis immediately
       await base44.functions.invoke('cryptoScamDetection', {
