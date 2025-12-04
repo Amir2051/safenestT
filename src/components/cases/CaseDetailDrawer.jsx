@@ -86,6 +86,53 @@ export default function CaseDetailDrawer({ caseId, isOpen, onClose }) {
                 </div>
               ) : (
                 <>
+                  {/* AI Priority Section */}
+                  {editedCase.priority_score !== undefined && (
+                    <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-lg border border-blue-500/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Brain className="w-5 h-5 text-purple-400" />
+                          <h3 className="text-base font-bold text-white">AI Priority Analysis</h3>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full border font-bold text-sm ${
+                          editedCase.priority_score >= 80 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
+                          editedCase.priority_score >= 50 ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 
+                          'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                        }`}>
+                          Score: {editedCase.priority_score}/100
+                        </div>
+                      </div>
+                      
+                      {editedCase.ai_analysis && (
+                        <div className="flex gap-3">
+                          <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-1" />
+                          <p className="text-sm text-gray-300 leading-relaxed">
+                            {editedCase.ai_analysis}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex justify-end">
+                         <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-xs text-purple-400 hover:bg-purple-500/10 h-7"
+                            onClick={() => {
+                               base44.functions.invoke('casePrioritization', { case_id: editedCase.id })
+                               .then((res) => {
+                                  toast.success("Re-analysis complete");
+                                  setEditedCase({...editedCase, priority_score: res.data.score, ai_analysis: res.data.analysis});
+                                  queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+                               })
+                               .catch(err => toast.error("Analysis failed"));
+                            }}
+                         >
+                            <Sparkles className="w-3 h-3 mr-1" /> Re-analyze
+                         </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Status & Urgency */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
