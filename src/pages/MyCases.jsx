@@ -32,7 +32,24 @@ export default function MyCases() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  const { data: cases = [], isLoading } = useQuery({
+  // Fetch ClientCase (Standard)
+  const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
+    queryKey: ['my-client-cases'],
+    queryFn: async () => {
+      // Fetch cases created by user or where user is the client
+      const createdByMe = await base44.entities.ClientCase.filter({ created_by_email: user.email }, '-created_date');
+      const clientIsMe = await base44.entities.ClientCase.filter({ client_email: user.email }, '-created_date');
+      
+      // Deduplicate
+      const map = new Map();
+      [...createdByMe, ...clientIsMe].forEach(c => map.set(c.id, c));
+      return Array.from(map.values()).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    },
+    enabled: !!user
+  });
+
+  // Fetch FraudCase (Legacy)
+  const { data: fraudCases = [], isLoading: loadingFraudCases } = useQuery({
     queryKey: ['my-fraud-cases'],
     queryFn: () => base44.entities.FraudCase.filter(
       user.role === 'admin' ? {} : { created_by: user.email }, 
@@ -41,19 +58,17 @@ export default function MyCases() {
     enabled: !!user,
   });
 
-  const { data: activeInvestigations = [] } = useQuery({
-    queryKey: ['my-client-cases'],
-    queryFn: () => base44.entities.ClientCase.filter(
-        { client_email: user.email },
-        '-created_date'
-    ),
-    enabled: !!user
-  });
-
   const updateCaseMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.FraudCase.update(id, data),
+    mutationFn: ({ id, data, type }) => {
+        if (type === 'fraud') {
+            return base44.entities.FraudCase.update(id, data);
+        } else {
+            return base44.entities.ClientCase.update(id, data);
+        }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-fraud-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['my-client-cases'] });
       toast.success('Case updated successfully!');
       setEditingCase(null);
       setEditFormData(null);
@@ -62,6 +77,42 @@ export default function MyCases() {
       toast.error('Failed to update case: ' + error.message);
     }
   });
+
+  // Normalize cases for display
+  const allCases = [
+      ...clientCases.map(c => ({
+          ...c,
+          id: c.id,
+          case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
+          status: c.status,
+          amount: c.amount_lost,
+          currency: c.cryptocurrency || 'USD',
+          created_date: c.created_date,
+          type: 'client',
+          fraud_type: c.issue_type,
+          description: c.description,
+          blockchain: c.blockchain,
+          scammer_wallet: c.scammer_wallet,
+          admin_status: c.status // map status to admin status for unified view
+      })),
+      ...fraudCases.map(c => ({
+          ...c,
+          id: c.id,
+          case_title: c.case_title,
+          status: c.status === 'reported' ? 'Pending' : c.status, // map legacy status
+          amount: c.amount_stolen_usd || c.amount_stolen,
+          currency: c.currency_type || 'USD',
+          created_date: c.created_date,
+          type: 'fraud',
+          fraud_type: c.fraud_type,
+          description: c.description,
+          blockchain: c.blockchain,
+          scammer_wallet: c.scammer_wallet,
+          admin_status: c.admin_contact_status
+      }))
+  ].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+
+  const isLoading = loadingClientCases || loadingFraudCases;
 
   const startEditing = (caseItem) => {
     setEditingCase(caseItem);
