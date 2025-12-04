@@ -158,6 +158,12 @@ export default function MyCases() {
     totalLost: cases.reduce((sum, c) => sum + (c.amount_stolen_usd || c.amount_stolen || 0), 0)
   };
 
+  // Combine stats for active investigations
+  const activeStats = {
+      count: activeInvestigations.length,
+      critical: activeInvestigations.filter(c => c.urgency === 'Critical').length
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
