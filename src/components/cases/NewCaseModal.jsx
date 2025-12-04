@@ -45,6 +45,17 @@ export default function NewCaseModal({ onCaseCreated }) {
         description: "",
         amount_lost: ""
       });
+
+      // Trigger AI Analysis
+      if (data && data.id) {
+        base44.functions.invoke('casePrioritization', { case_id: data.id })
+          .then(() => {
+             toast.success("AI Prioritization Complete");
+             queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+          })
+          .catch(err => console.error("AI analysis failed", err));
+      }
+
       if (onCaseCreated) onCaseCreated();
     },
     onError: (error) => {

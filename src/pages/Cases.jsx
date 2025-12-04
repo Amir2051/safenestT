@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Search, Filter, Plus, Clock, CheckCircle2, AlertTriangle, 
-  Phone, User, MoreHorizontal, ArrowUpRight, Shield
+  Phone, User, MoreHorizontal, ArrowUpRight, Shield, Sparkles
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -222,6 +222,17 @@ export default function Cases() {
                         <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
                           {caseItem.client_name}
                         </h3>
+                        {caseItem.priority_score !== undefined && (
+                          <Badge className={`
+                            ${caseItem.priority_score >= 80 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
+                              caseItem.priority_score >= 50 ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 
+                              'bg-blue-500/20 text-blue-400 border-blue-500/50'}
+                            flex items-center gap-1
+                          `}>
+                            <Sparkles className="w-3 h-3" />
+                            AI Score: {caseItem.priority_score}
+                          </Badge>
+                        )}
                         <Badge className={getUrgencyColor(caseItem.urgency)} variant="outline">
                           {caseItem.urgency} Priority
                         </Badge>
