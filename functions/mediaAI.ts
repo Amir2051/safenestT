@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
         // Handle Media Director AI Tool (manage_media)
         if (params.action && ['upload', 'retrieve', 'list', 'delete'].includes(params.action)) {
-            const { action, media_id, media_type, file_name, file_url, description, user_id: target_user_id } = params;
+            const { action, media_id, media_type, file_name, file_url, description, user_id: target_user_id, case_id } = params;
             
             if (action === 'upload') {
                 if (!file_url || !media_type) {
@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
                     file_url,
                     media_type,
                     description,
-                    user_id: target_user_id || user.id
+                    user_id: target_user_id || user.id,
+                    case_id
                 });
                 return Response.json({ status: 'success', media: newMedia, message: 'Media uploaded successfully' });
             }
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
                 const filters = {};
                 if (media_type) filters.media_type = media_type;
                 if (target_user_id) filters.user_id = target_user_id;
+                if (case_id) filters.case_id = case_id;
                 
                 const files = await base44.entities.MediaFile.filter(filters, '-created_date', 50);
                 return Response.json({ status: 'success', files });

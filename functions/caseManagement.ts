@@ -87,6 +87,11 @@ Deno.serve(async (req) => {
                 } else if (entityName === 'InvestigationCase') {
                     updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
                 } else {
+                    // Check existence first to provide better error
+                    const existing = await base44.asServiceRole.entities.ClientCase.get(id).catch(() => null);
+                    if (!existing) {
+                        return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
+                    }
                     updatedCase = await base44.asServiceRole.entities.ClientCase.update(id, updates);
                 }
 
@@ -94,6 +99,10 @@ Deno.serve(async (req) => {
                 return Response.json({ success: true, case: updatedCase });
             } catch (err) {
                 console.error(`[CaseUpdate] Error:`, err);
+                // Handle not found error from SDK if it wasn't caught above
+                if (err.message && err.message.includes('not found')) {
+                     return Response.json({ error: err.message, code: 'NOT_FOUND' }, { status: 404 });
+                }
                 return Response.json({ error: err.message, details: err }, { status: 500 });
             }
         }
