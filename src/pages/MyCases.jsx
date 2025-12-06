@@ -38,7 +38,19 @@ export default function MyCases() {
     queryKey: ['my-client-cases'],
     queryFn: async () => {
       // Fetch cases created by user or where user is the client
-      const createdByMe = await base44.entities.ClientCase.filter({ created_by_email: user.email }, '-created_date');
+      // For Admins: we must explicitly filter because RLS allows seeing all cases
+      // For Users: we can rely on RLS, but explicit filtering ensures robust "My Cases" view
+      
+      // Use built-in 'created_by' for reliability + client_email for cases where I'm the victim
+      let createdByMe = [];
+      try {
+        createdByMe = await base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date');
+      } catch (e) {
+        // Fallback if built-in filter fails (shouldn't happen)
+        console.warn("Filter by created_by failed, trying created_by_email", e);
+        createdByMe = await base44.entities.ClientCase.filter({ created_by_email: user.email }, '-created_date');
+      }
+
       const clientIsMe = await base44.entities.ClientCase.filter({ client_email: user.email }, '-created_date');
       
       // Deduplicate
@@ -53,7 +65,7 @@ export default function MyCases() {
   const { data: fraudCases = [], isLoading: loadingFraudCases } = useQuery({
     queryKey: ['my-fraud-cases'],
     queryFn: () => base44.entities.FraudCase.filter(
-      user.role === 'admin' ? {} : { created_by: user.email }, 
+      { created_by: user.email }, // Always filter by creator for "My Cases", even for admin
       '-created_date'
     ),
     enabled: !!user,
