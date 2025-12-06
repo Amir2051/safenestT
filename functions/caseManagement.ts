@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
             // Always update metadata
             updates.last_activity = new Date().toISOString();
             updates.updated_date = new Date().toISOString();
+            updates.updated_by = user.email; // Explicitly track who updated
 
             try {
                 // Use service role to bypass strict RLS if needed, ensuring admin can always edit
@@ -87,23 +88,46 @@ Deno.serve(async (req) => {
                 } else if (entityName === 'InvestigationCase') {
                     updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
                 } else {
-                    // Check existence first to provide better error
+                    // Check existence first to provide better error and get previous status
                     const existing = await base44.asServiceRole.entities.ClientCase.get(id).catch(() => null);
                     if (!existing) {
                         return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
                     }
+
+                    // Status Change Logging
+                    if (updates.status && existing.status !== updates.status) {
+                        try {
+                            await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                                case_id: id,
+                                event_type: 'status_change',
+                                description: `Status changed from ${existing.status} to ${updates.status}`,
+                                performed_by: user.email,
+                                previous_status: existing.status,
+                                new_status: updates.status,
+                                metadata: JSON.stringify({
+                                    timestamp: new Date().toISOString(),
+                                    admin_id: user.id,
+                                    admin_email: user.email
+                                })
+                            });
+                        } catch (logErr) {
+                            console.error("Failed to log status change:", logErr);
+                            // Continue with update even if logging fails
+                        }
+                    }
+
                     updatedCase = await base44.asServiceRole.entities.ClientCase.update(id, updates);
                 }
 
                 console.log(`[CaseUpdate] Success:`, updatedCase.id);
-                return Response.json({ success: true, case: updatedCase });
+                return Response.json({ success: true, case: updatedCase, message: "Case updated successfully." });
             } catch (err) {
                 console.error(`[CaseUpdate] Error:`, err);
                 // Handle not found error from SDK if it wasn't caught above
                 if (err.message && err.message.includes('not found')) {
                      return Response.json({ error: err.message, code: 'NOT_FOUND' }, { status: 404 });
                 }
-                return Response.json({ error: err.message, details: err }, { status: 500 });
+                return Response.json({ error: "Update failed — backend blocked the request.", details: err.message }, { status: 500 });
             }
         }
 
