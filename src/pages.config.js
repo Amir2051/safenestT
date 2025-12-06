@@ -83,6 +83,8 @@ import DeviceSecurity from './pages/DeviceSecurity';
 import ClientProtection from './pages/ClientProtection';
 import CaseDocumentManager from './pages/CaseDocumentManager';
 import CryptoWalletChecker from './pages/CryptoWalletChecker';
+import AdminSupport from './pages/AdminSupport';
+import Support from './pages/Support';
 import __Layout from './Layout.jsx';
 
 
@@ -172,6 +174,8 @@ export const PAGES = {
     "ClientProtection": ClientProtection,
     "CaseDocumentManager": CaseDocumentManager,
     "CryptoWalletChecker": CryptoWalletChecker,
+    "AdminSupport": AdminSupport,
+    "Support": Support,
 }
 
 export const pagesConfig = {
