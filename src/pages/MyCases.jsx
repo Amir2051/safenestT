@@ -37,26 +37,11 @@ export default function MyCases() {
   const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
     queryKey: ['my-client-cases'],
     queryFn: async () => {
-      // Fetch cases created by user or where user is the client
-      // For Admins: we must explicitly filter because RLS allows seeing all cases
-      // For Users: we can rely on RLS, but explicit filtering ensures robust "My Cases" view
-      
-      // Use built-in 'created_by' for reliability + client_email for cases where I'm the victim
-      let createdByMe = [];
-      try {
-        createdByMe = await base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date');
-      } catch (e) {
-        // Fallback if built-in filter fails (shouldn't happen)
-        console.warn("Filter by created_by failed, trying created_by_email", e);
-        createdByMe = await base44.entities.ClientCase.filter({ created_by_email: user.email }, '-created_date');
+      if (user.role === 'admin' || user.is_admin) {
+        return base44.entities.ClientCase.list('-created_date');
+      } else {
+        return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date');
       }
-
-      const clientIsMe = await base44.entities.ClientCase.filter({ client_email: user.email }, '-created_date');
-      
-      // Deduplicate
-      const map = new Map();
-      [...createdByMe, ...clientIsMe].forEach(c => map.set(c.id, c));
-      return Array.from(map.values()).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
     },
     enabled: !!user
   });
@@ -64,10 +49,13 @@ export default function MyCases() {
   // Fetch FraudCase (Legacy)
   const { data: fraudCases = [], isLoading: loadingFraudCases } = useQuery({
     queryKey: ['my-fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.filter(
-      { created_by: user.email }, // Always filter by creator for "My Cases", even for admin
-      '-created_date'
-    ),
+    queryFn: async () => {
+      if (user.role === 'admin' || user.is_admin) {
+        return base44.entities.FraudCase.list('-created_date');
+      } else {
+        return base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date');
+      }
+    },
     enabled: !!user,
   });
 
