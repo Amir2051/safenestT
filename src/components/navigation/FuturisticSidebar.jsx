@@ -145,6 +145,13 @@ const navigationItems = [
     glow: 'green'
   },
   {
+    id: 'support',
+    title: 'Support',
+    icon: MessageSquare,
+    url: createPageUrl('Support'),
+    glow: 'blue'
+  },
+  {
     id: 'settings',
     title: 'Settings',
     icon: SettingsIcon,
@@ -303,6 +310,14 @@ const adminItems = [
     icon: CreditCard,
     url: createPageUrl('AdminSubscriptions'),
     glow: 'emerald',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-support',
+    title: 'Support Chat',
+    icon: MessageSquare,
+    url: createPageUrl('AdminSupport'),
+    glow: 'blue',
     badge: 'ADMIN'
   }
 ];
