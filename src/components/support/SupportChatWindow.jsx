@@ -55,7 +55,18 @@ export default function SupportChatWindow({ chat, onClose, isUser = true }) {
     e.preventDefault();
     if (!newMessage.trim()) return;
     sendMessageMutation.mutate(newMessage);
+    // Optimistic update or scroll could happen here
   };
+
+  // Ensure we always scroll to bottom when chat opens
+  useEffect(() => {
+      const timeout = setTimeout(() => {
+          if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+      }, 100); // Slight delay to ensure render
+      return () => clearTimeout(timeout);
+  }, [chat.id]);
 
   const closeChatMutation = useMutation({
       mutationFn: () => base44.functions.invoke('supportService', { endpoint: 'close_chat', chat_id: chat.id }),

@@ -94,6 +94,11 @@ Deno.serve(async (req) => {
             } else {
                 updates.unread_count_user = (chat.unread_count_user || 0) + 1;
                 if (chat.status === 'waiting') updates.status = 'active';
+                
+                // Auto-assign if admin replies and chat is unassigned
+                if (!chat.assigned_admin_id) {
+                    updates.assigned_admin_id = user.email;
+                }
             }
 
             await base44.asServiceRole.entities.SupportChat.update(chat_id, updates);

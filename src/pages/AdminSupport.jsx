@@ -136,17 +136,29 @@ export default function AdminSupport() {
                             <p className="text-xs text-blue-300 font-medium truncate mb-1">{chat.subject}</p>
                             <p className="text-xs text-gray-400 truncate">{chat.last_message}</p>
                             
-                            <div className="flex items-center gap-2 mt-2">
-                                <Badge className={`text-[10px] px-1.5 py-0 ${
-                                    chat.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    chat.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                    'bg-gray-500/20 text-gray-400'
-                                }`}>
-                                    {chat.status}
-                                </Badge>
-                                {chat.unread_count_admin > 0 && (
-                                    <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0">
-                                        {chat.unread_count_admin} new
+                            <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-2">
+                                    <Badge className={`text-[10px] px-1.5 py-0 ${
+                                        chat.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        chat.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                        'bg-gray-500/20 text-gray-400'
+                                    }`}>
+                                        {chat.status}
+                                    </Badge>
+                                    {chat.unread_count_admin > 0 && (
+                                        <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0">
+                                            {chat.unread_count_admin} new
+                                        </Badge>
+                                    )}
+                                </div>
+                                {chat.assigned_admin_id === user.email && (
+                                    <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                                        <User className="w-3 h-3" /> Me
+                                    </span>
+                                )}
+                                {!chat.assigned_admin_id && chat.status === 'waiting' && (
+                                    <Badge variant="outline" className="border-blue-500/50 text-blue-400 text-[10px] px-1.5 py-0">
+                                        Unassigned
                                     </Badge>
                                 )}
                             </div>
