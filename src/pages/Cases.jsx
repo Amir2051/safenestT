@@ -42,11 +42,52 @@ export default function Cases() {
     });
   }, [navigate]);
 
-  const { data: cases = [], isLoading } = useQuery({
+  const { data: clientCases = [], isLoading: loadingClient } = useQuery({
     queryKey: ['client-cases'],
     queryFn: () => base44.entities.ClientCase.list('-created_date'),
     enabled: !!user
   });
+
+  const { data: fraudCases = [], isLoading: loadingFraud } = useQuery({
+    queryKey: ['fraud-cases'],
+    queryFn: () => base44.entities.FraudCase.list('-created_date'),
+    enabled: !!user
+  });
+
+  // Normalize and merge
+  const cases = React.useMemo(() => {
+    const normalizedClient = clientCases.map(c => ({
+      ...c,
+      id: c.id,
+      case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
+      status: c.status || 'Pending',
+      urgency: c.urgency || 'Medium',
+      issue_type: c.issue_type || 'Other',
+      created_date: c.created_date,
+      amount_lost: c.amount_lost || 0,
+      client_name: c.client_name || c.created_by_name || 'Unknown',
+      client_email: c.client_email || c.created_by_email,
+      type: 'client'
+    }));
+
+    const normalizedFraud = fraudCases.map(c => ({
+      ...c,
+      id: c.id,
+      case_title: c.case_title || 'Fraud Report',
+      status: c.status === 'reported' ? 'Pending' : c.status,
+      urgency: c.case_priority === 'critical' ? 'High' : (c.case_priority === 'high' ? 'High' : 'Medium'),
+      issue_type: c.fraud_type || 'scam',
+      created_date: c.created_date,
+      amount_lost: c.amount_stolen_usd || 0,
+      client_name: c.victim_contact_info?.name || c.created_by_name || 'Anonymous',
+      client_email: c.victim_contact_info?.email || c.created_by,
+      type: 'fraud'
+    }));
+
+    return [...normalizedClient, ...normalizedFraud].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  }, [clientCases, fraudCases]);
+
+  const isLoading = loadingClient || loadingFraud;
 
   const openCaseDetail = (caseItem) => {
     // Find the full object if we only have ID, but here we pass the object
