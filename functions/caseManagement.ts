@@ -55,6 +55,20 @@ Deno.serve(async (req) => {
                 created_by_name: user.full_name || user.first_name
             };
 
+            // AUTOMATION 1: Auto-Assignment
+            // Assign to specialist based on criteria if not already assigned
+            if (!caseData.assigned_to) {
+                if (caseData.amount_lost >= 100000) {
+                     // High value cases go to senior specialists
+                    caseData.assigned_to = "senior.investigator@safenest.com"; 
+                } else if (['crypto_theft', 'pig_butchering'].includes(caseData.issue_type)) {
+                    caseData.assigned_to = "crypto.specialist@safenest.com";
+                } else {
+                    // Default assignment
+                    caseData.assigned_to = "intake@safenest.com";
+                }
+            }
+
             // TARGET ENTITY: MyCase
             const newCase = await base44.entities.MyCase.create(caseData);
             return Response.json({ success: true, case: newCase });
@@ -105,6 +119,20 @@ Deno.serve(async (req) => {
                         new_status: updates.status,
                         metadata: JSON.stringify({ timestamp: new Date().toISOString() })
                     }).catch(e => console.error("Log failed:", e));
+
+                    // AUTOMATION 2: Email Notification on Status Change
+                    const recipientEmail = existing.client_email || existing.created_by_email;
+                    if (recipientEmail) {
+                        try {
+                            await base44.integrations.Core.SendEmail({
+                                to: recipientEmail,
+                                subject: `Case Status Update: ${existing.case_number || 'Your Case'}`,
+                                body: `Hello ${existing.client_name || 'User'},\n\nYour case status has been updated from "${existing.status}" to "${updates.status}".\n\nPlease log in to your SafeNest dashboard to view the latest details and any required actions.\n\nBest regards,\nSafeNest Security Team`
+                            });
+                        } catch (emailError) {
+                            console.error("Failed to send status email:", emailError);
+                        }
+                    }
                 }
 
                 // PERFORM UPDATE
