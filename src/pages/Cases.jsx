@@ -70,7 +70,7 @@ export default function Cases() {
       amount_lost: c.amount_lost || 0,
       client_name: c.client_name || c.created_by_name || 'Unknown',
       client_email: c.client_email || c.created_by_email,
-      display_email: [c.client_email, c.created_by_email, c.created_by, c.client_name].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || 'Unknown User',
+      display_email: [c.client_email, c.created_by_email, c.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || 'Unknown User',
       type: 'client',
       _entityName: 'MyCase'
     })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));

@@ -351,8 +351,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-xs text-gray-300 font-medium">Victim</p>
                   </div>
                   <p className="text-white font-semibold text-base">{caseData.client_name || caseData.victim_name}</p>
-                  {(caseData.client_email || caseData.victim_email) && (
-                    <p className="text-xs text-gray-300 mt-1">{caseData.client_email || caseData.victim_email}</p>
+                  {([caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+'))) && (
+                    <p className="text-xs text-gray-300 mt-1">{[caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+'))}</p>
                   )}
                   {(caseData.phone_number || caseData.victim_phone) && (
                     <p className="text-xs text-gray-300">{caseData.phone_number || caseData.victim_phone}</p>
@@ -365,7 +365,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-xs text-gray-300 font-medium">Created By</p>
                   </div>
                   <p className="text-white font-semibold text-base">{caseData.created_by_name || 'N/A'}</p>
-                  <p className="text-xs text-gray-400 mt-1">{caseData.created_by_email || caseData.created_by || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">{[caseData.client_email, caseData.victim_email, caseData.created_by_email, caseData.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || 'Unknown User'}</p>
                 </div>
 
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
