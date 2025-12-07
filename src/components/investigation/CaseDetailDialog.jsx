@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
   MessageSquare, ExternalLink, Calendar, AlertCircle, Database, Building2,
-  Edit, Save, Phone, Mail, MapPin, TrendingUp
+  Edit, Save, Phone, Mail, MapPin, TrendingUp, Network
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
@@ -21,6 +21,7 @@ import SuspectEditForm from "./SuspectEditForm.jsx";
 import TrackingToolsPanel from "@/components/admin/TrackingToolsPanel.jsx";
 import AgencyReportGenerator from "./AgencyReportGenerator.jsx";
 import CryptoIntelligenceReport from "./CryptoIntelligenceReport.jsx";
+import RelatedCasesPanel from "./RelatedCasesPanel.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -341,7 +342,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="intel-report" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
                 <Shield className="w-3 h-3 mr-1" />Crypto Intel
               </TabsTrigger>
-            </TabsList>
+              <TabsTrigger value="connections" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                <Network className="w-3 h-3 mr-1" />Connections
+              </TabsTrigger>
+              </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1138,9 +1142,13 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="intel-report" className="space-y-4">
               <CryptoIntelligenceReport caseData={caseData} />
             </TabsContent>
-          </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+
+            <TabsContent value="connections" className="space-y-4">
+              <RelatedCasesPanel caseId={caseData.id} />
+            </TabsContent>
+            </Tabs>
+            </div>
+            </DialogContent>
+            </Dialog>
+            );
+            }
