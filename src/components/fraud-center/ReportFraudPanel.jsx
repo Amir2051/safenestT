@@ -78,86 +78,60 @@ export default function ReportFraudPanel({ user, onCaseCreated }) {
     setSubmitting(true);
     
     try {
-      const caseNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
-      
-      // Create FraudCase for user's My Cases
-      await base44.entities.FraudCase.create({
-        case_title: formData.case_title,
-        fraud_type: formData.fraud_type,
-        amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
-        blockchain: formData.blockchain,
-        scammer_wallet: formData.scammer_wallet,
-        victim_contact_info: {
-          name: formData.victim_name,
-          email: formData.victim_email,
-          phone: formData.victim_phone,
-          address: formData.victim_address
-        },
-        suspect_details: {
-          name: formData.scammer_name,
-          email: formData.scammer_email,
-          phone: formData.scammer_phone,
-          websites: formData.scammer_website ? [formData.scammer_website] : [],
-          social_media: formData.scammer_telegram ? [{ platform: 'Telegram', profile: formData.scammer_telegram }] : []
-        },
-        incident_date: formData.incident_date || new Date().toISOString(),
-        description: formData.description,
-        status: 'reported',
-        admin_contact_status: 'Pending',
-        case_priority: parseFloat(formData.amount_stolen_usd) > 50000 ? 'high' : 
-                  parseFloat(formData.amount_stolen_usd) > 10000 ? 'medium' : 'low',
-        law_enforcement_authorization: formData.law_enforcement_authorized ? {
-          authorized: true,
-          authorized_date: new Date().toISOString(),
-          authorized_agencies: ['FBI', 'IC3', 'FTC'],
-          full_name: formData.authorization_full_name,
-          signature_confirmation: true
-        } : {
-          authorized: false
+      // Create Unified MyCase via backend function
+      const response = await base44.functions.invoke('caseManagement', {
+        action: 'create',
+        data: {
+          // Core
+          case_title: formData.case_title,
+          issue_type: formData.fraud_type,
+          amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
+          cryptocurrency: formData.cryptocurrency,
+          blockchain: formData.blockchain,
+          description: formData.description,
+          
+          // Client / Victim
+          client_name: formData.victim_name,
+          client_email: formData.victim_email,
+          phone_number: formData.victim_phone,
+          victim_contact_info: {
+            primary_email: formData.victim_email,
+            phone: formData.victim_phone,
+            address: formData.victim_address
+          },
+          
+          // Scammer
+          scammer_wallet: formData.scammer_wallet,
+          scammer_info: {
+            name: formData.scammer_name,
+            email: formData.scammer_email,
+            phone: formData.scammer_phone,
+            wallet_addresses: formData.scammer_wallet ? [formData.scammer_wallet] : [],
+            social_media: formData.scammer_telegram ? [{ platform: 'Telegram', profile: formData.scammer_telegram }] : [],
+            website: formData.scammer_website
+          },
+          monitored_wallets: formData.scammer_wallet ? [formData.scammer_wallet] : [],
+          
+          // Meta
+          incident_date: formData.incident_date || new Date().toISOString(),
+          status: 'Pending',
+          urgency: parseFloat(formData.amount_stolen_usd) > 50000 ? 'High' : 
+                   parseFloat(formData.amount_stolen_usd) > 10000 ? 'Medium' : 'Low',
+          created_by: user.email,
+          created_by_email: user.email,
+          created_by_name: user.full_name,
+          
+          // Legal
+          law_enforcement_authorization: formData.law_enforcement_authorized ? {
+            authorized: true,
+            authorized_date: new Date().toISOString(),
+            authorized_agencies: ['FBI', 'IC3', 'FTC'],
+            full_name: formData.authorization_full_name
+          } : { authorized: false }
         }
       });
 
-      // Also create InvestigationCase for admin tracking
-      await base44.entities.InvestigationCase.create({
-        case_number: caseNumber,
-        case_title: formData.case_title,
-        fraud_type: formData.fraud_type,
-        victim_name: formData.victim_name,
-        victim_email: formData.victim_email,
-        victim_phone: formData.victim_phone,
-        amount_stolen_usd: parseFloat(formData.amount_stolen_usd) || 0,
-        cryptocurrency: formData.cryptocurrency,
-        blockchain: formData.blockchain,
-        victim_contact_info: {
-          primary_email: formData.victim_email,
-          phone: formData.victim_phone,
-          address: formData.victim_address
-        },
-        scammer_info: {
-          name: formData.scammer_name,
-          email: formData.scammer_email,
-          phone: formData.scammer_phone,
-          telegram: formData.scammer_telegram,
-          website: formData.scammer_website,
-          wallet_addresses: formData.scammer_wallet ? [formData.scammer_wallet] : [],
-          known_emails: formData.scammer_email ? [formData.scammer_email] : []
-        },
-        suspect_details: {
-          primary_suspect: {
-            name: formData.scammer_name,
-            email: formData.scammer_email,
-            phone: formData.scammer_phone
-          },
-          wallet_addresses: formData.scammer_wallet ? [formData.scammer_wallet] : []
-        },
-        monitored_wallets: formData.scammer_wallet ? [formData.scammer_wallet] : [],
-        incident_date: formData.incident_date || new Date().toISOString(),
-        description: formData.description,
-        status: 'new',
-        priority: parseFloat(formData.amount_stolen_usd) > 50000 ? 'high' : 
-                  parseFloat(formData.amount_stolen_usd) > 10000 ? 'medium' : 'low',
-        investigation_progress: 0
-      });
+      if (response.data.error) throw new Error(response.data.error);
 
       toast.success('Fraud case reported successfully!');
       setStep(5); // Success step

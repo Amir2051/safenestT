@@ -153,25 +153,13 @@ export default function ScamReporter() {
         }
       };
 
-      // Create ClientCase
-      await base44.entities.ClientCase.create({
-          ...caseData,
-          case_number: `CASE-${Date.now()}`
+      // Create MyCase via unified backend function
+      const response = await base44.functions.invoke('caseManagement', {
+          action: 'create',
+          data: caseData
       });
       
-      // Also create FraudCase for tracking/analytics if needed, or just stick to one. 
-      // Based on previous context, FraudCase is also used. I'll ensure ClientCase is primary.
-      // But for redundancy and existing admin views:
-      await base44.entities.FraudCase.create({
-          ...caseData,
-          victim_contact_info: {
-              name: formData.victim_name,
-              email: formData.victim_email,
-              phone: formData.victim_phone
-          },
-          amount_stolen: parseFloat(formData.amount_lost) || 0,
-          suspect_details: caseData.scammer_info
-      });
+      if (response.data.error) throw new Error(response.data.error);
 
       toast.success('Case submitted successfully! Our team will review it shortly.');
       setSubmitted(true);

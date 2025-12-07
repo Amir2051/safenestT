@@ -53,32 +53,42 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
         }
       }
       
-      const caseNumber = `CASE-${Date.now()}`;
-      
-      await base44.entities.ClientCase.create({
-        client_name: formData.victim_name,
-        client_email: formData.victim_email,
-        phone_number: formData.victim_phone,
-        issue_type: formData.fraud_type,
-        amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
-        cryptocurrency: formData.cryptocurrency,
-        blockchain: formData.blockchain,
-        transaction_date: formData.incident_date,
-        description: formData.description,
-        priority: formData.priority,
-        urgency: formData.priority === 'critical' ? 'Critical' : formData.priority === 'high' ? 'High' : 'Medium',
-        
-        case_number: caseNumber,
-        status: "Pending",
-        created_by_name: user.full_name,
-        created_by_email: user.email,
-        case_notes: [{
-          timestamp: new Date().toISOString(),
-          author: "system",
-          note: "Case created - Ready for document generation",
-          type: "system"
-        }]
+      // Use unified case management function
+      const response = await base44.functions.invoke('caseManagement', {
+        action: 'create',
+        data: {
+          // Victim
+          client_name: formData.victim_name,
+          client_email: formData.victim_email,
+          phone_number: formData.victim_phone,
+          
+          // Case Details
+          issue_type: formData.fraud_type,
+          amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
+          cryptocurrency: formData.cryptocurrency,
+          blockchain: formData.blockchain,
+          transaction_date: formData.incident_date,
+          description: formData.description,
+          urgency: formData.priority === 'critical' ? 'Critical' : formData.priority === 'high' ? 'High' : 'Medium',
+          priority: formData.priority,
+          
+          // Meta
+          status: "Pending",
+          created_by: user.email,
+          created_by_email: user.email,
+          created_by_name: user.full_name,
+          
+          // Notes
+          case_notes: [{
+            timestamp: new Date().toISOString(),
+            author: "system",
+            note: "Case created - Ready for document generation",
+            type: "system"
+          }]
+        }
       });
+
+      if (response.data.error) throw new Error(response.data.error);
 
       toast.success("Case created successfully!");
       onSuccess();
