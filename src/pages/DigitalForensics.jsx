@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Smartphone, Mail, FileSearch, Share2, Database, Loader2, Terminal } from "lucide-react";
+import { Search, Smartphone, Mail, FileSearch, Share2, Database, Loader2, Terminal, Wallet } from "lucide-react";
+import WalletTracker from "../components/investigation/WalletTracker";
 
 export default function DigitalForensics() {
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,11 @@ export default function DigitalForensics() {
         <p className="text-gray-400 mt-1">
             Advanced OSINT and metadata analysis tools.
         </p>
+      </div>
+
+      {/* Wallet Tracker Section */}
+      <div className="mb-8">
+        <WalletTracker cases={[]} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

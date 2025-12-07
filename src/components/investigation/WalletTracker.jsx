@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, Loader2, ExternalLink, AlertCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
-export default function WalletTracker({ cases }) {
+export default function WalletTracker({ cases = [] }) {
   const [selectedCase, setSelectedCase] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [blockchain, setBlockchain] = useState("ethereum");

@@ -158,13 +158,45 @@ async function trackWallet(data, base44, user) {
 }
 
 async function fetchBlockchainTransactions(address, blockchain) {
+  // Prioritize Etherscan for Ethereum
+  if (blockchain === 'ethereum' || blockchain === 'eth') {
+    const ETHERSCAN_API_KEY = Deno.env.get("ETHERSCAN_API_KEY");
+    if (ETHERSCAN_API_KEY) {
+      try {
+        const url = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${ETHERSCAN_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.status === "1" && data.result) {
+          return data.result.map(tx => ({
+            hash: tx.hash,
+            from: tx.from,
+            to: tx.to,
+            value: (parseFloat(tx.value) / 1e18).toString(),
+            asset: 'ETH',
+            timestamp: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+            blockNumber: parseInt(tx.blockNumber),
+            status: tx.isError === '0' ? 'confirmed' : 'failed',
+            gasUsed: parseInt(tx.gasUsed),
+            category: 'external'
+          }));
+        }
+        if (data.message === 'No transactions found') return [];
+        console.error("Etherscan returned error:", data);
+      } catch (e) {
+        console.error("Etherscan fetch failed:", e);
+      }
+    }
+  }
+
+  // Fallback to Alchemy for other chains or if Etherscan fails
   const ALCHEMY_API_KEY = Deno.env.get("ALCHEMY_API_KEY");
   
   if (!ALCHEMY_API_KEY) {
-    throw new Error("ALCHEMY_API_KEY not configured");
+    console.warn("ALCHEMY_API_KEY not configured, returning empty transactions");
+    return [];
   }
 
-  // Alchemy network mapping
   const networks = {
     'ethereum': 'eth-mainnet',
     'polygon': 'polygon-mainnet',
@@ -176,7 +208,6 @@ async function fetchBlockchainTransactions(address, blockchain) {
   const alchemyUrl = `https://${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 
   try {
-    // Fetch asset transfers using Alchemy API
     const response = await fetch(alchemyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -189,7 +220,7 @@ async function fetchBlockchainTransactions(address, blockchain) {
           toBlock: 'latest',
           fromAddress: address,
           category: ['external', 'erc20', 'erc721', 'erc1155'],
-          maxCount: '0x32', // 50 transactions
+          maxCount: '0x32',
           withMetadata: true
         }]
       })
@@ -223,6 +254,38 @@ async function fetchBlockchainTransactions(address, blockchain) {
 }
 
 async function fetchWalletBalance(address, blockchain) {
+  // Prioritize Etherscan for Ethereum
+  if (blockchain === 'ethereum' || blockchain === 'eth') {
+    const ETHERSCAN_API_KEY = Deno.env.get("ETHERSCAN_API_KEY");
+    if (ETHERSCAN_API_KEY) {
+      try {
+        const url = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=${ETHERSCAN_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.status === "1") {
+          const balanceEth = parseFloat(data.result) / 1e18;
+          // Get ETH Price
+          let ethPrice = 3000;
+          try {
+             const priceRes = await fetch(`https://api.etherscan.io/api?module=stats&action=ethprice&apikey=${ETHERSCAN_API_KEY}`);
+             const priceData = await priceRes.json();
+             if (priceData.status === "1") ethPrice = parseFloat(priceData.result.ethusd);
+          } catch(e) {}
+
+          return {
+            amount: parseFloat(balanceEth.toFixed(4)),
+            usd: balanceEth * ethPrice,
+            currency: 'ETH'
+          };
+        }
+      } catch (e) {
+        console.error("Etherscan balance fetch failed:", e);
+      }
+    }
+  }
+
+  // Fallback to Alchemy
   const ALCHEMY_API_KEY = Deno.env.get("ALCHEMY_API_KEY");
   
   const networks = {
