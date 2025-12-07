@@ -72,13 +72,13 @@ export default function NewCaseModal({ onCaseCreated }) {
 
   const createCaseMutation = useMutation({
     mutationFn: async (data) => {
-      // Map to schema
+      // Map to schema (Target: MyCase)
       const casePayload = {
         // Victim
         client_name: data.victim_name,
         client_email: data.victim_email,
         phone_number: data.victim_phone,
-        
+
         // Scammer
         scammer_info: {
           name: data.scammer_name,
@@ -88,28 +88,28 @@ export default function NewCaseModal({ onCaseCreated }) {
           wallet_addresses: [data.scammer_wallet]
         },
         scammer_wallet: data.scammer_wallet,
-        
+
         // Financial
         amount_lost: parseFloat(data.amount_lost) || 0,
         cryptocurrency: data.currency_type,
         blockchain: data.blockchain,
-        
+
         // Case
         issue_type: data.fraud_type.toLowerCase().replace(/ /g, '_'),
         transaction_date: data.incident_date,
         description: data.description,
-        
+
         // Meta
         status: 'Pending',
         urgency: 'Medium',
-        
+
         // Legal
         law_enforcement_authorization: {
           authorized: data.law_enforcement_authorized,
           authorized_date: data.law_enforcement_authorized ? new Date().toISOString() : null,
           agencies: ['FBI', 'IC3', 'FTC']
         },
-        
+
         // Evidence
         evidence_files: evidenceFiles.map(f => ({
           name: f.name,
@@ -127,7 +127,7 @@ export default function NewCaseModal({ onCaseCreated }) {
       return response.data.case;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['my-cases'] });
       toast.success(`Case created: ${data.case_number}`);
       setIsOpen(false);
       // Reset form

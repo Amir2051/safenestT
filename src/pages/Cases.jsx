@@ -42,19 +42,20 @@ export default function Cases() {
     });
   }, [navigate]);
 
-  const { data: clientCases = [], isLoading: loadingClient } = useQuery({
-    queryKey: ['client-cases'],
+  const { data: myCases = [], isLoading: loadingClient } = useQuery({
+    queryKey: ['my-cases-admin'],
     queryFn: async () => {
       if (user?.role === 'admin' || user?.is_admin) {
-        return base44.entities.ClientCase.list('-created_date', 1000);
+        return base44.entities.MyCase.list('-created_date', 1000);
       }
-      return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
+      // Fallback if non-admin lands here
+      return base44.entities.MyCase.filter({ created_by: user.email }, '-created_date', 1000);
     },
     enabled: !!user
   });
 
   const cases = React.useMemo(() => {
-    return clientCases.map(c => ({
+    return myCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -66,9 +67,9 @@ export default function Cases() {
       client_name: c.client_name || c.created_by_name || 'Unknown',
       client_email: c.client_email || c.created_by_email,
       type: 'client',
-      _entityName: 'ClientCase'
+      _entityName: 'MyCase'
     })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [clientCases]);
+  }, [myCases]);
 
   const isLoading = loadingClient;
 

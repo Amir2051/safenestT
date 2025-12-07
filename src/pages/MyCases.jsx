@@ -33,16 +33,16 @@ export default function MyCases() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  // Fetch ClientCase (Unified)
-  const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
-    queryKey: ['my-client-cases'],
+  // Fetch MyCase (New Unified Entity)
+  const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
+    queryKey: ['my-cases'],
     queryFn: async () => {
       // Admin sees all
       if (user.role === 'admin' || user.is_admin) {
-        return base44.entities.ClientCase.list('-created_date', 1000);
+        return base44.entities.MyCase.list('-created_date', 1000);
       } else {
         // User sees cases they created OR where they are the client (email match)
-        return base44.entities.ClientCase.filter({
+        return base44.entities.MyCase.filter({
           $or: [
             { created_by: user.email },
             { created_by_email: user.email },
@@ -55,11 +55,11 @@ export default function MyCases() {
   });
 
   const handleCaseUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['my-client-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['my-cases'] });
   };
 
   // Normalize cases for display
-  const allCases = clientCases.map(c => ({
+  const allCases = myCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -68,7 +68,7 @@ export default function MyCases() {
       currency: c.cryptocurrency || 'USD',
       created_date: c.created_date,
       type: 'client',
-      _entityName: 'ClientCase',
+      _entityName: 'MyCase', // Correct entity name
       fraud_type: c.issue_type,
       description: c.description,
       blockchain: c.blockchain,
