@@ -73,16 +73,15 @@ export default function ActiveCasesPanel({ user }) {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'new': return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
-      case 'investigating': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
-      case 'documented': return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
-      case 'submitted': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50';
-      case 'recovering': return 'bg-orange-500/20 text-orange-400 border-orange-500/50';
-      case 'recovered': return 'bg-green-500/20 text-green-400 border-green-500/50';
-      case 'closed': return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+    const s = (status || '').toLowerCase();
+    if (['resolved', 'recovered', 'approved', 'completed'].includes(s)) {
+      return 'bg-green-500/20 text-green-400 border-green-500/50';
     }
+    if (['closed', 'deemed', 'rejected', 'denied'].includes(s)) {
+      return 'bg-red-500/20 text-red-400 border-red-500/50';
+    }
+    // Pending, New, In Progress, etc.
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
   };
 
   const getPriorityColor = (priority) => {
@@ -195,7 +194,7 @@ export default function ActiveCasesPanel({ user }) {
                     <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3" />
-                        {caseItem.client_email || 'No Email'}
+                        {caseItem.client_email || caseItem.created_by_email || caseItem.created_by || 'No Email'}
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3 text-red-400" />
