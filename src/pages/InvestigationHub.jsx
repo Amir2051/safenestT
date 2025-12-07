@@ -30,21 +30,21 @@ export default function InvestigationHub() {
 
   const { data: cases = [] } = useQuery({
     queryKey: ['investigation-cases'],
-    queryFn: () => base44.entities.InvestigationCase.list('-last_activity'),
+    queryFn: () => base44.entities.InvestigationCase.list('-last_activity', 1000),
     enabled: !!user,
     initialData: [],
   });
 
   const { data: submissions = [] } = useQuery({
     queryKey: ['agency-submissions'],
-    queryFn: () => base44.entities.AgencySubmission.list('-submission_date'),
+    queryFn: () => base44.entities.AgencySubmission.list('-submission_date', 1000),
     enabled: !!user,
     initialData: [],
   });
 
   const { data: fraudCases = [] } = useQuery({
     queryKey: ['fraud-cases-import'],
-    queryFn: () => base44.entities.FraudCase.list('-created_date'),
+    queryFn: () => base44.entities.FraudCase.list('-created_date', 1000),
     enabled: !!user,
     initialData: [],
   });
