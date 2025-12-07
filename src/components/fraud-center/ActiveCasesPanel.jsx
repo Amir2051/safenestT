@@ -195,7 +195,7 @@ export default function ActiveCasesPanel({ user }) {
                     <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3" />
-                        {caseItem.victim_name || 'Unknown'}
+                        {caseItem.client_email || 'No Email'}
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3 text-red-400" />
