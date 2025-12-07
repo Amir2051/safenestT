@@ -142,8 +142,8 @@ export default function CaseManagement({ cases }) {
                         <User className="w-4 h-4 text-purple-400" />
                         <div>
                           <p className="text-xs text-gray-300 font-medium">Created By</p>
-                          <p className="text-sm text-white font-semibold">{caseItem.created_by_name || 'N/A'}</p>
-                          <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{caseItem.created_by_email || caseItem.created_by}</p>
+                          <p className="text-sm text-white font-semibold">{[caseItem.created_by_name, caseItem.client_name].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'N/A'}</p>
+                          <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{[caseItem.created_by_email, caseItem.client_email, caseItem.created_by].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'Unknown'}</p>
                         </div>
                       </div>
                       
