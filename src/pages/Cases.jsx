@@ -73,7 +73,8 @@ export default function Cases() {
       amount_lost: c.amount_lost || 0,
       client_name: c.client_name || c.created_by_name || 'Unknown',
       client_email: c.client_email || c.created_by_email,
-      type: 'client'
+      type: 'client',
+      _entityName: 'ClientCase'
     }));
 
     const normalizedFraud = fraudCases.map(c => ({
@@ -87,7 +88,8 @@ export default function Cases() {
       amount_lost: c.amount_stolen_usd || 0,
       client_name: c.victim_contact_info?.name || c.created_by_name || 'Anonymous',
       client_email: c.victim_contact_info?.email || c.created_by,
-      type: 'fraud'
+      type: 'fraud',
+      _entityName: 'FraudCase'
     }));
 
     return [...normalizedClient, ...normalizedFraud].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));

@@ -90,6 +90,7 @@ export default function MyCases() {
           currency: c.cryptocurrency || 'USD',
           created_date: c.created_date,
           type: 'client',
+          _entityName: 'ClientCase', // Explicit entity name for CaseDetailDialog
           fraud_type: c.issue_type,
           description: c.description,
           blockchain: c.blockchain,
@@ -105,6 +106,7 @@ export default function MyCases() {
           currency: c.currency_type || 'USD',
           created_date: c.created_date,
           type: 'fraud',
+          _entityName: 'FraudCase', // Explicit entity name for CaseDetailDialog
           fraud_type: c.fraud_type,
           description: c.description,
           blockchain: c.blockchain,
