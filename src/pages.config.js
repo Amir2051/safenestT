@@ -85,6 +85,7 @@ import CaseDocumentManager from './pages/CaseDocumentManager';
 import CryptoWalletChecker from './pages/CryptoWalletChecker';
 import AdminSupport from './pages/AdminSupport';
 import Support from './pages/Support';
+import AdminReports from './pages/AdminReports';
 import __Layout from './Layout.jsx';
 
 
@@ -176,6 +177,7 @@ export const PAGES = {
     "CryptoWalletChecker": CryptoWalletChecker,
     "AdminSupport": AdminSupport,
     "Support": Support,
+    "AdminReports": AdminReports,
 }
 
 export const pagesConfig = {
