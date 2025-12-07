@@ -61,11 +61,8 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'update') {
-            // Robust update using service role
             const { id, updates } = data;
             if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
-
-            console.log(`[CaseUpdate] Updating case ${id} with:`, JSON.stringify(updates));
 
             // Ensure numeric fields are numbers
             if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
@@ -76,72 +73,46 @@ Deno.serve(async (req) => {
             // Always update metadata
             updates.last_activity = new Date().toISOString();
             updates.updated_date = new Date().toISOString();
-            updates.updated_by = user.email; // Explicitly track who updated
+            updates.updated_by = user.email; 
 
-            // Permission Check
             const isAdmin = user.role === 'admin' || user.is_admin;
             const isSpecialist = user.job_title === 'Fraud Specialist';
 
             try {
-                // Use service role to bypass strict RLS if needed, ensuring admin can always edit
-                // We default to MyCase unless explicitly told otherwise (for legacy support during transition)
-                const entityName = data.entityName === 'ClientCase' ? 'MyCase' : (data.entityName || 'MyCase');
+                // FORCE MYCASE - Legacy entities are gone
+                const existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
                 
-                let updatedCase;
-                
-                // Unified logic - everything should be MyCase now
-                if (entityName === 'MyCase') {
-                    const existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
-                    if (!existing) {
-                        return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
-                    }
-
-                    // Strict check: Admins can edit all, Users can ONLY edit their own.
-                    if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
-                        return Response.json({ error: "Unauthorized: You can only edit cases you created." }, { status: 403 });
-                    }
-
-                    // Status Change Logging
-                    if (updates.status && existing.status !== updates.status) {
-                        try {
-                            await base44.asServiceRole.entities.CaseTimelineEvent.create({
-                                case_id: id,
-                                event_type: 'status_change',
-                                description: `Status changed from ${existing.status} to ${updates.status}`,
-                                performed_by: user.email,
-                                previous_status: existing.status,
-                                new_status: updates.status,
-                                metadata: JSON.stringify({
-                                    timestamp: new Date().toISOString(),
-                                    admin_id: user.id,
-                                    admin_email: user.email
-                                })
-                            });
-                        } catch (logErr) {
-                            console.error("Failed to log status change:", logErr);
-                        }
-                    }
-
-                    updatedCase = await base44.asServiceRole.entities.MyCase.update(id, updates);
-                } else if (entityName === 'InvestigationCase') {
-                    // Keeping purely for admin-specific detailed investigation logs if they are separate
-                    if (!isAdmin && !isSpecialist) {
-                        return Response.json({ error: "Unauthorized: Admin access required." }, { status: 403 });
-                    }
-                    updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
-                } else {
-                     return Response.json({ error: `Entity ${entityName} is deprecated. Migration required.` }, { status: 400 });
+                if (!existing) {
+                    return Response.json({ error: `Case ${id} not found` }, { status: 404 });
                 }
 
-                console.log(`[CaseUpdate] Success:`, updatedCase.id);
-                return Response.json({ success: true, case: updatedCase, message: "Case updated successfully." });
+                // ADMIN OVERRIDE: If admin, skip ownership check entirely
+                if (!isAdmin && !isSpecialist) {
+                    // Regular users can only update their own cases
+                    if (existing.created_by !== user.email) {
+                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                    }
+                }
+
+                // Log status changes
+                if (updates.status && existing.status !== updates.status) {
+                    await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                        case_id: id,
+                        event_type: 'status_change',
+                        description: `Status updated to ${updates.status}`,
+                        performed_by: user.email,
+                        previous_status: existing.status,
+                        new_status: updates.status,
+                        metadata: JSON.stringify({ timestamp: new Date().toISOString() })
+                    }).catch(e => console.error("Log failed:", e));
+                }
+
+                // PERFORM UPDATE
+                const updatedCase = await base44.asServiceRole.entities.MyCase.update(id, updates);
+                return Response.json({ success: true, case: updatedCase });
+
             } catch (err) {
-                console.error(`[CaseUpdate] Error:`, err);
-                // Handle not found error from SDK if it wasn't caught above
-                if (err.message && err.message.includes('not found')) {
-                     return Response.json({ error: err.message, code: 'NOT_FOUND' }, { status: 404 });
-                }
-                return Response.json({ error: "Update failed — backend blocked the request.", details: err.message }, { status: 500 });
+                return Response.json({ error: err.message }, { status: 500 });
             }
         }
 
