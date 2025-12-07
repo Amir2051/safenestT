@@ -44,13 +44,13 @@ export default function Cases() {
 
   const { data: clientCases = [], isLoading: loadingClient } = useQuery({
     queryKey: ['client-cases'],
-    queryFn: () => base44.entities.ClientCase.list('-created_date'),
+    queryFn: () => base44.entities.ClientCase.list('-created_date', 1000),
     enabled: !!user
   });
 
   const { data: fraudCases = [], isLoading: loadingFraud } = useQuery({
     queryKey: ['fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.list('-created_date'),
+    queryFn: () => base44.entities.FraudCase.list('-created_date', 1000),
     enabled: !!user
   });
 

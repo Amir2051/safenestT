@@ -38,9 +38,9 @@ export default function MyCases() {
     queryKey: ['my-client-cases'],
     queryFn: async () => {
       if (user.role === 'admin' || user.is_admin) {
-        return base44.entities.ClientCase.list('-created_date');
+        return base44.entities.ClientCase.list('-created_date', 1000);
       } else {
-        return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date');
+        return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
       }
     },
     enabled: !!user
@@ -51,9 +51,9 @@ export default function MyCases() {
     queryKey: ['my-fraud-cases'],
     queryFn: async () => {
       if (user.role === 'admin' || user.is_admin) {
-        return base44.entities.FraudCase.list('-created_date');
+        return base44.entities.FraudCase.list('-created_date', 1000);
       } else {
-        return base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date');
+        return base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date', 1000);
       }
     },
     enabled: !!user,

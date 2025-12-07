@@ -24,17 +24,34 @@ export default function ActiveCasesPanel({ user }) {
 
   const { data: investigationCases = [], isLoading: loadingInvestigation, refetch: refetchInvestigation } = useQuery({
     queryKey: ['investigation-cases'],
-    queryFn: () => base44.entities.InvestigationCase.list('-created_date', 100)
+    queryFn: () => base44.entities.InvestigationCase.list('-created_date', 1000)
   });
 
   const { data: fraudCases = [], isLoading: loadingFraud, refetch: refetchFraud } = useQuery({
     queryKey: ['fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.list('-created_date', 100)
+    queryFn: () => base44.entities.FraudCase.list('-created_date', 1000)
+  });
+
+  const { data: clientCases = [], isLoading: loadingClient, refetch: refetchClient } = useQuery({
+    queryKey: ['client-cases'],
+    // Use filter for regular users to ensure they see their cases, list for admins is handled by RLS but explicit filter is safer for "My Cases" logic if mixed
+    // Actually, ActiveCasesPanel might be used by admins too. base44 list() applies RLS automatically.
+    // If user is regular user, list() only returns what RLS allows (created_by me).
+    // If user is admin, list() returns all.
+    queryFn: () => base44.entities.ClientCase.list('-created_date', 1000)
   });
 
   const allCases = [
     ...investigationCases.map(c => ({ ...c, _entityName: 'InvestigationCase' })), 
-    ...fraudCases.map(c => ({ ...c, _entityName: 'FraudCase' }))
+    ...fraudCases.map(c => ({ ...c, _entityName: 'FraudCase' })),
+    ...clientCases.map(c => ({ 
+      ...c, 
+      _entityName: 'ClientCase',
+      // Map ClientCase fields to common schema if needed
+      case_title: c.case_title || c.client_name || 'Untitled Case',
+      status: c.status || 'Pending',
+      created_date: c.created_date
+    }))
   ].sort((a, b) => 
     new Date(b.created_date) - new Date(a.created_date)
   );
@@ -53,12 +70,14 @@ export default function ActiveCasesPanel({ user }) {
   const handleRefresh = () => {
     refetchInvestigation();
     refetchFraud();
+    refetchClient();
     toast.success('Cases refreshed');
   };
 
   const handleCaseUpdate = () => {
     queryClient.invalidateQueries(['investigation-cases']);
     queryClient.invalidateQueries(['fraud-cases']);
+    queryClient.invalidateQueries(['client-cases']);
   };
 
   const getStatusColor = (status) => {
@@ -84,7 +103,7 @@ export default function ActiveCasesPanel({ user }) {
     }
   };
 
-  const isLoading = loadingInvestigation || loadingFraud;
+  const isLoading = loadingInvestigation || loadingFraud || loadingClient;
 
   return (
     <div className="space-y-6">
