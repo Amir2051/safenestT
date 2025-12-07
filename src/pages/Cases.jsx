@@ -70,6 +70,7 @@ export default function Cases() {
       amount_lost: c.amount_lost || 0,
       client_name: c.client_name || c.created_by_name || 'Unknown',
       client_email: c.client_email || c.created_by_email,
+      display_email: [c.client_email, c.created_by_email, c.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || c.client_name || 'Unknown User',
       type: 'client',
       _entityName: 'MyCase'
     })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
@@ -279,7 +280,7 @@ export default function Cases() {
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-mono text-cyan-400 flex items-center gap-2">
                              <User className="w-3 h-3" />
-                             {caseItem.client_email || caseItem.created_by_email || 'No Email'}
+                             {caseItem.display_email}
                           </p>
                           <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
                             {caseItem.case_title || caseItem.client_name || 'Untitled Case'}

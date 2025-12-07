@@ -46,6 +46,7 @@ export default function ActiveCasesPanel({ user }) {
     _entityName: 'MyCase',
     case_title: c.case_title || c.client_name || 'Untitled Case',
     victim_name: c.client_name || c.created_by_name,
+    display_email: [c.client_email, c.created_by_email, c.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || c.client_name || 'Unknown User',
     amount_stolen_usd: c.amount_lost || c.amount_stolen_usd || 0,
     status: c.status || 'Pending',
     created_date: c.created_date,
@@ -194,7 +195,7 @@ export default function ActiveCasesPanel({ user }) {
                     <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3" />
-                        {caseItem.client_email || caseItem.created_by_email || 'No Email'}
+                        {caseItem.display_email}
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3 text-red-400" />
