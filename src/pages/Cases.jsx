@@ -45,24 +45,16 @@ export default function Cases() {
   const { data: clientCases = [], isLoading: loadingClient } = useQuery({
     queryKey: ['client-cases'],
     queryFn: async () => {
-      // Admins must see ALL cases.
-      // Explicitly fetch all, assuming RLS allows admins to see everything.
-      return base44.entities.ClientCase.list('-created_date', 1000);
+      if (user?.role === 'admin' || user?.is_admin) {
+        return base44.entities.ClientCase.list('-created_date', 1000);
+      }
+      return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
     },
     enabled: !!user
   });
 
-  const { data: fraudCases = [], isLoading: loadingFraud } = useQuery({
-    queryKey: ['fraud-cases'],
-    queryFn: async () => {
-      return base44.entities.FraudCase.list('-created_date', 1000);
-    },
-    enabled: !!user
-  });
-
-  // Normalize and merge
   const cases = React.useMemo(() => {
-    const normalizedClient = clientCases.map(c => ({
+    return clientCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -75,27 +67,10 @@ export default function Cases() {
       client_email: c.client_email || c.created_by_email,
       type: 'client',
       _entityName: 'ClientCase'
-    }));
+    })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  }, [clientCases]);
 
-    const normalizedFraud = fraudCases.map(c => ({
-      ...c,
-      id: c.id,
-      case_title: c.case_title || 'Fraud Report',
-      status: c.status === 'reported' ? 'Pending' : c.status,
-      urgency: c.case_priority === 'critical' ? 'High' : (c.case_priority === 'high' ? 'High' : 'Medium'),
-      issue_type: c.fraud_type || 'scam',
-      created_date: c.created_date,
-      amount_lost: c.amount_stolen_usd || 0,
-      client_name: c.victim_contact_info?.name || c.created_by_name || 'Anonymous',
-      client_email: c.victim_contact_info?.email || c.created_by,
-      type: 'fraud',
-      _entityName: 'FraudCase'
-    }));
-
-    return [...normalizedClient, ...normalizedFraud].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [clientCases, fraudCases]);
-
-  const isLoading = loadingClient || loadingFraud;
+  const isLoading = loadingClient;
 
   const openCaseDetail = (caseItem) => {
     // Find the full object if we only have ID, but here we pass the object
