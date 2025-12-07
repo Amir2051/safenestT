@@ -76,7 +76,7 @@ export default function MyCases() {
       admin_status: c.status
   })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
-  const isLoading = loadingClientCases;
+  const isLoading = loadingMyCases;
 
   // Using CaseDetailDialog instead
 
