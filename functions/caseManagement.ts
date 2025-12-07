@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
                 created_by_name: user.full_name || user.first_name
             };
 
-            const newCase = await base44.entities.ClientCase.create(caseData);
+            // TARGET ENTITY: MyCase
+            const newCase = await base44.entities.MyCase.create(caseData);
             return Response.json({ success: true, case: newCase });
         }
 
@@ -83,26 +84,14 @@ Deno.serve(async (req) => {
 
             try {
                 // Use service role to bypass strict RLS if needed, ensuring admin can always edit
-                // We assume 'data.entityName' is passed, default to ClientCase
-                const entityName = data.entityName || 'ClientCase';
+                // We default to MyCase unless explicitly told otherwise (for legacy support during transition)
+                const entityName = data.entityName === 'ClientCase' ? 'MyCase' : (data.entityName || 'MyCase');
                 
                 let updatedCase;
-                if (entityName === 'FraudCase') {
-                    const existing = await base44.asServiceRole.entities.FraudCase.get(id).catch(() => null);
-                    if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
-                    
-                    if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
-                        return Response.json({ error: "Unauthorized: You can only edit cases you created." }, { status: 403 });
-                    }
-                    updatedCase = await base44.asServiceRole.entities.FraudCase.update(id, updates);
-                } else if (entityName === 'InvestigationCase') {
-                    if (!isAdmin && !isSpecialist) {
-                        return Response.json({ error: "Unauthorized: Admin access required." }, { status: 403 });
-                    }
-                    updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
-                } else {
-                    // ClientCase
-                    const existing = await base44.asServiceRole.entities.ClientCase.get(id).catch(() => null);
+                
+                // Unified logic - everything should be MyCase now
+                if (entityName === 'MyCase') {
+                    const existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
                     if (!existing) {
                         return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
                     }
@@ -130,11 +119,18 @@ Deno.serve(async (req) => {
                             });
                         } catch (logErr) {
                             console.error("Failed to log status change:", logErr);
-                            // Continue with update even if logging fails
                         }
                     }
 
-                    updatedCase = await base44.asServiceRole.entities.ClientCase.update(id, updates);
+                    updatedCase = await base44.asServiceRole.entities.MyCase.update(id, updates);
+                } else if (entityName === 'InvestigationCase') {
+                    // Keeping purely for admin-specific detailed investigation logs if they are separate
+                    if (!isAdmin && !isSpecialist) {
+                        return Response.json({ error: "Unauthorized: Admin access required." }, { status: 403 });
+                    }
+                    updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
+                } else {
+                     return Response.json({ error: `Entity ${entityName} is deprecated. Migration required.` }, { status: 400 });
                 }
 
                 console.log(`[CaseUpdate] Success:`, updatedCase.id);
@@ -156,106 +152,81 @@ Deno.serve(async (req) => {
 
             const { type } = data;
 
-            if (type === 'full_migration') {
-                // STEP 1: MIGRATE FRAUDCASE -> CLIENTCASE
-                const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 1000);
+            if (type === 'migrate_to_mycase') {
+                // MIGRATE CLIENTCASE -> MYCASE
+                const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
                 const users = await base44.asServiceRole.entities.User.list(null, 1000);
                 
                 const migratedCases = [];
+                for (const cc of clientCases) {
+                    // Match User (Logic from previous step refined)
+                    const matchingUser = users.find(u => 
+                        u.email.toLowerCase() === cc.client_email?.toLowerCase() ||
+                        u.email.toLowerCase() === cc.created_by?.toLowerCase() ||
+                        u.email.toLowerCase() === cc.created_by_email?.toLowerCase()
+                    );
+
+                    const newCase = {
+                        ...cc,
+                        id: undefined, // Create new ID
+                        created_date: cc.created_date, // Preserve timestamp
+                        updated_date: cc.updated_date,
+                        
+                        // Ensure Ownership
+                        created_by: matchingUser?.email || cc.created_by || cc.client_email,
+                        created_by_email: matchingUser?.email || cc.created_by_email || cc.client_email,
+                        created_by_name: matchingUser?.full_name || cc.created_by_name || cc.client_name,
+                        
+                        // Metadata trace
+                        metadata: JSON.stringify({ legacy_id: cc.id, source: 'client_case_migration' })
+                    };
+                    
+                    // Create in MyCase
+                    await base44.asServiceRole.entities.MyCase.create(newCase);
+                    // Delete from ClientCase
+                    await base44.asServiceRole.entities.ClientCase.delete(cc.id);
+                    migratedCases.push(newCase);
+                }
+
+                // Also check for stragglers in FraudCase if any remain
+                const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 1000);
                 for (const fc of fraudCases) {
-                    // Match User
+                     // Match User
                     const matchingUser = users.find(u => 
                         u.email.toLowerCase() === fc.victim_contact_info?.email?.toLowerCase() ||
                         u.email.toLowerCase() === fc.created_by?.toLowerCase()
                     );
 
-                    const newCase = {
+                     const newCase = {
                         // Core
                         case_title: fc.case_title,
                         client_name: fc.victim_contact_info?.name || matchingUser?.full_name || 'Unknown',
                         client_email: fc.victim_contact_info?.email || matchingUser?.email,
                         phone_number: fc.victim_contact_info?.phone,
-                        
-                        // Financial
                         amount_lost: fc.amount_stolen || fc.amount_stolen_usd || 0,
                         cryptocurrency: fc.currency_type === 'USD' ? '' : fc.currency_type,
                         blockchain: fc.blockchain,
-                        
-                        // Case Details
                         issue_type: fc.fraud_type || 'scam',
                         description: fc.description,
                         status: fc.status === 'reported' ? 'Pending' : fc.status,
                         incident_date: fc.incident_date || fc.created_date,
-                        created_date: fc.created_date, // Preserve timestamp
-                        
-                        // Scammer
+                        created_date: fc.created_date, 
                         scammer_wallet: fc.scammer_wallet,
                         scammer_info: fc.suspect_details || {},
-                        
-                        // Ownership (CRITICAL)
-                        created_by: matchingUser?.email || fc.created_by, // Prefer matched email
+                        created_by: matchingUser?.email || fc.created_by,
                         created_by_email: matchingUser?.email || fc.created_by,
                         created_by_name: matchingUser?.full_name || fc.victim_contact_info?.name,
-                        
-                        // Legacy ID ref if needed
-                        metadata: JSON.stringify({ legacy_id: fc.id, source: 'fraud_case_migration' })
+                        metadata: JSON.stringify({ legacy_id: fc.id, source: 'fraud_case_migration_final' })
                     };
-                    
-                    // Create in ClientCase
-                    await base44.asServiceRole.entities.ClientCase.create(newCase);
-                    // Delete from FraudCase to ensure "no records remain"
+
+                    await base44.asServiceRole.entities.MyCase.create(newCase);
                     await base44.asServiceRole.entities.FraudCase.delete(fc.id);
                     migratedCases.push(newCase);
                 }
 
-                // STEP 2: FIX EXISTING CLIENTCASE OWNERSHIP
-                const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
-                const ownershipUpdates = [];
-                let fixedOwnershipCount = 0;
-
-                for (const c of clientCases) {
-                    let needsUpdate = false;
-                    const updatePayload = {};
-
-                    // Find user
-                    const matchingUser = users.find(u => 
-                        u.email.toLowerCase() === c.client_email?.toLowerCase() || 
-                        u.email.toLowerCase() === c.created_by?.toLowerCase() ||
-                        u.email.toLowerCase() === c.created_by_email?.toLowerCase()
-                    );
-
-                    if (matchingUser) {
-                        if (c.created_by !== matchingUser.email) {
-                            updatePayload.created_by = matchingUser.email;
-                            needsUpdate = true;
-                        }
-                        if (c.created_by_email !== matchingUser.email) {
-                            updatePayload.created_by_email = matchingUser.email;
-                            needsUpdate = true;
-                        }
-                        if (!c.created_by_name) {
-                            updatePayload.created_by_name = matchingUser.full_name;
-                            needsUpdate = true;
-                        }
-                    } else if (!c.created_by && c.client_email) {
-                        // Fallback: if no user found but client_email exists, set created_by to client_email
-                        // This ensures they can see it if they register later or if filtering logic uses email
-                        updatePayload.created_by = c.client_email;
-                        updatePayload.created_by_email = c.client_email;
-                        needsUpdate = true;
-                    }
-
-                    if (needsUpdate) {
-                        ownershipUpdates.push(base44.asServiceRole.entities.ClientCase.update(c.id, updatePayload));
-                        fixedOwnershipCount++;
-                    }
-                }
-                
-                await Promise.all(ownershipUpdates);
-
                 return Response.json({ 
                     success: true, 
-                    message: `Migration Complete. Moved ${migratedCases.length} from FraudCase. Fixed ownership for ${fixedOwnershipCount} ClientCases.` 
+                    message: `Full Migration to MyCase Complete. Moved ${migratedCases.length} cases.` 
                 });
             }
 
