@@ -64,7 +64,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         action: 'update',
         data: {
           id: caseData.id,
-          entityName: caseData._entityName || 'ClientCase',
+          entityName: caseData._entityName || 'MyCase',
           updates: updates
         }
       });
@@ -128,7 +128,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     setSaving(true);
     try {
       const updates = {
-        // Direct bindings to ClientCase schema
+        // Direct bindings to MyCase schema
         client_name: editedCase.client_name,
         client_email: editedCase.client_email,
         phone_number: editedCase.phone_number,

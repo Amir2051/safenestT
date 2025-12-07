@@ -136,8 +136,13 @@ export default function ReportFraudDialog({ onClose, onSuccess }) {
         }
       };
 
-      // Create only ClientCase - this is the unified standard
-      await base44.entities.ClientCase.create(caseData);
+      // Create MyCase via backend function
+      const response = await base44.functions.invoke('caseManagement', {
+          action: 'create',
+          data: caseData
+      });
+      
+      if (response.data.error) throw new Error(response.data.error);
       
       toast.success('Case created and saved to My Cases');
       if (onSuccess) onSuccess();
