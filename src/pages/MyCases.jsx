@@ -256,7 +256,7 @@ export default function MyCases() {
                           {user.role === 'admin' && (
                             <p className="text-purple-400 text-xs truncate flex items-center gap-1">
                               <User className="w-3 h-3" />
-                              User: {caseItem.created_by}
+                              User: {[caseItem.client_email, caseItem.created_by_email, caseItem.created_by, caseItem.client_name, caseItem.created_by_name].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'Unknown'}
                             </p>
                           )}
                           {caseItem.law_enforcement_authorization?.authorized && (

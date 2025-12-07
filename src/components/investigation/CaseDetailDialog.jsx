@@ -364,8 +364,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <User className="w-4 h-4 text-purple-400" />
                     <p className="text-xs text-gray-300 font-medium">Created By</p>
                   </div>
-                  <p className="text-white font-semibold text-base">{[caseData.created_by_name, caseData.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || 'N/A'}</p>
-                  <p className="text-xs text-gray-400 mt-1">{[caseData.client_email, caseData.victim_email, caseData.created_by_email, caseData.created_by].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com')) || 'Unknown User'}</p>
+                  <p className="text-white font-semibold text-base">{[caseData.created_by_name, caseData.client_name].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">{[caseData.client_email, caseData.victim_email, caseData.created_by_email, caseData.created_by].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'Unknown User'}</p>
                 </div>
 
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
