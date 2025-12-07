@@ -92,12 +92,12 @@ Deno.serve(async (req) => {
                     if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
                     
                     if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
-                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                        return Response.json({ error: "Unauthorized: You can only edit cases you created." }, { status: 403 });
                     }
                     updatedCase = await base44.asServiceRole.entities.FraudCase.update(id, updates);
                 } else if (entityName === 'InvestigationCase') {
                     if (!isAdmin && !isSpecialist) {
-                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                        return Response.json({ error: "Unauthorized: Admin access required." }, { status: 403 });
                     }
                     updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
                 } else {
@@ -107,8 +107,9 @@ Deno.serve(async (req) => {
                         return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
                     }
 
+                    // Strict check: Admins can edit all, Users can ONLY edit their own.
                     if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
-                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                        return Response.json({ error: "Unauthorized: You can only edit cases you created." }, { status: 403 });
                     }
 
                     // Status Change Logging

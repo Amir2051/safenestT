@@ -37,9 +37,11 @@ export default function MyCases() {
   const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
     queryKey: ['my-client-cases'],
     queryFn: async () => {
+      // Admin sees all, User sees only created by them
       if (user.role === 'admin' || user.is_admin) {
         return base44.entities.ClientCase.list('-created_date', 1000);
       } else {
+        // Strict filter: only cases created by the user
         return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
       }
     },

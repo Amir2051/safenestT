@@ -24,21 +24,36 @@ export default function ActiveCasesPanel({ user }) {
 
   const { data: investigationCases = [], isLoading: loadingInvestigation, refetch: refetchInvestigation } = useQuery({
     queryKey: ['investigation-cases'],
-    queryFn: () => base44.entities.InvestigationCase.list('-created_date', 1000)
+    queryFn: async () => {
+      // Only fetch InvestigationCase if admin (avoid 403s for users)
+      if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
+        return base44.entities.InvestigationCase.list('-created_date', 1000);
+      }
+      return [];
+    },
+    enabled: !!user
   });
 
   const { data: fraudCases = [], isLoading: loadingFraud, refetch: refetchFraud } = useQuery({
     queryKey: ['fraud-cases'],
-    queryFn: () => base44.entities.FraudCase.list('-created_date', 1000)
+    queryFn: async () => {
+      if (user?.role === 'admin' || user?.is_admin) {
+        return base44.entities.FraudCase.list('-created_date', 1000);
+      }
+      return base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date', 1000);
+    },
+    enabled: !!user
   });
 
   const { data: clientCases = [], isLoading: loadingClient, refetch: refetchClient } = useQuery({
     queryKey: ['client-cases'],
-    // Use filter for regular users to ensure they see their cases, list for admins is handled by RLS but explicit filter is safer for "My Cases" logic if mixed
-    // Actually, ActiveCasesPanel might be used by admins too. base44 list() applies RLS automatically.
-    // If user is regular user, list() only returns what RLS allows (created_by me).
-    // If user is admin, list() returns all.
-    queryFn: () => base44.entities.ClientCase.list('-created_date', 1000)
+    queryFn: async () => {
+      if (user?.role === 'admin' || user?.is_admin) {
+        return base44.entities.ClientCase.list('-created_date', 1000);
+      }
+      return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
+    },
+    enabled: !!user
   });
 
   const allCases = [
@@ -47,10 +62,11 @@ export default function ActiveCasesPanel({ user }) {
     ...clientCases.map(c => ({ 
       ...c, 
       _entityName: 'ClientCase',
-      // Map ClientCase fields to common schema if needed
       case_title: c.case_title || c.client_name || 'Untitled Case',
       status: c.status || 'Pending',
-      created_date: c.created_date
+      created_date: c.created_date,
+      // Ensure ID is preserved
+      id: c.id
     }))
   ].sort((a, b) => 
     new Date(b.created_date) - new Date(a.created_date)
