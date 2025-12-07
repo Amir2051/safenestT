@@ -46,7 +46,7 @@ export default function ActiveCasesPanel({ user }) {
     _entityName: 'MyCase',
     case_title: c.case_title || c.client_name || 'Untitled Case',
     victim_name: c.client_name || c.created_by_name,
-    display_email: [c.client_email, c.created_by_email, c.created_by].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || 'Unknown User',
+    display_email: [c.client_email, c.created_by_email, c.created_by, c.client_name, c.created_by_name].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com')) || 'Unknown User',
     amount_stolen_usd: c.amount_lost || c.amount_stolen_usd || 0,
     status: c.status || 'Pending',
     created_date: c.created_date,
