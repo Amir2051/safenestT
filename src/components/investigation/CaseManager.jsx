@@ -95,8 +95,8 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
                     </div>
                     <div>
                       <p className="text-gray-400 text-xs">Created By</p>
-                      <p className="text-white font-semibold">{fraudCase.created_by_name || 'N/A'}</p>
-                      <p className="text-gray-400 text-[10px] truncate">{fraudCase.created_by_email || fraudCase.created_by}</p>
+                      <p className="text-white font-semibold">{[fraudCase.created_by_name, fraudCase.client_name].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'N/A'}</p>
+                      <p className="text-gray-400 text-[10px] truncate">{[fraudCase.created_by_email, fraudCase.client_email, fraudCase.created_by].find(e => e && typeof e === 'string' && !e.trim().toLowerCase().startsWith('service+') && !e.toLowerCase().includes('no-reply.base44.com') && !e.toLowerCase().includes('base44.com')) || 'Unknown'}</p>
                     </div>
                   </div>
 
