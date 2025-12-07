@@ -270,6 +270,10 @@ export default function Cases() {
                         <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
                           {caseItem.case_title || caseItem.client_name || 'Untitled Case'}
                         </h3>
+                        <p className="text-sm text-gray-400 flex items-center gap-1 mb-2">
+                           <User className="w-3 h-3" />
+                           {caseItem.client_email || caseItem.created_by_email || 'No Email'}
+                        </p>
                         {caseItem.priority_score !== undefined && (
                           <Badge className={`
                             ${caseItem.priority_score >= 80 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
