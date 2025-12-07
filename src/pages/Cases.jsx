@@ -42,7 +42,7 @@ export default function Cases() {
     });
   }, [navigate]);
 
-  const { data: myCases = [], isLoading: loadingClient } = useQuery({
+  const { data: fetchedCases = [], isLoading: loadingCases } = useQuery({
     queryKey: ['my-cases-admin'],
     queryFn: async () => {
       if (user?.role === 'admin' || user?.is_admin) {
@@ -55,7 +55,7 @@ export default function Cases() {
   });
 
   const cases = React.useMemo(() => {
-    return myCases.map(c => ({
+    return fetchedCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -69,9 +69,9 @@ export default function Cases() {
       type: 'client',
       _entityName: 'MyCase'
     })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [myCases]);
+  }, [fetchedCases]);
 
-  const isLoading = loadingClient;
+  const isLoading = loadingCases;
 
   const openCaseDetail = (caseItem) => {
     // Find the full object if we only have ID, but here we pass the object
@@ -347,7 +347,7 @@ export default function Cases() {
             setSelectedCaseId(null);
           }} 
           onUpdate={() => {
-             queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+             queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] });
           }}
         />
       )}
