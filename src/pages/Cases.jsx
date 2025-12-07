@@ -279,7 +279,7 @@ export default function Cases() {
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-mono text-cyan-400 flex items-center gap-2">
                              <User className="w-3 h-3" />
-                             {caseItem.created_by_email || caseItem.client_email || 'No Email'}
+                             {caseItem.client_email || caseItem.created_by_email || 'No Email'}
                           </p>
                           <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
                             {caseItem.case_title || caseItem.client_name || 'Untitled Case'}
