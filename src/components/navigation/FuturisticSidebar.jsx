@@ -281,6 +281,14 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
+    id: 'admin-reports',
+    title: 'Reports & KPIs',
+    icon: Activity,
+    url: createPageUrl('AdminReports'),
+    glow: 'blue',
+    badge: 'KPI'
+  },
+  {
     id: 'admin-approvals',
     title: 'User Approvals',
     icon: UserCheck,
