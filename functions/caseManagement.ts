@@ -154,6 +154,39 @@ Deno.serve(async (req) => {
                 return Response.json({ error: 'Unauthorized' }, { status: 403 });
             }
 
+            const { type } = data;
+
+            if (type === 'ownership_sync') {
+                // SYNC OWNERSHIP: Match client_email to user records
+                const cases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
+                const users = await base44.asServiceRole.entities.User.list(null, 1000);
+                
+                const updates = [];
+                let updatedCount = 0;
+
+                for (const c of cases) {
+                    // If created_by_email is missing or generic, try to fix it
+                    if (!c.created_by_email || !c.created_by_name) {
+                        // Try to find matching user by client_email
+                        const matchingUser = users.find(u => 
+                            u.email.toLowerCase() === c.client_email?.toLowerCase() || 
+                            u.email.toLowerCase() === c.created_by?.toLowerCase()
+                        );
+
+                        if (matchingUser) {
+                            updates.push(base44.asServiceRole.entities.ClientCase.update(c.id, {
+                                created_by_email: matchingUser.email,
+                                created_by_name: matchingUser.full_name
+                            }));
+                            updatedCount++;
+                        }
+                    }
+                }
+                await Promise.all(updates);
+                return Response.json({ success: true, message: `Synced ownership for ${updatedCount} cases` });
+            }
+
+            // Default migration: ID generation (legacy code kept)
             // Fetch all cases
             const cases = await base44.asServiceRole.entities.ClientCase.list(null, 1000); // adjust limit as needed
             

@@ -76,7 +76,16 @@ export default function ReportFraudDialog({ onClose, onSuccess }) {
     setLoading(true);
 
     try {
+      // Get current user to ensure correct ownership
+      const user = await base44.auth.me();
+      if (!user) throw new Error("You must be logged in to submit a case.");
+
       const caseData = {
+        // Standardized created_by fields
+        created_by: user.email,
+        created_by_email: user.email,
+        created_by_name: user.full_name || formData.victim_name,
+
         // Victim
         client_name: formData.victim_name,
         client_email: formData.victim_email,
@@ -91,6 +100,7 @@ export default function ReportFraudDialog({ onClose, onSuccess }) {
           wallet_addresses: [formData.scammer_wallet]
         },
         scammer_wallet: formData.scammer_wallet,
+        monitored_wallets: [formData.scammer_wallet],
         
         // Financial
         amount_lost: parseFloat(formData.amount_lost) || 0,
@@ -115,6 +125,7 @@ export default function ReportFraudDialog({ onClose, onSuccess }) {
         
         // Meta
         status: 'Pending',
+        urgency: 'Medium',
         case_number: `CASE-${Date.now()}`,
         
         // Legal
@@ -125,23 +136,10 @@ export default function ReportFraudDialog({ onClose, onSuccess }) {
         }
       };
 
+      // Create only ClientCase - this is the unified standard
       await base44.entities.ClientCase.create(caseData);
       
-      // Also create legacy FraudCase record for older admin tools compatibility if needed
-      await base44.entities.FraudCase.create({
-          ...caseData,
-          case_title: `Report: ${formData.fraud_type} - ${formData.amount_lost} ${formData.currency_type}`,
-          amount_stolen: parseFloat(formData.amount_lost) || 0,
-          fraud_type: formData.fraud_type.toLowerCase().replace(/ /g, '_'),
-          victim_contact_info: {
-              name: formData.victim_name,
-              email: formData.victim_email,
-              phone: formData.victim_phone
-          },
-          suspect_details: caseData.scammer_info
-      });
-
-      toast.success('Fraud case reported successfully');
+      toast.success('Case created and saved to My Cases');
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
