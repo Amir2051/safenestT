@@ -33,7 +33,7 @@ export default function MyCases() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  // Fetch ClientCase (Standard)
+  // Fetch ClientCase (Unified)
   const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
     queryKey: ['my-client-cases'],
     queryFn: async () => {
@@ -54,68 +54,29 @@ export default function MyCases() {
     enabled: !!user
   });
 
-  // Fetch FraudCase (Legacy)
-  const { data: fraudCases = [], isLoading: loadingFraudCases } = useQuery({
-    queryKey: ['my-fraud-cases'],
-    queryFn: async () => {
-      if (user.role === 'admin' || user.is_admin) {
-        return base44.entities.FraudCase.list('-created_date', 1000);
-      } else {
-        // Same inclusive logic for legacy cases
-        return base44.entities.FraudCase.filter({
-          $or: [
-            { created_by: user.email },
-            { 'victim_contact_info.email': user.email }
-          ]
-        }, '-created_date', 1000);
-      }
-    },
-    enabled: !!user,
-  });
-
-  // Replaced by CaseDetailDialog internal mutation
   const handleCaseUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['my-fraud-cases'] });
       queryClient.invalidateQueries({ queryKey: ['my-client-cases'] });
   };
 
   // Normalize cases for display
-  const allCases = [
-      ...clientCases.map(c => ({
-          ...c,
-          id: c.id,
-          case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
-          status: c.status,
-          amount: c.amount_lost,
-          currency: c.cryptocurrency || 'USD',
-          created_date: c.created_date,
-          type: 'client',
-          _entityName: 'ClientCase', // Explicit entity name for CaseDetailDialog
-          fraud_type: c.issue_type,
-          description: c.description,
-          blockchain: c.blockchain,
-          scammer_wallet: c.scammer_wallet,
-          admin_status: c.status // map status to admin status for unified view
-      })),
-      ...fraudCases.map(c => ({
-          ...c,
-          id: c.id,
-          case_title: c.case_title,
-          status: c.status === 'reported' ? 'Pending' : c.status, // map legacy status
-          amount: c.amount_stolen_usd || c.amount_stolen,
-          currency: c.currency_type || 'USD',
-          created_date: c.created_date,
-          type: 'fraud',
-          _entityName: 'FraudCase', // Explicit entity name for CaseDetailDialog
-          fraud_type: c.fraud_type,
-          description: c.description,
-          blockchain: c.blockchain,
-          scammer_wallet: c.scammer_wallet,
-          admin_status: c.admin_contact_status
-      }))
-  ].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  const allCases = clientCases.map(c => ({
+      ...c,
+      id: c.id,
+      case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
+      status: c.status,
+      amount: c.amount_lost,
+      currency: c.cryptocurrency || 'USD',
+      created_date: c.created_date,
+      type: 'client',
+      _entityName: 'ClientCase',
+      fraud_type: c.issue_type,
+      description: c.description,
+      blockchain: c.blockchain,
+      scammer_wallet: c.scammer_wallet,
+      admin_status: c.status
+  })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
-  const isLoading = loadingClientCases || loadingFraudCases;
+  const isLoading = loadingClientCases;
 
   // Using CaseDetailDialog instead
 
