@@ -118,14 +118,23 @@ export default function Cases() {
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'Pending': return <Clock className="w-4 h-4 text-yellow-400" />;
-      case 'In Progress': return <ArrowUpRight className="w-4 h-4 text-blue-400" />;
-      case 'Called': return <Phone className="w-4 h-4 text-purple-400" />;
-      case 'Resolved': return <CheckCircle2 className="w-4 h-4 text-green-400" />;
-      default: return <Clock className="w-4 h-4 text-gray-400" />;
+  const getStatusColor = (status) => {
+    const s = (status || '').toLowerCase();
+    if (['resolved', 'recovered', 'approved', 'completed'].includes(s)) {
+      return 'bg-green-500/20 text-green-400 border-green-500/50';
     }
+    if (['closed', 'deemed', 'rejected', 'denied'].includes(s)) {
+      return 'bg-red-500/20 text-red-400 border-red-500/50';
+    }
+    // Pending, New, In Progress, etc.
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
+  };
+
+  const getStatusIcon = (status) => {
+    const s = (status || '').toLowerCase();
+    if (['resolved', 'recovered', 'approved', 'completed'].includes(s)) return <CheckCircle2 className="w-4 h-4" />;
+    if (['closed', 'deemed', 'rejected'].includes(s)) return <AlertTriangle className="w-4 h-4" />;
+    return <Clock className="w-4 h-4" />;
   };
 
   if (!user) return <div className="p-8 text-center text-white">Loading...</div>;
@@ -267,13 +276,15 @@ export default function Cases() {
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
-                          {caseItem.case_title || caseItem.client_name || 'Untitled Case'}
-                        </h3>
-                        <p className="text-sm text-gray-400 flex items-center gap-1 mb-2">
-                           <User className="w-3 h-3" />
-                           {caseItem.client_email || caseItem.created_by_email || 'No Email'}
-                        </p>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-sm font-mono text-cyan-400 flex items-center gap-2">
+                             <User className="w-3 h-3" />
+                             {caseItem.created_by_email || caseItem.client_email || 'No Email'}
+                          </p>
+                          <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
+                            {caseItem.case_title || caseItem.client_name || 'Untitled Case'}
+                          </h3>
+                        </div>
                         {caseItem.priority_score !== undefined && (
                           <Badge className={`
                             ${caseItem.priority_score >= 80 ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
@@ -319,10 +330,10 @@ export default function Cases() {
                     </div>
 
                     <div className="flex flex-col items-end justify-between gap-4 min-w-[140px]">
-                      <div className="flex items-center gap-2 bg-[#0f1419] px-3 py-1.5 rounded-full border border-gray-700">
+                      <Badge className={`${getStatusColor(caseItem.status)} border px-3 py-1.5 flex items-center gap-2`}>
                         {getStatusIcon(caseItem.status)}
-                        <span className="text-sm font-medium">{caseItem.status}</span>
-                      </div>
+                        <span className="text-sm font-bold uppercase">{caseItem.status}</span>
+                      </Badge>
                       
                       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <CaseAssignmentModal caseId={caseItem.id} />
