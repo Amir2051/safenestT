@@ -77,6 +77,10 @@ Deno.serve(async (req) => {
             updates.updated_date = new Date().toISOString();
             updates.updated_by = user.email; // Explicitly track who updated
 
+            // Permission Check
+            const isAdmin = user.role === 'admin' || user.is_admin;
+            const isSpecialist = user.job_title === 'Fraud Specialist';
+
             try {
                 // Use service role to bypass strict RLS if needed, ensuring admin can always edit
                 // We assume 'data.entityName' is passed, default to ClientCase
@@ -84,14 +88,27 @@ Deno.serve(async (req) => {
                 
                 let updatedCase;
                 if (entityName === 'FraudCase') {
+                    const existing = await base44.asServiceRole.entities.FraudCase.get(id).catch(() => null);
+                    if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
+                    
+                    if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
+                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                    }
                     updatedCase = await base44.asServiceRole.entities.FraudCase.update(id, updates);
                 } else if (entityName === 'InvestigationCase') {
+                    if (!isAdmin && !isSpecialist) {
+                        return Response.json({ error: "Unauthorized" }, { status: 403 });
+                    }
                     updatedCase = await base44.asServiceRole.entities.InvestigationCase.update(id, updates);
                 } else {
-                    // Check existence first to provide better error and get previous status
+                    // ClientCase
                     const existing = await base44.asServiceRole.entities.ClientCase.get(id).catch(() => null);
                     if (!existing) {
                         return Response.json({ error: `Case with ID ${id} not found`, code: 'NOT_FOUND' }, { status: 404 });
+                    }
+
+                    if (!isAdmin && !isSpecialist && existing.created_by !== user.email) {
+                        return Response.json({ error: "Unauthorized" }, { status: 403 });
                     }
 
                     // Status Change Logging
