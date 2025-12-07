@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -32,14 +32,18 @@ export default function Cases() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
     base44.auth.me().then(userData => {
-      if (userData.role !== 'admin' && !userData.is_admin) {
-        navigate(createPageUrl("Dashboard"));
+      if (mounted) {
+        if (userData.role !== 'admin' && !userData.is_admin) {
+          navigate(createPageUrl("Dashboard"));
+        }
+        setUser(userData);
       }
-      setUser(userData);
     }).catch(() => {
-      navigate(createPageUrl("Dashboard"));
+      if (mounted) navigate(createPageUrl("Dashboard"));
     });
+    return () => { mounted = false; };
   }, [navigate]);
 
   const { data: fetchedCases = [], isLoading: loadingCases } = useQuery({
@@ -54,7 +58,7 @@ export default function Cases() {
     enabled: !!user
   });
 
-  const cases = React.useMemo(() => {
+  const cases = useMemo(() => {
     return fetchedCases.map(c => ({
       ...c,
       id: c.id,
@@ -88,10 +92,10 @@ export default function Cases() {
   const filterCases = (caseList) => {
     return caseList.filter(c => {
       const matchesSearch = 
-        c.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.client_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.issue_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.case_number?.toLowerCase().includes(searchTerm.toLowerCase());
+        (c.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.client_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.issue_type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.case_number || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = selectedStatus === "all" || c.status === selectedStatus;
       const matchesUrgency = selectedUrgency === "all" || c.urgency === selectedUrgency;
@@ -137,7 +141,7 @@ export default function Cases() {
           <p className="text-gray-400 mt-1">Manage cybersecurity support requests and crypto recovery cases</p>
         </div>
         <div className="flex gap-3">
-          <NewCaseModal onCaseCreated={() => {}} />
+          <NewCaseModal onCaseCreated={() => queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] })} />
         </div>
       </div>
 
