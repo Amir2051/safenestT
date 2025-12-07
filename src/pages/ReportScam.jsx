@@ -122,6 +122,7 @@ export default function ReportScam() {
         status: 'Pending',
         urgency: 'Medium',
         case_number: `CASE-${Date.now()}`,
+        created_by: user?.email, // Explicitly set for consistency
         created_by_name: user?.full_name,
         created_by_email: user?.email,
         
