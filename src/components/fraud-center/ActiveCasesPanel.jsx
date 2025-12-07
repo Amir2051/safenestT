@@ -22,55 +22,35 @@ export default function ActiveCasesPanel({ user }) {
   
   const queryClient = useQueryClient();
 
-  const { data: investigationCases = [], isLoading: loadingInvestigation, refetch: refetchInvestigation } = useQuery({
-    queryKey: ['investigation-cases'],
+  const { data: myCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
+    queryKey: ['my-cases-all'],
     queryFn: async () => {
-      // Only fetch InvestigationCase if admin (avoid 403s for users)
       if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
-        return base44.entities.InvestigationCase.list('-created_date', 1000);
+        return base44.entities.MyCase.list('-created_date', 1000);
       }
-      return [];
+      // For users, show their own cases
+      return base44.entities.MyCase.filter({ 
+        $or: [
+          { created_by: user.email },
+          { created_by_email: user.email },
+          { client_email: user.email }
+        ]
+      }, '-created_date', 1000);
     },
     enabled: !!user
   });
 
-  const { data: fraudCases = [], isLoading: loadingFraud, refetch: refetchFraud } = useQuery({
-    queryKey: ['fraud-cases'],
-    queryFn: async () => {
-      if (user?.role === 'admin' || user?.is_admin) {
-        return base44.entities.FraudCase.list('-created_date', 1000);
-      }
-      return base44.entities.FraudCase.filter({ created_by: user.email }, '-created_date', 1000);
-    },
-    enabled: !!user
-  });
-
-  const { data: clientCases = [], isLoading: loadingClient, refetch: refetchClient } = useQuery({
-    queryKey: ['client-cases'],
-    queryFn: async () => {
-      if (user?.role === 'admin' || user?.is_admin) {
-        return base44.entities.ClientCase.list('-created_date', 1000);
-      }
-      return base44.entities.ClientCase.filter({ created_by: user.email }, '-created_date', 1000);
-    },
-    enabled: !!user
-  });
-
-  const allCases = [
-    ...investigationCases.map(c => ({ ...c, _entityName: 'InvestigationCase' })), 
-    ...fraudCases.map(c => ({ ...c, _entityName: 'FraudCase' })),
-    ...clientCases.map(c => ({ 
-      ...c, 
-      _entityName: 'ClientCase',
-      case_title: c.case_title || c.client_name || 'Untitled Case',
-      status: c.status || 'Pending',
-      created_date: c.created_date,
-      // Ensure ID is preserved
-      id: c.id
-    }))
-  ].sort((a, b) => 
-    new Date(b.created_date) - new Date(a.created_date)
-  );
+  // Normalize MyCase data to match UI expectations
+  const allCases = myCases.map(c => ({
+    ...c,
+    _entityName: 'MyCase',
+    case_title: c.case_title || c.client_name || 'Untitled Case',
+    victim_name: c.client_name || c.created_by_name,
+    amount_stolen_usd: c.amount_lost || c.amount_stolen_usd || 0,
+    status: c.status || 'Pending',
+    created_date: c.created_date,
+    id: c.id
+  })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
   const filteredCases = allCases.filter(caseItem => {
     const matchesSearch = 
@@ -84,16 +64,12 @@ export default function ActiveCasesPanel({ user }) {
   });
 
   const handleRefresh = () => {
-    refetchInvestigation();
-    refetchFraud();
-    refetchClient();
+    refetchCases();
     toast.success('Cases refreshed');
   };
 
   const handleCaseUpdate = () => {
-    queryClient.invalidateQueries(['investigation-cases']);
-    queryClient.invalidateQueries(['fraud-cases']);
-    queryClient.invalidateQueries(['client-cases']);
+    queryClient.invalidateQueries(['my-cases-all']);
   };
 
   const getStatusColor = (status) => {
@@ -119,7 +95,7 @@ export default function ActiveCasesPanel({ user }) {
     }
   };
 
-  const isLoading = loadingInvestigation || loadingFraud || loadingClient;
+  const isLoading = loadingCases;
 
   return (
     <div className="space-y-6">
