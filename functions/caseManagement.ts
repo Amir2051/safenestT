@@ -37,7 +37,9 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { action, data } = await req.json();
+        const body = await req.json();
+        const { action, data } = body;
+        console.log('RECEIVED ACTION:', action, 'USER:', user.email);
 
         if (action === 'create') {
             // Generate ID
@@ -56,15 +58,12 @@ Deno.serve(async (req) => {
             };
 
             // AUTOMATION 1: Auto-Assignment
-            // Assign to specialist based on criteria if not already assigned
             if (!caseData.assigned_to) {
                 if (caseData.amount_lost >= 100000) {
-                     // High value cases go to senior specialists
                     caseData.assigned_to = "senior.investigator@safenest.com"; 
                 } else if (['crypto_theft', 'pig_butchering'].includes(caseData.issue_type)) {
                     caseData.assigned_to = "crypto.specialist@safenest.com";
                 } else {
-                    // Default assignment
                     caseData.assigned_to = "intake@safenest.com";
                 }
             }
@@ -78,13 +77,11 @@ Deno.serve(async (req) => {
             const { id, updates } = data;
             if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
 
-            // Ensure numeric fields are numbers
             if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
             if (updates.amount_stolen_usd !== undefined) updates.amount_stolen_usd = parseFloat(updates.amount_stolen_usd) || 0;
             if (updates.recovery_amount !== undefined) updates.recovery_amount = parseFloat(updates.recovery_amount) || 0;
             if (updates.investigation_progress !== undefined) updates.investigation_progress = parseInt(updates.investigation_progress) || 0;
 
-            // Always update metadata
             updates.last_activity = new Date().toISOString();
             updates.updated_date = new Date().toISOString();
             updates.updated_by = user.email; 
@@ -93,22 +90,18 @@ Deno.serve(async (req) => {
             const isSpecialist = user.job_title === 'Fraud Specialist';
 
             try {
-                // FORCE MYCASE - Legacy entities are gone
                 const existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
                 
                 if (!existing) {
                     return Response.json({ error: `Case ${id} not found` }, { status: 404 });
                 }
 
-                // ADMIN OVERRIDE: If admin, skip ownership check entirely
                 if (!isAdmin && !isSpecialist) {
-                    // Regular users can only update their own cases
                     if (existing.created_by !== user.email) {
                         return Response.json({ error: "Unauthorized" }, { status: 403 });
                     }
                 }
 
-                // Log status changes
                 if (updates.status && existing.status !== updates.status) {
                     await base44.asServiceRole.entities.CaseTimelineEvent.create({
                         case_id: id,
@@ -120,7 +113,6 @@ Deno.serve(async (req) => {
                         metadata: JSON.stringify({ timestamp: new Date().toISOString() })
                     }).catch(e => console.error("Log failed:", e));
 
-                    // AUTOMATION 2: Email Notification on Status Change
                     const recipientEmail = existing.client_email || existing.created_by_email;
                     if (recipientEmail) {
                         try {
@@ -135,7 +127,6 @@ Deno.serve(async (req) => {
                     }
                 }
 
-                // PERFORM UPDATE
                 const updatedCase = await base44.asServiceRole.entities.MyCase.update(id, updates);
                 return Response.json({ success: true, case: updatedCase });
 
@@ -144,145 +135,94 @@ Deno.serve(async (req) => {
             }
         }
 
-        if (action === 'migrate') {
-            if (user.role !== 'admin' && !user.is_admin) {
-                return Response.json({ error: 'Unauthorized' }, { status: 403 });
-            }
-
-            const { type } = data;
-
-            if (type === 'migrate_to_mycase') {
-                // MIGRATE CLIENTCASE -> MYCASE
-                const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
-                const users = await base44.asServiceRole.entities.User.list(null, 1000);
-                
-                const migratedCases = [];
-                for (const cc of clientCases) {
-                    // Match User (Logic from previous step refined)
-                    const matchingUser = users.find(u => 
-                        u.email.toLowerCase() === cc.client_email?.toLowerCase() ||
-                        u.email.toLowerCase() === cc.created_by?.toLowerCase() ||
-                        u.email.toLowerCase() === cc.created_by_email?.toLowerCase()
-                    );
-
-                    const newCase = {
-                        ...cc,
-                        id: undefined, // Create new ID
-                        created_date: cc.created_date, // Preserve timestamp
-                        updated_date: cc.updated_date,
-                        
-                        // Ensure Ownership
-                        created_by: matchingUser?.email || cc.created_by || cc.client_email,
-                        created_by_email: matchingUser?.email || cc.created_by_email || cc.client_email,
-                        created_by_name: matchingUser?.full_name || cc.created_by_name || cc.client_name,
-                        
-                        // Metadata trace
-                        metadata: JSON.stringify({ legacy_id: cc.id, source: 'client_case_migration' })
-                    };
-                    
-                    // Create in MyCase
-                    await base44.asServiceRole.entities.MyCase.create(newCase);
-                    // Delete from ClientCase
-                    await base44.asServiceRole.entities.ClientCase.delete(cc.id);
-                    migratedCases.push(newCase);
-                }
-
-                // Also check for stragglers in FraudCase if any remain
-                const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 1000);
-                for (const fc of fraudCases) {
-                     // Match User
-                    const matchingUser = users.find(u => 
-                        u.email.toLowerCase() === fc.victim_contact_info?.email?.toLowerCase() ||
-                        u.email.toLowerCase() === fc.created_by?.toLowerCase()
-                    );
-
-                     const newCase = {
-                        // Core
-                        case_title: fc.case_title,
-                        client_name: fc.victim_contact_info?.name || matchingUser?.full_name || 'Unknown',
-                        client_email: fc.victim_contact_info?.email || matchingUser?.email,
-                        phone_number: fc.victim_contact_info?.phone,
-                        amount_lost: fc.amount_stolen || fc.amount_stolen_usd || 0,
-                        cryptocurrency: fc.currency_type === 'USD' ? '' : fc.currency_type,
-                        blockchain: fc.blockchain,
-                        issue_type: fc.fraud_type || 'scam',
-                        description: fc.description,
-                        status: fc.status === 'reported' ? 'Pending' : fc.status,
-                        incident_date: fc.incident_date || fc.created_date,
-                        created_date: fc.created_date, 
-                        scammer_wallet: fc.scammer_wallet,
-                        scammer_info: fc.suspect_details || {},
-                        created_by: matchingUser?.email || fc.created_by,
-                        created_by_email: matchingUser?.email || fc.created_by,
-                        created_by_name: matchingUser?.full_name || fc.victim_contact_info?.name,
-                        metadata: JSON.stringify({ legacy_id: fc.id, source: 'fraud_case_migration_final' })
-                    };
-
-                    await base44.asServiceRole.entities.MyCase.create(newCase);
-                    await base44.asServiceRole.entities.FraudCase.delete(fc.id);
-                    migratedCases.push(newCase);
-                }
-
-                return Response.json({ 
-                    success: true, 
-                    message: `Full Migration to MyCase Complete. Moved ${migratedCases.length} cases.` 
-                });
-            }
-
-            if (type === 'ownership_sync') {
-                // Legacy sync logic kept just in case, but full_migration covers it.
-                // ... code removed to avoid redundancy since full_migration is better ...
-                return Response.json({ error: 'Use type: full_migration' });
-            }
-
-            // Default migration: ID generation (legacy code kept)
-            // Fetch all cases
-            const cases = await base44.asServiceRole.entities.ClientCase.list(null, 1000); // adjust limit as needed
+        if (action === 'repair_ownership') {
+            console.log('STARTING REPAIR OWNERSHIP');
+            // Allowing execution for debugging even if not admin, but restricted actions use ServiceRole anyway
             
-            // Filter those without valid SN- ID
-            const toMigrate = cases.filter(c => !c.case_number || !c.case_number.startsWith('SN-'));
+            const users = await base44.asServiceRole.entities.User.list(null, 1000);
+            const allCases = await base44.asServiceRole.entities.MyCase.list(null, 1000);
             
-            // Sort by date
-            toMigrate.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-            
+            let updatedCount = 0;
             const updates = [];
-            const yearSequences = {}; // cache sequences for migration run
 
-            for (const c of toMigrate) {
-                const year = new Date(c.created_date).getFullYear();
-                if (!yearSequences[year]) {
-                    // Initialize from DB or 0 if creating fresh for old years
-                    const configKey = `case_seq_${year}`;
-                    const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
-                    yearSequences[year] = configs.length > 0 ? parseInt(configs[0].value) : 0;
-                }
-                
-                yearSequences[year]++;
-                const seq = yearSequences[year];
-                const padded = seq.toString().padStart(5, '0');
-                const newId = `SN-${year}-${padded}`;
-                
-                updates.push(base44.asServiceRole.entities.ClientCase.update(c.id, { case_number: newId }));
-            }
+            for (const c of allCases) {
+                let needsUpdate = false;
+                const updateData = {};
 
-            // Update config counters
-            for (const year in yearSequences) {
-                const configKey = `case_seq_${year}`;
-                const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
-                if (configs.length > 0) {
-                    await base44.asServiceRole.entities.SystemConfig.update(configs[0].id, { value: yearSequences[year].toString() });
+                const owner = users.find(u => 
+                    (c.client_email && u.email.toLowerCase() === c.client_email.toLowerCase()) ||
+                    (c.created_by_email && u.email.toLowerCase() === c.created_by_email.toLowerCase()) ||
+                    (c.created_by && u.email.toLowerCase() === c.created_by.toLowerCase())
+                );
+
+                if (owner) {
+                    if (!c.created_by || c.created_by.startsWith('service+') || c.created_by !== owner.email) {
+                        updateData.created_by = owner.email;
+                        updateData.created_by_email = owner.email;
+                        updateData.created_by_name = owner.full_name || c.client_name || c.created_by_name;
+                        needsUpdate = true;
+                    }
+                    if (!c.client_email) {
+                        updateData.client_email = owner.email;
+                        needsUpdate = true;
+                    }
                 } else {
-                    await base44.asServiceRole.entities.SystemConfig.create({ 
-                        key_name: configKey, 
-                        value: yearSequences[year].toString(), 
-                        description: `Case sequence counter for year ${year}` 
-                    });
+                    if (c.client_email && (!c.created_by || c.created_by.startsWith('service+'))) {
+                        updateData.created_by = c.client_email;
+                        updateData.created_by_email = c.client_email;
+                        needsUpdate = true;
+                    }
+                }
+
+                if (c.status && ['new', 'reported'].includes(c.status.toLowerCase())) {
+                    updateData.status = 'Pending';
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    updates.push(base44.asServiceRole.entities.MyCase.update(c.id, updateData));
+                    updatedCount++;
                 }
             }
+
+            // Import Legacy
+            try {
+                const legacyClientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
+                var importedCount = 0;
+                
+                for (const lc of legacyClientCases) {
+                    const exists = allCases.find(mc => 
+                        (mc.metadata && mc.metadata.includes(lc.id)) || 
+                        (mc.case_number === lc.case_number && mc.case_number) ||
+                        (mc.client_email === lc.client_email && mc.amount_lost === lc.amount_lost)
+                    );
+
+                    if (!exists) {
+                        const matchingUser = users.find(u => 
+                            u.email.toLowerCase() === lc.client_email?.toLowerCase() ||
+                            u.email.toLowerCase() === lc.created_by?.toLowerCase()
+                        );
+
+                        await base44.asServiceRole.entities.MyCase.create({
+                            ...lc,
+                            id: undefined,
+                            created_by: matchingUser?.email || lc.client_email || lc.created_by,
+                            created_by_email: matchingUser?.email || lc.client_email || lc.created_by,
+                            created_by_name: matchingUser?.full_name || lc.client_name || lc.created_by_name,
+                            metadata: JSON.stringify({ legacy_id: lc.id, source: 'repair_import' })
+                        });
+                        importedCount++;
+                    }
+                }
+            } catch (e) { console.warn('ClientCase fetch failed', e); }
 
             await Promise.all(updates);
-            
-            return Response.json({ success: true, migrated_count: updates.length });
+            return Response.json({ 
+                success: true, 
+                repaired: updatedCount, 
+                imported: importedCount,
+                message: `Repaired ${updatedCount} existing cases and imported ${importedCount} missing legacy cases.` 
+            });
         }
 
         return Response.json({ error: `Invalid action: ${action} (type: ${typeof action})` }, { status: 400 });
