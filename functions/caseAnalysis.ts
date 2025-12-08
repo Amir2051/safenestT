@@ -63,11 +63,26 @@ export default async function handler(req) {
     const norm = (str) => str ? str.toString().trim().toLowerCase() : '';
 
     // 3. Hard matching logic (Deterministic)
+    // Helper to extract all wallets from a case
+    const getAllWallets = (c) => {
+        const wallets = new Set();
+        if (c.scammer_wallet) wallets.add(norm(c.scammer_wallet));
+        if (c.scammer_info?.wallet_addresses) c.scammer_info.wallet_addresses.forEach(w => wallets.add(norm(w)));
+        if (c.monitored_wallets) c.monitored_wallets.forEach(w => wallets.add(norm(w)));
+        if (c.traced_wallets) c.traced_wallets.forEach(w => wallets.add(norm(w)));
+        // Also check evidence logs for extracted wallets? 
+        // For performance, we stick to structured fields for hard matching.
+        return wallets;
+    };
+
+    const currentAllWallets = getAllWallets(currentCase);
+
     for (const other of otherCases) {
         const reasons = [];
         let score = 0;
-
-        // Scammer Wallet Match
+        
+        // --- WALLET ANALYSIS ---
+        // Direct Scammer Wallet Match
         if (norm(currentCase.scammer_wallet) && norm(other.scammer_wallet) && 
             norm(currentCase.scammer_wallet) === norm(other.scammer_wallet)) {
             reasons.push({ type: 'wallet', value: currentCase.scammer_wallet, confidence: 'high', label: 'Same Scammer Wallet' });
@@ -75,25 +90,27 @@ export default async function handler(req) {
         }
         
         // Monitored Wallets intersection
-        const currentWallets = (currentCase.monitored_wallets || []).map(norm);
-        const otherWallets = (other.monitored_wallets || []).map(norm);
-        const commonWallets = currentWallets.filter(w => otherWallets.includes(w));
+        const currentMonitored = (currentCase.monitored_wallets || []).map(norm);
+        const otherMonitored = (other.monitored_wallets || []).map(norm);
+        const commonMonitored = currentMonitored.filter(w => otherMonitored.includes(w));
         
-        if (commonWallets.length > 0) {
-             reasons.push({ type: 'monitored_wallet', value: commonWallets.join(', '), confidence: 'high', label: 'Shared Monitored Wallet' });
+        if (commonMonitored.length > 0) {
+             reasons.push({ type: 'monitored_wallet', value: commonMonitored.join(', '), confidence: 'high', label: 'Shared Monitored Wallet' });
              score += 40;
         }
 
-        // Common Fund Path (Traced Wallets Intersection)
-        const currentTraced = (currentCase.traced_wallets || []).map(norm);
-        const otherTraced = (other.traced_wallets || []).map(norm);
-        const commonPath = currentTraced.filter(w => otherTraced.includes(w));
-
-        if (commonPath.length > 0) {
-            reasons.push({ type: 'common_path', value: commonPath.slice(0, 3).join(', ') + (commonPath.length > 3 ? '...' : ''), confidence: 'high', label: 'Shared Fund Flow Path' });
-            score += 45; // High score for shared intermediate wallets
+        // Cross-Wallet Flow (Any wallet in A appears in B)
+        // This detects if money moved through a wallet tracked in another case
+        const otherAllWallets = getAllWallets(other);
+        // Find intersection of ALL wallets involved
+        const crossMatch = [...currentAllWallets].filter(w => otherAllWallets.has(w) && !commonMonitored.includes(w) && w !== norm(currentCase.scammer_wallet));
+        
+        if (crossMatch.length > 0) {
+            reasons.push({ type: 'cross_wallet', value: crossMatch.slice(0, 3).join(', '), confidence: 'high', label: 'Cross-Case Transaction Flow' });
+            score += 45; 
         }
 
+        // --- IDENTITY ANALYSIS ---
         // Scammer Email Match
         if (norm(currentCase.scammer_info?.email) && norm(other.scammer_info?.email) &&
             norm(currentCase.scammer_info.email) === norm(other.scammer_info.email)) {
@@ -106,6 +123,21 @@ export default async function handler(req) {
             norm(currentCase.scammer_info.phone) === norm(other.scammer_info.phone)) {
             reasons.push({ type: 'phone', value: currentCase.scammer_info.phone, confidence: 'high', label: 'Same Scammer Phone' });
             score += 40;
+        }
+
+        // Scammer Website Match
+        if (norm(currentCase.scammer_info?.website) && norm(other.scammer_info?.website) &&
+            norm(currentCase.scammer_info.website) === norm(other.scammer_info.website)) {
+            reasons.push({ type: 'website', value: currentCase.scammer_info.website, confidence: 'high', label: 'Same Scam Website' });
+            score += 50; // Websites are strong indicators
+        }
+        
+        // Suspect Name Fuzzy Match (Simple inclusion check for now)
+        const s1 = norm(currentCase.scammer_info?.name || currentCase.suspect_details?.primary_suspect?.name);
+        const s2 = norm(other.scammer_info?.name || other.suspect_details?.primary_suspect?.name);
+        if (s1 && s2 && s1.length > 3 && s2.length > 3 && (s1.includes(s2) || s2.includes(s1))) {
+             reasons.push({ type: 'suspect', value: `${s1} / ${s2}`, confidence: 'medium', label: 'Suspect Name Match' });
+             score += 30;
         }
 
         // Victim Match (Repeat Victim)
@@ -131,13 +163,26 @@ export default async function handler(req) {
         }
     }
 
-    // 4. AI Pattern Analysis (LLM)
-    // We select cases with similar fraud type but NO hard matches to see if descriptions link them.
-    const potentialMatches = otherCases.filter(c => 
-        (c.issue_type === currentCase.issue_type || c.fraud_type === currentCase.issue_type) && 
-        !connections.find(conn => conn.case.id === c.id) &&
+    // 4. AI Pattern Analysis (LLM) with Smarter Selection
+    // Calculate simple similarity score for description to pick best candidates
+    const getSimilarity = (s1, s2) => {
+        if (!s1 || !s2) return 0;
+        const w1 = new Set(s1.toLowerCase().split(/\W+/).filter(w => w.length > 4));
+        const w2 = new Set(s2.toLowerCase().split(/\W+/).filter(w => w.length > 4));
+        const intersection = new Set([...w1].filter(x => w2.has(x)));
+        return intersection.size / (w1.size + w2.size + 1); // Simple Jaccard-ish
+    };
+
+    const candidates = otherCases.filter(c => 
+        !connections.find(conn => conn.case.id === c.id) && // Not already matched
         c.description && currentCase.description
-    ).slice(0, 5); // Limit to top 5 candidates
+    ).map(c => ({
+        ...c,
+        simScore: getSimilarity(currentCase.description, c.description)
+    })).sort((a, b) => b.simScore - a.simScore); // Sort by similarity
+
+    // Take top 8 candidates (increased from 5) that have at least some similarity or share fraud type
+    const potentialMatches = candidates.filter(c => c.simScore > 0.05 || c.issue_type === currentCase.issue_type).slice(0, 8);
 
     if (potentialMatches.length > 0) {
         // Collect evidence URLs for analysis context

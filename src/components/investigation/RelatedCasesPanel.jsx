@@ -67,6 +67,9 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
       case 'mixer_pattern': return <RefreshCcw className="w-3 h-3" />;
       case 'illicit_exchange': return <Landmark className="w-3 h-3" />;
       case 'extracted_match': return <ScanEye className="w-3 h-3" />;
+      case 'cross_wallet': return <GitMerge className="w-3 h-3" />;
+      case 'website': return <ExternalLink className="w-3 h-3" />;
+      case 'suspect': return <AlertTriangle className="w-3 h-3" />;
       default: return <LinkIcon className="w-3 h-3" />;
     }
   };
