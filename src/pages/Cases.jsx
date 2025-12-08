@@ -35,9 +35,14 @@ export default function Cases() {
     let mounted = true;
     base44.auth.me().then(userData => {
       if (mounted) {
+        if (userData.role !== 'admin' && !userData.is_admin) {
+          navigate(createPageUrl("Dashboard"));
+        }
         setUser(userData);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (mounted) navigate(createPageUrl("Dashboard"));
+    });
     return () => { mounted = false; };
   }, [navigate]);
 

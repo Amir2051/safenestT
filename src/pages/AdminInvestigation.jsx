@@ -28,8 +28,12 @@ export default function AdminInvestigation() {
   useEffect(() => {
     base44.auth.me().then(userData => {
       setUser(userData);
+      if (userData.role !== 'admin' && !userData.is_admin) {
+        navigate(createPageUrl('Dashboard'));
+        toast.error('Admin access required');
+      }
     }).catch(() => {
-      // navigate(createPageUrl('Dashboard'));
+      navigate(createPageUrl('Dashboard'));
     });
   }, [navigate]);
 
