@@ -40,6 +40,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   // MAINTENANCE MODE: Only allow specific admin
+  // This check must be AFTER all hooks but BEFORE the main return
   const allowedAdminEmail = 'yayamoussa2050@gmail.com';
   const currentUserEmail = user?.email?.toLowerCase();
   
