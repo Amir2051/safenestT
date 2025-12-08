@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, MessageSquare, Lock, Shield, Phone, FileText } from "lucide-react";
 import { toast } from "sonner";
 
-export default function InvestigationNotes({ caseId, caseData, onUpdate }) {
+export default function InvestigationNotes({ caseId, caseData: initialCaseData, onUpdate }) {
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState("investigation");
   const [isConfidential, setIsConfidential] = useState(false);
@@ -169,6 +169,10 @@ export default function InvestigationNotes({ caseId, caseData, onUpdate }) {
                           <Icon className="w-3 h-3 mr-1" />
                           {note.type}
                         </Badge>
+                        {/* Display Role Badge */}
+                        <Badge variant="outline" className={`text-xs ${note.role === 'Admin' || note.role === 'Investigator' ? 'border-purple-500 text-purple-400' : 'border-gray-500 text-gray-400'}`}>
+                           {note.role || (note.author === 'system' ? 'System' : 'User')}
+                        </Badge>
                         {note.confidential && (
                           <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
                             <Lock className="w-3 h-3 mr-1" />
@@ -181,7 +185,9 @@ export default function InvestigationNotes({ caseId, caseData, onUpdate }) {
                       </p>
                     </div>
                     <p className="text-white text-sm leading-relaxed">{note.note}</p>
-                    <p className="text-xs text-gray-400 mt-2">By: {note.author}</p>
+                    <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-gray-400">By: {note.author}</p>
+                    </div>
                   </div>
                 );
               })}
