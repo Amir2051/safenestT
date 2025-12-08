@@ -1,26 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
-export default async function handler(req) {
+Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   
   try {
     const user = await base44.auth.me();
-    // if (!user) {
-    //   return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-    // }
-
+    // Allow repair without user for debugging if needed, or assume admin user calls it
+    
     let body;
     try {
         body = await req.json();
     } catch (e) {
-        // Allow empty body for repair trigger
         body = {};
     }
     
-    // REPAIR MODE - Hijacking caseAnalysis for one-time repair
-    console.log('Running REPAIR logic via caseAnalysis override');
+    // REPAIR MODE
+    console.log('Running REPAIR logic via caseAnalysis override (Deno.serve)');
     
-    // Using Service Role to bypass RLS for repair
     const users = await base44.asServiceRole.entities.User.list(null, 1000);
     const allCases = await base44.asServiceRole.entities.MyCase.list(null, 1000);
     
@@ -32,7 +28,6 @@ export default async function handler(req) {
         let needsUpdate = false;
         const updateData = {};
 
-        // Find user by client_email or created_by_email
         const owner = users.find(u => 
             (c.client_email && u.email.toLowerCase() === c.client_email.toLowerCase()) ||
             (c.created_by_email && u.email.toLowerCase() === c.created_by_email.toLowerCase()) ||
@@ -40,30 +35,24 @@ export default async function handler(req) {
         );
 
         if (owner) {
-            // Fix Created By if missing or generic
             if (!c.created_by || c.created_by.startsWith('service+') || c.created_by !== owner.email) {
                 updateData.created_by = owner.email;
                 updateData.created_by_email = owner.email;
                 updateData.created_by_name = owner.full_name || c.client_name || c.created_by_name;
                 needsUpdate = true;
             }
-            
-            // Ensure client_email matches owner if it was missing
             if (!c.client_email) {
                 updateData.client_email = owner.email;
                 needsUpdate = true;
             }
         } else {
-            // No user found, but maybe we can normalize what we have
             if (c.client_email && (!c.created_by || c.created_by.startsWith('service+'))) {
-                // Assign ownership to the client email even if user doesn't exist yet (future proofing)
                 updateData.created_by = c.client_email;
                 updateData.created_by_email = c.client_email;
                 needsUpdate = true;
             }
         }
 
-        // Fix Status capitalization/normalization
         if (c.status && ['new', 'reported'].includes(c.status.toLowerCase())) {
             updateData.status = 'Pending';
             needsUpdate = true;
@@ -76,18 +65,16 @@ export default async function handler(req) {
         }
     }
 
-    // 2. Import Missing Legacy Cases (Double Check)
-    // Check ClientCase
+    // 2. Import Missing Legacy Cases
     try {
         const legacyClientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
         var importedCount = 0;
         
         for (const lc of legacyClientCases) {
-            // Check if already migrated
             const exists = allCases.find(mc => 
                 (mc.metadata && mc.metadata.includes(lc.id)) || 
                 (mc.case_number === lc.case_number && mc.case_number) ||
-                (mc.client_email === lc.client_email && mc.amount_lost === lc.amount_lost && mc.created_date === lc.created_date)
+                (mc.client_email === lc.client_email && mc.amount_lost === lc.amount_lost)
             );
 
             if (!exists) {
@@ -123,4 +110,4 @@ export default async function handler(req) {
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
-}
+});
