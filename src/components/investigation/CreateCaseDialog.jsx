@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CreateCaseDialog({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [autofillText, setAutofillText] = useState("");
   const [formData, setFormData] = useState({
     case_title: "",
     victim_name: "",
@@ -24,6 +26,34 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
     description: "",
     priority: "medium"
   });
+
+  const handleAutofill = async () => {
+    if (!autofillText.trim()) {
+        toast.error("Please paste report text to analyze");
+        return;
+    }
+
+    setAnalyzing(true);
+    try {
+        const res = await base44.functions.invoke('extractCaseDetails', { text: autofillText });
+        if (res.data.success && res.data.data) {
+            const extracted = res.data.data;
+            setFormData(prev => ({
+                ...prev,
+                ...extracted,
+                amount_stolen_usd: extracted.amount_stolen_usd?.toString() || prev.amount_stolen_usd,
+                // Ensure we don't overwrite with empty/null if we already have data, unless the AI found something specific
+                priority: extracted.priority || prev.priority,
+                fraud_type: extracted.fraud_type || prev.fraud_type
+            }));
+            toast.success("Form autofilled by AI");
+        }
+    } catch (error) {
+        console.error("Autofill error:", error);
+        toast.error("Failed to analyze text");
+    }
+    setAnalyzing(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,6 +136,31 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
           <DialogTitle className="text-2xl font-bold text-white">Create New Investigation Case</DialogTitle>
         </DialogHeader>
         
+        {/* AI Autofill Section */}
+        <div className="mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-semibold text-purple-200">AI Autofill</h3>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">Paste a case report, email, or incident description below to automatically fill the form.</p>
+            <div className="flex gap-2">
+                <Textarea 
+                    value={autofillText}
+                    onChange={(e) => setAutofillText(e.target.value)}
+                    placeholder="Paste report text here..." 
+                    className="bg-[#0f1419] border-purple-500/20 text-white min-h-[60px] text-xs"
+                />
+                <Button 
+                    type="button"
+                    onClick={handleAutofill}
+                    disabled={analyzing}
+                    className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/50 h-auto"
+                >
+                    {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                </Button>
+            </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
