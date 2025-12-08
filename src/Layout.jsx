@@ -40,7 +40,10 @@ export default function Layout({ children, currentPageName }) {
   }
 
   // MAINTENANCE MODE: Only allow specific admin
-  if (user?.email !== 'yayamoussa2050@gmail.com') {
+  const allowedAdminEmail = 'yayamoussa2050@gmail.com';
+  const currentUserEmail = user?.email?.toLowerCase();
+  
+  if (currentUserEmail !== allowedAdminEmail.toLowerCase()) {
     return <ComingSoon />;
   }
 

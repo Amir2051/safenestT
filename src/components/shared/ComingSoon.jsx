@@ -8,6 +8,10 @@ export default function ComingSoon() {
     base44.auth.redirectToLogin();
   };
 
+  const handleLogout = () => {
+    base44.auth.logout();
+  };
+
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Effects */}
@@ -46,13 +50,22 @@ export default function ComingSoon() {
             <span className="text-yellow-400 text-sm font-medium">Restricted Access</span>
           </div>
           
-          <Button 
-            onClick={handleLogin}
-            variant="outline"
-            className="mt-4 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-          >
-            Admin Login
-          </Button>
+          <div className="flex gap-4 mt-4">
+            <Button 
+              onClick={handleLogin}
+              variant="outline"
+              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              Admin Login
+            </Button>
+            <Button 
+              onClick={handleLogout}
+              variant="ghost"
+              className="text-gray-400 hover:text-white hover:bg-white/5"
+            >
+              Switch Account
+            </Button>
+          </div>
         </div>
       </div>
 
