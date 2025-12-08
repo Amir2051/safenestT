@@ -37,7 +37,9 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { action, data } = await req.json();
+        const body = await req.json();
+        const { action, data } = body;
+        console.log('RECEIVED ACTION:', action, 'USER:', user.email);
 
         if (action === 'create') {
             // Generate ID
@@ -145,6 +147,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'repair_ownership') {
+            console.log('STARTING REPAIR OWNERSHIP');
             if (user.role !== 'admin' && !user.is_admin) {
                 return Response.json({ error: 'Unauthorized' }, { status: 403 });
             }
@@ -291,13 +294,11 @@ Deno.serve(async (req) => {
             const { type } = data;
 
             if (type === 'migrate_to_mycase') {
-                // MIGRATE CLIENTCASE -> MYCASE
                 const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
                 const users = await base44.asServiceRole.entities.User.list(null, 1000);
                 
                 const migratedCases = [];
                 for (const cc of clientCases) {
-                    // Match User (Logic from previous step refined)
                     const matchingUser = users.find(u => 
                         u.email.toLowerCase() === cc.client_email?.toLowerCase() ||
                         u.email.toLowerCase() === cc.created_by?.toLowerCase() ||
@@ -306,37 +307,30 @@ Deno.serve(async (req) => {
 
                     const newCase = {
                         ...cc,
-                        id: undefined, // Create new ID
-                        created_date: cc.created_date, // Preserve timestamp
+                        id: undefined,
+                        created_date: cc.created_date,
                         updated_date: cc.updated_date,
                         
-                        // Ensure Ownership
                         created_by: matchingUser?.email || cc.created_by || cc.client_email,
                         created_by_email: matchingUser?.email || cc.created_by_email || cc.client_email,
                         created_by_name: matchingUser?.full_name || cc.created_by_name || cc.client_name,
                         
-                        // Metadata trace
                         metadata: JSON.stringify({ legacy_id: cc.id, source: 'client_case_migration' })
                     };
                     
-                    // Create in MyCase
                     await base44.asServiceRole.entities.MyCase.create(newCase);
-                    // Delete from ClientCase
                     await base44.asServiceRole.entities.ClientCase.delete(cc.id);
                     migratedCases.push(newCase);
                 }
 
-                // Also check for stragglers in FraudCase if any remain
                 const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 1000);
                 for (const fc of fraudCases) {
-                     // Match User
                     const matchingUser = users.find(u => 
                         u.email.toLowerCase() === fc.victim_contact_info?.email?.toLowerCase() ||
                         u.email.toLowerCase() === fc.created_by?.toLowerCase()
                     );
 
                      const newCase = {
-                        // Core
                         case_title: fc.case_title,
                         client_name: fc.victim_contact_info?.name || matchingUser?.full_name || 'Unknown',
                         client_email: fc.victim_contact_info?.email || matchingUser?.email,
@@ -368,29 +362,18 @@ Deno.serve(async (req) => {
                 });
             }
 
-            if (type === 'ownership_sync') {
-                // Legacy sync logic kept just in case, but full_migration covers it.
-                // ... code removed to avoid redundancy since full_migration is better ...
-                return Response.json({ error: 'Use type: full_migration' });
-            }
-
-            // Default migration: ID generation (legacy code kept)
-            // Fetch all cases
-            const cases = await base44.asServiceRole.entities.ClientCase.list(null, 1000); // adjust limit as needed
+            // ID migration (legacy)
+            const cases = await base44.asServiceRole.entities.MyCase.list(null, 1000);
             
-            // Filter those without valid SN- ID
             const toMigrate = cases.filter(c => !c.case_number || !c.case_number.startsWith('SN-'));
-            
-            // Sort by date
             toMigrate.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
             
             const updates = [];
-            const yearSequences = {}; // cache sequences for migration run
+            const yearSequences = {}; 
 
             for (const c of toMigrate) {
                 const year = new Date(c.created_date).getFullYear();
                 if (!yearSequences[year]) {
-                    // Initialize from DB or 0 if creating fresh for old years
                     const configKey = `case_seq_${year}`;
                     const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
                     yearSequences[year] = configs.length > 0 ? parseInt(configs[0].value) : 0;
@@ -401,10 +384,9 @@ Deno.serve(async (req) => {
                 const padded = seq.toString().padStart(5, '0');
                 const newId = `SN-${year}-${padded}`;
                 
-                updates.push(base44.asServiceRole.entities.ClientCase.update(c.id, { case_number: newId }));
+                updates.push(base44.asServiceRole.entities.MyCase.update(c.id, { case_number: newId }));
             }
 
-            // Update config counters
             for (const year in yearSequences) {
                 const configKey = `case_seq_${year}`;
                 const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
@@ -420,7 +402,6 @@ Deno.serve(async (req) => {
             }
 
             await Promise.all(updates);
-            
             return Response.json({ success: true, migrated_count: updates.length });
         }
 
