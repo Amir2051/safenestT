@@ -13,14 +13,43 @@ export default function InvestigationNotes({ caseId, caseData: initialCaseData, 
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState("investigation");
   const [isConfidential, setIsConfidential] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  const { data: latestCaseData } = useQuery({
+    queryKey: ['case-notes-live', caseId],
+    queryFn: async () => {
+       try {
+         return await base44.entities.InvestigationCase.get(caseId);
+       } catch (e) {
+         return initialCaseData;
+       }
+    },
+    initialData: initialCaseData,
+    refetchInterval: 5000,
+    enabled: !!caseId
+  });
+
+  const caseData = latestCaseData || initialCaseData;
 
   const addNoteMutation = useMutation({
     mutationFn: async ({ note, type, confidential }) => {
-      const notes = caseData.case_notes || [];
+      const notes = caseData.case_notes ? [...caseData.case_notes] : [];
+      
+      let userRole = 'User';
+      if (currentUser?.role === 'admin') userRole = 'Admin';
+      else if (currentUser?.job_title === 'Fraud Specialist' || currentUser?.role === 'investigator') userRole = 'Investigator';
+      
+      const authorName = currentUser?.full_name || currentUser?.email || 'User';
+
       notes.push({
         timestamp: new Date().toISOString(),
-        author: "investigator",
+        author: authorName,
+        role: userRole,
         note,
         type,
         confidential
@@ -31,7 +60,7 @@ export default function InvestigationNotes({ caseId, caseData: initialCaseData, 
         action: 'update',
         data: {
           id: caseId,
-          entityName: caseData._entityName || 'ClientCase',
+          entityName: caseData._entityName || 'InvestigationCase',
           updates: {
             case_notes: notes,
             last_activity: new Date().toISOString()
@@ -43,6 +72,7 @@ export default function InvestigationNotes({ caseId, caseData: initialCaseData, 
       return response.data.case;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries(['case-notes-live', caseId]);
       if (onUpdate) onUpdate();
       toast.success("Note added successfully");
       setNoteText("");
