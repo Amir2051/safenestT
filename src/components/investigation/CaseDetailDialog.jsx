@@ -507,12 +507,25 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
               {/* Case Info Section */}
               <div className="mb-4">
-                 <Label className="text-gray-300 mb-2 block">SafeNest Case ID</Label>
-                 <Input
-                    value={editedCase.case_number || 'Generating...'}
-                    disabled
-                    className="bg-[#1a2332] border-cyan-500/20 text-cyan-400 font-mono font-bold"
-                 />
+                 <Label className="text-gray-300 mb-2 block">SafeNestT Case Number</Label>
+                 <div className="flex gap-2">
+                    <Input
+                        value={editedCase.case_number || ''}
+                        onChange={(e) => setEditedCase({...editedCase, case_number: e.target.value})}
+                        placeholder="SN-YYYY-XXXXX"
+                        className="bg-[#1a2332] border-cyan-500/20 text-cyan-400 font-mono font-bold"
+                    />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title="Generate Random ID"
+                        onClick={() => setEditedCase({...editedCase, case_number: `SN-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`})}
+                        className="border-cyan-500/20 text-cyan-400 shrink-0"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
+                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
