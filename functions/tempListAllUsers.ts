@@ -6,18 +6,13 @@ Deno.serve(async (req) => {
     // Directly list users using service role, bypassing auth check for this temp function
     const users = await base44.asServiceRole.entities.User.list('-created_date', 1000);
     
-    // Extract just emails and names for the response
-    const userDetails = users.map(u => ({
-        email: u.email,
-        name: u.full_name || u.first_name + ' ' + u.last_name,
-        id: u.id,
-        role: u.role
-    }));
+    // Extract just emails for the response to avoid truncation
+    const emails = users.map(u => u.email);
 
     return Response.json({ 
       success: true, 
       count: users.length,
-      users: userDetails
+      emails: emails
     });
 
   } catch (error) {
