@@ -83,6 +83,14 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   // Swipe gesture handlers
   const minSwipeDistance = 50;
 
