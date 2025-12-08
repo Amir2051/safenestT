@@ -9,18 +9,40 @@ import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
+import ComingSoon from "./components/shared/ComingSoon.jsx";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showMenuButton, setShowMenuButton] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
   React.useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    base44.auth.me()
+      .then((u) => {
+        setUser(u);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // MAINTENANCE MODE: Only allow specific admin
+  if (user?.email !== 'yayamoussa2050@gmail.com') {
+    return <ComingSoon />;
+  }
 
   // Mobile menu button auto-hide logic
   useEffect(() => {
