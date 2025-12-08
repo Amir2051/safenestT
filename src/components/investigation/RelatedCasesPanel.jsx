@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Network, Link as LinkIcon, AlertTriangle, Wallet, 
   Mail, Phone, BrainCircuit, ExternalLink, ShieldCheck,
-  GitMerge, RefreshCcw, Landmark
+  GitMerge, RefreshCcw, Landmark, ScanEye
 } from "lucide-react";
 
 export default function RelatedCasesPanel({ caseId, entityName }) {
@@ -66,6 +66,7 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
       case 'common_path': return <GitMerge className="w-3 h-3" />;
       case 'mixer_pattern': return <RefreshCcw className="w-3 h-3" />;
       case 'illicit_exchange': return <Landmark className="w-3 h-3" />;
+      case 'extracted_match': return <ScanEye className="w-3 h-3" />;
       default: return <LinkIcon className="w-3 h-3" />;
     }
   };

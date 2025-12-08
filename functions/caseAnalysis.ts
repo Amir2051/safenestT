@@ -146,27 +146,39 @@ export default async function handler(req) {
             .filter(url => url && typeof url === 'string' && url.length > 0);
 
         const prompt = `
-        Analyze these fraud cases for connections based on description, behavior, and MO (Modus Operandi).
-        
+        Analyze the Target Case (including attached evidence files) and Candidate Cases to find hidden connections.
+
         Target Case:
         Title: "${currentCase.case_title || 'Untitled'}"
-        Description: "${currentCase.description?.slice(0, 800) || ''}"
+        Description: "${currentCase.description?.slice(0, 1000) || ''}"
         Scammer Info: ${JSON.stringify(currentCase.scammer_info || {})}
         Traced Wallets: ${(currentCase.traced_wallets || []).join(', ')}
         Transaction Hash: ${currentCase.transaction_hash || ''}
         
         Candidate Cases:
-        ${potentialMatches.map(c => `- ID ${c.id}: Title: "${c.case_title || 'Untitled'}", Desc: "${c.description?.slice(0, 400) || ''}", Traced: "${(c.traced_wallets || []).join(', ')}"`).join('\n')}
+        ${potentialMatches.map(c => JSON.stringify({
+            id: c.id,
+            title: c.case_title || 'Untitled',
+            description: c.description?.slice(0, 500),
+            wallets: c.monitored_wallets || [],
+            scammer: c.scammer_info || {},
+            traced: c.traced_wallets || []
+        })).join('\n')}
         
-        Analyze for:
-        1. Common Fund Flow Paths: Do they share intermediate wallets or hops?
-        2. Mixer Usage: Patterns indicating use of Tornado Cash, FixedFloat, or similar mixers.
-        3. Illicit Exchanges: Links to known high-risk exchanges or "nested" services.
-        4. Specific MO: Identical phrasing, unique scammer behavior, or specific wallet interaction patterns.
+        Tasks:
+        1. EVIDENCE EXTRACTION: Analzye the attached images/PDFs for the Target Case. Extract any wallet addresses, emails, phone numbers, usernames, or transaction IDs visible in the visual content or text of these files.
+        2. ENTITY MATCHING: Check if any entity extracted from the files (or existing in Target Case data) appears in the Candidate Cases (check their descriptions, wallets, scammer info).
+        3. PATTERN MATCHING: Look for shared MO, specific phrases, transaction patterns (mixer usage, common intermediate wallets), or structural similarities.
         
-        Ignore generic similarities (e.g., "both involve crypto"). Focus on structural transaction patterns and specific entities.
+        Return JSON object with a "matches" array. Each match: 
+        { 
+            "caseId": "string", 
+            "reason": "string" (short label, e.g. "Shared Wallet in Evidence"), 
+            "details": "string" (concise explanation, e.g. "Wallet 0x... extracted from screenshot matches Candidate scammer wallet"),
+            "confidence": "medium|high", 
+            "type": "extracted_match|ai_pattern|common_path|mixer_pattern|illicit_exchange" 
+        }
         
-        Return JSON object with a "matches" array. Each match: { "caseId": "string", "reason": "string", "confidence": "medium|high", "type": "ai_pattern|common_path|mixer_pattern|illicit_exchange" }.
         Return empty array if no strong connection found.
         `;
 
@@ -184,8 +196,9 @@ export default async function handler(req) {
                                 properties: {
                                     caseId: { type: "string" },
                                     reason: { type: "string" },
+                                    details: { type: "string" },
                                     confidence: { type: "string", enum: ["medium", "high"] },
-                                    type: { type: "string", enum: ["ai_pattern", "common_path", "mixer_pattern", "illicit_exchange"] }
+                                    type: { type: "string", enum: ["extracted_match", "ai_pattern", "common_path", "mixer_pattern", "illicit_exchange"] }
                                 },
                                 required: ["caseId", "reason", "confidence", "type"]
                             }
@@ -209,11 +222,11 @@ export default async function handler(req) {
                             },
                             reasons: [{ 
                                 type: match.type || 'ai_pattern', 
-                                value: match.type === 'common_path' ? 'Blockchain Analysis' : 'Pattern Recognition', 
+                                value: match.details || (match.type === 'common_path' ? 'Blockchain Analysis' : 'Pattern Recognition'), 
                                 confidence: match.confidence, 
                                 label: match.reason 
                             }],
-                            score: match.confidence === 'high' ? 35 : 20
+                            score: match.confidence === 'high' ? (match.type === 'extracted_match' ? 60 : 35) : 20
                         });
                     }
                 }
