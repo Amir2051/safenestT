@@ -41,14 +41,8 @@ export default function MyCases() {
       if (user.role === 'admin' || user.is_admin) {
         return base44.entities.MyCase.list('-created_date', 1000);
       } else {
-        // User sees cases they created OR where they are the client (email match)
-        return base44.entities.MyCase.filter({
-          $or: [
-            { created_by: user.email },
-            { created_by_email: user.email },
-            { client_email: user.email }
-          ]
-        }, '-created_date', 1000);
+        // User sees cases they created
+        return base44.entities.MyCase.filter({ created_by: user.email }, '-created_date', 1000);
       }
     },
     enabled: !!user
