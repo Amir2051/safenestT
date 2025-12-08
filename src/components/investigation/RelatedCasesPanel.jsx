@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Network, Link as LinkIcon, AlertTriangle, Wallet, 
-  Mail, Phone, BrainCircuit, ExternalLink, ShieldCheck 
+  Mail, Phone, BrainCircuit, ExternalLink, ShieldCheck,
+  GitMerge, RefreshCcw, Landmark
 } from "lucide-react";
 
 export default function RelatedCasesPanel({ caseId }) {
@@ -62,6 +63,9 @@ export default function RelatedCasesPanel({ caseId }) {
       case 'email': return <Mail className="w-3 h-3" />;
       case 'phone': return <Phone className="w-3 h-3" />;
       case 'ai_pattern': return <BrainCircuit className="w-3 h-3" />;
+      case 'common_path': return <GitMerge className="w-3 h-3" />;
+      case 'mixer_pattern': return <RefreshCcw className="w-3 h-3" />;
+      case 'illicit_exchange': return <Landmark className="w-3 h-3" />;
       default: return <LinkIcon className="w-3 h-3" />;
     }
   };

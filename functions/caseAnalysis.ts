@@ -61,6 +61,16 @@ export default async function handler(req) {
              score += 40;
         }
 
+        // Common Fund Path (Traced Wallets Intersection)
+        const currentTraced = (currentCase.traced_wallets || []).map(norm);
+        const otherTraced = (other.traced_wallets || []).map(norm);
+        const commonPath = currentTraced.filter(w => otherTraced.includes(w));
+
+        if (commonPath.length > 0) {
+            reasons.push({ type: 'common_path', value: commonPath.slice(0, 3).join(', ') + (commonPath.length > 3 ? '...' : ''), confidence: 'high', label: 'Shared Fund Flow Path' });
+            score += 45; // High score for shared intermediate wallets
+        }
+
         // Scammer Email Match
         if (norm(currentCase.scammer_info?.email) && norm(other.scammer_info?.email) &&
             norm(currentCase.scammer_info.email) === norm(other.scammer_info.email)) {
@@ -119,14 +129,21 @@ export default async function handler(req) {
         Title: "${currentCase.case_title || 'Untitled'}"
         Description: "${currentCase.description?.slice(0, 800) || ''}"
         Scammer Info: ${JSON.stringify(currentCase.scammer_info || {})}
+        Traced Wallets: ${(currentCase.traced_wallets || []).join(', ')}
+        Transaction Hash: ${currentCase.transaction_hash || ''}
         
         Candidate Cases:
-        ${potentialMatches.map(c => `- ID ${c.id}: Title: "${c.case_title || 'Untitled'}", Desc: "${c.description?.slice(0, 400) || ''}"`).join('\n')}
+        ${potentialMatches.map(c => `- ID ${c.id}: Title: "${c.case_title || 'Untitled'}", Desc: "${c.description?.slice(0, 400) || ''}", Traced: "${(c.traced_wallets || []).join(', ')}"`).join('\n')}
         
-        Identify if the Target Case shares a specific MO, identical phrasing, unique scammer behavior, or other non-obvious links with any Candidate Case.
-        Ignore generic similarities (e.g., "both involve crypto investment"). Look for specific unique details, names, or patterns.
+        Analyze for:
+        1. Common Fund Flow Paths: Do they share intermediate wallets or hops?
+        2. Mixer Usage: Patterns indicating use of Tornado Cash, FixedFloat, or similar mixers.
+        3. Illicit Exchanges: Links to known high-risk exchanges or "nested" services.
+        4. Specific MO: Identical phrasing, unique scammer behavior, or specific wallet interaction patterns.
         
-        Return JSON object with a "matches" array. Each match: { "caseId": "string", "reason": "string", "confidence": "medium|high" }.
+        Ignore generic similarities (e.g., "both involve crypto"). Focus on structural transaction patterns and specific entities.
+        
+        Return JSON object with a "matches" array. Each match: { "caseId": "string", "reason": "string", "confidence": "medium|high", "type": "ai_pattern|common_path|mixer_pattern|illicit_exchange" }.
         Return empty array if no strong connection found.
         `;
 
@@ -144,9 +161,10 @@ export default async function handler(req) {
                                 properties: {
                                     caseId: { type: "string" },
                                     reason: { type: "string" },
-                                    confidence: { type: "string", enum: ["medium", "high"] }
+                                    confidence: { type: "string", enum: ["medium", "high"] },
+                                    type: { type: "string", enum: ["ai_pattern", "common_path", "mixer_pattern", "illicit_exchange"] }
                                 },
-                                required: ["caseId", "reason", "confidence"]
+                                required: ["caseId", "reason", "confidence", "type"]
                             }
                         }
                     }
@@ -166,8 +184,13 @@ export default async function handler(req) {
                                 fraud_type: matchedCase.issue_type,
                                 amount_lost: matchedCase.amount_lost || matchedCase.amount_stolen_usd || 0
                             },
-                            reasons: [{ type: 'ai_pattern', value: 'Behavioral Pattern', confidence: match.confidence, label: match.reason }],
-                            score: match.confidence === 'high' ? 30 : 15
+                            reasons: [{ 
+                                type: match.type || 'ai_pattern', 
+                                value: match.type === 'common_path' ? 'Blockchain Analysis' : 'Pattern Recognition', 
+                                confidence: match.confidence, 
+                                label: match.reason 
+                            }],
+                            score: match.confidence === 'high' ? 35 : 20
                         });
                     }
                 }
