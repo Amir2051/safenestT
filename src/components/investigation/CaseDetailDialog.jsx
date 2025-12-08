@@ -1144,7 +1144,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="connections" className="space-y-4">
-              <RelatedCasesPanel caseId={caseData.id} />
+              <RelatedCasesPanel caseId={caseData.id} entityName={caseData._entityName || caseData.entity_name} />
             </TabsContent>
             </Tabs>
             </div>

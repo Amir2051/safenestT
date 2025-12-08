@@ -16,22 +16,45 @@ export default async function handler(req) {
         return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     
-    const { caseId } = body;
+    const { caseId, entityName } = body;
     if (!caseId) {
         return new Response(JSON.stringify({ error: 'Case ID required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // 1. Get current case
-    const cases = await base44.entities.MyCase.filter({ id: caseId });
-    const currentCase = cases && cases.length > 0 ? cases[0] : null;
+    // 1. Get current case (try specified entity or fallback to known case entities)
+    let currentCase = null;
+    let foundEntity = entityName;
+
+    const entitiesToTry = entityName ? [entityName] : ['MyCase', 'InvestigationCase', 'ClientCase', 'FraudCase'];
+    
+    for (const entity of entitiesToTry) {
+        if (base44.entities[entity]) {
+            try {
+                const cases = await base44.entities[entity].filter({ id: caseId });
+                if (cases && cases.length > 0) {
+                    currentCase = cases[0];
+                    foundEntity = entity;
+                    break;
+                }
+            } catch (e) {
+                console.warn(`Failed to fetch from ${entity}`, e);
+            }
+        }
+    }
     
     if (!currentCase) {
-        return new Response(JSON.stringify({ error: 'Case not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: `Case not found. Searched in: ${entitiesToTry.join(', ')}` }), { status: 404, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // 2. Get other cases - fetch more to ensure we find connections
+    // 2. Get other cases - fetch from the same entity where the case was found
     // Increase limit to 1000 to catch more potential matches
-    const allCases = await base44.entities.MyCase.list('-created_date', 1000);
+    let allCases = [];
+    try {
+        allCases = await base44.entities[foundEntity].list('-created_date', 1000);
+    } catch (e) {
+        console.error(`Failed to list cases from ${foundEntity}`, e);
+    }
+    
     const otherCases = allCases.filter(c => c.id !== caseId);
 
     const connections = [];

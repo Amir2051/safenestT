@@ -10,11 +10,11 @@ import {
   GitMerge, RefreshCcw, Landmark
 } from "lucide-react";
 
-export default function RelatedCasesPanel({ caseId }) {
+export default function RelatedCasesPanel({ caseId, entityName }) {
   const { data: analysis, isLoading, error } = useQuery({
-    queryKey: ['case-connections', caseId],
+    queryKey: ['case-connections', caseId, entityName],
     queryFn: async () => {
-      const res = await base44.functions.invoke('caseAnalysis', { caseId });
+      const res = await base44.functions.invoke('caseAnalysis', { caseId, entityName });
       return res.data;
     },
     enabled: !!caseId
