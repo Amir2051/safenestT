@@ -67,6 +67,14 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
                     )}
                   </div>
 
+                  {fraudCase.ai_analysis && (
+                    <div className="mb-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                      <p className="text-xs text-blue-300 line-clamp-2">
+                        <span className="font-bold text-blue-400">AI Summary:</span> {fraudCase.ai_analysis}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div className="p-2 bg-[#1a2332] rounded">
                       <p className="text-xs text-gray-400">Amount Lost</p>

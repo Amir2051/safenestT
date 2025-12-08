@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
   MessageSquare, ExternalLink, Calendar, AlertCircle, Database, Building2,
-  Edit, Save, Phone, Mail, MapPin, TrendingUp, Network
+  Edit, Save, Phone, Mail, MapPin, TrendingUp, Network, Sparkles, RefreshCw
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
@@ -30,6 +30,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [editedCase, setEditedCase] = useState({
     // Standardized Fields (ClientCase Schema)
     case_title: caseData.case_title || caseData.case_number || 'Untitled Case',
@@ -204,6 +205,25 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     setUploading(false);
   };
 
+  const generateSummary = async () => {
+    setGeneratingSummary(true);
+    try {
+        const res = await base44.functions.invoke('caseSummary', { 
+            caseId: caseData.id,
+            entityName: caseData._entityName || caseData.entity_name 
+        });
+        if (res.data.success) {
+            toast.success("AI Summary Generated");
+            if (onUpdate) onUpdate();
+        } else {
+            toast.error("Failed to generate summary");
+        }
+    } catch (error) {
+        toast.error("Error generating summary");
+    }
+    setGeneratingSummary(false);
+  };
+
   const progress = caseData.investigation_progress || 0;
 
   return (
@@ -313,6 +333,41 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 }`}
                 style={{ width: `${progress}%` }}
               />
+            </div>
+          </div>
+
+          {/* AI Summary Section */}
+          <div className="p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                    <h4 className="text-blue-400 font-semibold text-sm flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4" />
+                        AI Executive Summary
+                    </h4>
+                    {caseData.ai_analysis ? (
+                        <p className="text-gray-200 text-sm leading-relaxed">
+                            {caseData.ai_analysis}
+                        </p>
+                    ) : (
+                        <p className="text-gray-500 text-sm italic">
+                            No summary generated yet. Click generate to analyze case details.
+                        </p>
+                    )}
+                </div>
+                <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={generateSummary}
+                    disabled={generatingSummary}
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 shrink-0"
+                >
+                    {generatingSummary ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <Sparkles className="w-4 h-4 mr-2" />
+                    )}
+                    {generatingSummary ? 'Analyzing...' : (caseData.ai_analysis ? 'Regenerate' : 'Generate')}
+                </Button>
             </div>
           </div>
 
