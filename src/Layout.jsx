@@ -9,7 +9,7 @@ import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
-import ComingSoon from "./components/shared/ComingSoon.jsx";
+
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -39,14 +39,7 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  // MAINTENANCE MODE: Only allow specific admin
-  // This check must be AFTER all hooks but BEFORE the main return
-  const allowedAdminEmail = 'yayamoussa2050@gmail.com';
-  const currentUserEmail = user?.email?.toLowerCase();
-  
-  if (currentUserEmail !== allowedAdminEmail.toLowerCase()) {
-    return <ComingSoon />;
-  }
+
 
   // Mobile menu button auto-hide logic
   useEffect(() => {
