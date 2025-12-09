@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
   MessageSquare, ExternalLink, Calendar, AlertCircle, Database, Building2,
-  Edit, Save, Phone, Mail, MapPin, TrendingUp, Network, Sparkles, RefreshCw
+  Edit, Save, Phone, Mail, MapPin, TrendingUp, Network, Sparkles, RefreshCw,
+  Eye, EyeOff
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
@@ -31,6 +32,74 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [user, setUser] = useState(null);
+  
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => {});
+  }, []);
+
+  const isAdmin = user?.role === 'admin' || user?.is_admin;
+  const redactedFields = caseData.redacted_fields || [];
+
+  const isFieldRedacted = (field) => redactedFields.includes(field);
+
+  // Helper to render sensitive fields with redaction logic
+  const RenderSensitiveField = ({ field, value, icon: Icon, label }) => {
+    const redacted = isFieldRedacted(field);
+    const showValue = isAdmin || !redacted ? value : '[REDACTED]';
+    
+    // Toggle Redaction Handler
+    const toggleRedaction = async (e) => {
+        e.stopPropagation();
+        try {
+            const res = await base44.functions.invoke('caseManagement', {
+                action: 'toggle_redaction',
+                data: {
+                    caseId: caseData.id,
+                    field: field,
+                    isRedacted: !redacted
+                }
+            });
+            if (res.data.success) {
+                if (onUpdate) onUpdate();
+                toast.success(`Field ${!redacted ? 'Redacted' : 'Unredacted'}`);
+            } else {
+                toast.error(res.data.error || "Failed to update redaction");
+            }
+        } catch (err) {
+            toast.error("Error updating redaction");
+        }
+    };
+
+    return (
+        <div className={`group relative p-2 rounded border transition-all ${redacted ? 'bg-red-500/5 border-red-500/20' : 'border-transparent hover:bg-white/5'}`}>
+            <div className="flex items-center justify-between">
+                <div>
+                    {label && <p className="text-xs text-gray-400 mb-0.5">{label}</p>}
+                    <div className="flex items-center gap-2">
+                        {Icon && <Icon className={`w-4 h-4 ${redacted ? 'text-red-400' : 'text-cyan-400'}`} />}
+                        <span className={`text-sm ${redacted ? 'text-red-300 font-mono tracking-wider' : 'text-white'}`}>
+                            {showValue || 'N/A'}
+                        </span>
+                    </div>
+                </div>
+                {isAdmin && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${redacted ? 'text-red-400 hover:text-red-300' : 'text-gray-500 hover:text-white'}`}
+                        onClick={toggleRedaction}
+                        title={redacted ? "Unredact Field" : "Redact Field"}
+                    >
+                        {redacted ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    </Button>
+                )}
+            </div>
+            {redacted && isAdmin && <span className="absolute -top-1 -right-1 flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+        </div>
+    );
+  };
+
   const [editedCase, setEditedCase] = useState({
     // Standardized Fields (ClientCase Schema)
     case_title: caseData.case_title || caseData.case_number || 'Untitled Case',
@@ -407,15 +476,24 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-4 h-4 text-cyan-400" />
-                    <p className="text-xs text-gray-300 font-medium">Victim</p>
+                    <p className="text-xs text-gray-300 font-medium">Victim Details</p>
                   </div>
-                  <p className="text-white font-semibold text-base">{caseData.client_name || caseData.victim_name}</p>
-                  {([caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+'))) && (
-                    <p className="text-xs text-gray-300 mt-1">{[caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+'))}</p>
-                  )}
-                  {(caseData.phone_number || caseData.victim_phone) && (
-                    <p className="text-xs text-gray-300">{caseData.phone_number || caseData.victim_phone}</p>
-                  )}
+                  <div className="space-y-1">
+                      <RenderSensitiveField 
+                          field="client_name" 
+                          value={caseData.client_name || caseData.victim_name || 'N/A'} 
+                      />
+                      <RenderSensitiveField 
+                          field="client_email" 
+                          value={[caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || ''} 
+                          icon={Mail}
+                      />
+                      <RenderSensitiveField 
+                          field="phone_number" 
+                          value={caseData.phone_number || caseData.victim_phone || ''} 
+                          icon={Phone}
+                      />
+                  </div>
                 </div>
 
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-purple-500/20">
@@ -436,7 +514,22 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     ${(caseData.amount_lost || caseData.amount_stolen_usd || 0).toLocaleString()}
                   </p>
                   {caseData.cryptocurrency && (
-                    <p className="text-xs text-gray-300 mt-1 font-medium">{caseData.cryptocurrency}</p>
+                      <div className="mt-1">
+                          <RenderSensitiveField 
+                              field="cryptocurrency" 
+                              value={caseData.cryptocurrency} 
+                              label="Crypto"
+                          />
+                      </div>
+                  )}
+                  {caseData.scammer_wallet && (
+                      <div className="mt-2 pt-2 border-t border-cyan-500/10">
+                          <RenderSensitiveField 
+                              field="scammer_wallet" 
+                              value={caseData.scammer_wallet} 
+                              label="Scammer Wallet"
+                          />
+                      </div>
                   )}
                 </div>
 
@@ -926,23 +1019,30 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-sm text-gray-300 font-medium">Primary Contact</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 text-xs w-16">Name:</span>
-                      <span className="text-white text-sm font-medium">{caseData.client_name || caseData.victim_name || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.client_email || caseData.victim_email || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span className="text-white text-sm">{caseData.phone_number || caseData.victim_phone || 'N/A'}</span>
-                    </div>
+                    <RenderSensitiveField 
+                        field="client_name" 
+                        value={caseData.client_name || caseData.victim_name || 'N/A'} 
+                        label="Name"
+                    />
+                    <RenderSensitiveField 
+                        field="client_email" 
+                        value={caseData.client_email || caseData.victim_email || 'N/A'} 
+                        icon={Mail}
+                        label="Email"
+                    />
+                    <RenderSensitiveField 
+                        field="phone_number" 
+                        value={caseData.phone_number || caseData.victim_phone || 'N/A'} 
+                        icon={Phone}
+                        label="Phone"
+                    />
                     {caseData.victim_contact_info?.address && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="text-white text-sm">{caseData.victim_contact_info.address}</span>
-                      </div>
+                      <RenderSensitiveField 
+                          field="address" 
+                          value={caseData.victim_contact_info.address} 
+                          icon={MapPin}
+                          label="Address"
+                      />
                     )}
                   </div>
                 </div>
@@ -981,34 +1081,42 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-red-400 font-semibold mb-3">Primary Suspect</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {(caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Name</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name}</p>
-                        </div>
+                        <RenderSensitiveField 
+                            field="suspect_name" 
+                            value={caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name} 
+                            label="Name"
+                        />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Email</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email}</p>
-                        </div>
+                        <RenderSensitiveField 
+                            field="suspect_email" 
+                            value={caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email} 
+                            label="Email"
+                        />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Phone / Telegram / WhatsApp</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone}</p>
-                        </div>
+                         <RenderSensitiveField 
+                            field="suspect_phone" 
+                            value={caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone} 
+                            label="Phone / Contact"
+                        />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location) && (
-                        <div>
-                          <p className="text-xs text-gray-400 mb-1">Location</p>
-                          <p className="text-white">{caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location}</p>
-                        </div>
+                         <RenderSensitiveField 
+                            field="suspect_location" 
+                            value={caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location} 
+                            label="Location"
+                        />
                       )}
                       {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses)?.length > 0 && (
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 space-y-2">
                           <p className="text-xs text-gray-400 mb-2">Wallet Addresses</p>
                           {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses || []).map((wallet, idx) => (
-                            <p key={idx} className="text-white font-mono text-sm mb-1">{wallet}</p>
+                            <RenderSensitiveField 
+                                key={idx}
+                                field={`suspect_wallet_${idx}`} 
+                                value={wallet} 
+                            />
                           ))}
                         </div>
                       )}
@@ -1027,9 +1135,17 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       <p className="text-orange-400 font-semibold mb-3">Known Emails</p>
                       <div className="flex flex-wrap gap-2">
                         {caseData.scammer_info.known_emails.map((email, idx) => (
-                          <Badge key={idx} className="bg-orange-500/20 text-orange-400 border-orange-500/50">
-                            {email}
-                          </Badge>
+                            <div key={idx}>
+                                {isAdmin || !isFieldRedacted(`known_email_${idx}`) ? (
+                                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/50">
+                                        {email}
+                                    </Badge>
+                                ) : (
+                                    <Badge className="bg-red-500/20 text-red-400 border-red-500/50 font-mono">
+                                        [REDACTED]
+                                    </Badge>
+                                )}
+                            </div>
                         ))}
                       </div>
                     </div>
@@ -1043,14 +1159,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                         {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles || []).map((profile, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">{typeof profile === 'string' ? 'Link' : profile.platform}</Badge>
-                            <a 
-                              href={typeof profile === 'string' ? profile : profile.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-cyan-400 hover:underline text-sm"
-                            >
-                              {typeof profile === 'string' ? profile : (profile.url || profile.profile)}
-                            </a>
+                            <RenderSensitiveField 
+                                field={`social_${idx}`} 
+                                value={typeof profile === 'string' ? profile : (profile.url || profile.profile)} 
+                            />
                           </div>
                         ))}
                       </div>

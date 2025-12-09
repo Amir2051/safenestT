@@ -281,11 +281,56 @@ Deno.serve(async (req) => {
             }
 
             await Promise.all(updates);
-            
-            return Response.json({ success: true, migrated_count: updates.length });
-        }
 
-        return Response.json({ error: 'Invalid action' }, { status: 400 });
+            return Response.json({ success: true, migrated_count: updates.length });
+            }
+
+            if (action === 'toggle_redaction') {
+            if (user.role !== 'admin' && !user.is_admin) {
+                return Response.json({ error: 'Unauthorized: Only admins can redact fields' }, { status: 403 });
+            }
+
+            const { caseId, field, isRedacted } = data;
+            if (!caseId || !field) {
+                return Response.json({ error: "Missing caseId or field" }, { status: 400 });
+            }
+
+            const existing = await base44.asServiceRole.entities.MyCase.get(caseId);
+            if (!existing) {
+                return Response.json({ error: "Case not found" }, { status: 404 });
+            }
+
+            let redactedFields = existing.redacted_fields || [];
+            if (isRedacted) {
+                if (!redactedFields.includes(field)) redactedFields.push(field);
+            } else {
+                redactedFields = redactedFields.filter(f => f !== field);
+            }
+
+            const updatedCase = await base44.asServiceRole.entities.MyCase.update(caseId, { 
+                redacted_fields: redactedFields,
+                last_activity: new Date().toISOString()
+            });
+
+            // Log Audit
+            await base44.asServiceRole.entities.AuditLog.create({
+                action_type: 'settings_updated', // Using existing enum
+                action_category: 'security',
+                description: `Case ${existing.case_number} field '${field}' ${isRedacted ? 'redacted' : 'unredacted'}`,
+                severity: 'medium',
+                metadata: JSON.stringify({ 
+                    case_id: caseId, 
+                    field, 
+                    redacted: isRedacted,
+                    performed_by: user.email
+                }),
+                created_by: user.email
+            });
+
+            return Response.json({ success: true, case: updatedCase });
+            }
+
+            return Response.json({ error: 'Invalid action' }, { status: 400 });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
