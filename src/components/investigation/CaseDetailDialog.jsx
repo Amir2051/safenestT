@@ -73,25 +73,26 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
     return (
         <div className={`group relative p-2 rounded border transition-all ${redacted ? 'bg-red-500/5 border-red-500/20' : 'border-transparent hover:bg-white/5'}`}>
-            <div className="flex items-center justify-between">
-                <div>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
                     {label && <p className="text-xs text-gray-400 mb-0.5">{label}</p>}
                     <div className="flex items-center gap-2">
-                        {Icon && <Icon className={`w-4 h-4 ${redacted ? 'text-red-400' : 'text-cyan-400'}`} />}
-                        <span className={`text-sm ${redacted ? 'text-red-300 font-mono tracking-wider' : 'text-white'}`}>
+                        {Icon && <Icon className={`w-4 h-4 shrink-0 ${redacted ? 'text-red-400' : 'text-cyan-400'}`} />}
+                        <span className={`text-sm truncate ${redacted ? 'text-red-300 font-mono tracking-wider' : 'text-white'}`}>
                             {showValue || 'N/A'}
                         </span>
                     </div>
                 </div>
                 {isAdmin && (
                     <Button
-                        size="icon"
+                        size="sm"
                         variant="ghost"
-                        className={`h-6 w-6 transition-opacity ${redacted ? 'text-red-400 hover:text-red-300' : 'text-gray-500 hover:text-white'}`}
+                        className={`h-7 px-2 shrink-0 transition-colors ${redacted ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'}`}
                         onClick={toggleRedaction}
                         title={redacted ? "Unredact Field" : "Redact Field"}
                     >
-                        {redacted ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        {redacted ? <EyeOff className="w-3.5 h-3.5 mr-1.5" /> : <Eye className="w-3.5 h-3.5 mr-1.5" />}
+                        <span className="text-[10px] font-bold tracking-wide">{redacted ? 'HIDDEN' : 'VISIBLE'}</span>
                     </Button>
                 )}
             </div>
