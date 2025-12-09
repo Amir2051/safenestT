@@ -169,36 +169,40 @@ Make it professional, detailed, and ready for law enforcement review.`,
   });
 
   const buildReportData = (caseData, agencyType) => {
+    const redacted = caseData.redacted_fields || [];
+    const isRedacted = (f) => redacted.includes(f);
+    const mask = (f, v) => isRedacted(f) ? "[REDACTED]" : (v || 'N/A');
+
     return {
-      case_reference: caseData.case_number, // Use SafeNest ID
+      case_reference: mask('case_number', caseData.case_number),
       case_id_internal: caseData.id,
       case_title: caseData.case_title,
       report_date: new Date().toISOString(),
       
       victim: {
-        name: caseData.victim_name,
-        email: caseData.victim_email,
-        phone: caseData.victim_phone,
-        address: caseData.victim_contact_info?.address,
+        name: mask('client_name', caseData.client_name || caseData.victim_name),
+        email: mask('client_email', caseData.client_email || caseData.victim_email),
+        phone: mask('phone_number', caseData.phone_number || caseData.victim_phone),
+        address: mask('address', caseData.victim_contact_info?.address),
         city: caseData.victim_contact_info?.city,
         state: caseData.victim_contact_info?.state,
         country: caseData.victim_contact_info?.country || "United States"
       },
       
       suspect: {
-        name: caseData.scammer_info?.name || caseData.suspect_details?.primary_suspect?.name,
-        email: caseData.scammer_info?.email || caseData.suspect_details?.primary_suspect?.email,
-        phone: caseData.scammer_info?.phone || caseData.suspect_details?.primary_suspect?.phone,
+        name: mask('suspect_name', caseData.scammer_info?.name || caseData.suspect_details?.primary_suspect?.name),
+        email: mask('suspect_email', caseData.scammer_info?.email || caseData.suspect_details?.primary_suspect?.email),
+        phone: mask('suspect_phone', caseData.scammer_info?.phone || caseData.suspect_details?.primary_suspect?.phone),
         website: caseData.scammer_info?.website,
-        social_media: caseData.scammer_info?.social_media || [],
-        wallet_addresses: caseData.scammer_info?.wallet_addresses || caseData.suspect_details?.wallet_addresses || [],
+        social_media: (caseData.scammer_info?.social_media || []).map((s, i) => isRedacted(`social_${i}`) ? '[REDACTED]' : s),
+        wallet_addresses: (caseData.scammer_info?.wallet_addresses || caseData.suspect_details?.wallet_addresses || []).map((w, i) => isRedacted(`suspect_wallet_${i}`) || isRedacted('scammer_wallet') ? '[REDACTED]' : w),
         known_aliases: caseData.suspect_details?.primary_suspect?.aliases || [],
         ip_addresses: caseData.suspect_details?.ip_addresses || []
       },
       
       financial: {
         amount_stolen_usd: caseData.amount_stolen_usd,
-        cryptocurrency: caseData.cryptocurrency,
+        cryptocurrency: mask('cryptocurrency', caseData.cryptocurrency),
         blockchain: caseData.blockchain,
         transaction_hashes: caseData.transaction_hashes || [],
         recovery_amount: caseData.recovery_amount || 0

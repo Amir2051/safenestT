@@ -32,8 +32,25 @@ export default function ReportGenerator({ selectedCase }) {
   };
 
   const downloadPDF = () => {
-    // In production, this would generate and download actual PDF
-    const reportText = JSON.stringify(report, null, 2);
+    // Apply masking before download
+    const redacted = selectedCase?.redacted_fields || [];
+    const isRedacted = (f) => redacted.includes(f);
+    const mask = (f, v) => isRedacted(f) ? "[REDACTED]" : v;
+
+    const safeReport = {
+        ...report,
+        victimInformation: {
+            ...report.victimInformation,
+            wallet: mask('victim_wallet', report.victimInformation.wallet),
+            reportedBy: mask('client_email', report.victimInformation.reportedBy)
+        },
+        scammerInformation: {
+            ...report.scammerInformation,
+            wallet: mask('scammer_wallet', report.scammerInformation.wallet)
+        }
+    };
+
+    const reportText = JSON.stringify(safeReport, null, 2);
     const blob = new Blob([reportText], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -135,11 +152,15 @@ export default function ReportGenerator({ selectedCase }) {
                 <div className="space-y-2 text-sm">
                   <div>
                     <p className="text-gray-400">Wallet Address</p>
-                    <p className="text-white font-mono text-xs">{report.victimInformation.wallet || 'N/A'}</p>
+                    <p className="text-white font-mono text-xs">
+                        {selectedCase?.redacted_fields?.includes('victim_wallet') ? '[REDACTED]' : (report.victimInformation.wallet || 'N/A')}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-400">Reported By</p>
-                    <p className="text-white">{report.victimInformation.reportedBy}</p>
+                    <p className="text-white">
+                        {selectedCase?.redacted_fields?.includes('client_email') ? '[REDACTED]' : report.victimInformation.reportedBy}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-400">Amount Lost</p>
@@ -153,7 +174,9 @@ export default function ReportGenerator({ selectedCase }) {
                 <div className="space-y-2 text-sm">
                   <div>
                     <p className="text-gray-400">Wallet Address</p>
-                    <p className="text-red-400 font-mono text-xs">{report.scammerInformation.wallet}</p>
+                    <p className="text-red-400 font-mono text-xs">
+                        {selectedCase?.redacted_fields?.includes('scammer_wallet') ? '[REDACTED]' : report.scammerInformation.wallet}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-400">Blockchain</p>
