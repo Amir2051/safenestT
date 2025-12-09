@@ -87,7 +87,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <Button
                         size="icon"
                         variant="ghost"
-                        className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${redacted ? 'text-red-400 hover:text-red-300' : 'text-gray-500 hover:text-white'}`}
+                        className={`h-6 w-6 transition-opacity ${redacted ? 'text-red-400 hover:text-red-300' : 'text-gray-500 hover:text-white'}`}
                         onClick={toggleRedaction}
                         title={redacted ? "Unredact Field" : "Redact Field"}
                     >
