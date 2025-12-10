@@ -226,8 +226,19 @@ Deno.serve(async (req) => {
 
             // --- AUTO-FILL & CROSS-REFERENCE LOGIC ---
             
-            // 1. Fetch current case
-            const currentCase = await base44.asServiceRole.entities.MyCase.get(caseId);
+            // 1. Fetch current case (with fallback)
+            let currentCase = null;
+            try {
+                currentCase = await base44.asServiceRole.entities.MyCase.get(caseId);
+            } catch (e) {
+                // Fallback to legacy
+                try {
+                    const legacy = await base44.asServiceRole.entities.InvestigationCase.filter({ id: caseId });
+                    if (legacy[0]) currentCase = legacy[0];
+                } catch (e2) {}
+            }
+            
+            if (!currentCase) throw new Error("Case not found for processing");
             
             // 2. Extract unique new wallets/hashes from confirmed data
             const newWallets = new Set();

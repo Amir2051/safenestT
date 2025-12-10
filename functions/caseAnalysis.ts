@@ -25,7 +25,14 @@ Deno.serve(async (req) => {
     let currentCase = null;
     let foundEntity = entityName;
 
-    const entitiesToTry = entityName ? [entityName] : ['MyCase', 'InvestigationCase', 'ClientCase', 'FraudCase'];
+    // Priority list including the requested entity if provided
+    let entitiesToTry = ['MyCase', 'InvestigationCase', 'ClientCase', 'FraudCase'];
+    if (entityName && !entitiesToTry.includes(entityName)) {
+        entitiesToTry.unshift(entityName);
+    } else if (entityName) {
+        // Move requested entity to front
+        entitiesToTry = [entityName, ...entitiesToTry.filter(e => e !== entityName)];
+    }
     
     for (const entity of entitiesToTry) {
         if (base44.entities[entity]) {
