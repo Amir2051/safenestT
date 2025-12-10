@@ -248,12 +248,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
     setUploading(true);
     try {
-      const { data } = await base44.integrations.Core.UploadFile({ file });
+      const response = await base44.integrations.Core.UploadFile({ file });
       
       const evidence = caseData.evidence_files || [];
       evidence.push({
         name: file.name,
-        url: data.file_url,
+        url: response.file_url,
         type: file.type,
         uploaded_date: new Date().toISOString()
       });
