@@ -25,10 +25,12 @@ import CryptoIntelligenceReport from "./CryptoIntelligenceReport.jsx";
 import RelatedCasesPanel from "./RelatedCasesPanel.jsx";
 import AdminEvidenceUpload from "./AdminEvidenceUpload.jsx";
 import TimelineFeed from "./TimelineFeed.jsx";
+import FilePreviewModal from "./FilePreviewModal.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [previewFile, setPreviewFile] = useState(null);
   const [newNote, setNewNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -1239,13 +1241,16 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="evidence" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-semibold text-lg">Evidence Log</h3>
-                <label>
-                  <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                  <Button size="sm" disabled={uploading} className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer">
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Uploading..." : "Upload"}
-                  </Button>
-                </label>
+                {/* Upload allowed for Admins only per prompt "Keep full permissions for Admins... Users must NOT be able to Modify" */}
+                {isAdmin && (
+                  <label>
+                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                    <Button size="sm" disabled={uploading} className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer">
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploading ? "Uploading..." : "Upload Evidence"}
+                    </Button>
+                  </label>
+                )}
               </div>
 
               {(caseData.evidence_log || caseData.evidence_files)?.length > 0 ? (
@@ -1263,9 +1268,28 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                             </p>
                           </div>
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')}>
-                          <ExternalLink className="w-4 h-4 text-cyan-400" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {/* Read-Only Preview Button */}
+                            <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => setPreviewFile(item)}
+                                className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
+                            >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View
+                            </Button>
+                            
+                            {/* Admin Controls - Edit/Delete/Download */}
+                            {isAdmin && (
+                                <>
+                                    <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')} title="Download (Admin Only)">
+                                        <ExternalLink className="w-4 h-4 text-gray-400" />
+                                    </Button>
+                                    {/* Delete functionality would go here if implemented in handler */}
+                                </>
+                            )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1276,6 +1300,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <p className="text-gray-400 text-sm">No evidence uploaded yet</p>
                 </div>
               )}
+              
+              <FilePreviewModal 
+                file={previewFile} 
+                isOpen={!!previewFile} 
+                onClose={() => setPreviewFile(null)} 
+              />
             </TabsContent>
 
             <TabsContent value="timeline" className="space-y-4">

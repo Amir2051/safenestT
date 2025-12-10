@@ -34,6 +34,16 @@ export default function AdminEvidenceUpload({ caseId }) {
             const fileUrl = response.file_url;
             
             // 2. Create entity record
+            // Need case owner email for RLS - fetch case first or let backend handle it?
+            // Since we're calling parse next which uses backend, we can update it there or fetch here.
+            // Let's fetch case briefly or just pass null and let sync fix it.
+            // Actually, best to fetch case here to get owner.
+            let caseOwnerEmail = null;
+            try {
+                const currentCase = await base44.entities.MyCase.get(caseId);
+                caseOwnerEmail = currentCase.created_by || currentCase.client_email;
+            } catch (e) {}
+
             const record = await base44.entities.CaseEvidenceFile.create({
                 case_id: caseId,
                 file_url: fileUrl,
@@ -41,6 +51,7 @@ export default function AdminEvidenceUpload({ caseId }) {
                 file_size: file.size,
                 mime_type: file.type,
                 uploader_id: (await base44.auth.me()).id,
+                case_owner_email: caseOwnerEmail,
                 uploaded_at: new Date().toISOString(),
                 parse_status: 'PENDING'
             });

@@ -199,16 +199,23 @@ Deno.serve(async (req) => {
                  await base44.asServiceRole.entities.ExtractedTransaction.bulkCreate(records);
             }
 
-            // 3. Update File Status
+            // 3. Update File Status & Ensure Owner
             if (evidenceFileId) {
-                await base44.asServiceRole.entities.CaseEvidenceFile.update(evidenceFileId, {
+                const updateData = {
                     parse_status: 'CONFIRMED',
                     summary: {
                         total_txs: records.length,
                         victim: victimAddress,
                         scammer: scammerAddress
                     }
-                });
+                };
+                // Ensure case_owner_email is set if missing (for RLS)
+                const fileRecord = await base44.asServiceRole.entities.CaseEvidenceFile.get(evidenceFileId);
+                if (!fileRecord.case_owner_email && (currentCase.created_by || currentCase.client_email)) {
+                    updateData.case_owner_email = currentCase.created_by || currentCase.client_email;
+                }
+                
+                await base44.asServiceRole.entities.CaseEvidenceFile.update(evidenceFileId, updateData);
             }
 
             // 4. Update MyCase (Transactions, Evidence, Wallets)
