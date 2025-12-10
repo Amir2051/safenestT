@@ -120,10 +120,20 @@ Deno.serve(async (req) => {
       });
 
       // Update case status or last activity
-      await base44.asServiceRole.entities.MyCase.update(caseId, {
-        last_activity: new Date().toISOString(),
-        admin_contact_status: 'In Progress'
-      });
+      try {
+          await base44.asServiceRole.entities.MyCase.update(caseId, {
+            last_activity: new Date().toISOString(),
+            admin_contact_status: 'In Progress'
+          });
+      } catch (e) {
+          try {
+              // Legacy fallback
+              await base44.asServiceRole.entities.InvestigationCase.update(caseId, {
+                last_activity: new Date().toISOString(),
+                admin_contact_status: 'In Progress'
+              });
+          } catch(e2) {}
+      }
 
       return Response.json({ status: 'success', message: 'Follow-up logged and ready for transmission' });
     }
