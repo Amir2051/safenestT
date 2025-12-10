@@ -33,17 +33,14 @@ export default function AdminEvidenceUpload({ caseId }) {
             const response = await base44.integrations.Core.UploadFile({ file });
             const fileUrl = response.file_url;
             
-            // 2. Create entity record
-            // Need case owner email for RLS - fetch case first or let backend handle it?
-            // Since we're calling parse next which uses backend, we can update it there or fetch here.
-            // Let's fetch case briefly or just pass null and let sync fix it.
-            // Actually, best to fetch case here to get owner.
+            // 2. Fetch Owner
             let caseOwnerEmail = null;
             try {
                 const currentCase = await base44.entities.MyCase.get(caseId);
                 caseOwnerEmail = currentCase.created_by || currentCase.client_email;
             } catch (e) {}
 
+            // 3. Create Record
             const record = await base44.entities.CaseEvidenceFile.create({
                 case_id: caseId,
                 file_url: fileUrl,
@@ -56,77 +53,47 @@ export default function AdminEvidenceUpload({ caseId }) {
                 parse_status: 'PENDING'
             });
 
-            // 3. Immediately sync to MyCase evidence_files array (Fix 1)
+            // 4. Trigger Auto-Analysis
+            toast.info("Analyzing evidence...");
             await base44.functions.invoke('evidenceProcessing', {
-                action: 'confirm', // Use confirm action to sync evidence array without transaction parsing if needed, or just let parse handle it.
-                // We'll trust the parse flow for now, but to ensure immediate visibility:
-                // Actually, the simplest way is to manually update MyCase here if the user wants "Instant" update.
-                // But since we have a dedicated backend function, let's rely on that or just simple update.
+                action: 'process_upload',
                 data: {
-                    caseId: caseId,
+                    caseId,
                     evidenceFileId: record.id,
-                    transactions: [], // No transactions yet
-                    victimAddress: '',
-                    scammerAddress: ''
+                    fileUrl,
+                    fileType: file.type,
+                    fileName: file.name
                 }
-            }).catch(e => console.warn("Auto-sync warning:", e));
+            });
 
             return record;
         },
-        onSuccess: (record) => {
-            queryClient.invalidateQueries(['evidence-files']);
-            queryClient.invalidateQueries(['my-cases']); // Force refresh of case data (Fix 1)
-            toast.success("File uploaded and saved to evidence");
-            handleParse(record); // Auto-trigger parse
-        },
-        onError: () => toast.error("Upload failed")
-    });
-
-    const parseMutation = useMutation({
-        mutationFn: async (record) => {
-            const res = await base44.functions.invoke('evidenceProcessing', {
-                action: 'parse',
-                data: {
-                    fileUrl: record.file_url,
-                    fileType: record.mime_type || 'text/plain',
-                    caseId: caseId
-                }
-            });
-            if (res.data.error) throw new Error(res.data.error);
-            return { ...res.data, record };
-        },
-        onSuccess: (data) => {
-            setPreviewData(data);
-            setCurrentFileId(data.record.id);
-            setVictimAddr(data.detected_addresses?.victim?.[0] || '');
-            setScammerAddr(data.detected_addresses?.scammer?.[0] || '');
-        },
-        onError: (err) => toast.error("Parsing failed: " + err.message)
-    });
-
-    const confirmMutation = useMutation({
-        mutationFn: async () => {
-            const res = await base44.functions.invoke('evidenceProcessing', {
-                action: 'confirm',
-                data: {
-                    caseId,
-                    evidenceFileId: currentFileId,
-                    transactions: previewData.transactions, // Send all (in real app, might just send ID if cached backend side, but here sending back)
-                    victimAddress: victimAddr,
-                    scammerAddress: scammerAddr
-                }
-            });
-            if (res.data.error) throw new Error(res.data.error);
-            return res.data;
-        },
         onSuccess: () => {
-            toast.success("Evidence confirmed and processed");
-            setPreviewData(null);
-            setCurrentFileId(null);
             queryClient.invalidateQueries(['evidence-files']);
-            queryClient.invalidateQueries(['my-cases']); // Refresh case data to show auto-filled fields
-        }
+            queryClient.invalidateQueries(['my-cases']); 
+            toast.success("Evidence uploaded and analyzed successfully");
+        },
+        onError: () => toast.error("Upload/Analysis failed")
     });
+
+    // Legacy functions removed as flow is now automated
+    const handleParse = (record) => {
+        // Fallback for manual re-trigger if needed
+        toast.info("Re-analyzing...");
+        base44.functions.invoke('evidenceProcessing', {
+            action: 'process_upload',
+            data: {
+                caseId,
+                evidenceFileId: record.id,
+                fileUrl: record.file_url,
+                fileType: record.mime_type || 'application/octet-stream',
+                fileName: record.filename
+            }
+        }).then(() => {
+            toast.success("Analysis complete");
+            queryClient.invalidateQueries(['evidence-files']);
+        });
+    };
 
     const deleteMutation = useMutation({
         mutationFn: async (id) => {

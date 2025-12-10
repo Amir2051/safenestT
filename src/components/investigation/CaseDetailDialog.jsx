@@ -1269,7 +1269,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {/* Read-Only Preview Button */}
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
@@ -1277,20 +1276,41 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                                 className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
                             >
                                 <Eye className="w-4 h-4 mr-2" />
-                                View
+                                View Analysis
                             </Button>
                             
-                            {/* Admin Controls - Edit/Delete/Download */}
                             {isAdmin && (
-                                <>
-                                    <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')} title="Download (Admin Only)">
-                                        <ExternalLink className="w-4 h-4 text-gray-400" />
-                                    </Button>
-                                    {/* Delete functionality would go here if implemented in handler */}
-                                </>
+                                <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')} title="Download (Admin Only)">
+                                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                                </Button>
                             )}
                         </div>
                       </div>
+                      
+                      {/* Intelligence Summary Display */}
+                      {item.summary?.analysis_text && (
+                        <div className="mt-2 p-3 bg-blue-900/20 rounded border border-blue-500/20 text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-blue-400 flex items-center gap-1">
+                                    <Shield className="w-3 h-3" /> Intelligence Summary
+                                </span>
+                                {item.summary.match_reported && (
+                                    <Badge className="bg-red-500/20 text-red-400 text-[10px] border-red-500/50">MATCH FOUND</Badge>
+                                )}
+                            </div>
+                            <pre className="whitespace-pre-wrap font-sans text-gray-300">
+                                {item.summary.analysis_text}
+                            </pre>
+                            {item.summary.suspect_matches > 0 && (
+                                <div className="mt-2 pt-2 border-t border-blue-500/20">
+                                    <p className="text-orange-400 font-bold mb-1">Suspect Wallet Correlation</p>
+                                    <p className="text-gray-400">
+                                        {item.summary.suspect_matches} wallet(s) in this evidence match the Global Suspect Database.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
