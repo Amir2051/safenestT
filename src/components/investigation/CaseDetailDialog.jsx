@@ -24,6 +24,7 @@ import AgencyReportGenerator from "./AgencyReportGenerator.jsx";
 import CryptoIntelligenceReport from "./CryptoIntelligenceReport.jsx";
 import RelatedCasesPanel from "./RelatedCasesPanel.jsx";
 import AdminEvidenceUpload from "./AdminEvidenceUpload.jsx";
+import TimelineFeed from "./TimelineFeed.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -461,7 +462,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   Import Evidence
                 </TabsTrigger>
               )}
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline & Updates</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="tracking">Wallet Tracking</TabsTrigger>
               <TabsTrigger value="technical-tools" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
@@ -1278,25 +1279,19 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="timeline" className="space-y-4">
-              <h3 className="text-white font-semibold text-lg">Case Timeline</h3>
-              {caseData.timeline && caseData.timeline.length > 0 ? (
-                <div className="space-y-3">
-                  {caseData.timeline.map((event, idx) => (
-                    <div key={idx} className="p-4 bg-[#0f1419] rounded-lg border-l-4 border-cyan-500">
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="text-white font-semibold">{event.event}</p>
-                        <p className="text-xs text-gray-300">{new Date(event.date).toLocaleString()}</p>
-                      </div>
-                      {event.details && <p className="text-sm text-gray-300">{event.details}</p>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                  <Clock className="w-12 h-12 text-gray-600 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No timeline events</p>
-                </div>
-              )}
+              <h3 className="text-white font-semibold text-lg mb-4">Latest Updates & Timeline</h3>
+              
+              {/* Combine Manual Timeline and System Events */}
+              <div className="space-y-4">
+                  {/* Fetch CaseTimelineEvents via component or separate query? For now using what's in caseData or fetching fresh if needed. 
+                      Ideally we'd fetch the CaseTimelineEvents entity here. 
+                      Let's use a small inline query component or just assume caseData has it if we fetched it. 
+                      Since CaseDetailDialog caseData might be stale, we rely on the main timeline array or a fresh fetch.
+                      We'll assume the timeline array is used for basic events, but we want the new "System Events".
+                      Actually, let's just use a dedicated component for the feed to keep this clean.
+                  */}
+                  <TimelineFeed caseId={caseData.id} initialTimeline={caseData.timeline} />
+              </div>
             </TabsContent>
 
             <TabsContent value="notes" className="space-y-4">

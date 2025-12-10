@@ -164,7 +164,7 @@ export default function AdminEvidenceUpload({ caseId }) {
                             onChange={handleFileSelect}
                             className="hidden"
                             id="evidence-upload"
-                            accept=".csv,.json,.txt,.xls,.xlsx,.html"
+                            accept=".csv,.json,.txt,.xls,.xlsx,.html,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                         />
                         <label htmlFor="evidence-upload" className="cursor-pointer block">
                             <Upload className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
@@ -172,7 +172,7 @@ export default function AdminEvidenceUpload({ caseId }) {
                                 {uploading ? "Uploading..." : "Click to Upload Evidence Files"}
                             </p>
                             <p className="text-gray-400 text-sm">
-                                Supported: CSV, JSON, TXT, Excel (Etherscan Exports supported)
+                                Supported: PDF, Images, CSV, JSON, Excel, Docs (Auto-Parsing Enabled)
                             </p>
                         </label>
                     </div>

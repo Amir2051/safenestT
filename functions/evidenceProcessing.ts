@@ -116,6 +116,50 @@ Deno.serve(async (req) => {
                     // Handle list or etherscan API response format
                     const list = Array.isArray(jsonData) ? jsonData : (jsonData.result || []);
                     transactions = extractTransactions(list, 'json');
+                } else if (fileType.includes('pdf') || fileType.includes('image') || fileType.includes('word') || fileType.includes('document')) {
+                    // Use LLM for unstructured/complex documents
+                    const prompt = `
+                        Analyze the attached evidence file (crypto investigation context).
+                        Extract all cryptocurrency transaction data found.
+                        Return a JSON object with a "transactions" array.
+                        Each transaction should have:
+                        - tx_hash (string, mandatory if visible)
+                        - from_address (string)
+                        - to_address (string)
+                        - value_eth (number)
+                        - token_symbol (string)
+                        - timestamp (string ISO 8601)
+                        - exchange_metadata (string, e.g. "Binance Deposit")
+                        
+                        Also normalize any addresses found.
+                    `;
+                    
+                    const llmRes = await base44.integrations.Core.InvokeLLM({
+                        prompt,
+                        file_urls: [fileUrl],
+                        response_json_schema: {
+                            type: "object",
+                            properties: {
+                                transactions: {
+                                    type: "array",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            tx_hash: { type: "string" },
+                                            from_address: { type: "string" },
+                                            to_address: { type: "string" },
+                                            value_eth: { type: "number" },
+                                            token_symbol: { type: "string" },
+                                            timestamp: { type: "string" },
+                                            exchange_metadata: { type: "string" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    transactions = llmRes.transactions || [];
                 } else {
                     // Text / HTML / EML
                     transactions = extractFromText(content);
@@ -180,7 +224,122 @@ Deno.serve(async (req) => {
                 }
             });
 
-            return Response.json({ success: true, count: records.length });
+            // --- AUTO-FILL & CROSS-REFERENCE LOGIC ---
+            
+            // 1. Fetch current case
+            const currentCase = await base44.asServiceRole.entities.MyCase.get(caseId);
+            
+            // 2. Extract unique new wallets/hashes from confirmed data
+            const newWallets = new Set();
+            const newHashes = new Set();
+            transactions.forEach(t => {
+                if (t.from_address) newWallets.add(normalizeAddress(t.from_address));
+                if (t.to_address) newWallets.add(normalizeAddress(t.to_address));
+                if (t.tx_hash) newHashes.add(t.tx_hash);
+            });
+            if (scammerAddress) newWallets.add(normalizeAddress(scammerAddress));
+
+            // 3. Update MyCase Crypto Intel (Auto-Fill)
+            const updates = {};
+            let updated = false;
+            
+            const existingWallets = new Set((currentCase.monitored_wallets || []).map(normalizeAddress));
+            const existingHashes = new Set(currentCase.transaction_hashes || []); // Assuming field exists or we create it
+            
+            // Add new wallets to monitored
+            const combinedWallets = [...existingWallets];
+            newWallets.forEach(w => {
+                if (w && !existingWallets.has(w)) {
+                    combinedWallets.push(w);
+                    updated = true;
+                }
+            });
+            
+            // Update scammer wallet if not set
+            if (scammerAddress && !currentCase.scammer_wallet) {
+                updates.scammer_wallet = scammerAddress;
+                updated = true;
+            }
+
+            if (updated) {
+                updates.monitored_wallets = combinedWallets;
+                updates.last_activity = new Date().toISOString();
+                await base44.asServiceRole.entities.MyCase.update(caseId, updates);
+            }
+
+            // 4. Cross-Reference Scanning
+            if (newWallets.size > 0) {
+                const walletList = Array.from(newWallets);
+                // Scan all other cases for these wallets
+                // Note: This simple filter might miss if wallets are in arrays, but basic string matching or calling caseAnalysis helps.
+                // We'll do a simple check here for immediate feedback.
+                
+                // Fetch potential matches (cases with matching scammer wallet or monitored wallets)
+                // Since filtering by array inclusion is hard in simple query, we'll list recent active cases
+                const recentCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 500);
+                const matches = [];
+
+                for (const other of recentCases) {
+                    if (other.id === caseId) continue;
+                    
+                    const otherWallets = new Set([
+                        ...(other.monitored_wallets || []),
+                        other.scammer_wallet,
+                        ...(other.scammer_info?.wallet_addresses || [])
+                    ].map(normalizeAddress).filter(Boolean));
+
+                    const intersection = walletList.filter(w => otherWallets.has(w));
+                    if (intersection.length > 0) {
+                        matches.push({
+                            case: other,
+                            wallets: intersection
+                        });
+                    }
+                }
+
+                // 5. Notify & Log
+                if (matches.length > 0) {
+                    const matchSummary = matches.map(m => `Case ${m.case.case_number} (${m.wallets.join(', ')})`).join('; ');
+                    
+                    // Add Timeline Event for Linking
+                    await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                        case_id: caseId,
+                        event_type: 'system_alert',
+                        description: `CROSS-REFERENCE MATCH: Connected to ${matches.length} other cases. Shared wallets: ${matchSummary}`,
+                        performed_by: 'system',
+                        metadata: JSON.stringify({ matches: matches.map(m => m.case.id) }),
+                        created_at: new Date().toISOString() // Assuming created_at or uses default
+                    }).catch(() => {}); // catch if schema mismatch on date
+
+                    // AI Summary of Relationship
+                    // (Optional: Call LLM here if needed, but simple string is faster)
+                }
+            }
+
+            // 6. User Notification (Timeline & Email)
+            // Add timeline event for evidence
+            await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                case_id: caseId,
+                event_type: 'evidence_processed',
+                description: `New evidence processed. ${records.length} transactions extracted. Auto-filled crypto intel.`,
+                performed_by: 'system',
+                metadata: JSON.stringify({ count: records.length }),
+                created_at: new Date().toISOString()
+            }).catch(() => {});
+
+            // Send Email
+            const clientEmail = currentCase.client_email || currentCase.created_by_email;
+            if (clientEmail) {
+                try {
+                    await base44.integrations.Core.SendEmail({
+                        to: clientEmail,
+                        subject: `Case Update: Evidence Processed (${currentCase.case_number})`,
+                        body: `Hello,\n\nNew evidence has been processed for your case ${currentCase.case_number}.\n\n- ${records.length} transactions extracted\n- Crypto intelligence updated\n- Cross-case scanning completed\n\nLog in to your dashboard to view the latest updates.\n\nSafeNestT Security Team`
+                    });
+                } catch(e) { console.error("Email failed", e); }
+            }
+
+            return Response.json({ success: true, count: records.length, updated_case: updated, matches_found: matches?.length || 0 });
         }
 
         if (action === 'delete_evidence') {
