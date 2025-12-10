@@ -134,11 +134,6 @@ export default function AdminEvidenceUpload({ caseId }) {
         e.stopPropagation();
     };
 
-    const handleParse = (record) => {
-        toast.info("Parsing file...");
-        parseMutation.mutate(record);
-    };
-
     return (
         <div className="space-y-6">
             <Card className="bg-[#0f1419] border-cyan-500/20">
@@ -233,72 +228,7 @@ export default function AdminEvidenceUpload({ caseId }) {
                 </CardContent>
             </Card>
 
-            {/* Preview Dialog */}
-            <Dialog open={!!previewData} onOpenChange={() => setPreviewData(null)}>
-                <DialogContent className="bg-[#1a2332] border-cyan-500/20 text-white max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Process Evidence File</DialogTitle>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                                <p className="text-gray-400 text-xs uppercase mb-1">Transactions Found</p>
-                                <p className="text-2xl font-bold text-green-400">{previewData?.total_found}</p>
-                            </div>
-                            <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
-                                <p className="text-gray-400 text-xs uppercase mb-1">Parse Status</p>
-                                <p className="text-lg font-bold text-red-400">{previewData?.parse_errors ? 'Errors Found' : 'Clean Parse'}</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label className="text-gray-300">Detected Victim Address</Label>
-                                <Input 
-                                    value={victimAddr} 
-                                    onChange={(e) => setVictimAddr(e.target.value)}
-                                    className="bg-[#0f1419] border-cyan-500/30 text-white font-mono text-xs mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-gray-300">Detected Scammer Address</Label>
-                                <Input 
-                                    value={scammerAddr} 
-                                    onChange={(e) => setScammerAddr(e.target.value)}
-                                    className="bg-[#0f1419] border-cyan-500/30 text-white font-mono text-xs mt-1"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label className="text-gray-300 mb-2 block">Transaction Preview (First 5)</Label>
-                            <ScrollArea className="h-[200px] bg-[#0f1419] rounded-lg border border-cyan-500/20 p-2">
-                                <div className="space-y-2">
-                                    {previewData?.transactions?.slice(0, 5).map((tx, idx) => (
-                                        <div key={idx} className="text-xs p-2 bg-[#1a2332] rounded flex justify-between">
-                                            <span className="font-mono text-cyan-400 truncate w-1/3">{tx.tx_hash}</span>
-                                            <span className="text-gray-300">{tx.from_address?.substring(0,6)}... → {tx.to_address?.substring(0,6)}...</span>
-                                            <span className="text-green-400">{tx.value_eth} ETH</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setPreviewData(null)}>Cancel</Button>
-                        <Button 
-                            onClick={() => confirmMutation.mutate()} 
-                            disabled={confirmMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            {confirmMutation.isPending ? "Saving..." : "Confirm & Extract"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Preview Dialog - Removed (Automated Flow) */}
         </div>
     );
 }
