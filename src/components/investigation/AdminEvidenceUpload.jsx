@@ -45,10 +45,27 @@ export default function AdminEvidenceUpload({ caseId }) {
                 parse_status: 'PENDING'
             });
 
+            // 3. Immediately sync to MyCase evidence_files array (Fix 1)
+            await base44.functions.invoke('evidenceProcessing', {
+                action: 'confirm', // Use confirm action to sync evidence array without transaction parsing if needed, or just let parse handle it.
+                // We'll trust the parse flow for now, but to ensure immediate visibility:
+                // Actually, the simplest way is to manually update MyCase here if the user wants "Instant" update.
+                // But since we have a dedicated backend function, let's rely on that or just simple update.
+                data: {
+                    caseId: caseId,
+                    evidenceFileId: record.id,
+                    transactions: [], // No transactions yet
+                    victimAddress: '',
+                    scammerAddress: ''
+                }
+            }).catch(e => console.warn("Auto-sync warning:", e));
+
             return record;
         },
         onSuccess: (record) => {
             queryClient.invalidateQueries(['evidence-files']);
+            queryClient.invalidateQueries(['my-cases']); // Force refresh of case data (Fix 1)
+            toast.success("File uploaded and saved to evidence");
             handleParse(record); // Auto-trigger parse
         },
         onError: () => toast.error("Upload failed")

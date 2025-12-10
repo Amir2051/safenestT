@@ -112,7 +112,12 @@ export default function EtherscanImporter({ caseData, onTransactionsImported }) 
 
   const processFile = (file) => {
     if (!file) return;
+    // Reset state for re-parsing
+    setPreviewData(null);
+    setCurrentFileId(null);
     setUploading(true);
+    
+    console.log("Starting upload for:", file.name);
     uploadMutation.mutate(file);
   };
 
