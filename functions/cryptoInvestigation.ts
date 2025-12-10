@@ -145,39 +145,59 @@ async function generateInvestigationReport(data, base44) {
   const { caseId } = data;
   
   // Fetch case details
-  const fraudCase = await base44.asServiceRole.entities.FraudCase.filter({ id: caseId });
-  if (!fraudCase || fraudCase.length === 0) {
+  let caseData = null;
+  
+  // Try MyCase first
+  try {
+      const cases = await base44.asServiceRole.entities.MyCase.filter({ id: caseId });
+      if (cases && cases.length > 0) caseData = cases[0];
+  } catch (e) {}
+
+  // Fallback
+  if (!caseData) {
+      try {
+          const cases = await base44.asServiceRole.entities.InvestigationCase.filter({ id: caseId });
+          if (cases && cases.length > 0) caseData = cases[0];
+      } catch (e) {}
+  }
+  
+  if (!caseData) {
+      try {
+          const cases = await base44.asServiceRole.entities.FraudCase.filter({ id: caseId });
+          if (cases && cases.length > 0) caseData = cases[0];
+      } catch (e) {}
+  }
+
+  if (!caseData) {
     throw new Error('Case not found');
   }
 
-  const caseData = fraudCase[0];
-  
   // Generate report content
   const report = {
     reportId: `INV-${Date.now()}`,
     generatedAt: new Date().toISOString(),
     caseDetails: {
-      title: caseData.case_title,
+      title: caseData.case_title || caseData.case_number || 'Untitled',
       caseId: caseData.id,
       reportedDate: caseData.created_date,
       status: caseData.status
     },
     victimInformation: {
       wallet: caseData.victim_wallet,
-      reportedBy: caseData.created_by,
-      amountLost: caseData.amount_stolen_usd
+      reportedBy: caseData.created_by || caseData.client_email,
+      amountLost: caseData.amount_lost || caseData.amount_stolen_usd || 0
     },
     scammerInformation: {
       wallet: caseData.scammer_wallet,
       blockchain: caseData.blockchain,
-      fraudType: caseData.fraud_type
+      fraudType: caseData.issue_type || caseData.fraud_type
     },
     blockchainAnalysis: {
-      tracedWallets: caseData.traced_wallets || [],
+      tracedWallets: caseData.monitored_wallets || caseData.traced_wallets || [],
       exchangesNotified: caseData.exchanges_notified || [],
       transactionFlow: 'See attached flow map'
     },
-    evidence: caseData.evidence || [],
+    evidence: caseData.evidence_files || caseData.evidence || [],
     investigationNotes: caseData.case_notes || [],
     recommendation: 'Submit to law enforcement with all attached evidence'
   };
