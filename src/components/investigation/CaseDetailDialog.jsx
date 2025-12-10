@@ -262,7 +262,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
       evidenceLog.push({
         timestamp: new Date().toISOString(),
         evidence_type: file.type.includes('image') ? 'screenshot' : 'document',
-        file_url: data.file_url,
+        file_url: response.file_url,
         description: file.name,
         collected_by: "admin",
         verified: false
