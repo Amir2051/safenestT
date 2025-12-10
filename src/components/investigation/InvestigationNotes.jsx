@@ -24,9 +24,15 @@ export default function InvestigationNotes({ caseId, caseData: initialCaseData, 
     queryKey: ['case-notes-live', caseId],
     queryFn: async () => {
        try {
-         return await base44.entities.InvestigationCase.get(caseId);
+         // Try MyCase first
+         return await base44.entities.MyCase.get(caseId);
        } catch (e) {
-         return initialCaseData;
+         try {
+           // Fallback to InvestigationCase
+           return await base44.entities.InvestigationCase.get(caseId);
+         } catch (e2) {
+            return initialCaseData;
+         }
        }
     },
     initialData: initialCaseData,

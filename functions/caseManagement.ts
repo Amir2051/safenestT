@@ -93,9 +93,16 @@ Deno.serve(async (req) => {
             const isSpecialist = user.job_title === 'Fraud Specialist';
 
             try {
-                // FORCE MYCASE - Legacy entities are gone
-                const existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
-                
+                // Try MyCase first
+                let existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
+                let entityType = 'MyCase';
+
+                if (!existing) {
+                    // Fallback to InvestigationCase
+                    existing = await base44.asServiceRole.entities.InvestigationCase.get(id).catch(() => null);
+                    entityType = 'InvestigationCase';
+                }
+
                 if (!existing) {
                     return Response.json({ error: `Case ${id} not found` }, { status: 404 });
                 }
@@ -136,7 +143,7 @@ Deno.serve(async (req) => {
                 }
 
                 // PERFORM UPDATE
-                const updatedCase = await base44.asServiceRole.entities.MyCase.update(id, updates);
+                const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
                 return Response.json({ success: true, case: updatedCase });
 
             } catch (err) {
