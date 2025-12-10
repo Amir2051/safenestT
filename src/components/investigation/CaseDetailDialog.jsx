@@ -455,6 +455,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <AlertCircle className="w-3 h-3 mr-1" />Edit Suspect
               </TabsTrigger>
               <TabsTrigger value="evidence">Evidence</TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="evidence-import" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                  <Database className="w-3 h-3 mr-1" />
+                  Import Evidence
+                </TabsTrigger>
+              )}
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="tracking">Wallet Tracking</TabsTrigger>
