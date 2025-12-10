@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       });
 
       // Update case status or last activity
-      await base44.asServiceRole.entities.InvestigationCase.update(caseId, {
+      await base44.asServiceRole.entities.MyCase.update(caseId, {
         last_activity: new Date().toISOString(),
         admin_contact_status: 'In Progress'
       });

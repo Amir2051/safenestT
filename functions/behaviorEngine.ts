@@ -47,8 +47,28 @@ Deno.serve(async (req) => {
     // --- Endpoint: Analyze Case (AI Core) ---
     if (endpoint === 'analyze-case') {
       const { caseId } = data;
-      const fraudCase = await base44.entities.InvestigationCase.get(caseId);
+      let fraudCase = null;
+      
+      // Try MyCase first (unified entity)
+      try {
+          fraudCase = await base44.entities.MyCase.get(caseId);
+      } catch (e) {
+          // Fallback to InvestigationCase if not found (legacy)
+          try {
+              fraudCase = await base44.entities.InvestigationCase.get(caseId);
+          } catch (e2) {
+              console.log("Case not found in MyCase or InvestigationCase");
+          }
+      }
+
       if (!fraudCase) return Response.json({ error: 'Case not found' }, { status: 404 });
+
+      // Map fields from MyCase/InvestigationCase to standard format
+      const caseTitle = fraudCase.case_title || fraudCase.case_number || 'Untitled';
+      const description = fraudCase.description || '';
+      const amount = fraudCase.amount_lost || fraudCase.amount_stolen_usd || 0;
+      const type = fraudCase.issue_type || fraudCase.fraud_type || 'scam';
+      const suspectInfo = fraudCase.scammer_info || fraudCase.suspect_details || {};
 
       // Fetch related data for context
       const notes = await base44.entities.CaseNote.filter({ case_id: caseId });
@@ -59,11 +79,11 @@ Deno.serve(async (req) => {
         Analyze this fraud case for behavioral patterns and risk.
         
         Case Details:
-        Title: ${fraudCase.case_title}
-        Description: ${fraudCase.description}
-        Amount: ${fraudCase.amount_stolen_usd}
-        Type: ${fraudCase.fraud_type}
-        Suspect Info: ${JSON.stringify(fraudCase.suspect_details || {})}
+        Title: ${caseTitle}
+        Description: ${description}
+        Amount: ${amount}
+        Type: ${type}
+        Suspect Info: ${JSON.stringify(suspectInfo)}
         
         User Behavior Events: ${JSON.stringify(events.slice(0, 10))}
         Case Notes: ${JSON.stringify(notes.slice(0, 5))}
