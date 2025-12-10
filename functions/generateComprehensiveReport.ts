@@ -73,52 +73,69 @@ Deno.serve(async (req) => {
     ).join('\n');
 
     const prompt = `
-    Generate a Comprehensive Investigation Report for the following case.
-    The report must be professional, structured, and detailed, suitable for law enforcement or internal review.
+    You are tasked with generating a comprehensive case report. Use the following inputs: case details, victim information, suspect information, and uploaded evidence.
 
-    CASE DETAILS:
-    ID: ${currentCase.case_number || caseId}
-    Title: ${currentCase.case_title || 'Untitled'}
-    Date Reported: ${currentCase.created_date}
+    INPUT DATA:
+    
+    [Case Summary]
+    Case ID: ${currentCase.case_number || caseId}
+    Report Date: ${currentCase.created_date}
     Type: ${currentCase.issue_type || currentCase.fraud_type || 'Fraud'}
-    Status: ${currentCase.status}
     Description: ${currentCase.description}
     Amount Lost: ${currentCase.amount_lost || currentCase.amount_stolen_usd || 0} ${currentCase.cryptocurrency || 'USD'}
 
-    VICTIM DETAILS:
+    [Victim Details]
     Name: ${currentCase.client_name || currentCase.victim_name || 'Redacted'}
-    Email: ${currentCase.client_email || currentCase.victim_email || 'Redacted'}
-    Phone: ${currentCase.phone_number || currentCase.victim_phone || 'Redacted'}
+    Contact: ${currentCase.client_email || 'N/A'}, ${currentCase.phone_number || 'N/A'}
     Address: ${currentCase.victim_contact_info?.address || 'N/A'}
 
-    SUSPECT DETAILS:
+    [Suspect Details]
     Name: ${currentCase.scammer_info?.name || currentCase.suspect_details?.primary_suspect?.name || 'Unknown'}
-    Email: ${currentCase.scammer_info?.email || 'Unknown'}
-    Phone: ${currentCase.scammer_info?.phone || 'Unknown'}
-    Wallet Addresses: ${(currentCase.scammer_wallet ? [currentCase.scammer_wallet] : []).concat(currentCase.scammer_info?.wallet_addresses || []).join(', ')}
+    Wallets: ${(currentCase.scammer_wallet ? [currentCase.scammer_wallet] : []).concat(currentCase.scammer_info?.wallet_addresses || []).join(', ')}
+    Social Media: ${(currentCase.scammer_info?.social_media || []).join(', ')}
+    Known Aliases: ${(currentCase.suspect_details?.primary_suspect?.aliases || []).join(', ')}
+    Contact Info: ${currentCase.scammer_info?.email || 'N/A'}, ${currentCase.scammer_info?.phone || 'N/A'}
     Websites: ${currentCase.scammer_info?.website || 'N/A'}
-    
-    EVIDENCE & ANALYSIS:
-    Files Uploaded:
+
+    [Evidence & Analysis Inputs]
+    Files:
     ${evidenceSummary || "No files uploaded."}
 
-    Blockchain Analysis (First 50 transactions extracted):
+    Blockchain Logs (Extracted Transactions):
     ${txSummary || "No transactions extracted."}
 
-    CONNECTIONS & PATTERNS:
+    [Connections Inputs]
     ${connectedCasesSummary}
 
-    INSTRUCTIONS:
-    Generate a report with the following Markdown sections:
-    1. **Case Summary**: Brief overview of the incident.
-    2. **Victim Details**: Contact info and relevant notes.
-    3. **Suspect Details**: All known identifiers (wallets, emails, aliases).
-    4. **Evidence Analysis**: Summarize the findings from files and blockchain data. specificy key transaction flows.
-    5. **Connections & Patterns**: Highlight links to other cases or known scam patterns.
-    6. **Insights & Findings**: Professional assessment of the fraud type and indicators.
-    7. **Recommended Actions**: Concrete next steps (e.g., "File IC3", "Monitor Wallet 0x...", "Contact Exchange X").
+    ----------------------------------------------------------------
+    
+    GENERATE A STRUCTURED REPORT INCLUDING:
 
-    Tone: Professional, Objective, Analytical.
+    1. **Case Summary**: 
+       - Include Case ID, report date, type of scam/fraud, and a brief summary of the incident.
+
+    2. **Victim Details**: 
+       - Name, contact info, and any relevant notes.
+
+    3. **Suspect Details**: 
+       - Name, wallet addresses, social media handles, known aliases, and any available contact info.
+
+    4. **Evidence Analysis**: 
+       - Extract and summarize all evidence. 
+       - For blockchain/transaction logs: Parse sender, receiver, amount, date, token type, and transaction hash. 
+       - For files: Include screenshots, documents, or other uploads with short descriptions of their contents.
+
+    5. **Connections & Patterns**: 
+       - Cross-reference with other cases. 
+       - Highlight shared wallet addresses, repeated tactics, or suspicious patterns based on the provided connections input.
+
+    6. **Insights & Findings**: 
+       - Provide analysis from the evidence—fraud indicators, timeline of events, and notable flags.
+
+    7. **Recommended Actions**: 
+       - Suggest next steps for investigation, reporting, or risk mitigation (e.g., "File IC3", "Trace funds through Exchange X", "Block wallet 0x...").
+
+    The report should be clear, structured, professional, and ready for internal or external review. 
     Format: Markdown.
     `;
 
