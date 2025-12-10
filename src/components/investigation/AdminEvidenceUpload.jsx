@@ -30,12 +30,13 @@ export default function AdminEvidenceUpload({ caseId }) {
     const uploadMutation = useMutation({
         mutationFn: async (file) => {
             // 1. Upload to storage
-            const { data } = await base44.integrations.Core.UploadFile({ file });
+            const response = await base44.integrations.Core.UploadFile({ file });
+            const fileUrl = response.file_url;
             
             // 2. Create entity record
             const record = await base44.entities.CaseEvidenceFile.create({
                 case_id: caseId,
-                file_url: data.file_url,
+                file_url: fileUrl,
                 filename: file.name,
                 file_size: file.size,
                 mime_type: file.type,
