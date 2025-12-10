@@ -56,22 +56,24 @@ function extractTransactions(data, type) {
             return match ? row[keys[match]] : null;
         };
 
-        const hash = getVal('txhash') || getVal('hash') || getVal('transactionhash');
-        const from = getVal('from');
-        const to = getVal('to');
-        const value = getVal('value');
-        const time = getVal('date') || getVal('timestamp') || getVal('time');
-        const token = getVal('token') || getVal('symbol');
+        const hash = getVal('txhash') || getVal('hash') || getVal('transactionhash') || getVal('txn_hash');
+        const from = getVal('from') || getVal('from_address') || getVal('sender');
+        const to = getVal('to') || getVal('to_address') || getVal('receiver') || getVal('recipient');
+        const value = getVal('value') || getVal('amount') || getVal('quantity') || getVal('value_in(eth)') || getVal('value_out(eth)');
+        const time = getVal('date') || getVal('timestamp') || getVal('time') || getVal('datetime') || getVal('date_utc');
+        const token = getVal('token') || getVal('symbol') || getVal('token_symbol');
+        const method = getVal('method') || getVal('function');
         
-        if (hash) {
+        if (hash || (from && to && value)) { // Allow if hash missing but movement clear
             tx = {
-                tx_hash: hash,
+                tx_hash: hash || `mock-${Date.now()}-${Math.random()}`, // Fallback if missing
                 from_address: from,
                 to_address: to,
-                value_wei: null, // Hard to calc without decimals, keep null or raw
-                value_eth: parseFloat(value) || 0,
-                token_symbol: token,
+                value_wei: null,
+                value_eth: parseFloat(value && value.replace(/,/g, '')) || 0,
+                token_symbol: token || 'ETH',
                 timestamp: time ? new Date(time).toISOString() : new Date().toISOString(),
+                method: method,
                 original_row: row
             };
             txs.push(tx);
@@ -272,6 +274,31 @@ Deno.serve(async (req) => {
                 updated = true;
             }
 
+            // Sync to MyCase.evidence_files (Legacy UI Support)
+            const evidenceFile = await base44.asServiceRole.entities.CaseEvidenceFile.get(evidenceFileId);
+            const currentEvidence = currentCase.evidence_files || [];
+            
+            // Check if already exists (by url)
+            if (!currentEvidence.some(e => e.url === evidenceFile.file_url)) {
+                currentEvidence.push({
+                    name: evidenceFile.filename,
+                    url: evidenceFile.file_url,
+                    type: evidenceFile.mime_type,
+                    uploaded_date: evidenceFile.uploaded_at,
+                    description: `Parsed Evidence: ${records.length} transactions`
+                });
+                updates.evidence_files = currentEvidence;
+                updated = true;
+            }
+
+            // Sync hashes to transaction_hashes (Legacy UI Support)
+            const currentHashes = new Set(currentCase.transaction_hashes || []);
+            newHashes.forEach(h => currentHashes.add(h));
+            if (currentHashes.size > (currentCase.transaction_hashes?.length || 0)) {
+                updates.transaction_hashes = Array.from(currentHashes);
+                updated = true;
+            }
+
             if (updated) {
                 updates.monitored_wallets = combinedWallets;
                 updates.last_activity = new Date().toISOString();
@@ -311,7 +338,7 @@ Deno.serve(async (req) => {
                 // 5. Notify & Log
                 if (matches.length > 0) {
                     const matchSummary = matches.map(m => `Case ${m.case.case_number} (${m.wallets.join(', ')})`).join('; ');
-                    
+
                     // Add Timeline Event for Linking
                     await base44.asServiceRole.entities.CaseTimelineEvent.create({
                         case_id: caseId,
@@ -319,11 +346,34 @@ Deno.serve(async (req) => {
                         description: `CROSS-REFERENCE MATCH: Connected to ${matches.length} other cases. Shared wallets: ${matchSummary}`,
                         performed_by: 'system',
                         metadata: JSON.stringify({ matches: matches.map(m => m.case.id) }),
-                        created_at: new Date().toISOString() // Assuming created_at or uses default
-                    }).catch(() => {}); // catch if schema mismatch on date
+                        created_at: new Date().toISOString() 
+                    }).catch(() => {});
 
-                    // AI Summary of Relationship
-                    // (Optional: Call LLM here if needed, but simple string is faster)
+                    // Add Linked Note to Current Case (User Request: "Add a note: Linked activity detected...")
+                    await base44.asServiceRole.entities.CaseNote.create({
+                        case_id: caseId,
+                        author: "System (Cross-Reference)",
+                        author_email: "system@safenest.com",
+                        role: "System",
+                        content: `Linked activity detected with ${matches.length} cases. Possible related scammer.\nMatches: ${matchSummary}`,
+                        note: `Linked activity detected with ${matches.length} cases. Possible related scammer.\nMatches: ${matchSummary}`, // Supporting different schemas
+                        type: "system_alert",
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // Add Linked Note to MATCHED Cases
+                    for (const m of matches) {
+                         await base44.asServiceRole.entities.CaseNote.create({
+                            case_id: m.case.id,
+                            author: "System (Cross-Reference)",
+                            author_email: "system@safenest.com",
+                            role: "System",
+                            content: `Linked activity detected with New Case #${currentCase.case_number}. Shared wallets: ${m.wallets.join(', ')}`,
+                            note: `Linked activity detected with New Case #${currentCase.case_number}. Shared wallets: ${m.wallets.join(', ')}`,
+                            type: "system_alert",
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                 }
             }
 
