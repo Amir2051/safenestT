@@ -111,15 +111,30 @@ export default function AdminEvidenceUpload({ caseId }) {
         }
     });
 
-    const handleFileSelect = async (e) => {
-        const files = Array.from(e.target.files);
+    const handleUploadFiles = async (files) => {
         if (files.length === 0) return;
-
         setUploading(true);
         for (const file of files) {
             await uploadMutation.mutateAsync(file);
         }
         setUploading(false);
+    };
+
+    const handleFileSelect = (e) => {
+        handleUploadFiles(Array.from(e.target.files));
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleUploadFiles(Array.from(e.dataTransfer.files));
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
     };
 
     const handleParse = (record) => {
