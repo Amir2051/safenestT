@@ -96,6 +96,7 @@ export default function AdminEvidenceUpload({ caseId }) {
             setPreviewData(null);
             setCurrentFileId(null);
             queryClient.invalidateQueries(['evidence-files']);
+            queryClient.invalidateQueries(['my-cases']); // Refresh case data to show auto-filled fields
         }
     });
 

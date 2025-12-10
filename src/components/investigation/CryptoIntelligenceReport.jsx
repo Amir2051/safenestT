@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,8 +63,54 @@ export default function CryptoIntelligenceReport({ caseData }) {
     ...(caseData.suspect_details?.wallet_addresses || [])
   ].filter((v, i, a) => a.indexOf(v) === i);
 
+  // Fetch auto-extracted transactions
+  const { data: extractedTxs = [] } = useQuery({
+      queryKey: ['extracted-txs', caseData.id],
+      queryFn: async () => await base44.entities.ExtractedTransaction.filter({ case_id: caseData.id })
+  });
+
+  // Calculate totals from extracted data
+  const totalExtractedValue = extractedTxs.reduce((sum, tx) => sum + (tx.value_eth || 0), 0);
+
   return (
     <div className="space-y-6">
+      {extractedTxs.length > 0 && (
+          <Card className="bg-[#0f1419] border-cyan-500/20 print:hidden">
+              <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-cyan-400 flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" />
+                      Auto-Extracted Intelligence
+                  </CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="bg-[#1a2332] p-3 rounded">
+                          <p className="text-xs text-gray-400">Transactions Parsed</p>
+                          <p className="text-xl font-bold text-white">{extractedTxs.length}</p>
+                      </div>
+                      <div className="bg-[#1a2332] p-3 rounded">
+                          <p className="text-xs text-gray-400">Total Volume</p>
+                          <p className="text-xl font-bold text-green-400">{totalExtractedValue.toFixed(4)} ETH</p>
+                      </div>
+                      <div className="bg-[#1a2332] p-3 rounded">
+                          <p className="text-xs text-gray-400">Unique Wallets</p>
+                          <p className="text-xl font-bold text-blue-400">
+                              {new Set(extractedTxs.map(t => t.to_address).concat(extractedTxs.map(t => t.from_address))).size}
+                          </p>
+                      </div>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                      {extractedTxs.map(tx => (
+                          <div key={tx.id} className="text-xs flex justify-between p-2 hover:bg-[#1a2332] rounded">
+                              <span className="font-mono text-gray-300 truncate w-1/3">{tx.tx_hash}</span>
+                              <span className="text-gray-500">{new Date(tx.timestamp).toLocaleDateString()}</span>
+                              <span className="font-mono text-green-400">{tx.value_eth} {tx.token_symbol || 'ETH'}</span>
+                          </div>
+                      ))}
+                  </div>
+              </CardContent>
+          </Card>
+      )}
       {/* Controls - Hidden when printing */}
       <div className="flex justify-between items-center p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20 print:hidden">
         <div>
