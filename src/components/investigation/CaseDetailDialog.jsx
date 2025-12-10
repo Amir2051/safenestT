@@ -1229,6 +1229,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               />
             </TabsContent>
 
+            {isAdmin && (
+              <TabsContent value="evidence-import" className="space-y-4">
+                <AdminEvidenceUpload caseId={caseData.id} />
+              </TabsContent>
+            )}
+
             <TabsContent value="evidence" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-semibold text-lg">Evidence Log</h3>
