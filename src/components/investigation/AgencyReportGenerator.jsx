@@ -59,6 +59,11 @@ const AGENCY_TEMPLATES = {
     name: "INTERPOL Report",
     description: "International criminal police organization report",
     fields: ["victim_info", "suspect_info", "financial_info", "incident_details", "international_elements"]
+  },
+  comprehensive: {
+    name: "Comprehensive Case Report",
+    description: "Full internal investigation report with cross-case analysis and evidence summary",
+    fields: ["all"]
   }
 };
 
@@ -80,10 +85,28 @@ export default function AgencyReportGenerator({ caseData, onReportGenerated }) {
     mutationFn: async ({ agencyType }) => {
       const template = AGENCY_TEMPLATES[agencyType];
       
-      // Build comprehensive report data
+      // Specialized handling for Comprehensive Report
+      if (agencyType === 'comprehensive') {
+        const response = await base44.functions.invoke('generateComprehensiveReport', {
+            caseId: caseData.id,
+            entityName: caseData._entityName
+        });
+        
+        if (response.data.error) throw new Error(response.data.error);
+        
+        return {
+            agency_type: agencyType,
+            agency_name: template.name,
+            report_content: response.data.report,
+            executive_summary: "See full report below.",
+            key_findings: ["Comprehensive Analysis", "Cross-Case Connections", "Evidence Summary"],
+            report_data: {} // Data is handled backend-side
+        };
+      }
+
+      // Standard handling for other templates
       const reportData = buildReportData(caseData, agencyType);
       
-      // Generate report content using AI
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: `Generate a formal ${template.name} for the following cryptocurrency fraud case. 
         
