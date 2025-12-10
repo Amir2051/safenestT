@@ -152,7 +152,11 @@ export default function AdminEvidenceUpload({ caseId }) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="border-2 border-dashed border-cyan-500/30 rounded-lg p-8 text-center hover:bg-cyan-500/5 transition-colors">
+                    <div 
+                        className="border-2 border-dashed border-cyan-500/30 rounded-lg p-8 text-center hover:bg-cyan-500/5 transition-colors"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                    >
                         <input
                             type="file"
                             multiple
