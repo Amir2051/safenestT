@@ -23,6 +23,7 @@ import TrackingToolsPanel from "@/components/admin/TrackingToolsPanel.jsx";
 import AgencyReportGenerator from "./AgencyReportGenerator.jsx";
 import CryptoIntelligenceReport from "./CryptoIntelligenceReport.jsx";
 import RelatedCasesPanel from "./RelatedCasesPanel.jsx";
+import AdminEvidenceUpload from "./AdminEvidenceUpload.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
