@@ -73,69 +73,59 @@ Deno.serve(async (req) => {
     ).join('\n');
 
     const prompt = `
-    You are tasked with generating a comprehensive case report. Use the following inputs: case details, victim information, suspect information, and uploaded evidence.
+    You are an AI investigator. Your task is to generate a full case report using the following inputs: case details, victim information, suspect information, and uploaded evidence files (documents, transaction logs, screenshots, wallet addresses, etc.). Follow these instructions exactly:
 
-    INPUT DATA:
+    INPUT CONTEXT:
     
-    [Case Summary]
-    Case ID: ${currentCase.case_number || caseId}
-    Report Date: ${currentCase.created_date}
+    [Case Details]
+    ID: ${currentCase.case_number || caseId}
+    Date: ${currentCase.created_date}
     Type: ${currentCase.issue_type || currentCase.fraud_type || 'Fraud'}
     Description: ${currentCase.description}
-    Amount Lost: ${currentCase.amount_lost || currentCase.amount_stolen_usd || 0} ${currentCase.cryptocurrency || 'USD'}
+    Amount: ${currentCase.amount_lost || currentCase.amount_stolen_usd || 0} ${currentCase.cryptocurrency || 'USD'}
 
     [Victim Details]
     Name: ${currentCase.client_name || currentCase.victim_name || 'Redacted'}
     Contact: ${currentCase.client_email || 'N/A'}, ${currentCase.phone_number || 'N/A'}
-    Address: ${currentCase.victim_contact_info?.address || 'N/A'}
+    Notes: ${currentCase.victim_contact_info?.address || ''} ${currentCase.notes || ''}
 
     [Suspect Details]
     Name: ${currentCase.scammer_info?.name || currentCase.suspect_details?.primary_suspect?.name || 'Unknown'}
     Wallets: ${(currentCase.scammer_wallet ? [currentCase.scammer_wallet] : []).concat(currentCase.scammer_info?.wallet_addresses || []).join(', ')}
-    Social Media: ${(currentCase.scammer_info?.social_media || []).join(', ')}
-    Known Aliases: ${(currentCase.suspect_details?.primary_suspect?.aliases || []).join(', ')}
-    Contact Info: ${currentCase.scammer_info?.email || 'N/A'}, ${currentCase.scammer_info?.phone || 'N/A'}
-    Websites: ${currentCase.scammer_info?.website || 'N/A'}
+    Social: ${(currentCase.scammer_info?.social_media || []).join(', ')}
+    Aliases: ${(currentCase.suspect_details?.primary_suspect?.aliases || []).join(', ')}
+    Contact: ${currentCase.scammer_info?.email || 'N/A'}, ${currentCase.scammer_info?.phone || 'N/A'}
 
-    [Evidence & Analysis Inputs]
-    Files:
+    [Evidence Files & Content]
     ${evidenceSummary || "No files uploaded."}
 
-    Blockchain Logs (Extracted Transactions):
+    [Blockchain Logs / Transactions]
     ${txSummary || "No transactions extracted."}
 
-    [Connections Inputs]
+    [Cross-Reference Connections]
     ${connectedCasesSummary}
 
     ----------------------------------------------------------------
+
+    Parse Evidence:
+    For blockchain/transaction files (Etherscan CSV, JSON, or logs), extract: sender, receiver, amount, date, token type, transaction hash.
+    For documents/screenshots, summarize the content and highlight relevant data (wallets, amounts, usernames, communications).
+    Match any extracted wallet addresses with the victim-reported scammer wallets.
+
+    Generate Report Sections:
+    Case Summary: Case ID, date reported, scam type, brief description.
+    Victim Details: Name, contact info, notes.
+    Suspect Details: Name, wallet addresses, social media handles, known aliases, contact info.
+    Evidence Summary: List each evidence item, its type, and a short summary including any relevant extracted details.
+    Connections & Patterns: Automatically cross-reference suspect wallet addresses or other identifiers with existing cases; highlight matches and patterns.
+    Insights & Findings: Analyze the evidence and connections; identify suspicious activity, fraud indicators, or notable flags.
+    Recommended Actions: Suggest next steps (e.g., investigation, reporting, freezing assets, contacting authorities).
+
+    Format Output:
+    Output as a structured report ready to share internally or with authorities.
+    Include all parsed data, matched connections, and relevant findings clearly.
+    Always ensure the report is accurate, professional, and includes everything extracted from evidence, even if partial or incomplete.
     
-    GENERATE A STRUCTURED REPORT INCLUDING:
-
-    1. **Case Summary**: 
-       - Include Case ID, report date, type of scam/fraud, and a brief summary of the incident.
-
-    2. **Victim Details**: 
-       - Name, contact info, and any relevant notes.
-
-    3. **Suspect Details**: 
-       - Name, wallet addresses, social media handles, known aliases, and any available contact info.
-
-    4. **Evidence Analysis**: 
-       - Extract and summarize all evidence. 
-       - For blockchain/transaction logs: Parse sender, receiver, amount, date, token type, and transaction hash. 
-       - For files: Include screenshots, documents, or other uploads with short descriptions of their contents.
-
-    5. **Connections & Patterns**: 
-       - Cross-reference with other cases. 
-       - Highlight shared wallet addresses, repeated tactics, or suspicious patterns based on the provided connections input.
-
-    6. **Insights & Findings**: 
-       - Provide analysis from the evidence—fraud indicators, timeline of events, and notable flags.
-
-    7. **Recommended Actions**: 
-       - Suggest next steps for investigation, reporting, or risk mitigation (e.g., "File IC3", "Trace funds through Exchange X", "Block wallet 0x...").
-
-    The report should be clear, structured, professional, and ready for internal or external review. 
     Format: Markdown.
     `;
 
