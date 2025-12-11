@@ -35,7 +35,11 @@ export default function AdminSubscriptions() {
     refetchInterval: 15000
   });
 
-  if (!user?.is_admin) {
+  if (!user) {
+    return <div className="p-8 text-center text-gray-400">Loading...</div>;
+  }
+
+  if (!user.is_admin && user.role !== 'admin') {
     return null;
   }
 
