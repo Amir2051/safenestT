@@ -13,6 +13,7 @@ export default function AdminSupport() {
   const [user, setUser] = useState(null);
   const [selectedChat, setSelectedChat] = useState(null);
   const [status, setStatus] = useState("all"); // all, waiting, active, closed
+  const [showMobileChat, setShowMobileChat] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -95,9 +96,11 @@ export default function AdminSupport() {
             </div>
         </div>
 
-        <div className="flex flex-1 gap-6 overflow-hidden">
+        <div className="flex flex-1 gap-6 overflow-hidden relative">
             {/* Chat List */}
-            <div className="w-full lg:w-1/3 flex flex-col bg-[#1a2332] rounded-lg border border-gray-700 overflow-hidden">
+            <div className={`w-full lg:w-1/3 flex flex-col bg-[#1a2332] rounded-lg border border-gray-700 overflow-hidden ${
+                showMobileChat ? 'hidden lg:flex' : 'flex'
+            }`}>
                 <div className="p-4 border-b border-gray-700">
                     <div className="flex gap-2 overflow-x-auto pb-2">
                         {['all', 'waiting', 'active', 'closed'].map(s => (
@@ -123,6 +126,7 @@ export default function AdminSupport() {
                                     assignChatMutation.mutate(chat.id);
                                 } else {
                                     setSelectedChat(chat);
+                                    setShowMobileChat(true);
                                 }
                             }}
                             className={`p-3 rounded-lg cursor-pointer border transition-all ${
@@ -177,12 +181,17 @@ export default function AdminSupport() {
             </div>
 
             {/* Chat Window */}
-            <div className="flex-1 flex flex-col bg-[#1a2332] rounded-lg border border-gray-700 overflow-hidden">
+            <div className={`flex-1 flex-col bg-[#1a2332] rounded-lg border border-gray-700 overflow-hidden ${
+                showMobileChat ? 'flex' : 'hidden lg:flex'
+            }`}>
                 {selectedChat ? (
                     <SupportChatWindow 
                         chat={selectedChat} 
                         isUser={false}
-                        onClose={() => setSelectedChat(null)} 
+                        onClose={() => {
+                            setSelectedChat(null);
+                            setShowMobileChat(false);
+                        }} 
                     />
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
