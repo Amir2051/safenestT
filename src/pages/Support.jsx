@@ -14,7 +14,14 @@ export default function Support() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    base44.auth.me().then(setUser);
+    base44.auth.me().then((u) => {
+        if (u?.role === 'admin' || u?.is_admin) {
+            // Redirect admins to the Admin Support Dashboard
+            window.location.href = '/admin-support'; 
+            return;
+        }
+        setUser(u);
+    });
   }, []);
 
   // Fetch User Chats
