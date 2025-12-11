@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
   Users, DollarSign, AlertTriangle, CheckCircle, Clock,
-  Search, CreditCard, Filter, Download
+  Search, CreditCard, Filter, Download, RefreshCw
 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminSubscriptions() {
@@ -28,11 +30,24 @@ export default function AdminSubscriptions() {
     }).catch(() => navigate('/Dashboard'));
   }, []);
 
+  const queryClient = useQueryClient();
+
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['admin-users-subscriptions'],
     queryFn: () => base44.entities.User.list('-created_date', 1000),
-    enabled: !!user?.is_admin,
+    enabled: !!user,
     refetchInterval: 15000
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () => base44.functions.invoke('adminStripeSync', {}),
+    onSuccess: (data) => {
+      toast.success(`Sync complete: ${data.updated} users updated`);
+      queryClient.invalidateQueries(['admin-users-subscriptions']);
+    },
+    onError: () => {
+      toast.error("Failed to sync with Stripe");
+    }
   });
 
   if (!user) {
@@ -84,6 +99,15 @@ export default function AdminSubscriptions() {
         </div>
         
         <div className="flex gap-2">
+            <Button 
+                variant="outline" 
+                className="border-gray-700 bg-[#1a2332] text-gray-300"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+            >
+                <RefreshCw className={`w-4 h-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} /> 
+                {syncMutation.isPending ? 'Syncing...' : 'Sync Stripe Data'}
+            </Button>
             <Button variant="outline" className="border-gray-700 bg-[#1a2332] text-gray-300">
                 <Download className="w-4 h-4 mr-2" /> Export CSV
             </Button>
