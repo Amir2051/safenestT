@@ -19,7 +19,8 @@ export default function AdminSubscriptions() {
 
   useEffect(() => {
     base44.auth.me().then(userData => {
-      if (!userData.is_admin) {
+      // Check both is_admin flag AND role
+      if (!userData.is_admin && userData.role !== 'admin') {
         navigate('/Dashboard');
         return;
       }
