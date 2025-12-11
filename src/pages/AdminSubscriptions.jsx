@@ -27,7 +27,7 @@ export default function AdminSubscriptions() {
 
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['admin-users-subscriptions'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => base44.entities.User.list('-created_date', 1000),
     enabled: !!user?.is_admin,
     refetchInterval: 30000
   });
