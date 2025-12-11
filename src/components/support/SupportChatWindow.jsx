@@ -125,7 +125,13 @@ export default function SupportChatWindow({ chat, onClose, isUser = true }) {
         className="flex-1 overflow-y-auto p-4 space-y-4"
       >
         {sortedMessages.map((msg, idx) => {
+            // Determine if the message is from "me" (the current viewer)
+            // If I am the User: "me" is messages with role 'user'
+            // If I am the Admin: "me" is messages with role 'admin'
             const isMe = (isUser && msg.sender_role === 'user') || (!isUser && msg.sender_role === 'admin');
+            
+            // Explicitly identify Admin messages for styling
+            const isAdminMessage = msg.sender_role === 'admin';
             const isSystem = msg.sender_role === 'system';
             
             if (isSystem) {
@@ -140,19 +146,27 @@ export default function SupportChatWindow({ chat, onClose, isUser = true }) {
 
             return (
                 <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-md ${
                         isMe 
-                        ? 'bg-blue-600 text-white rounded-br-none' 
-                        : 'bg-[#0f1419] border border-gray-700 text-gray-200 rounded-bl-none'
+                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-none border border-blue-500/50' 
+                        : isAdminMessage
+                            ? 'bg-gradient-to-br from-purple-900/80 to-indigo-900/80 border border-purple-500/50 text-white rounded-bl-none'
+                            : 'bg-[#161b22] border border-gray-700 text-gray-200 rounded-bl-none'
                     }`}>
-                        <div className="flex items-center gap-2 mb-1">
-                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                 msg.sender_role === 'admin' ? 'text-blue-300' : 'text-gray-400'
-                             }`}>
-                                 {msg.sender_role === 'admin' ? 'Admin Response' : 'User'}
-                             </span>
-                        </div>
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        {!isMe && (
+                            <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-white/10">
+                                <span className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${
+                                    isAdminMessage ? 'text-purple-300' : 'text-gray-400'
+                                }`}>
+                                    {isAdminMessage ? (
+                                        <><Shield className="w-3 h-3" /> Admin Response</>
+                                    ) : (
+                                        <><User className="w-3 h-3" /> User</>
+                                    )}
+                                </span>
+                            </div>
+                        )}
+                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                         <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
                             {new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {isMe && msg.read && <CheckCheck className="w-3 h-3" />}

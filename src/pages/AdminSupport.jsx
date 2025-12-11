@@ -44,12 +44,16 @@ export default function AdminSupport() {
   const { data: chats = [], isLoading } = useQuery({
     queryKey: ['support-chats', status],
     queryFn: async () => {
+        // Admin gets all chats - RLS ensures only admin sees all
+        // Users would only see their own
         const filters = {};
         if (status !== 'all') filters.status = status;
-        // In real app might want pagination
-        return base44.entities.SupportChat.filter(filters, '-last_message_at', 50);
+        
+        // Ensure we are fetching the latest chats
+        return await base44.entities.SupportChat.filter(filters, '-last_message_at', 50);
     },
-    refetchInterval: 5000
+    // Fast polling for real-time feel
+    refetchInterval: 3000
   });
 
   const assignChatMutation = useMutation({
