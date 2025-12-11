@@ -145,6 +145,13 @@ export default function SupportChatWindow({ chat, onClose, isUser = true }) {
                         ? 'bg-blue-600 text-white rounded-br-none' 
                         : 'bg-[#0f1419] border border-gray-700 text-gray-200 rounded-bl-none'
                     }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                 msg.sender_role === 'admin' ? 'text-blue-300' : 'text-gray-400'
+                             }`}>
+                                 {msg.sender_role === 'admin' ? 'Admin Response' : 'User'}
+                             </span>
+                        </div>
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                         <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
                             {new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
