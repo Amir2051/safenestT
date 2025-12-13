@@ -28,6 +28,53 @@ Deno.serve(async (req) => {
             }
         }
 
+        // --- PRE-FETCH LINKED CASES CANDIDATES ---
+        // We scan raw_input and case data for potential entities (wallets, emails, handles) 
+        // and fetch matching cases from DB to provide context to the LLM.
+        
+        const searchText = (raw_input + " " + JSON.stringify(caseData)).toLowerCase();
+        
+        // Simple regex extractors
+        const potentialWallets = (searchText.match(/(0x[a-f0-9]{40}|[13][a-km-z1-9]{25,34}|bc1[a-z0-9]{39,59})/g) || []);
+        const potentialEmails = (searchText.match(/[\w.-]+@[\w.-]+\.\w+/g) || []).filter(e => !e.includes('example.com'));
+        const potentialHandles = (searchText.match(/@[a-z0-9_.]+/g) || []);
+        
+        const uniqueEntities = [...new Set([...potentialWallets, ...potentialEmails, ...potentialHandles])];
+        
+        let relatedCasesData = [];
+
+        if (uniqueEntities.length > 0) {
+            try {
+                // We'll search in MyCase and InvestigationCase
+                // Note: filtering by "contains" in JSON fields or text fields might be heavy, 
+                // so we rely on exact matches or simple filters if possible. 
+                // For simplicity/performance in this function, we fetch recent cases and filter in memory 
+                // OR we accept that we only match exact fields if the DB supports it.
+                // Given the limitations, fetching a batch of recent cases and filtering is safer for now.
+                
+                const [myCases, invCases] = await Promise.all([
+                    base44.entities.MyCase.list('-created_date', 200),
+                    base44.entities.InvestigationCase.list('-created_date', 200)
+                ]);
+                
+                const allRecent = [...myCases, ...invCases];
+                
+                // Helper to check if case contains entity
+                const caseContains = (c, entities) => {
+                    const str = JSON.stringify(c).toLowerCase();
+                    return entities.some(e => str.includes(e));
+                };
+
+                relatedCasesData = allRecent.filter(c => c.id !== case_id && caseContains(c, uniqueEntities)).map(c => ({
+                    case_id: c.case_number || c.id,
+                    title: c.case_title || c.client_name || 'Untitled',
+                    entities_found: uniqueEntities.filter(e => JSON.stringify(c).toLowerCase().includes(e))
+                }));
+            } catch (err) {
+                console.warn("Failed to fetch related cases", err);
+            }
+        }
+
         const systemPrompt = `
 You are an AI assistant for SafeNestt, a platform that collects fraud and scam reports. Your job is to take raw case submissions and produce well-structured, standardized, and readable cases ready for AI verification and database ingestion.
 
@@ -49,6 +96,9 @@ Steps:
    - Flag missing fields or incomplete evidence.
 
 Structure the JSON output exactly as requested in the schema.
+
+IMPORTANT: Use the provided 'Potential Linked Cases' to populate the 'linked_cases' field. 
+If an entity extracted from the input matches a 'Candidate Case', link it!
 `;
 
         const userPrompt = `
@@ -62,6 +112,9 @@ ${JSON.stringify({
     scammer_info: caseData.scammer_info || {},
     issue_type: caseData.issue_type || caseData.fraud_type
 }, null, 2)}
+
+Potential Linked Cases (Found in Database):
+${JSON.stringify(relatedCasesData, null, 2)}
 
 Existing Evidence Files: ${processingFileUrls.length} files attached.
 `;
@@ -122,11 +175,22 @@ Existing Evidence Files: ${processingFileUrls.length} files attached.
                                     }
                                 }
                             },
+                            linked_cases: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        case_id: { type: "string" },
+                                        entity: { type: "string" },
+                                        relationship_type: { type: "string" }
+                                    }
+                                }
+                            },
                             confidence_score: { type: "number" },
                             missing_fields: { type: "array", items: { type: "string" } },
                             notes: { type: "string" }
                         },
-                        required: ["case_id", "victim", "suspect", "timeline", "confidence_score"]
+                        required: ["case_id", "victim", "suspect", "timeline", "confidence_score", "linked_cases"]
                     },
                     readable_summary: { type: "string" }
                 },
