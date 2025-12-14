@@ -10,14 +10,40 @@ import {
   GitMerge, RefreshCcw, Landmark, ScanEye
 } from "lucide-react";
 
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 export default function RelatedCasesPanel({ caseId, entityName }) {
-  const { data: analysis, isLoading, error } = useQuery({
-    queryKey: ['case-connections', caseId, entityName],
+  const queryClient = useQueryClient();
+
+  const { data: analysis, isLoading, error, refetch } = useQuery({
+    queryKey: ['case-links', caseId, entityName],
     queryFn: async () => {
-      const res = await base44.functions.invoke('caseAnalysis', { caseId, entityName });
-      return res.data;
+      const res = await base44.functions.invoke('suggestCaseLinks', { caseId, entityName });
+      return res.data; // { confirmed: [], suggested: [] }
     },
     enabled: !!caseId
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async ({ targetId, action }) => {
+      // Fetch current case to get current links
+      const cases = await base44.entities[entityName].filter({ id: caseId });
+      const currentCase = cases[0];
+      const currentLinks = new Set(currentCase.linked_case_ids || []);
+      
+      if (action === 'link') currentLinks.add(targetId);
+      else currentLinks.delete(targetId);
+
+      await base44.entities[entityName].update(caseId, {
+        linked_case_ids: Array.from(currentLinks)
+      });
+    },
+    onSuccess: () => {
+      toast.success("Case links updated");
+      refetch();
+    },
+    onError: () => toast.error("Failed to update link")
   });
 
   if (isLoading) {
@@ -42,19 +68,86 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
     );
   }
 
-  const connections = analysis?.connections || [];
+  const { confirmed = [], suggested = [] } = analysis || {};
 
-  if (connections.length === 0) {
+  if (confirmed.length === 0 && suggested.length === 0) {
     return (
       <div className="p-8 text-center border border-dashed border-gray-700 rounded-lg bg-[#0f1419]">
         <ShieldCheck className="w-12 h-12 text-green-500/50 mx-auto mb-3" />
         <h3 className="text-lg font-medium text-white">No Linked Cases Found</h3>
         <p className="text-gray-400 text-sm mt-1">
-          This case appears isolated. No matches found for scammer wallets, contact info, or MO patterns in the database.
+          This case appears isolated. No matches found for scammer wallets, contact info, or MO patterns.
         </p>
       </div>
     );
   }
+
+  const CaseCard = ({ conn, isLinked }) => (
+    <Card className={`bg-[#0f1419] transition-all ${isLinked ? 'border-green-500/30' : 'border-cyan-500/20 border-dashed hover:border-solid hover:border-cyan-500/50'}`}>
+        <CardHeader className="p-4 pb-2">
+            <div className="flex items-start justify-between">
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-white text-base">
+                    {conn.case.title}
+                </h4>
+                {conn.case.case_number && (
+                    <span className="text-xs font-mono text-gray-500">#{conn.case.case_number}</span>
+                )}
+                </div>
+                <div className="flex gap-2 text-xs">
+                    <Badge variant="secondary" className="bg-gray-800 text-gray-300">
+                    {conn.case.status}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-gray-800 text-gray-300">
+                    {conn.case.fraud_type?.replace('_', ' ')}
+                    </Badge>
+                    {conn.case.amount_lost > 0 && (
+                    <span className="text-red-400 font-medium my-auto">
+                        -${conn.case.amount_lost.toLocaleString()}
+                    </span>
+                    )}
+                </div>
+            </div>
+            <div className="text-right flex flex-col items-end gap-2">
+                 <Button 
+                    size="sm" 
+                    variant={isLinked ? "destructive" : "default"}
+                    className={isLinked ? "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30" : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"}
+                    onClick={() => linkMutation.mutate({ targetId: conn.case.id, action: isLinked ? 'unlink' : 'link' })}
+                    disabled={linkMutation.isPending}
+                >
+                    {isLinked ? "Unlink" : "Confirm Link"}
+                </Button>
+            </div>
+            </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-2">
+            <div className="space-y-2 mt-2">
+            {conn.reasons.map((reason, rIdx) => (
+                <div key={rIdx} className="flex items-start gap-3 p-2 rounded bg-[#1a2332] border border-gray-800">
+                <div className={`mt-0.5 p-1 rounded-full ${reason.type === 'ai_pattern' ? 'bg-purple-500/20 text-purple-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+                    {getIcon(reason.type)}
+                </div>
+                <div className="flex-1">
+                    <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-sm font-medium text-gray-200">
+                        {reason.label || reason.type.replace('_', ' ')}
+                    </span>
+                    <Badge className={`text-[10px] h-4 px-1.5 ${getConfidenceColor(reason.confidence)}`}>
+                        {reason.confidence} confidence
+                    </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400 font-mono break-all">
+                    {reason.value}
+                    </p>
+                </div>
+                </div>
+            ))}
+            </div>
+        </CardContent>
+    </Card>
+  );
 
   const getIcon = (type) => {
     switch (type) {
@@ -100,69 +193,27 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
         </Badge>
       </div>
 
-      <div className="grid gap-4">
-        {connections.map((conn, idx) => (
-          <Card key={idx} className="bg-[#0f1419] border-cyan-500/20 hover:border-cyan-500/40 transition-all">
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-white text-base">
-                      {conn.case.title}
-                    </h4>
-                    {conn.case.case_number && (
-                      <span className="text-xs font-mono text-gray-500">#{conn.case.case_number}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2 text-xs">
-                     <Badge variant="secondary" className="bg-gray-800 text-gray-300">
-                        {conn.case.status}
-                     </Badge>
-                     <Badge variant="secondary" className="bg-gray-800 text-gray-300">
-                        {conn.case.fraud_type?.replace('_', ' ')}
-                     </Badge>
-                     {conn.case.amount_lost > 0 && (
-                       <span className="text-red-400 font-medium my-auto">
-                         -${conn.case.amount_lost.toLocaleString()}
-                       </span>
-                     )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-cyan-500/20">
-                    {Math.min(100, conn.score)}%
-                  </div>
-                  <div className="text-[10px] text-cyan-500/40 uppercase tracking-wider font-bold">Match Score</div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <div className="space-y-2 mt-2">
-                {conn.reasons.map((reason, rIdx) => (
-                  <div key={rIdx} className="flex items-start gap-3 p-2 rounded bg-[#1a2332] border border-gray-800">
-                    <div className={`mt-0.5 p-1 rounded-full ${reason.type === 'ai_pattern' ? 'bg-purple-500/20 text-purple-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
-                      {getIcon(reason.type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-sm font-medium text-gray-200">
-                          {reason.label || reason.type.replace('_', ' ')}
-                        </span>
-                        <Badge className={`text-[10px] h-4 px-1.5 ${getConfidenceColor(reason.confidence)}`}>
-                          {reason.confidence} confidence
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-400 font-mono break-all">
-                        {reason.value}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {confirmed.length > 0 && (
+        <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
+                <LinkIcon className="w-4 h-4" /> Confirmed Links
+            </h4>
+            <div className="grid gap-4">
+                {confirmed.map((conn, idx) => <CaseCard key={`conf-${idx}`} conn={conn} isLinked={true} />)}
+            </div>
+        </div>
+      )}
+
+      {suggested.length > 0 && (
+        <div className="space-y-4 mt-8">
+            <h4 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                <BrainCircuit className="w-4 h-4" /> AI Suggestions
+            </h4>
+            <div className="grid gap-4">
+                {suggested.map((conn, idx) => <CaseCard key={`sugg-${idx}`} conn={conn} isLinked={false} />)}
+            </div>
+        </div>
+      )}
     </div>
   );
 }
