@@ -78,6 +78,9 @@ Deno.serve(async (req) => {
     Amount Lost: ${primaryCase.amount_lost || 0} ${primaryCase.cryptocurrency || 'USD'}
     Scam Type: ${primaryCase.issue_type || primaryCase.fraud_type}
     
+    Wallet Intelligence & Risk Analysis:
+    ${primaryCase.wallet_analysis ? JSON.stringify(primaryCase.wallet_analysis) : 'No automated wallet analysis available.'}
+    
     Linked Cases (${linkedCases.length}):
     ${linkedSummaries || 'None'}
     

@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
         - fraud_type (classify as: crypto_theft, phishing, romance_scam, investment_scam, other)
         - incident_date (YYYY-MM-DD)
         - description (summary of what happened)
+        - victim_wallet (string)
+        - scammer_wallet (string)
         - scammer_info (object with name, email, phone, wallet_addresses array)
         - ic3_complaint_number (if present)
         
@@ -51,6 +53,8 @@ Deno.serve(async (req) => {
             incident_date: { type: "string" },
             description: { type: "string" },
             ic3_complaint_number: { type: "string" },
+            victim_wallet: { type: "string" },
+            scammer_wallet: { type: "string" },
             scammer_info: {
               type: "object",
               properties: {

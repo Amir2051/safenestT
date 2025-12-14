@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
             - incident_date (string, YYYY-MM-DD format)
             - description (string, a comprehensive summary of what happened)
             - priority (string, one of: low, medium, high, critical - infer based on amount and urgency)
+            - victim_wallet (string, the victim's wallet address if mentioned)
+            - scammer_wallet (string, the scammer's wallet address if mentioned)
 
             Input text:
             ${contentToAnalyze}
@@ -49,7 +51,9 @@ Deno.serve(async (req) => {
                     blockchain: { type: "string" },
                     incident_date: { type: "string" },
                     description: { type: "string" },
-                    priority: { type: "string", enum: ["low", "medium", "high", "critical"] }
+                    priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+                    victim_wallet: { type: "string" },
+                    scammer_wallet: { type: "string" }
                 }
             }
         });

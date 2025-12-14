@@ -53,7 +53,7 @@ export default async function handler(req) {
 
     const prompt = `
     Generate a concise, professional executive summary for this fraud investigation case.
-    The summary should be 2-3 sentences long, highlighting the key facts: what happened, amount lost, current status, and any key findings (like traced wallets or identified suspects).
+    The summary should be 2-3 sentences long, highlighting the key facts: what happened, amount lost, current status, and any key findings (especially wallet risks and suspects).
     
     Case Details:
     Title: ${currentCase.case_title || currentCase.case_number || 'Untitled'}
@@ -64,6 +64,9 @@ export default async function handler(req) {
     Key Evidence:
     Files: ${evidenceList || 'None'}
     Monitored Wallets: ${monitoredWallets || 'None'}
+    
+    Wallet Intelligence Analysis:
+    ${currentCase.wallet_analysis ? JSON.stringify(currentCase.wallet_analysis) : 'No automated wallet analysis available yet.'}
     
     Timeline Highlights:
     ${timelineEvents.slice(0, 500) || 'No timeline events'}

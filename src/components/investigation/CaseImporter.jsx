@@ -158,6 +158,27 @@ export default function CaseImporter({ onClose, onImported }) {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Victim Wallet</Label>
+                <Input 
+                  value={extractedData.victim_wallet || ''} 
+                  onChange={(e) => handleDataChange('victim_wallet', e.target.value)}
+                  className="bg-[#0f1419] border-gray-700 font-mono text-xs"
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Scammer Wallet</Label>
+                <Input 
+                  value={extractedData.scammer_wallet || ''} 
+                  onChange={(e) => handleDataChange('scammer_wallet', e.target.value)}
+                  className="bg-[#0f1419] border-gray-700 font-mono text-xs"
+                  placeholder="0x..."
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea 
