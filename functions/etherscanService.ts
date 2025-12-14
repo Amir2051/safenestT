@@ -22,7 +22,7 @@ export default async function handler(req) {
   }
 
   // API Key provided by user
-  const API_KEY = 'PHFTKFAYPZ9V99XANRTRNJCP2P6FQH1C6J';
+  const API_KEY = Deno.env.get('ETHERSCAN_API_KEY') || 'PHFTKFAYPZ9V99XANRTRNJCP2P6FQH1C6J';
   const BASE_URL = 'https://api.etherscan.io/api';
 
   try {

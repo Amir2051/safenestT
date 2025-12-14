@@ -28,6 +28,7 @@ import TimelineFeed from "./TimelineFeed.jsx";
 import FilePreviewModal from "./FilePreviewModal.jsx";
 import CaseSummaryGenerator from "./CaseSummaryGenerator.jsx";
 import EvidenceIntake from "./evidence/EvidenceIntake.jsx";
+import CaseWalletTracer from "./CaseWalletTracer.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -1383,8 +1384,21 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">
-              <div className="flex items-center justify-between">
-                  <h3 className="text-white font-semibold text-lg">Monitored Wallets</h3>
+              <CaseWalletTracer 
+                  caseId={caseData.id} 
+                  monitoredWallets={caseData.monitored_wallets || []}
+                  onWalletAdded={async (wallet) => {
+                      // Logic to add wallet to monitored_wallets
+                      const newWallets = [...(caseData.monitored_wallets || []), wallet];
+                      await updateCaseMutation.mutateAsync({
+                          monitored_wallets: newWallets,
+                          last_activity: new Date().toISOString()
+                      });
+                  }}
+              />
+
+              <div className="flex items-center justify-between mt-6 mb-2">
+                  <h3 className="text-white font-semibold text-lg">Active Monitoring</h3>
                   <Button 
                       size="sm" 
                       variant="outline" 
@@ -1418,7 +1432,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-400 text-center py-8">No wallets monitored</p>
+                <p className="text-gray-400 text-center py-4 text-sm italic">No wallets being monitored. Trace and add a wallet above.</p>
               )}
             </TabsContent>
 
