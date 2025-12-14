@@ -123,6 +123,27 @@ async function trackWallet(data, base44, user) {
         transaction_count: transactions.length
       }
     });
+
+    // NOTIFICATION: Alert Investigators
+    try {
+        // Find admins to notify (simplified: notifying specific role or all admins would be better, using placeholder for now)
+        // Ideally we'd list admins, but for efficiency let's just log or assume a shared inbox/dashboard view is primary.
+        // If fraud_case_id exists, notify the case owner.
+        if (fraud_case_id) {
+            const relatedCase = await base44.asServiceRole.entities.MyCase.get(fraud_case_id).catch(() => null);
+            if (relatedCase && relatedCase.assigned_to) {
+                await base44.asServiceRole.entities.Notification.create({
+                    user_id: relatedCase.assigned_to,
+                    type: 'security',
+                    title: 'CRITICAL: High Risk Wallet Linked to Case',
+                    message: `High risk wallet ${wallet_address} (Score: ${riskScore.score}) linked to case ${relatedCase.case_number}.`,
+                    actionUrl: `/investigation/${fraud_case_id}`
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Failed to create investigator notification", e);
+    }
   }
 
   // Check for exchange interactions

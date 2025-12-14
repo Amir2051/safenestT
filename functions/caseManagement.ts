@@ -143,6 +143,35 @@ Deno.serve(async (req) => {
 
             // TARGET ENTITY: MyCase
             const newCase = await base44.entities.MyCase.create(caseData);
+
+            // AUTOMATION: High Priority Notifications
+            if (caseData.priority === 'critical' || caseData.priority === 'high' || caseData.amount_lost >= 50000) {
+                const message = `HIGH PRIORITY CASE: ${newCase.case_number} (${newCase.case_title}). Amount: $${newCase.amount_lost}. Assigned to: ${newCase.assigned_to}`;
+                
+                // Notify Assigned Specialist
+                if (newCase.assigned_to) {
+                    try {
+                        // Create in-app notification
+                        await base44.asServiceRole.entities.Notification.create({
+                            user_id: newCase.assigned_to, // Assuming email is used as ID or mapped
+                            type: 'system',
+                            title: 'New High Priority Case',
+                            message: message,
+                            actionUrl: `/investigation/${newCase.id}`
+                        });
+
+                        // Send Email
+                        await base44.integrations.Core.SendEmail({
+                            to: newCase.assigned_to,
+                            subject: `URGENT: New Case Assignment ${newCase.case_number}`,
+                            body: message
+                        });
+                    } catch (e) {
+                        console.error("Failed to send priority notifications", e);
+                    }
+                }
+            }
+
             return Response.json({ success: true, case: newCase });
         }
 

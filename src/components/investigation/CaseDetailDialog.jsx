@@ -29,6 +29,7 @@ import FilePreviewModal from "./FilePreviewModal.jsx";
 import CaseSummaryGenerator from "./CaseSummaryGenerator.jsx";
 import EvidenceIntake from "./evidence/EvidenceIntake.jsx";
 import CaseWalletTracer from "./CaseWalletTracer.jsx";
+import ResponseTemplates from "./ResponseTemplates.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -514,6 +515,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </TabsTrigger>
               <TabsTrigger value="connections" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 <Network className="w-3 h-3 mr-1" />Connections
+              </TabsTrigger>
+              <TabsTrigger value="communications" className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">
+                <MessageSquare className="w-3 h-3 mr-1" />Responses
               </TabsTrigger>
               </TabsList>
 
@@ -1462,6 +1466,18 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="connections" className="space-y-4">
               <RelatedCasesPanel caseId={caseData.id} entityName={caseData._entityName || caseData.entity_name} />
+            </TabsContent>
+
+            <TabsContent value="communications" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[500px]">
+                  <ResponseTemplates caseData={caseData} />
+                  {/* Placeholder for future chat/history component */}
+                  <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20 flex flex-col items-center justify-center text-gray-500">
+                      <MessageSquare className="w-12 h-12 mb-2 opacity-50" />
+                      <p>Communication History</p>
+                      <p className="text-xs opacity-70">(Coming Soon)</p>
+                  </div>
+              </div>
             </TabsContent>
             </Tabs>
             </div>
