@@ -40,6 +40,66 @@ Deno.serve(async (req) => {
         const { action, data } = await req.json();
 
         if (action === 'create') {
+            const { victim_wallet, scammer_wallet } = data;
+
+            // 1. Mandatory Wallet Validation
+            const validateWallet = (addr) => {
+                if (/^0x[a-fA-F0-9]{40}$/.test(addr)) return "ethereum";
+                if (/^(1|3)[a-zA-Z0-9]{25,34}$|^bc1[a-zA-Z0-9]{39,59}$/.test(addr)) return "bitcoin";
+                if (/^T[a-zA-Z0-9]{33}$/.test(addr)) return "tron";
+                return null;
+            };
+
+            const victimNet = validateWallet(victim_wallet);
+            const scammerNet = validateWallet(scammer_wallet);
+
+            if (!victimNet || !scammerNet) {
+                return Response.json({ error: "Both Client and Scammer wallets are required and must be valid formats (ETH, BTC, TRON)." }, { status: 400 });
+            }
+
+            const blockchain = scammerNet; // Prioritize scammer network for investigation
+
+            // 2. Automatic Wallet Analysis
+            let walletAnalysis = {};
+            let aiAnalysisSummary = "Pending analysis...";
+            try {
+                // Call internal intelligence function
+                const intelRes = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+                    action: 'track-wallet',
+                    data: { 
+                        wallet_address: scammer_wallet, 
+                        blockchain,
+                        fraud_case_id: null // We don't have ID yet, will update later or just get stats
+                    }
+                });
+                
+                if (intelRes.data && intelRes.data.success) {
+                    const intel = intelRes.data.data;
+                    walletAnalysis = {
+                        risk_score: intel.riskScore?.score,
+                        risk_level: intel.riskScore?.level,
+                        indicators: intel.riskScore?.indicators || [],
+                        balance: intel.balance?.amount,
+                        total_transactions: intel.transactions?.length,
+                        analyzed_at: new Date().toISOString()
+                    };
+                    aiAnalysisSummary = `High Risk Wallet Detected (Score: ${walletAnalysis.risk_score}/100). Indicators: ${walletAnalysis.indicators.join(', ')}. Balance: ${walletAnalysis.balance} ${blockchain.toUpperCase()}.`;
+                }
+            } catch (e) {
+                console.error("Wallet analysis failed:", e);
+                aiAnalysisSummary = "Automated analysis failed. Manual review required.";
+            }
+
+            // 3. Case Linking (Intelligence)
+            let linkedCaseIds = [];
+            try {
+                const existingCases = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
+                linkedCaseIds = existingCases.map(c => c.id);
+                if (linkedCaseIds.length > 0) {
+                    aiAnalysisSummary += ` LINKED: This wallet is involved in ${linkedCaseIds.length} other reported cases.`;
+                }
+            } catch(e) {}
+
             // Generate ID
             const caseId = await generateCaseId(base44);
             
@@ -47,6 +107,18 @@ Deno.serve(async (req) => {
             const caseData = {
                 ...data,
                 case_number: caseId,
+                // Wallets & Blockchain
+                victim_wallet,
+                scammer_wallet,
+                blockchain,
+                wallet_analysis: walletAnalysis,
+                linked_case_ids: linkedCaseIds,
+                monitored_wallets: [scammer_wallet],
+                ai_analysis: aiAnalysisSummary,
+                scammer_info: {
+                    wallet_addresses: [scammer_wallet],
+                    ...data.scammer_info
+                },
                 // Ensure numbers are numbers
                 amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
                 status: data.status || "Pending",
