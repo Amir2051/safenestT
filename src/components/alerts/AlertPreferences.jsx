@@ -12,6 +12,39 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const ChatNotificationToggle = () => {
+  const [enabled, setEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      setEnabled(user.chat_notifications_enabled !== false);
+      setLoading(false);
+    });
+  }, []);
+
+  const toggle = async (val) => {
+    setEnabled(val);
+    await base44.auth.updateMe({ chat_notifications_enabled: val });
+    toast.success(`Chat notifications ${val ? 'enabled' : 'disabled'}`);
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-[#0f1419] rounded-lg">
+      <div className="flex items-center gap-3">
+        <Mail className="w-5 h-5 text-blue-400" />
+        <Label className="text-white">Support Chat Notifications</Label>
+      </div>
+      <Switch
+        checked={enabled}
+        onCheckedChange={toggle}
+      />
+    </div>
+  );
+};
+
 export default function AlertPreferences() {
   const [preferences, setPreferences] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
@@ -309,7 +342,7 @@ export default function AlertPreferences() {
           <div className="flex items-center justify-between p-3 bg-[#0f1419] rounded-lg">
             <div className="flex items-center gap-3">
               <Smartphone className="w-5 h-5 text-purple-400" />
-              <Label className="text-white">In-App Push Notifications</Label>
+              <Label className="text-white">Security Push Notifications</Label>
             </div>
             <Switch
               checked={preferences.push_alerts}
@@ -317,6 +350,8 @@ export default function AlertPreferences() {
               disabled={!preferences.enabled}
             />
           </div>
+
+          <ChatNotificationToggle />
         </CardContent>
       </Card>
 

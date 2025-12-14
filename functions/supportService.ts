@@ -99,6 +99,24 @@ Deno.serve(async (req) => {
                 if (!chat.assigned_admin_id) {
                     updates.assigned_admin_id = user.email;
                 }
+
+                // Notify User
+                try {
+                    await base44.asServiceRole.entities.Notification.create({
+                        user_id: chat.user_id,
+                        type: 'support_message',
+                        title: 'New Support Message',
+                        message: `From ${user.full_name || 'Support'}: ${content.substring(0, 60)}${content.length > 60 ? '...' : ''}`,
+                        actionUrl: `/Support?chatId=${chat_id}`,
+                        read: false,
+                        metadata: {
+                            chat_id: chat_id,
+                            sender_name: user.full_name || 'Support'
+                        }
+                    });
+                } catch (e) {
+                    console.error("Failed to create notification", e);
+                }
             }
 
             await base44.asServiceRole.entities.SupportChat.update(chat_id, updates);

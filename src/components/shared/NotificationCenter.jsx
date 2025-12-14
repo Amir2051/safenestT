@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, X, CheckCircle, AlertTriangle, Gift, Flame, Trophy } from 'lucide-react';
+import { Bell, X, CheckCircle, AlertTriangle, Gift, Flame, Trophy, MessageSquare } from 'lucide-react';
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,45 +10,115 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState('all');
 
+  // Browser Notification Permission State
+  const [permission, setPermission] = useState(Notification.permission);
+
   useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(setPermission);
+    }
+    
     loadNotifications();
     
-    // Listen for new notifications
-    const handleNewNotification = () => {
-      loadNotifications();
-    };
-    
+    // Poll for new notifications every 10 seconds
+    const interval = setInterval(loadNotifications, 10000);
+
+    // Listen for local events
+    const handleNewNotification = () => loadNotifications();
     window.addEventListener('notificationAdded', handleNewNotification);
-    return () => window.removeEventListener('notificationAdded', handleNewNotification);
+    
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('notificationAdded', handleNewNotification);
+    };
   }, []);
 
-  const loadNotifications = () => {
-    const stored = JSON.parse(localStorage.getItem('inAppNotifications') || '[]');
-    setNotifications(stored);
-    setUnreadCount(stored.filter(n => !n.read).length);
+  const triggerBrowserNotification = async (notif) => {
+    try {
+        const user = await base44.auth.me();
+        // Check if chat notifications are enabled in settings (default true)
+        if (user.chat_notifications_enabled === false && notif.type === 'support_message') return;
+        
+        if (Notification.permission === 'granted' && document.hidden) {
+            new Notification(notif.title, {
+                body: notif.message,
+                icon: '/icon.png', // Assuming a default icon exists
+                tag: notif.id
+            });
+        }
+    } catch (e) {
+        console.error("Push notification failed", e);
+    }
   };
 
-  const markAsRead = (notificationId) => {
-    const updated = notifications.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    );
-    setNotifications(updated);
-    localStorage.setItem('inAppNotifications', JSON.stringify(updated));
-    setUnreadCount(updated.filter(n => !n.read).length);
+  const loadNotifications = async () => {
+    // Combine local notifications (legacy/demo) with backend notifications
+    const local = JSON.parse(localStorage.getItem('inAppNotifications') || '[]');
+    
+    try {
+        const backend = await base44.entities.Notification.list('-created_date', 50);
+        
+        // Detect new unread backend notifications to trigger push
+        const currentIds = new Set(notifications.map(n => n.id));
+        backend.forEach(n => {
+            if (!currentIds.has(n.id) && !n.read) {
+                triggerBrowserNotification(n);
+            }
+        });
+
+        // Merge and deduplicate
+        const all = [...backend, ...local].sort((a, b) => 
+            new Date(b.created_date || b.timestamp).getTime() - new Date(a.created_date || a.timestamp).getTime()
+        );
+        
+        setNotifications(all);
+        setUnreadCount(all.filter(n => !n.read).length);
+    } catch (e) {
+        // Fallback to local only if backend fails
+        setNotifications(local);
+        setUnreadCount(local.filter(n => !n.read).length);
+    }
   };
 
-  const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    setNotifications(updated);
-    localStorage.setItem('inAppNotifications', JSON.stringify(updated));
-    setUnreadCount(0);
+  const markAsRead = async (notificationId) => {
+    // Check if it's a backend notification (has created_date) or local
+    const notif = notifications.find(n => n.id === notificationId);
+    if (!notif) return;
+
+    if (notif.created_date) {
+        // Backend
+        await base44.entities.Notification.update(notificationId, { read: true });
+    } else {
+        // Local
+        const local = JSON.parse(localStorage.getItem('inAppNotifications') || '[]');
+        const updated = local.map(n => n.id === notificationId ? { ...n, read: true } : n);
+        localStorage.setItem('inAppNotifications', JSON.stringify(updated));
+    }
+    loadNotifications();
   };
 
-  const clearAll = () => {
+  const markAllAsRead = async () => {
+    // Update backend
+    const unreadBackend = notifications.filter(n => n.created_date && !n.read);
+    await Promise.all(unreadBackend.map(n => base44.entities.Notification.update(n.id, { read: true })));
+
+    // Update local
+    const local = JSON.parse(localStorage.getItem('inAppNotifications') || '[]');
+    const updatedLocal = local.map(n => ({ ...n, read: true }));
+    localStorage.setItem('inAppNotifications', JSON.stringify(updatedLocal));
+    
+    loadNotifications();
+  };
+
+  const clearAll = async () => {
     if (confirm('Clear all notifications?')) {
-      setNotifications([]);
+      // Delete backend
+      const backendIds = notifications.filter(n => n.created_date).map(n => n.id);
+      await Promise.all(backendIds.map(id => base44.entities.Notification.delete(id)));
+
+      // Clear local
       localStorage.setItem('inAppNotifications', '[]');
-      setUnreadCount(0);
+      loadNotifications();
     }
   };
 
@@ -71,12 +141,14 @@ export default function NotificationCenter() {
       security: <Shield className="w-5 h-5 text-cyan-400" />,
       streak: <Flame className="w-5 h-5 text-orange-400" />,
       premium: <Gift className="w-5 h-5 text-purple-400" />,
+      support_message: <MessageSquare className="w-5 h-5 text-blue-400" />,
       system: <Bell className="w-5 h-5 text-gray-400" />
     };
     return icons[type] || icons.system;
   };
 
-  const getTimeAgo = (timestamp) => {
+  const getTimeAgo = (dateStr) => {
+    const timestamp = typeof dateStr === 'string' ? new Date(dateStr).getTime() : dateStr;
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     
     if (seconds < 60) return 'Just now';
