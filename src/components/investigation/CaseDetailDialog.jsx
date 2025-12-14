@@ -27,6 +27,7 @@ import AdminEvidenceUpload from "./AdminEvidenceUpload.jsx";
 import TimelineFeed from "./TimelineFeed.jsx";
 import FilePreviewModal from "./FilePreviewModal.jsx";
 import CaseSummaryGenerator from "./CaseSummaryGenerator.jsx";
+import EvidenceIntake from "./evidence/EvidenceIntake.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -492,13 +493,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="edit-suspect" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
                 <AlertCircle className="w-3 h-3 mr-1" />Edit Suspect
               </TabsTrigger>
-              <TabsTrigger value="evidence">Evidence</TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="evidence-import" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                  <Database className="w-3 h-3 mr-1" />
-                  Import Evidence
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="evidence">Evidence Intake</TabsTrigger>
+              <TabsTrigger value="legacy-evidence" className="text-gray-500">Legacy Files</TabsTrigger>
               <TabsTrigger value="timeline">Timeline & Updates</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="tracking">Wallet Tracking</TabsTrigger>
@@ -1270,15 +1266,15 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               />
             </TabsContent>
 
-            {isAdmin && (
-              <TabsContent value="evidence-import" className="space-y-4">
-                <AdminEvidenceUpload caseId={caseData.id} />
-              </TabsContent>
-            )}
-
+            {/* NEW Structured Evidence Intake */}
             <TabsContent value="evidence" className="space-y-4">
+                <EvidenceIntake caseId={caseData.id} onUpdate={onUpdate} />
+            </TabsContent>
+
+            {/* Legacy Evidence View (for backward compat) */}
+            <TabsContent value="legacy-evidence" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold text-lg">Evidence Log</h3>
+                <h3 className="text-white font-semibold text-lg">Raw File Log</h3>
                 {/* Upload allowed for Admins only per prompt "Keep full permissions for Admins... Users must NOT be able to Modify" */}
                 {isAdmin && (
                   <label>

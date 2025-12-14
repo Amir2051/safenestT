@@ -223,7 +223,69 @@ Deno.serve(async (req) => {
             }
 
             // 5. Save Data & Update Entity
-            // Save Extracted Transactions
+            
+            // NEW: Create structured CaseEvidenceItems
+            const evidenceItems = [];
+
+            // Helper to determine confidence
+            const getConfidence = (item) => {
+                // Simple heuristic: if it matches extraction regex exactly, high. 
+                return 'medium'; 
+            };
+
+            // Process Transactions
+            if (extractedData.transactions && extractedData.transactions.length > 0) {
+                extractedData.transactions.forEach(t => {
+                    evidenceItems.push({
+                        case_id: caseId,
+                        evidence_file_id: evidenceFileId,
+                        category: 'blockchain_transaction',
+                        data: {
+                            transaction_hash: t.hash,
+                            blockchain: 'ETH', // Default, LLM can refine
+                            from_address: t.from,
+                            to_address: t.to,
+                            amount: parseFloat(t.amount || 0),
+                            token: t.token || 'ETH',
+                            timestamp: t.date || new Date().toISOString(),
+                            transaction_type: 'transfer' // Default
+                        },
+                        source: 'extracted',
+                        confidence: getConfidence(t),
+                        analyst_note: `Extracted from ${fileName}.` + (t.hash ? " Valid hash format." : ""),
+                        status: 'pending_review'
+                    });
+                });
+            }
+
+            // Process Wallets
+            if (extractedData.addresses && extractedData.addresses.length > 0) {
+                extractedData.addresses.forEach(addr => {
+                    // Check if already added as part of a transaction to avoid dupe noise? 
+                    // For now, add distinct wallet items for tracking roles
+                    evidenceItems.push({
+                        case_id: caseId,
+                        evidence_file_id: evidenceFileId,
+                        category: 'wallet_address',
+                        data: {
+                            wallet_address: addr,
+                            role: 'unknown', // Investigator to label
+                            first_seen: new Date().toISOString()
+                        },
+                        source: 'extracted',
+                        confidence: 'high',
+                        analyst_note: `Wallet address identified in evidence.`,
+                        status: 'pending_review'
+                    });
+                });
+            }
+
+            // Save items
+            if (evidenceItems.length > 0) {
+                await base44.asServiceRole.entities.CaseEvidenceItem.bulkCreate(evidenceItems).catch(e => console.warn("Evidence Item save error", e));
+            }
+
+            // Legacy support: Save Extracted Transactions (keeping for backward compatibility if needed)
             if (extractedData.transactions.length > 0) {
                 const records = extractedData.transactions.map(t => ({
                     case_id: caseId,
