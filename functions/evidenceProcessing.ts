@@ -71,12 +71,17 @@ Deno.serve(async (req) => {
             const { caseId, evidenceFileId, fileUrl, fileType, fileName } = data;
             
             // 1. Fetch Case Data
+            const entityName = data.entityName || 'MyCase';
             let currentCase = null;
             try {
-                currentCase = await base44.asServiceRole.entities.MyCase.get(caseId);
+                currentCase = await base44.asServiceRole.entities[entityName].get(caseId);
             } catch (e) {
-                // Fallback or error
-                return Response.json({ error: 'Case not found' }, { status: 404 });
+                // Fallback logic for legacy cases or if entity name is wrong
+                try {
+                    currentCase = await base44.asServiceRole.entities.InvestigationCase.get(caseId);
+                } catch (ex) {
+                    return Response.json({ error: 'Case not found' }, { status: 404 });
+                }
             }
 
             const scammerWallet = normalizeAddress(currentCase.scammer_wallet);
@@ -101,14 +106,20 @@ Deno.serve(async (req) => {
                     2. Transaction Hashes
                     3. Dates/Timestamps
                     4. Amounts & Token Names
-                    5. Context (e.g., "Exchange Withdrawal", "Scam Site Interface")
+                    5. URLs or Domain Names (e.g. malicious websites)
+                    6. Phone Numbers
+                    7. Platform/Exchange Mentions (e.g. Binance, Coinbase, specialized trading apps)
+                    8. Context (e.g., "Exchange Withdrawal", "Chat Log", "Scam Site Interface")
                     
                     Return a JSON object with:
                     {
                         "addresses": ["0x...", "bc1..."],
                         "hashes": ["0x..."],
                         "transactions": [{"hash": "...", "from": "...", "to": "...", "amount": "...", "date": "..."}],
-                        "summary_text": "Brief description of what is shown"
+                        "urls": ["https://..."],
+                        "phones": ["+1..."],
+                        "platforms": ["Binance", ...],
+                        "summary_text": "Brief description of what is shown and key findings."
                     }
                 `;
                 
@@ -122,6 +133,9 @@ Deno.serve(async (req) => {
                                 addresses: { type: "array", items: { type: "string" } },
                                 hashes: { type: "array", items: { type: "string" } },
                                 transactions: { type: "array", items: { type: "object" } },
+                                urls: { type: "array", items: { type: "string" } },
+                                phones: { type: "array", items: { type: "string" } },
+                                platforms: { type: "array", items: { type: "string" } },
                                 summary_text: { type: "string" }
                             }
                         }
@@ -130,6 +144,9 @@ Deno.serve(async (req) => {
                         addresses: llmRes.addresses || [],
                         hashes: llmRes.hashes || [],
                         transactions: llmRes.transactions || [],
+                        urls: llmRes.urls || [],
+                        phones: llmRes.phones || [],
+                        platforms: llmRes.platforms || [],
                         text: llmRes.summary_text || ""
                     };
                 } catch (e) {
@@ -228,17 +245,50 @@ Deno.serve(async (req) => {
                 parse_status: 'PARSED',
                 summary: {
                     analysis_text: summaryText,
-                    wallet_count: extractedData.addresses.length,
-                    tx_count: extractedData.transactions.length,
+                    wallet_count: extractedData.addresses?.length || 0,
+                    tx_count: extractedData.transactions?.length || 0,
+                    urls: extractedData.urls || [],
+                    phones: extractedData.phones || [],
+                    platforms: extractedData.platforms || [],
                     match_reported: matchesReported,
                     suspect_matches: suspectMatches.length,
                     suspect_details: suspectMatches
                 },
                 detected_addresses: {
-                    extracted: extractedData.addresses,
+                    extracted: extractedData.addresses || [],
                     suspects: suspectMatches.map(m => m.wallet)
                 }
             });
+
+            // Update parent case evidence_log to reflect analysis (for UI consistency)
+            if (currentCase) {
+                const evidenceLog = currentCase.evidence_log || [];
+                const updatedLog = evidenceLog.map(item => {
+                    if (item.file_url === fileUrl) {
+                        return {
+                            ...item,
+                            summary: {
+                                analysis_text: summaryText,
+                                match_reported: matchesReported,
+                                suspect_matches: suspectMatches.length
+                            },
+                            extracted_data: {
+                                urls: extractedData.urls,
+                                phones: extractedData.phones,
+                                platforms: extractedData.platforms
+                            }
+                        };
+                    }
+                    return item;
+                });
+                
+                // Only update if changes found
+                if (JSON.stringify(evidenceLog) !== JSON.stringify(updatedLog)) {
+                    await base44.asServiceRole.entities[entityName || 'MyCase'].update(caseId, {
+                        evidence_log: updatedLog
+                    });
+                }
+            }
 
             // 6. Update Timeline
             await base44.asServiceRole.entities.CaseTimelineEvent.create({
