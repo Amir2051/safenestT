@@ -30,6 +30,7 @@ import CaseSummaryGenerator from "./CaseSummaryGenerator.jsx";
 import EvidenceIntake from "./evidence/EvidenceIntake.jsx";
 import CaseWalletTracer from "./CaseWalletTracer.jsx";
 import ResponseTemplates from "./ResponseTemplates.jsx";
+import QuickActionsPanel from "./QuickActionsPanel.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -522,6 +523,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              {/* Quick Actions Panel */}
+              <QuickActionsPanel 
+                  caseData={caseData} 
+                  onUpdate={onUpdate}
+                  onOpenResponse={() => setActiveTab('communications')}
+                  onOpenTracking={() => setActiveTab('tracking')}
+              />
+
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
                   <div className="flex items-center gap-2 mb-2">
