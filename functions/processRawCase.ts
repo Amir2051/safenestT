@@ -232,7 +232,16 @@ Existing Evidence Files: ${processingFileUrls.length} files attached.
              if (Object.keys(updates).length > 0) {
                  // Try updating MyCase or InvestigationCase
                  try {
-                    if (base44.entities.MyCase.get(case_id)) {
+                    // Check if it's MyCase
+                    let isMyCase = false;
+                    try {
+                        const check = await base44.entities.MyCase.get(case_id);
+                        if (check) isMyCase = true;
+                    } catch (e) {
+                        // ignore
+                    }
+
+                    if (isMyCase) {
                         await base44.entities.MyCase.update(case_id, updates);
                     } else {
                         await base44.entities.InvestigationCase.update(case_id, updates);
