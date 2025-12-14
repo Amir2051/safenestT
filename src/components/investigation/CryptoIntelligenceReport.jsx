@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
   Loader2, Printer, RefreshCw, Shield, FileText, Lock, Unlock, 
-  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle
+  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle, Network
 } from "lucide-react";
 import { toast } from "sonner";
 import {
