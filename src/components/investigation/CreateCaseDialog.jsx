@@ -22,10 +22,55 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
     amount_stolen_usd: "",
     cryptocurrency: "",
     blockchain: "",
+    victim_wallet: "",
+    scammer_wallet: "",
     incident_date: "",
     description: "",
     priority: "medium"
   });
+
+  const [walletError, setWalletError] = useState(null);
+
+  const detectNetwork = (address) => {
+    if (/^0x[a-fA-F0-9]{40}$/.test(address)) return "ethereum";
+    if (/^(1|3)[a-zA-Z0-9]{25,34}$|^bc1[a-zA-Z0-9]{39,59}$/.test(address)) return "bitcoin";
+    if (/^T[a-zA-Z0-9]{33}$/.test(address)) return "tron";
+    return null;
+  };
+
+  const validateWallets = () => {
+    const { victim_wallet, scammer_wallet } = formData;
+    if (!victim_wallet || !scammer_wallet) {
+      setWalletError("Both your wallet and the scammer's wallet are required.");
+      return false;
+    }
+
+    const victimNet = detectNetwork(victim_wallet);
+    const scammerNet = detectNetwork(scammer_wallet);
+
+    if (!victimNet) {
+        setWalletError("Invalid Client Wallet format. Supported: ETH, BTC, TRON.");
+        return false;
+    }
+    if (!scammerNet) {
+        setWalletError("Invalid Scammer Wallet format. Supported: ETH, BTC, TRON.");
+        return false;
+    }
+
+    setWalletError(null);
+    return true;
+  };
+
+  const handleWalletChange = (type, value) => {
+      const net = detectNetwork(value);
+      setFormData(prev => ({
+          ...prev, 
+          [type]: value,
+          // Auto-set blockchain if scammer wallet changes and is valid
+          blockchain: (type === 'scammer_wallet' && net) ? net : prev.blockchain
+      }));
+      setWalletError(null);
+  };
 
   const handleAutofill = async () => {
     if (!autofillText.trim()) {
@@ -83,6 +128,11 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
         }
       }
       
+      if (!validateWallets()) {
+          setLoading(false);
+          return;
+      }
+
       // Use unified case management function
       const response = await base44.functions.invoke('caseManagement', {
         action: 'create',
@@ -92,11 +142,15 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
           client_email: formData.victim_email,
           phone_number: formData.victim_phone,
           
+          // Wallets
+          victim_wallet: formData.victim_wallet,
+          scammer_wallet: formData.scammer_wallet,
+          
           // Case Details
           issue_type: formData.fraud_type,
           amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
           cryptocurrency: formData.cryptocurrency,
-          blockchain: formData.blockchain,
+          blockchain: formData.blockchain, // Auto-detected
           transaction_date: formData.incident_date,
           description: formData.description,
           urgency: formData.priority === 'critical' ? 'Critical' : formData.priority === 'high' ? 'High' : 'Medium',
@@ -235,6 +289,55 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
               />
             </div>
 
+            <div className="col-span-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> 
+                    Mandatory Wallet Evidence
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label className="text-white">Your Wallet Address *</Label>
+                        <Input
+                            value={formData.victim_wallet}
+                            onChange={(e) => handleWalletChange('victim_wallet', e.target.value)}
+                            className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
+                            placeholder="0x... or bc1..."
+                            required
+                        />
+                        {formData.victim_wallet && detectNetwork(formData.victim_wallet) && (
+                            <span className="text-xs text-green-400 mt-1 block">
+                                Detected: {detectNetwork(formData.victim_wallet).toUpperCase()}
+                            </span>
+                        )}
+                    </div>
+                    <div>
+                        <Label className="text-white">Scammer Wallet Address *</Label>
+                        <Input
+                            value={formData.scammer_wallet}
+                            onChange={(e) => handleWalletChange('scammer_wallet', e.target.value)}
+                            className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
+                            placeholder="0x... or bc1..."
+                            required
+                        />
+                        {formData.scammer_wallet && detectNetwork(formData.scammer_wallet) && (
+                            <span className="text-xs text-green-400 mt-1 block">
+                                Detected: {detectNetwork(formData.scammer_wallet).toUpperCase()}
+                            </span>
+                        )}
+                    </div>
+                </div>
+                
+                {walletError && (
+                    <div className="mt-3 p-2 bg-red-500/20 text-red-200 text-xs rounded flex items-center gap-2">
+                        <span>⚠️ {walletError}</span>
+                    </div>
+                )}
+                <p className="text-xs text-blue-300 mt-2">
+                    Both your wallet and the scammer's wallet are required to investigate this case.
+                </p>
+            </div>
+
             <div>
               <Label className="text-white">Cryptocurrency</Label>
               <Input
@@ -249,7 +352,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
               <Label className="text-white">Blockchain</Label>
               <Select value={formData.blockchain} onValueChange={(val) => setFormData({...formData, blockchain: val})}>
                 <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
-                  <SelectValue placeholder="Select blockchain" />
+                  <SelectValue placeholder="Auto-detected from wallet" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a2332] border-cyan-500/20">
                   <SelectItem value="ethereum">Ethereum</SelectItem>
