@@ -1383,12 +1383,37 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">
-              <h3 className="text-white font-semibold text-lg">Monitored Wallets</h3>
+              <div className="flex items-center justify-between">
+                  <h3 className="text-white font-semibold text-lg">Monitored Wallets</h3>
+                  <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-950"
+                      onClick={async () => {
+                          const toastId = toast.loading("Scanning blockchain...");
+                          try {
+                              const res = await base44.functions.invoke('blockchainMonitor', { caseId: caseData.id });
+                              if (res.data.success) {
+                                  toast.success(`Scan complete. Found ${res.data.total_new} new transactions.`, { id: toastId });
+                                  if (res.data.total_new > 0 && onUpdate) onUpdate();
+                              } else {
+                                  toast.error("Scan failed", { id: toastId });
+                              }
+                          } catch (e) {
+                              toast.error("Error scanning blockchain", { id: toastId });
+                          }
+                      }}
+                  >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Run Live Monitor
+                  </Button>
+              </div>
               {caseData.monitored_wallets?.length > 0 ? (
                 <div className="space-y-2">
                   {caseData.monitored_wallets.map((wallet, idx) => (
-                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                    <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20 flex justify-between items-center">
                       <p className="text-white font-mono text-sm">{wallet}</p>
+                      <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Active Monitoring</Badge>
                     </div>
                   ))}
                 </div>
