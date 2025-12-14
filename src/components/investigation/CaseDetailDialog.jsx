@@ -26,6 +26,7 @@ import RelatedCasesPanel from "./RelatedCasesPanel.jsx";
 import AdminEvidenceUpload from "./AdminEvidenceUpload.jsx";
 import TimelineFeed from "./TimelineFeed.jsx";
 import FilePreviewModal from "./FilePreviewModal.jsx";
+import CaseSummaryGenerator from "./CaseSummaryGenerator.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -471,8 +472,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <Shield className="w-3 h-3 mr-1" />IP Tracker
               </TabsTrigger>
               <TabsTrigger value="agencies">Agencies</TabsTrigger>
+              <TabsTrigger value="summary" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400">
+                <FileText className="w-3 h-3 mr-1" />Case Summary
+              </TabsTrigger>
               <TabsTrigger value="reports" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
-                <FileText className="w-3 h-3 mr-1" />Generate Reports
+                <FileText className="w-3 h-3 mr-1" />Agency Reports
               </TabsTrigger>
               <TabsTrigger value="intel-report" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
                 <Shield className="w-3 h-3 mr-1" />Crypto Intel
@@ -1372,6 +1376,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="agencies" className="space-y-4">
               <RecommendedAgencies caseData={caseData} />
+            </TabsContent>
+
+            <TabsContent value="summary" className="space-y-4">
+              <CaseSummaryGenerator caseData={caseData} onUpdate={onUpdate} />
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-4">
