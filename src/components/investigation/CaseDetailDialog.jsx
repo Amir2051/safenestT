@@ -252,8 +252,40 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
     setUploading(true);
     try {
+      const toastId = toast.loading("Uploading and analyzing evidence...");
       const response = await base44.integrations.Core.UploadFile({ file });
       
+      // 1. Create CaseEvidenceFile Entity (Metadata)
+      const evidenceFile = await base44.entities.CaseEvidenceFile.create({
+          case_id: caseData.id,
+          file_url: response.file_url,
+          filename: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          uploader_id: user?.id,
+          case_owner_email: user?.email,
+          uploaded_at: new Date().toISOString(),
+          parse_status: 'PENDING'
+      });
+
+      // 2. Trigger Automated Parsing
+      // We don't await this strictly to keep UI responsive, but for now we'll wait to show success
+      base44.functions.invoke('evidenceProcessing', {
+          action: 'process_upload',
+          data: {
+              caseId: caseData.id,
+              entityName: caseData._entityName || 'MyCase', // Pass correct entity name
+              evidenceFileId: evidenceFile.id,
+              fileUrl: response.file_url,
+              fileType: file.type,
+              fileName: file.name
+          }
+      }).then(() => {
+          toast.success("AI Analysis Complete", { id: toastId });
+          if (onUpdate) onUpdate(); // Refresh to show analysis
+      });
+
+      // 3. Update Case Arrays (Legacy/UI compatibility)
       const evidence = caseData.evidence_files || [];
       evidence.push({
         name: file.name,
@@ -269,12 +301,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         file_url: response.file_url,
         description: file.name,
         collected_by: "admin",
-        verified: false
+        verified: false,
+        summary: { analysis_text: "Analysis in progress..." } // Placeholder
       });
 
       await updateCaseMutation.mutateAsync({ evidence_files: evidence, evidence_log: evidenceLog });
-      toast.success("Evidence uploaded");
+      
     } catch (error) {
+      console.error(error);
       toast.error("Upload failed");
     }
     setUploading(false);
