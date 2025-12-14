@@ -83,6 +83,51 @@ export default function CryptoIntelligenceReport({ caseData }) {
     }
   };
 
+  const importConnections = async () => {
+    const toastId = toast.loading("Analyzing and importing connections...");
+    try {
+        const res = await base44.functions.invoke('suggestCaseLinks', { 
+            caseId: caseData.id, 
+            entityName: caseData._entityName || 'InvestigationCase'
+        });
+        
+        if (res.data.success) {
+            const newCases = [];
+            const existingIds = new Set([caseData.id, ...linkedCases.map(c => c.id)]);
+            
+            const extract = (list) => {
+                if (!list) return;
+                list.forEach(item => {
+                    if (!existingIds.has(item.case.id)) {
+                        newCases.push({
+                            id: item.case.id,
+                            case_number: item.case.case_number,
+                            case_title: item.case.title,
+                        });
+                        existingIds.add(item.case.id);
+                    }
+                });
+            };
+
+            extract(res.data.confirmed);
+            extract(res.data.suggested);
+            
+            if (newCases.length > 0) {
+                setLinkedCases(prev => [...prev, ...newCases]);
+                toast.success(`Imported ${newCases.length} connected cases`, { id: toastId });
+                setShowLinkSearch(false);
+            } else {
+                toast.info("No new connections found to import", { id: toastId });
+            }
+        } else {
+            toast.error("Failed to fetch connections", { id: toastId });
+        }
+    } catch (e) {
+        console.error(e);
+        toast.error("Error importing connections", { id: toastId });
+    }
+  };
+
   const toggleRedact = (id) => {
     const next = new Set(redactedFields);
     if (next.has(id)) next.delete(id);
@@ -133,8 +178,21 @@ export default function CryptoIntelligenceReport({ caseData }) {
                           <span className="text-xs text-gray-400">Add Linked Case</span>
                           <button onClick={() => setShowLinkSearch(false)}><X className="w-3 h-3 text-gray-400" /></button>
                       </div>
+                      
+                      <div className="mb-3 pb-2 border-b border-gray-700">
+                          <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="w-full justify-start text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30 px-2 h-8"
+                              onClick={importConnections}
+                          >
+                              <Network className="w-3 h-3 mr-2" />
+                              Import All Connections
+                          </Button>
+                      </div>
+
                       <Input 
-                          placeholder="Search..." 
+                          placeholder="Search manual case..." 
                           className="h-8 text-xs bg-black/20 mb-2"
                           onChange={(e) => searchCases(e.target.value)}
                           autoFocus
