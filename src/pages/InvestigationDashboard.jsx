@@ -18,6 +18,7 @@ import CaseImporter from "@/components/investigation/CaseImporter";
 import AdminCaseActions from "@/components/fraud/AdminCaseActions";
 import AdminGate from "@/components/admin/AdminGate";
 import ProactiveAlertsWidget from "@/components/admin/ProactiveAlertsWidget";
+import CasePerformanceWidget from "@/components/dashboard/CasePerformanceWidget";
 
 export default function InvestigationDashboard() {
   const { data: stats } = useQuery({
@@ -92,6 +93,7 @@ export default function InvestigationDashboard() {
             <p className="text-gray-400">Central command for fraud cases and blockchain analysis</p>
           </div>
           <div className="flex gap-3">
+
              <Button variant="outline" className="border-gray-700" onClick={() => setIsTeamOpen(true)}>
                 <Users className="w-4 h-4 mr-2" /> Team
              </Button>
@@ -104,7 +106,9 @@ export default function InvestigationDashboard() {
           </div>
         </div>
 
-        {/* Stats Overview */}
+        {/* Stats Overview & Performance */}
+        <CasePerformanceWidget />
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-[#0f1419] border-gray-800">
             <CardContent className="p-6">
