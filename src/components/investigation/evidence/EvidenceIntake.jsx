@@ -27,6 +27,8 @@ export default function EvidenceIntake({ caseId, onUpdate }) {
         queryFn: () => base44.entities.CaseEvidenceItem.filter({ case_id: caseId }, '-created_date', 100),
     });
 
+    const fileInputRef = React.useRef(null);
+
     const handleUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -71,6 +73,7 @@ export default function EvidenceIntake({ caseId, onUpdate }) {
             toast.error("Failed to process evidence", { id: toastId });
         } finally {
             setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
         }
     };
 
@@ -86,16 +89,24 @@ export default function EvidenceIntake({ caseId, onUpdate }) {
                     <p className="text-gray-400 text-sm">Centralized evidence collection, extraction, and validation.</p>
                 </div>
                 <div className="flex gap-2">
-                    <label>
-                        <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-                        <Button disabled={isUploading} className="bg-cyan-600 hover:bg-cyan-700">
-                            {isUploading ? (
-                                <><span className="animate-spin mr-2">⏳</span> Extracting...</>
-                            ) : (
-                                <><Upload className="w-4 h-4 mr-2" /> Auto-Extract from File</>
-                            )}
-                        </Button>
-                    </label>
+                    <input 
+                        type="file" 
+                        className="hidden" 
+                        onChange={handleUpload} 
+                        disabled={isUploading}
+                        ref={fileInputRef}
+                    />
+                    <Button 
+                        disabled={isUploading} 
+                        className="bg-cyan-600 hover:bg-cyan-700"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {isUploading ? (
+                            <><span className="animate-spin mr-2">⏳</span> Extracting...</>
+                        ) : (
+                            <><Upload className="w-4 h-4 mr-2" /> Auto-Extract from File</>
+                        )}
+                    </Button>
                     <Button variant="outline" onClick={() => setActiveTab("manual")} className="border-cyan-500/30 text-cyan-400">
                         <Plus className="w-4 h-4 mr-2" /> Manual Entry
                     </Button>
