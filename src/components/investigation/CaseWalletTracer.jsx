@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Loader2, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Search, Plus, Loader2, AlertTriangle, CheckCircle, ExternalLink, FileText } from "lucide-react";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWalletAdded }) {
     const [address, setAddress] = useState("");
@@ -18,9 +19,31 @@ export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWall
         setLoading(true);
         setTraceData(null);
         try {
-            const res = await base44.functions.invoke('etherscanService', { address });
+            const res = await base44.functions.invoke('blockchainIntelligence', { 
+                action: 'track-wallet',
+                data: {
+                    wallet_address: address,
+                    blockchain: 'ethereum',
+                    wallet_type: 'unknown'
+                }
+            });
             if (res.data.error) throw new Error(res.data.error);
-            setTraceData(res.data);
+            
+            // Normalize data from blockchainIntelligence to match UI expectations
+            const data = res.data.data;
+            const normalizedData = {
+                address: address,
+                balance: data.balance?.amount || 0,
+                balanceUSD: data.balance?.usd || 0,
+                transactions: data.transactions || [],
+                stats: {
+                    total: data.transactions?.length || 0
+                },
+                risks: data.riskScore?.indicators || [],
+                riskScore: data.riskScore?.score || 0
+            };
+            
+            setTraceData(normalizedData);
             toast.success("Wallet traced successfully");
         } catch (error) {
             toast.error(error.message || "Failed to trace wallet");
@@ -29,73 +52,79 @@ export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWall
         }
     };
 
-    const handleAddMonitoring = async () => {
-        if (!address) return;
-        setAdding(true);
+    const handleAddToReport = async () => {
+        if (!traceData || !address) return;
+        
+        const toastId = toast.loading("Generating report...");
         try {
-            // Fetch current case to get latest wallets array
-            // We use a function or direct update. Since we are in a sub-component, 
-            // we'll try to update directly if we assume we know the logic, or use the parent's handler if complex.
-            // But here we can just do a direct update to the case entity.
-            // Note: We need to know which entity type it is (MyCase vs InvestigationCase). 
-            // We'll try to invoke the generic caseManagement update or just simple entity update if we knew the type.
-            // Let's use caseManagement function as used in CaseDetailDialog for consistency/safety.
+            // Fetch case summary
+            const summaryRes = await base44.functions.invoke('caseSummary', { caseId });
+            const caseSummary = summaryRes.data?.summary || "No summary available.";
+
+            const doc = new jsPDF();
             
-            // Actually, CaseDetailDialog passes `onUpdate`. 
-            // But we need to add to `monitored_wallets`.
-            // Let's assume CaseDetailDialog handles the refresh if we call onWalletAdded or similar.
+            // Header
+            doc.setFontSize(20);
+            doc.setTextColor(40, 40, 40);
+            doc.text("Crypto Intelligence Report", 20, 20);
             
-            // We will use the `caseManagement` function to update
-            const response = await base44.functions.invoke('caseManagement', {
-                action: 'add_monitored_wallet',
-                data: {
-                    caseId: caseId,
-                    wallet: address
-                }
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+            doc.text(`Target Wallet: ${address}`, 20, 35);
+
+            // Case Summary Section
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text("Case Context", 20, 50);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            const splitSummary = doc.splitTextToSize(caseSummary, 170);
+            doc.text(splitSummary, 20, 60);
+            
+            let y = 60 + (splitSummary.length * 5) + 10;
+
+            // Wallet Analysis
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text("Wallet Analysis", 20, y);
+            y += 10;
+
+            doc.setFontSize(10);
+            doc.text(`Balance: ${traceData.balance} ETH`, 20, y);
+            doc.text(`Total Transactions: ${traceData.stats?.total}`, 100, y);
+            y += 10;
+            
+            if (traceData.risks?.length > 0) {
+                doc.setTextColor(200, 0, 0);
+                doc.text("Risk Indicators:", 20, y);
+                y += 5;
+                traceData.risks.forEach(risk => {
+                    doc.text(`- ${risk}`, 25, y);
+                    y += 5;
+                });
+                doc.setTextColor(0, 0, 0);
+            }
+            
+            y += 5;
+            doc.text("Recent Activity:", 20, y);
+            y += 5;
+            
+            (traceData.transactions || []).slice(0, 10).forEach(tx => {
+                if (y > 280) { doc.addPage(); y = 20; }
+                const date = new Date(tx.timestamp).toLocaleDateString();
+                const type = tx.to?.toLowerCase() === address.toLowerCase() ? 'IN' : 'OUT';
+                doc.text(`${date} | ${type} | ${tx.value} ETH | Hash: ${tx.hash.substring(0, 15)}...`, 20, y);
+                y += 5;
             });
 
-            if (response.data.success) {
-                toast.success("Wallet added to monitoring");
-                if (onWalletAdded) onWalletAdded();
-            } else {
-                // Fallback if that specific action isn't handled or fails
-                 // Try generic update if we can guess entity? 
-                 // It's safer to rely on the backend function we just called. 
-                 // If it fails, maybe the action 'add_monitored_wallet' doesn't exist yet in caseManagement?
-                 // Let's check `functions/caseManagement.js`? No, I haven't read it.
-                 // Safer approach: Use direct entity update if we can.
-                 // But I don't know the entity type for sure here (MyCase vs InvestigationCase).
-                 // CaseDetailDialog knows it.
-                 // Let's pass the logic up or try a smart guess.
-                 // Wait, `WalletTracker.jsx` uses `base44.entities.InvestigationCase.update`.
-                 // `CaseDetailDialog` handles `MyCase` too.
-                 // I will assume the backend function `caseManagement` handles updates generically as seen in `CaseDetailDialog`.
-                 // In `CaseDetailDialog`, it uses `action: 'update'`.
-                 // Let's use that.
-                 
-                 const newWallets = [...monitoredWallets, address];
-                 await base44.functions.invoke('caseManagement', {
-                    action: 'update',
-                    data: {
-                      id: caseId,
-                      // We don't have entityName here. 
-                      // I should ask parent to pass it or handle the add.
-                      // I'll emit an event to parent `onWalletAdded(address)` and let parent handle the mutation?
-                      // No, user wants me to implement it.
-                      // I will update the component to accept `onAddWallet` which takes the address and does the update.
-                    }
-                 });
-                 // Actually, let's just use the `onAddWallet` prop to delegate the actual saving to the parent 
-                 // if I can modify the parent to pass it.
-                 // Or I can modify `CaseDetailDialog` to pass a handler.
-            }
+            doc.save(`Intel_Report_${address.substring(0, 6)}.pdf`);
+            toast.success("Report generated and downloaded", { id: toastId });
+
         } catch (e) {
-            // Fallback: Just call the prop and let parent handle it if provided
-            if (onWalletAdded) {
-                await onWalletAdded(address);
-            }
-        } finally {
-            setAdding(false);
+            console.error(e);
+            toast.error("Failed to generate report", { id: toastId });
         }
     };
 
@@ -133,18 +162,29 @@ export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWall
                                 </h4>
                                 <p className="text-xs text-gray-400 mt-1 font-mono">{traceData.address}</p>
                             </div>
-                            {!monitoredWallets.includes(traceData.address) && (
+                            <div className="flex gap-2">
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    onClick={() => onWalletAdded && onWalletAdded(traceData.address)}
-                                    disabled={adding}
-                                    className="border-green-500/30 text-green-400 hover:bg-green-900/20"
+                                    onClick={handleAddToReport}
+                                    className="border-blue-500/30 text-blue-400 hover:bg-blue-900/20"
                                 >
-                                    {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 mr-2" />}
-                                    Add to Monitor
+                                    <FileText className="w-3 h-3 mr-2" />
+                                    Add to Report (PDF)
                                 </Button>
-                            )}
+                                {!monitoredWallets.includes(traceData.address) && (
+                                    <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        onClick={() => onWalletAdded && onWalletAdded(traceData.address)}
+                                        disabled={adding}
+                                        className="border-green-500/30 text-green-400 hover:bg-green-900/20"
+                                    >
+                                        {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 mr-2" />}
+                                        Add to Monitor
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
