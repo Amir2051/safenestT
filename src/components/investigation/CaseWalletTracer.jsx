@@ -8,7 +8,7 @@ import { Search, Plus, Loader2, AlertTriangle, CheckCircle, ExternalLink, FileTe
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
-export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWalletAdded }) {
+export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = [], onWalletAdded }) {
     const [address, setAddress] = useState("");
     const [loading, setLoading] = useState(false);
     const [traceData, setTraceData] = useState(null);
@@ -24,7 +24,8 @@ export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWall
                 data: {
                     wallet_address: address,
                     blockchain: 'ethereum',
-                    wallet_type: 'unknown'
+                    wallet_type: 'unknown',
+                    fraud_case_id: caseId
                 }
             });
             if (res.data.error) throw new Error(res.data.error);
@@ -58,73 +59,182 @@ export default function CaseWalletTracer({ caseId, monitoredWallets = [], onWall
         const toastId = toast.loading("Generating report...");
         try {
             // Fetch case summary
-            const summaryRes = await base44.functions.invoke('caseSummary', { caseId });
-            const caseSummary = summaryRes.data?.summary || "No summary available.";
+            let caseSummary = "Summary not available.";
+            try {
+                const summaryRes = await base44.functions.invoke('caseSummary', { 
+                    caseId,
+                    entityName: caseData?._entityName || 'MyCase'
+                });
+                if (summaryRes.data?.success) {
+                    caseSummary = summaryRes.data.summary;
+                } else if (caseData?.description) {
+                    caseSummary = caseData.description;
+                }
+            } catch (e) {
+                console.warn("Summary fetch failed, falling back to description");
+                caseSummary = caseData?.description || "No description available.";
+            }
 
             const doc = new jsPDF();
             
-            // Header
-            doc.setFontSize(20);
-            doc.setTextColor(40, 40, 40);
+            // Branding & Header
+            doc.setFillColor(26, 35, 50); // Dark Blue Header
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setFontSize(22);
+            doc.setTextColor(255, 255, 255);
             doc.text("Crypto Intelligence Report", 20, 20);
             
             doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
+            doc.setTextColor(200, 200, 200);
             doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
-            doc.text(`Target Wallet: ${address}`, 20, 35);
+            doc.text(`Case ID: ${caseData?.case_number || caseId}`, 140, 30);
 
-            // Case Summary Section
-            doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
-            doc.text("Case Context", 20, 50);
+            // 1. Case Context Section
+            let y = 55;
+            doc.setFontSize(16);
+            doc.setTextColor(26, 35, 50);
+            doc.text("1. Case Overview", 20, y);
+            y += 10;
             
-            doc.setFontSize(10);
+            doc.setFontSize(11);
             doc.setTextColor(60, 60, 60);
-            const splitSummary = doc.splitTextToSize(caseSummary, 170);
-            doc.text(splitSummary, 20, 60);
-            
-            let y = 60 + (splitSummary.length * 5) + 10;
-
-            // Wallet Analysis
-            doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
-            doc.text("Wallet Analysis", 20, y);
-            y += 10;
-
-            doc.setFontSize(10);
-            doc.text(`Balance: ${traceData.balance} ETH`, 20, y);
-            doc.text(`Total Transactions: ${traceData.stats?.total}`, 100, y);
-            y += 10;
-            
-            if (traceData.risks?.length > 0) {
-                doc.setTextColor(200, 0, 0);
-                doc.text("Risk Indicators:", 20, y);
-                y += 5;
-                traceData.risks.forEach(risk => {
-                    doc.text(`- ${risk}`, 25, y);
-                    y += 5;
-                });
-                doc.setTextColor(0, 0, 0);
+            doc.text(`Case Title: ${caseData?.case_title || 'Untitled Case'}`, 20, y);
+            y += 7;
+            if (caseData?.client_name) {
+                doc.text(`Client: ${caseData.client_name}`, 20, y);
+                y += 7;
             }
             
             y += 5;
-            doc.text("Recent Activity:", 20, y);
-            y += 5;
+            doc.setFontSize(10);
+            const splitSummary = doc.splitTextToSize(caseSummary, 170);
+            doc.text(splitSummary, 20, y);
             
-            (traceData.transactions || []).slice(0, 10).forEach(tx => {
-                if (y > 280) { doc.addPage(); y = 20; }
+            y += (splitSummary.length * 5) + 15;
+
+            // 2. Wallet Intelligence Section
+            doc.setFontSize(16);
+            doc.setTextColor(26, 35, 50);
+            doc.text("2. Wallet Forensic Analysis", 20, y);
+            y += 10;
+
+            // Wallet Header Box
+            doc.setFillColor(245, 245, 245);
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(20, y, 170, 25, 'FD');
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(address, 25, y + 10);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Target Wallet Address", 25, y + 20);
+            
+            y += 35;
+
+            // Stats Grid
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Current Balance: ${traceData.balance} ETH ($${traceData.balanceUSD?.toLocaleString()})`, 20, y);
+            doc.text(`Total Transactions: ${traceData.stats?.total}`, 110, y);
+            y += 10;
+            
+            if (traceData.risks?.length > 0) {
+                doc.setTextColor(220, 50, 50); // Red for risks
+                doc.setFont("helvetica", "bold");
+                doc.text(`Risk Score: ${traceData.riskScore}/100`, 20, y);
+                y += 7;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                traceData.risks.forEach(risk => {
+                    doc.text(`• ${risk}`, 25, y);
+                    y += 6;
+                });
+                doc.setTextColor(0, 0, 0);
+            } else {
+                doc.setTextColor(0, 150, 0);
+                doc.text("Risk Score: Low", 20, y);
+                doc.setTextColor(0, 0, 0);
+            }
+            
+            y += 10;
+            
+            // 3. Transaction Log
+            doc.setFontSize(14);
+            doc.setTextColor(26, 35, 50);
+            doc.text("Recent Activity Log", 20, y);
+            y += 10;
+            
+            // Table Header
+            doc.setFillColor(230, 230, 230);
+            doc.rect(20, y - 5, 170, 8, 'F');
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text("Date", 22, y);
+            doc.text("Type", 60, y);
+            doc.text("Amount", 90, y);
+            doc.text("Tx Hash", 130, y);
+            y += 8;
+            doc.setFont("helvetica", "normal");
+            
+            (traceData.transactions || []).slice(0, 15).forEach((tx, i) => {
+                if (y > 270) { 
+                    doc.addPage(); 
+                    y = 20; 
+                    // Re-draw header if new page
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Date", 22, y);
+                    doc.text("Type", 60, y);
+                    doc.text("Amount", 90, y);
+                    doc.text("Tx Hash", 130, y);
+                    y += 8;
+                    doc.setFont("helvetica", "normal");
+                }
+                
                 const date = new Date(tx.timestamp).toLocaleDateString();
-                const type = tx.to?.toLowerCase() === address.toLowerCase() ? 'IN' : 'OUT';
-                doc.text(`${date} | ${type} | ${tx.value} ETH | Hash: ${tx.hash.substring(0, 15)}...`, 20, y);
-                y += 5;
+                const type = tx.to?.toLowerCase() === address.toLowerCase() ? 'INCOMING' : 'OUTGOING';
+                const amount = `${parseFloat(tx.value).toFixed(4)} ETH`;
+                const hash = tx.hash.substring(0, 16) + "...";
+                
+                if (i % 2 === 0) {
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(20, y - 5, 170, 8, 'F');
+                }
+                
+                doc.setTextColor(0, 0, 0);
+                doc.text(date, 22, y);
+                
+                if (type === 'INCOMING') doc.setTextColor(0, 128, 0);
+                else doc.setTextColor(180, 0, 0);
+                doc.text(type, 60, y);
+                
+                doc.setTextColor(0, 0, 0);
+                doc.text(amount, 90, y);
+                
+                doc.setTextColor(100, 100, 100);
+                doc.text(hash, 130, y);
+                
+                y += 8;
             });
 
-            doc.save(`Intel_Report_${address.substring(0, 6)}.pdf`);
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`Confidential - Digital Forensics Lab - Page ${i} of ${pageCount}`, 105, 290, { align: "center" });
+            }
+
+            doc.save(`Forensic_Report_${caseData?.case_number || 'Case'}_${address.substring(0, 6)}.pdf`);
             toast.success("Report generated and downloaded", { id: toastId });
 
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to generate report", { id: toastId });
+            console.error("PDF Gen Error:", e);
+            toast.error("Failed to generate report: " + e.message, { id: toastId });
         }
     };
 

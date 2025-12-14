@@ -1386,6 +1386,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="tracking" className="space-y-4">
               <CaseWalletTracer 
                   caseId={caseData.id} 
+                  caseData={caseData}
                   monitoredWallets={caseData.monitored_wallets || []}
                   onWalletAdded={async (wallet) => {
                       // Logic to add wallet to monitored_wallets
