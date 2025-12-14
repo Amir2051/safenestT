@@ -289,54 +289,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
               />
             </div>
 
-            <div className="col-span-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> 
-                    Mandatory Wallet Evidence
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label className="text-white">Your Wallet Address *</Label>
-                        <Input
-                            value={formData.victim_wallet}
-                            onChange={(e) => handleWalletChange('victim_wallet', e.target.value)}
-                            className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
-                            placeholder="0x... or bc1..."
-                            required
-                        />
-                        {formData.victim_wallet && detectNetwork(formData.victim_wallet) && (
-                            <span className="text-xs text-green-400 mt-1 block">
-                                Detected: {detectNetwork(formData.victim_wallet).toUpperCase()}
-                            </span>
-                        )}
-                    </div>
-                    <div>
-                        <Label className="text-white">Scammer Wallet Address *</Label>
-                        <Input
-                            value={formData.scammer_wallet}
-                            onChange={(e) => handleWalletChange('scammer_wallet', e.target.value)}
-                            className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
-                            placeholder="0x... or bc1..."
-                            required
-                        />
-                        {formData.scammer_wallet && detectNetwork(formData.scammer_wallet) && (
-                            <span className="text-xs text-green-400 mt-1 block">
-                                Detected: {detectNetwork(formData.scammer_wallet).toUpperCase()}
-                            </span>
-                        )}
-                    </div>
-                </div>
-                
-                {walletError && (
-                    <div className="mt-3 p-2 bg-red-500/20 text-red-200 text-xs rounded flex items-center gap-2">
-                        <span>⚠️ {walletError}</span>
-                    </div>
-                )}
-                <p className="text-xs text-blue-300 mt-2">
-                    Both your wallet and the scammer's wallet are required to investigate this case.
-                </p>
-            </div>
+
 
             <div>
               <Label className="text-white">Cryptocurrency</Label>
@@ -399,6 +352,55 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
                 placeholder="Detailed description of the incident..."
               />
             </div>
+          </div>
+
+          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg mt-4">
+              <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> 
+                  Mandatory Wallet Evidence
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                      <Label className="text-white">Victim Wallet Address *</Label>
+                      <Input
+                          value={formData.victim_wallet}
+                          onChange={(e) => handleWalletChange('victim_wallet', e.target.value)}
+                          className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
+                          placeholder="Enter your wallet address"
+                          required
+                      />
+                      {formData.victim_wallet && detectNetwork(formData.victim_wallet) && (
+                          <span className="text-xs text-green-400 mt-1 block">
+                              Detected: {detectNetwork(formData.victim_wallet).toUpperCase()}
+                          </span>
+                      )}
+                  </div>
+                  <div>
+                      <Label className="text-white">Scammer Wallet Address *</Label>
+                      <Input
+                          value={formData.scammer_wallet}
+                          onChange={(e) => handleWalletChange('scammer_wallet', e.target.value)}
+                          className="bg-[#0f1419] border-cyan-500/20 text-white mt-2 font-mono text-xs"
+                          placeholder="Enter scammer's wallet address"
+                          required
+                      />
+                      {formData.scammer_wallet && detectNetwork(formData.scammer_wallet) && (
+                          <span className="text-xs text-green-400 mt-1 block">
+                              Detected: {detectNetwork(formData.scammer_wallet).toUpperCase()}
+                          </span>
+                      )}
+                  </div>
+              </div>
+              
+              {walletError && (
+                  <div className="mt-3 p-2 bg-red-500/20 text-red-200 text-xs rounded flex items-center gap-2">
+                      <span>⚠️ {walletError}</span>
+                  </div>
+              )}
+              <p className="text-xs text-blue-300 mt-2 font-medium">
+                  Your wallet address is required to investigate this case.
+              </p>
           </div>
 
           <div className="flex justify-end gap-3">
