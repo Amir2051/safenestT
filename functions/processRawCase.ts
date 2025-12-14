@@ -27,6 +27,9 @@ Deno.serve(async (req) => {
                 }
             }
         }
+        
+        // Filter out empty or invalid URLs
+        processingFileUrls = processingFileUrls.filter(u => u && typeof u === 'string' && u.length > 0);
 
         // --- PRE-FETCH LINKED CASES CANDIDATES ---
         // We scan raw_input and case data for potential entities (wallets, emails, handles) 
