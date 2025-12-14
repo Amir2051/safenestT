@@ -4,344 +4,320 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Printer, RefreshCw, Shield, FileText, Download, ExternalLink } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { 
+  Loader2, Printer, RefreshCw, Shield, FileText, Lock, Unlock, 
+  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function CryptoIntelligenceReport({ caseData }) {
-  const [coverLetter, setCoverLetter] = useState("");
+  const [reportData, setReportData] = useState(null);
+  const [linkedCases, setLinkedCases] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showLinkSearch, setShowLinkSearch] = useState(false);
+  
+  // Admin Controls State
+  const [redactedFields, setRedactedFields] = useState(new Set());
+  const [lockedFields, setLockedFields] = useState(new Set());
+  const [edits, setEdits] = useState({}); // { id: { field: value } }
+  const [editingId, setEditingId] = useState(null);
 
-  const generateContentMutation = useMutation({
+  const fetchReportData = useMutation({
     mutationFn: async () => {
-      const prompt = `
-        You are a senior crypto investigator. Write a formal cover letter for a law enforcement referral (FBI/IC3) regarding a cryptocurrency fraud case.
-        
-        Case Details:
-        - SafeNest Case ID: ${caseData.case_number}
-        - Victim: ${caseData.victim_name}
-        - Loss: $${caseData.amount_stolen_usd?.toLocaleString()}
-        - Type: ${caseData.fraud_type}
-        - Scammer: ${caseData.scammer_info?.name || 'Unknown'}
-        - Blockchain: ${caseData.blockchain}
-        
-        The letter should:
-        1. Summarize the incident briefly.
-        2. Highlight that technical evidence (IPs, wallets) is attached.
-        3. Request immediate asset freezing if applicable.
-        4. Be addressed to "Federal Law Enforcement / Exchange Compliance Team".
-        5. Leave placeholders for Admin Name.
-      `;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        response_json_schema: { type: "object", properties: { cover_letter: { type: "string" } } }
+      const response = await base44.functions.invoke('generateCryptoReportData', {
+        caseId: caseData.id,
+        linkedCaseIds: linkedCases.map(c => c.id)
       });
-      return response.cover_letter;
+      if (response.data.error) throw new Error(response.data.error);
+      return response.data.data;
     },
     onSuccess: (data) => {
-      setCoverLetter(data);
-      toast.success("Cover letter generated");
+      setReportData(data);
+      toast.success("Intelligence data refreshed");
     },
-    onError: () => toast.error("Failed to generate cover letter")
+    onError: (err) => toast.error("Failed to fetch intelligence: " + err.message)
   });
 
+  // Initial fetch
   useEffect(() => {
-    if (!coverLetter && !isGenerating) {
-      setIsGenerating(true);
-      generateContentMutation.mutate(null, { onSettled: () => setIsGenerating(false) });
-    }
-  }, []);
+    fetchReportData.mutate();
+  }, [linkedCases.length]); // Refetch when linked cases change
 
-  const handlePrint = () => {
-    window.print();
+  const searchCases = async (term) => {
+    if (!term || term.length < 3) return;
+    try {
+        const inv = await base44.entities.InvestigationCase.list();
+        const myCases = await base44.entities.MyCase.list();
+        const all = [...inv, ...myCases];
+        
+        const matches = all.filter(c => 
+            c.id !== caseData.id && 
+            (c.case_title?.toLowerCase().includes(term.toLowerCase()) || 
+             c.case_number?.toLowerCase().includes(term.toLowerCase()))
+        ).slice(0, 5);
+        setSearchResults(matches);
+    } catch (e) {
+        console.error(e);
+    }
   };
 
-  const wallets = [
-    ...(caseData.monitored_wallets || []),
-    ...(caseData.scammer_info?.wallet_addresses || []),
-    ...(caseData.suspect_details?.wallet_addresses || [])
-  ].filter((v, i, a) => a.indexOf(v) === i);
+  const toggleRedact = (id) => {
+    const next = new Set(redactedFields);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setRedactedFields(next);
+  };
 
-  // Fetch auto-extracted transactions
-  const { data: extractedTxs = [] } = useQuery({
-      queryKey: ['extracted-txs', caseData.id],
-      queryFn: async () => await base44.entities.ExtractedTransaction.filter({ case_id: caseData.id })
-  });
+  const toggleLock = (id) => {
+    const next = new Set(lockedFields);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setLockedFields(next);
+  };
 
-  // Calculate totals from extracted data
-  const totalExtractedValue = extractedTxs.reduce((sum, tx) => sum + (tx.value_eth || 0), 0);
+  const handleEdit = (id, field, value) => {
+    setEdits(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value }
+    }));
+  };
+
+  const getDisplayValue = (id, field, originalValue) => {
+    if (redactedFields.has(`${id}-${field}`)) return "[REDACTED]";
+    if (edits[id]?.[field] !== undefined) return edits[id][field];
+    return originalValue;
+  };
+
+  if (!reportData && fetchReportData.isPending) {
+    return <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-cyan-500" /></div>;
+  }
 
   return (
     <div className="space-y-6">
-      {extractedTxs.length > 0 && (
-          <Card className="bg-[#0f1419] border-cyan-500/20 print:hidden">
-              <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-cyan-400 flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4" />
-                      Auto-Extracted Intelligence
-                  </CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div className="bg-[#1a2332] p-3 rounded">
-                          <p className="text-xs text-gray-400">Transactions Parsed</p>
-                          <p className="text-xl font-bold text-white">{extractedTxs.length}</p>
-                      </div>
-                      <div className="bg-[#1a2332] p-3 rounded">
-                          <p className="text-xs text-gray-400">Total Volume</p>
-                          <p className="text-xl font-bold text-green-400">{totalExtractedValue.toFixed(4)} ETH</p>
-                      </div>
-                      <div className="bg-[#1a2332] p-3 rounded">
-                          <p className="text-xs text-gray-400">Unique Wallets</p>
-                          <p className="text-xl font-bold text-blue-400">
-                              {new Set(extractedTxs.map(t => t.to_address).concat(extractedTxs.map(t => t.from_address))).size}
-                          </p>
-                      </div>
-                  </div>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
-                      {extractedTxs.map(tx => (
-                          <div key={tx.id} className="text-xs flex justify-between p-2 hover:bg-[#1a2332] rounded">
-                              <span className="font-mono text-gray-300 truncate w-1/3">{tx.tx_hash}</span>
-                              <span className="text-gray-500">{new Date(tx.timestamp).toLocaleDateString()}</span>
-                              <span className="font-mono text-green-400">{tx.value_eth} {tx.token_symbol || 'ETH'}</span>
-                          </div>
-                      ))}
-                  </div>
-              </CardContent>
-          </Card>
-      )}
-      {/* Controls - Hidden when printing */}
-      <div className="flex justify-between items-center p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20 print:hidden">
+      {/* Controls Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20 print:hidden">
         <div>
           <h2 className="text-white font-bold flex items-center gap-2">
             <Shield className="w-5 h-5 text-cyan-400" />
             Crypto Intelligence Report
           </h2>
-          <p className="text-gray-400 text-sm">Law Enforcement & Compliance Ready</p>
+          <p className="text-gray-400 text-sm">Aggregated Intelligence & Forensics</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => generateContentMutation.mutate()} disabled={isGenerating}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-            Regenerate AI Content
-          </Button>
-          <Button onClick={handlePrint} className="bg-cyan-600 hover:bg-cyan-700">
-            <Printer className="w-4 h-4 mr-2" />
-            Print / Export PDF
-          </Button>
-        </div>
-      </div>
-
-      {/* Report Content */}
-      <div className="bg-white text-black p-8 max-w-[210mm] mx-auto min-h-[297mm] shadow-xl print:shadow-none print:p-0">
-        
-        {/* Header */}
-        <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 uppercase tracking-wider">Confidential Intelligence Report</h1>
-            <p className="text-slate-600 font-semibold mt-1">Cryptocurrency Fraud Investigation Unit</p>
-            <p className="text-slate-500 text-sm">Generated by SafeNestT Security Platform</p>
-          </div>
-          <div className="text-right">
-            <p className="font-mono text-sm text-slate-500">Date: {new Date().toLocaleDateString()}</p>
-            <p className="font-mono text-lg font-bold text-slate-800">ID: {caseData.case_number}</p>
-            <Badge className="bg-red-100 text-red-800 border-red-200 mt-2">LAW ENFORCEMENT SENSITIVE</Badge>
-          </div>
-        </div>
-
-        {/* 1. Victim & Case Summary */}
-        <section className="mb-8">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">1. Victim & Case Summary</h3>
-          <div className="grid grid-cols-2 gap-6 text-sm">
-            <div>
-              <p className="text-slate-500 uppercase text-xs font-bold">Victim Details</p>
-              <p className="font-semibold">{caseData.victim_name}</p>
-              <p>{caseData.victim_email}</p>
-              <p>{caseData.victim_phone}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 uppercase text-xs font-bold">Loss Summary</p>
-              <p className="font-semibold text-red-700 text-lg">${caseData.amount_stolen_usd?.toLocaleString()} USD</p>
-              <p>{caseData.cryptocurrency} on {caseData.blockchain}</p>
-              <p>Type: {caseData.fraud_type?.replace('_', ' ').toUpperCase()}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-slate-500 uppercase text-xs font-bold mb-1">Incident Description</p>
-            <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded border border-slate-100">
-              {caseData.description}
-            </p>
-          </div>
-          {caseData.timeline && caseData.timeline.length > 0 && (
-            <div className="mt-4">
-              <p className="text-slate-500 uppercase text-xs font-bold mb-1">Key Timeline</p>
-              <ul className="list-disc list-inside text-sm text-slate-700">
-                {caseData.timeline.slice(0, 5).map((t, i) => (
-                  <li key={i}><span className="font-mono text-xs text-slate-500">{new Date(t.date).toLocaleDateString()}</span> - {t.event}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-
-        {/* 2. IC3 Complaint Section */}
-        <section className="mb-8 break-inside-avoid">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">2. IC3 Complaint Status</h3>
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-sm font-bold text-slate-700">IC3 Complaint Number</p>
-                <p className="text-xl font-mono text-slate-900">{caseData.ic3_complaint_number || "PENDING / NOT FILED"}</p>
-              </div>
-              <div className="flex-1 border-l border-slate-200 pl-4">
-                <p className="text-sm font-bold text-slate-700">Federal Case Number</p>
-                <p className="text-font-mono text-slate-900">{caseData.federal_case_number || "N/A"}</p>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-slate-200">
-              <p className="text-xs text-slate-500 mb-1">Supplemental Report Status</p>
-              <p className="text-sm text-slate-700">
-                A supplemental technical report is attached below for submission to the FBI IC3 portal.
-                This document contains verified blockchain forensics not present in the initial filing.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. Blockchain Analysis */}
-        <section className="mb-8 break-inside-avoid">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">3. On-Chain Analysis</h3>
-          
-          <div className="mb-4">
-            <p className="text-slate-500 uppercase text-xs font-bold mb-2">Identified Suspect Wallets</p>
-            {wallets.length > 0 ? (
-              <div className="space-y-2">
-                {wallets.map((w, i) => (
-                  <div key={i} className="font-mono text-xs bg-slate-100 p-2 rounded border border-slate-200 text-slate-800 break-all">
-                    {w}
+           <div className="relative">
+              {showLinkSearch ? (
+                  <div className="absolute right-0 top-0 w-64 bg-[#1a2332] border border-gray-700 rounded-lg shadow-xl z-50 p-2">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs text-gray-400">Add Linked Case</span>
+                          <button onClick={() => setShowLinkSearch(false)}><X className="w-3 h-3 text-gray-400" /></button>
+                      </div>
+                      <Input 
+                          placeholder="Search..." 
+                          className="h-8 text-xs bg-black/20 mb-2"
+                          onChange={(e) => searchCases(e.target.value)}
+                          autoFocus
+                      />
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                          {searchResults.map(c => (
+                              <div 
+                                  key={c.id} 
+                                  className="p-2 hover:bg-white/5 cursor-pointer rounded text-xs text-gray-300 truncate"
+                                  onClick={() => {
+                                      if(!linkedCases.find(l => l.id === c.id)) setLinkedCases([...linkedCases, c]);
+                                      setShowLinkSearch(false);
+                                  }}
+                              >
+                                  {c.case_number} - {c.case_title}
+                              </div>
+                          ))}
+                      </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 italic">No specific wallet addresses identified yet.</p>
-            )}
-          </div>
-
-          {caseData.transaction_hashes && caseData.transaction_hashes.length > 0 && (
-            <div className="mb-4">
-              <p className="text-slate-500 uppercase text-xs font-bold mb-2">Critical Transactions</p>
-              <div className="space-y-1">
-                {caseData.transaction_hashes.map((tx, i) => (
-                  <div key={i} className="font-mono text-xs text-slate-600 break-all">
-                    • {tx}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mt-4">
-            <p className="text-xs font-bold text-yellow-800 uppercase mb-1">Risk Assessment</p>
-            <p className="text-sm text-yellow-900">
-              Funds detected on {caseData.blockchain || 'blockchain'}. 
-              High risk of dissipation through mixers or non-compliant exchanges. 
-              Immediate freeze requested.
-            </p>
-          </div>
-        </section>
-
-        {/* 4. Scammer Profile */}
-        <section className="mb-8 break-inside-avoid">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">4. Scammer Digital Profile</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="bg-slate-50 p-3 rounded border border-slate-200">
-              <p className="text-xs font-bold text-slate-500 uppercase mb-2">Contact Methods</p>
-              <div className="space-y-1">
-                <p><span className="font-semibold">Name/Alias:</span> {caseData.scammer_info?.name || caseData.suspect_details?.primary_suspect?.name || 'Unknown'}</p>
-                <p><span className="font-semibold">Email:</span> {caseData.scammer_info?.email || 'N/A'}</p>
-                <p><span className="font-semibold">Phone:</span> {caseData.scammer_info?.phone || 'N/A'}</p>
-                <p><span className="font-semibold">Website:</span> {caseData.scammer_info?.website || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="bg-slate-50 p-3 rounded border border-slate-200">
-              <p className="text-xs font-bold text-slate-500 uppercase mb-2">Digital Footprint</p>
-              {caseData.scammer_info?.social_media?.length > 0 ? (
-                <ul className="list-disc list-inside">
-                  {caseData.scammer_info.social_media.map((sm, i) => (
-                    <li key={i}>{typeof sm === 'string' ? sm : `${sm.platform}: ${sm.profile}`}</li>
-                  ))}
-                </ul>
               ) : (
-                <p className="italic text-slate-500">No social media profiles linked.</p>
+                  <Button variant="outline" onClick={() => setShowLinkSearch(true)} className="border-dashed border-gray-600 text-gray-400">
+                      <LinkIcon className="w-4 h-4 mr-2" /> Link Case
+                  </Button>
               )}
-            </div>
-          </div>
-        </section>
-
-        {/* 5. Evidence */}
-        <section className="mb-8 break-inside-avoid">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">5. Evidence Attachments</h3>
-          {caseData.evidence_files?.length > 0 ? (
-            <table className="w-full text-sm text-left">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 font-semibold text-slate-600">File Name</th>
-                  <th className="py-2 font-semibold text-slate-600">Type</th>
-                  <th className="py-2 font-semibold text-slate-600">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {caseData.evidence_files.map((ev, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2 text-slate-800">{ev.name}</td>
-                    <td className="py-2 text-slate-600 uppercase text-xs">{ev.type || 'Document'}</td>
-                    <td className="py-2 text-slate-600 font-mono text-xs">{new Date(ev.uploaded_date).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm text-slate-500 italic">No files attached to this digital report.</p>
-          )}
-        </section>
-
-        {/* 6. Recommended Actions */}
-        <section className="mb-8 break-inside-avoid">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">6. Recommended Actions</h3>
-          <ul className="list-decimal list-inside text-sm text-slate-800 space-y-2">
-            <li><span className="font-semibold">Immediate Asset Freeze:</span> Contact identified exchanges to freeze suspect wallets listed in Section 3.</li>
-            <li><span className="font-semibold">IC3 Filing:</span> If not yet filed, submit this report to ic3.gov immediately.</li>
-            <li><span className="font-semibold">Preservation Letter:</span> Issue preservation letters to email providers and social platforms listed in Section 4.</li>
-            <li><span className="font-semibold">Chain Analysis:</span> Continue monitoring suspect addresses for movement to off-ramps.</li>
-          </ul>
-        </section>
-
-        {/* 7. Cover Letter */}
-        <section className="break-before-page">
-          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">7. Law Enforcement Cover Letter</h3>
-          <div className="bg-white border border-slate-200 p-8 shadow-sm print:shadow-none print:border-0 print:p-0">
-            {isGenerating ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
-                <span className="ml-2 text-slate-500">Drafting cover letter...</span>
-              </div>
-            ) : (
-              <Textarea
-                value={coverLetter}
-                onChange={(e) => setCoverLetter(e.target.value)}
-                className="min-h-[500px] font-serif text-base leading-relaxed border-0 focus-visible:ring-0 p-0 resize-none w-full"
-                placeholder="Cover letter content..."
-              />
-            )}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400 print:fixed print:bottom-0 print:left-0 print:w-full print:bg-white print:pt-2 print:pb-4">
-          <p>CONFIDENTIAL - PROPRIETARY - LAW ENFORCEMENT SENSITIVE</p>
-          <p>Generated by SafeNestT Intelligence System • {new Date().toISOString()}</p>
+           </div>
+          <Button variant="outline" onClick={() => fetchReportData.mutate()} disabled={fetchReportData.isPending}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${fetchReportData.isPending ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+          <Button onClick={() => window.print()} className="bg-cyan-600 hover:bg-cyan-700">
+            <Printer className="w-4 h-4 mr-2" />
+            Print / PDF
+          </Button>
         </div>
       </div>
+
+      {/* Linked Cases Badges */}
+      {linkedCases.length > 0 && (
+          <div className="flex flex-wrap gap-2 print:hidden">
+              {linkedCases.map(c => (
+                  <Badge key={c.id} variant="secondary" className="bg-[#1a2332] text-gray-300 border border-gray-700 pl-2 pr-1 py-1">
+                      {c.case_number}
+                      <button onClick={() => setLinkedCases(linkedCases.filter(l => l.id !== c.id))} className="ml-2 hover:text-red-400">
+                          <X className="w-3 h-3" />
+                      </button>
+                  </Badge>
+              ))}
+          </div>
+      )}
+
+      {/* REPORT CONTENT */}
+      {reportData && (
+        <div className="bg-white text-black p-8 max-w-[210mm] mx-auto min-h-[297mm] shadow-xl print:shadow-none print:p-0 print:w-full">
+            
+            {/* Header */}
+            <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 uppercase tracking-wider">Crypto Intelligence Report</h1>
+                    <p className="text-slate-600 font-semibold mt-1">Blockchain Forensics & Attribution</p>
+                    <p className="text-slate-500 text-sm">Generated by SafeNestT</p>
+                </div>
+                <div className="text-right">
+                    <p className="font-mono text-sm text-slate-500">Date: {new Date().toLocaleDateString()}</p>
+                    <p className="font-mono text-lg font-bold text-slate-800">Case ID: {reportData.meta.primary_case.number || caseData.case_number}</p>
+                    {linkedCases.length > 0 && (
+                        <p className="text-xs text-blue-600 font-semibold mt-1">Includes {linkedCases.length} Linked Cases</p>
+                    )}
+                </div>
+            </div>
+
+            {/* 1. Suspect Wallets */}
+            <section className="mb-8">
+                <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase flex justify-between">
+                    1. Suspect Wallets
+                    <span className="text-xs font-normal text-slate-500 normal-case mt-1">Merged from all sources</span>
+                </h3>
+                <div className="space-y-2">
+                    {reportData.intelligence.wallets.length === 0 && <p className="italic text-slate-500">No suspect wallets identified.</p>}
+                    {reportData.intelligence.wallets.map((w, i) => (
+                        <div key={i} className="group flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-200">
+                            <div className="font-mono text-sm text-slate-800 break-all">
+                                {getDisplayValue(`wallet-${i}`, 'address', w)}
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+                                <button onClick={() => toggleRedact(`wallet-${i}-address`)} title="Redact">
+                                    {redactedFields.has(`wallet-${i}-address`) ? <EyeOff className="w-3 h-3 text-red-500" /> : <Eye className="w-3 h-3 text-gray-400" />}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* 2. Transaction Analysis */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">2. Transaction Ledger</h3>
+                {reportData.intelligence.transactions.length === 0 ? (
+                    <p className="italic text-slate-500">No transactions extracted.</p>
+                ) : (
+                    <Table className="text-xs border border-slate-200">
+                        <TableHeader className="bg-slate-100">
+                            <TableRow>
+                                <TableHead className="w-24">Date</TableHead>
+                                <TableHead>Hash</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Token</TableHead>
+                                <TableHead>Source</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {reportData.intelligence.transactions.map((tx, i) => (
+                                <TableRow key={tx.tx_hash} className={redactedFields.has(`tx-${i}-row`) ? "opacity-25" : ""}>
+                                    <TableCell className="font-mono text-slate-600">
+                                        {new Date(tx.timestamp).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-slate-800 break-all max-w-[150px]">
+                                        {getDisplayValue(`tx-${i}`, 'hash', tx.tx_hash)}
+                                    </TableCell>
+                                    <TableCell className="font-mono font-bold text-slate-900">
+                                        {tx.value_eth || tx.value_wei || '0'}
+                                    </TableCell>
+                                    <TableCell>{tx.token_symbol || 'ETH'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                                            {tx.source_case}
+                                        </Badge>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </section>
+
+            {/* 3. Chain & Token Summary */}
+            <section className="mb-8 break-inside-avoid">
+                <div className="grid grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="text-md font-bold text-slate-800 border-b border-slate-300 pb-2 mb-2 uppercase">3. Networks Identified</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {reportData.intelligence.chains.length === 0 && <span className="text-sm text-slate-500">None detected</span>}
+                            {reportData.intelligence.chains.map(c => (
+                                <Badge key={c} className="bg-slate-800 text-white hover:bg-slate-700">{c}</Badge>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-md font-bold text-slate-800 border-b border-slate-300 pb-2 mb-2 uppercase">4. Tokens Involved</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {reportData.intelligence.tokens.length === 0 && <span className="text-sm text-slate-500">None detected</span>}
+                            {reportData.intelligence.tokens.map(t => (
+                                <Badge key={t} variant="outline" className="border-slate-400 text-slate-700">{t}</Badge>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5. Evidence Source Mapping */}
+            <section className="mb-8 break-inside-avoid">
+                <h3 className="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2 mb-4 uppercase">5. Evidence Source Mapping</h3>
+                <Table className="text-xs border border-slate-200">
+                    <TableHeader className="bg-slate-100">
+                        <TableRow>
+                            <TableHead>File Name</TableHead>
+                            <TableHead>Origin Case</TableHead>
+                            <TableHead>Analysis Summary</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {reportData.evidence_summary.map((ev, i) => (
+                            <TableRow key={i}>
+                                <TableCell className="font-medium text-slate-900">{ev.filename}</TableCell>
+                                <TableCell>
+                                    <Badge variant={ev.case_origin === 'Primary' ? 'default' : 'secondary'} className="text-[10px]">
+                                        {ev.case_origin}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-slate-600 max-w-[300px] truncate">
+                                    {ev.summary?.analysis_text || "Processed"}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </section>
+
+            {/* Footer */}
+            <div className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+                <p>CONFIDENTIAL INTELLIGENCE DOCUMENT</p>
+                <p>Generated {new Date().toLocaleString()} by SafeNestT</p>
+            </div>
+        </div>
+      )}
     </div>
   );
 }

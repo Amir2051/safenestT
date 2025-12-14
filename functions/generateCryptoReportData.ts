@@ -63,17 +63,24 @@ Deno.serve(async (req) => {
         (c.scammer_info?.wallet_addresses || []).forEach(w => addWallet(w, `Linked Case ${c.case_number}`));
     });
 
+    // Map evidence ID to filename
+    const evidenceMap = new Map();
+    allEvidence.forEach(e => evidenceMap.set(e.id, e.filename || e.name));
+
     // Process Extracted Txs
     allTxs.forEach(tx => {
-        if (tx.from_address) addWallet(tx.from_address, 'Extracted Tx');
-        if (tx.to_address) addWallet(tx.to_address, 'Extracted Tx');
+        const sourceFile = evidenceMap.get(tx.evidence_file_id) || 'Unknown Source';
+        
+        if (tx.from_address) addWallet(tx.from_address, `Extracted from ${sourceFile}`);
+        if (tx.to_address) addWallet(tx.to_address, `Extracted from ${sourceFile}`);
         if (tx.token_symbol) tokens.add(tx.token_symbol);
         
         if (tx.tx_hash) {
             if (!uniqueTxs.has(tx.tx_hash)) {
                 uniqueTxs.set(tx.tx_hash, {
                     ...tx,
-                    source_case: tx.case_id === caseId ? 'Primary' : 'Linked'
+                    source_case: tx.case_id === caseId ? 'Primary' : 'Linked',
+                    source_file: sourceFile
                 });
             }
         }
