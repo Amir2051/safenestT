@@ -25,9 +25,14 @@ Deno.serve(async (req) => {
 
     let linkedCases = [];
     if (linkedCaseIds.length > 0) {
-        const invCases = await base44.entities.InvestigationCase.filter({ id: { $in: linkedCaseIds } });
-        const myCases = await base44.entities.MyCase.filter({ id: { $in: linkedCaseIds } });
-        linkedCases = [...invCases, ...myCases];
+        // Fetch from all possible case entities
+        const [invCases, myCases, clientCases, fraudCases] = await Promise.all([
+            base44.entities.InvestigationCase.filter({ id: { $in: linkedCaseIds } }),
+            base44.entities.MyCase.filter({ id: { $in: linkedCaseIds } }),
+            base44.entities.ClientCase ? base44.entities.ClientCase.filter({ id: { $in: linkedCaseIds } }) : [],
+            base44.entities.FraudCase ? base44.entities.FraudCase.filter({ id: { $in: linkedCaseIds } }) : []
+        ]);
+        linkedCases = [...invCases, ...myCases, ...clientCases, ...fraudCases];
     }
 
     const allCaseIds = [caseId, ...linkedCases.map(c => c.id)];

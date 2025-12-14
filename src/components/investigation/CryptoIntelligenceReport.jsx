@@ -57,18 +57,29 @@ export default function CryptoIntelligenceReport({ caseData }) {
   const searchCases = async (term) => {
     if (!term || term.length < 3) return;
     try {
-        const inv = await base44.entities.InvestigationCase.list();
-        const myCases = await base44.entities.MyCase.list();
-        const all = [...inv, ...myCases];
+        const [inv, myCases, clientCases, fraudCases] = await Promise.all([
+            base44.entities.InvestigationCase.list(),
+            base44.entities.MyCase.list(),
+            base44.entities.ClientCase ? base44.entities.ClientCase.list() : [],
+            base44.entities.FraudCase ? base44.entities.FraudCase.list() : []
+        ]);
         
-        const matches = all.filter(c => 
-            c.id !== caseData.id && 
-            (c.case_title?.toLowerCase().includes(term.toLowerCase()) || 
-             c.case_number?.toLowerCase().includes(term.toLowerCase()))
-        ).slice(0, 5);
+        const all = [...inv, ...myCases, ...clientCases, ...fraudCases];
+        
+        const lowerTerm = term.toLowerCase();
+        const matches = all.filter(c => {
+            if (c.id === caseData.id) return false;
+            
+            const title = (c.case_title || c.title || '').toLowerCase();
+            const number = (c.case_number || '').toLowerCase();
+            const victim = (c.victim_name || c.client_name || '').toLowerCase();
+            
+            return title.includes(lowerTerm) || number.includes(lowerTerm) || victim.includes(lowerTerm);
+        }).slice(0, 10);
+        
         setSearchResults(matches);
     } catch (e) {
-        console.error(e);
+        console.error("Error searching cases:", e);
     }
   };
 
