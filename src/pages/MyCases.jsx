@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
+import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator";
+import { DialogTrigger } from "@/components/ui/dialog";
 
 export default function MyCases() {
   const [user, setUser] = useState(null);
@@ -128,12 +130,25 @@ export default function MyCases() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <FileText className="w-8 h-8 text-cyan-400" />
-          My Cases
-        </h1>
-        <p className="text-gray-400 mt-1">Track and monitor your submitted scam reports</p>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <FileText className="w-8 h-8 text-cyan-400" />
+            My Cases
+          </h1>
+          <p className="text-gray-400 mt-1">Track and monitor your submitted scam reports</p>
+        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+              <FileStack className="w-5 h-5 mr-2" />
+              Generate Master IC3 Report
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-6xl bg-transparent border-none p-0 shadow-none">
+            <MasterCaseGenerator />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats */}
