@@ -184,7 +184,7 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
             Case Intelligence Network
           </h3>
           <p className="text-sm text-gray-400">
-            {connections.length} related cases identified by SafeNest AI
+            {confirmed.length + suggested.length} related cases identified by SafeNest AI
           </p>
         </div>
         <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 bg-cyan-500/10">
