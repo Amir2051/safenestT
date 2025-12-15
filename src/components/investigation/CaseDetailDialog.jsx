@@ -33,6 +33,7 @@ import ResponseTemplates from "./ResponseTemplates.jsx";
 import QuickActionsPanel from "./QuickActionsPanel.jsx";
 import SensitiveField from "./SensitiveField.jsx";
 import { toast } from "sonner";
+import CaseTaskManager from "@/components/collaboration/CaseTaskManager.jsx";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
