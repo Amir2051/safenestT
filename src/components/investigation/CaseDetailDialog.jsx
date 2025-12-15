@@ -51,6 +51,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const isAdmin = user?.role === 'admin' || user?.is_admin;
   const redactedFields = caseData.redacted_fields || [];
 
+  const isFieldRedacted = (field) => redactedFields.includes(field);
+
 
 
   const [editedCase, setEditedCase] = useState({
