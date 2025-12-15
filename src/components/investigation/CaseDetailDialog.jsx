@@ -53,7 +53,22 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
   const isFieldRedacted = (field) => redactedFields.includes(field);
 
-
+  // Helper to render sensitive fields with redaction logic
+  const RenderSensitiveField = ({ field, value, icon: Icon, label }) => {
+    // Legacy support for parts of the component that haven't been migrated to SensitiveField yet
+    // or if we need inline rendering
+    return (
+        <SensitiveField 
+            field={field} 
+            value={value} 
+            icon={Icon} 
+            label={label} 
+            caseData={caseData} 
+            onUpdate={onUpdate} 
+            isAdmin={isAdmin} 
+        />
+    );
+  };
 
   const [editedCase, setEditedCase] = useState({
     // Standardized Fields (ClientCase Schema)
