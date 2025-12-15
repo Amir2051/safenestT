@@ -146,6 +146,7 @@ export default function MyCases() {
     rug_pull: { color: 'text-pink-400', label: '🩷 Rug Pull' },
     romance_scam: { color: 'text-purple-400', label: '🟣 Romance Scam' },
     investment_scam: { color: 'text-cyan-400', label: '🔵 Investment Scam' },
+    scam_report: { color: 'text-yellow-400', label: '⚠️ Scam Report' },
     other: { color: 'text-gray-300', label: '⚪ Other' }
   };
 
