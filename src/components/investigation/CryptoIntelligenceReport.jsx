@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
   Loader2, Printer, RefreshCw, Shield, FileText, Lock, Unlock, 
-  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle, Network, Download
+  Eye, EyeOff, Edit2, Save, AlertTriangle, Download
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -21,11 +21,7 @@ import {
 
 export default function CryptoIntelligenceReport({ caseData }) {
   const [reportData, setReportData] = useState(null);
-  const [linkedCases, setLinkedCases] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [showLinkSearch, setShowLinkSearch] = useState(false);
   
   // Admin Controls State
   const [redactedFields, setRedactedFields] = useState(new Set());
@@ -37,7 +33,7 @@ export default function CryptoIntelligenceReport({ caseData }) {
     mutationFn: async () => {
       const response = await base44.functions.invoke('generateCryptoReportData', {
         caseId: caseData.id,
-        linkedCaseIds: linkedCases.map(c => c.id)
+        linkedCaseIds: []
       });
       if (response.data.error) throw new Error(response.data.error);
       return response.data.data;
@@ -52,81 +48,7 @@ export default function CryptoIntelligenceReport({ caseData }) {
   // Initial fetch
   useEffect(() => {
     fetchReportData.mutate();
-  }, [linkedCases.length]); // Refetch when linked cases change
-
-  const searchCases = async (term) => {
-    if (!term || term.length < 3) return;
-    try {
-        const [inv, myCases, clientCases, fraudCases] = await Promise.all([
-            base44.entities.InvestigationCase.list(),
-            base44.entities.MyCase.list(),
-            base44.entities.ClientCase ? base44.entities.ClientCase.list() : [],
-            base44.entities.FraudCase ? base44.entities.FraudCase.list() : []
-        ]);
-        
-        const all = [...inv, ...myCases, ...clientCases, ...fraudCases];
-        
-        const lowerTerm = term.toLowerCase();
-        const matches = all.filter(c => {
-            if (c.id === caseData.id) return false;
-            
-            const title = (c.case_title || c.title || '').toLowerCase();
-            const number = (c.case_number || '').toLowerCase();
-            const victim = (c.victim_name || c.client_name || '').toLowerCase();
-            
-            return title.includes(lowerTerm) || number.includes(lowerTerm) || victim.includes(lowerTerm);
-        }).slice(0, 10);
-        
-        setSearchResults(matches);
-    } catch (e) {
-        console.error("Error searching cases:", e);
-    }
-  };
-
-  const importConnections = async () => {
-    const toastId = toast.loading("Analyzing and importing connections...");
-    try {
-        const res = await base44.functions.invoke('suggestCaseLinks', { 
-            caseId: caseData.id, 
-            entityName: caseData._entityName || 'InvestigationCase'
-        });
-        
-        if (res.data.success) {
-            const newCases = [];
-            const existingIds = new Set([caseData.id, ...linkedCases.map(c => c.id)]);
-            
-            const extract = (list) => {
-                if (!list) return;
-                list.forEach(item => {
-                    if (!existingIds.has(item.case.id)) {
-                        newCases.push({
-                            id: item.case.id,
-                            case_number: item.case.case_number,
-                            case_title: item.case.title,
-                        });
-                        existingIds.add(item.case.id);
-                    }
-                });
-            };
-
-            extract(res.data.confirmed);
-            extract(res.data.suggested);
-            
-            if (newCases.length > 0) {
-                setLinkedCases(prev => [...prev, ...newCases]);
-                toast.success(`Imported ${newCases.length} connected cases`, { id: toastId });
-                setShowLinkSearch(false);
-            } else {
-                toast.info("No new connections found to import", { id: toastId });
-            }
-        } else {
-            toast.error("Failed to fetch connections", { id: toastId });
-        }
-    } catch (e) {
-        console.error(e);
-        toast.error("Error importing connections", { id: toastId });
-    }
-  };
+  }, []);
 
   const handleDownloadReport = async () => {
     const toastId = toast.loading("Generating Full Case Report...");
@@ -205,53 +127,6 @@ export default function CryptoIntelligenceReport({ caseData }) {
           <p className="text-gray-400 text-sm">Aggregated Intelligence & Forensics</p>
         </div>
         <div className="flex gap-2">
-           <div className="relative">
-              {showLinkSearch ? (
-                  <div className="absolute right-0 top-0 w-64 bg-[#1a2332] border border-gray-700 rounded-lg shadow-xl z-50 p-2">
-                      <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs text-gray-400">Add Linked Case</span>
-                          <button onClick={() => setShowLinkSearch(false)}><X className="w-3 h-3 text-gray-400" /></button>
-                      </div>
-                      
-                      <div className="mb-3 pb-2 border-b border-gray-700">
-                          <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="w-full justify-start text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30 px-2 h-8"
-                              onClick={importConnections}
-                          >
-                              <Network className="w-3 h-3 mr-2" />
-                              Import All Connections
-                          </Button>
-                      </div>
-
-                      <Input 
-                          placeholder="Search manual case..." 
-                          className="h-8 text-xs bg-black/20 mb-2"
-                          onChange={(e) => searchCases(e.target.value)}
-                          autoFocus
-                      />
-                      <div className="max-h-40 overflow-y-auto space-y-1">
-                          {searchResults.map(c => (
-                              <div 
-                                  key={c.id} 
-                                  className="p-2 hover:bg-white/5 cursor-pointer rounded text-xs text-gray-300 truncate"
-                                  onClick={() => {
-                                      if(!linkedCases.find(l => l.id === c.id)) setLinkedCases([...linkedCases, c]);
-                                      setShowLinkSearch(false);
-                                  }}
-                              >
-                                  {c.case_number} - {c.case_title}
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              ) : (
-                  <Button variant="outline" onClick={() => setShowLinkSearch(true)} className="border-dashed border-gray-600 text-gray-400">
-                      <LinkIcon className="w-4 h-4 mr-2" /> Link Case
-                  </Button>
-              )}
-           </div>
           <Button variant="outline" onClick={() => fetchReportData.mutate()} disabled={fetchReportData.isPending}>
             <RefreshCw className={`w-4 h-4 mr-2 ${fetchReportData.isPending ? 'animate-spin' : ''}`} />
             Refresh Data
@@ -265,20 +140,6 @@ export default function CryptoIntelligenceReport({ caseData }) {
           </Button>
         </div>
       </div>
-
-      {/* Linked Cases Badges */}
-      {linkedCases.length > 0 && (
-          <div className="flex flex-wrap gap-2 print:hidden">
-              {linkedCases.map(c => (
-                  <Badge key={c.id} variant="secondary" className="bg-[#1a2332] text-gray-300 border border-gray-700 pl-2 pr-1 py-1">
-                      {c.case_number}
-                      <button onClick={() => setLinkedCases(linkedCases.filter(l => l.id !== c.id))} className="ml-2 hover:text-red-400">
-                          <X className="w-3 h-3" />
-                      </button>
-                  </Badge>
-              ))}
-          </div>
-      )}
 
       {/* REPORT CONTENT */}
       {reportData && (
@@ -294,9 +155,6 @@ export default function CryptoIntelligenceReport({ caseData }) {
                 <div className="text-right">
                     <p className="font-mono text-sm text-slate-500">Date: {new Date().toLocaleDateString()}</p>
                     <p className="font-mono text-lg font-bold text-slate-800">Case ID: {reportData.meta.primary_case.number || caseData.case_number}</p>
-                    {linkedCases.length > 0 && (
-                        <p className="text-xs text-blue-600 font-semibold mt-1">Includes {linkedCases.length} Linked Cases</p>
-                    )}
                 </div>
             </div>
 
