@@ -23,7 +23,7 @@ import FraudReportsManager from "../components/admin/FraudReportsManager.jsx";
 import AdminGate from "../components/admin/AdminGate.jsx";
 import MasterKeyManagement from "../components/admin/MasterKeyManagement.jsx";
 import AccessHistory from "../components/admin/AccessHistory.jsx";
-import TeamPerformanceWidget from "../components/admin/TeamPerformanceWidget.js";
+import TeamPerformanceWidget from "../components/admin/TeamPerformanceWidget.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
