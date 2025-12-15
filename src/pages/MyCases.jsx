@@ -50,12 +50,23 @@ export default function MyCases() {
     enabled: !!user
   });
 
+  // Fetch My Reported Scams
+  const { data: myScams = [], isLoading: loadingMyScams } = useQuery({
+    queryKey: ['my-scams'],
+    queryFn: async () => {
+        if (!user) return [];
+        return base44.entities.ScamDatabase.filter({ created_by: user.email }, '-created_date', 1000);
+    },
+    enabled: !!user
+  });
+
   const handleCaseUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['my-scams'] });
   };
 
   // Normalize cases for display
-  const allCases = myCases.map(c => ({
+  const normalizedCases = myCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -64,15 +75,34 @@ export default function MyCases() {
       currency: c.cryptocurrency || 'USD',
       created_date: c.created_date,
       type: 'client',
-      _entityName: 'MyCase', // Correct entity name
+      _entityName: 'MyCase',
       fraud_type: c.issue_type,
       description: c.description,
       blockchain: c.blockchain,
       scammer_wallet: c.scammer_wallet,
       admin_status: c.status
-  })).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  }));
 
-  const isLoading = loadingMyCases;
+  const normalizedScams = myScams.map(s => ({
+      ...s,
+      id: s.id, // Use original ID but note it's a scam report
+      case_title: `Report: ${s.identifier}`,
+      status: s.status === 'active' ? 'Reported' : s.status,
+      amount: s.total_stolen_usd,
+      currency: 'USD',
+      created_date: s.created_date,
+      type: 'report',
+      _entityName: 'ScamDatabase',
+      fraud_type: 'scam_report',
+      description: s.scam_description,
+      blockchain: s.blockchain,
+      scammer_wallet: s.scam_type === 'wallet' ? s.identifier : null,
+      admin_status: s.status
+  }));
+
+  const allCases = [...normalizedCases, ...normalizedScams].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+
+  const isLoading = loadingMyCases || loadingMyScams;
 
   // Using CaseDetailDialog instead
 
