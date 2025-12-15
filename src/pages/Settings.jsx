@@ -20,8 +20,12 @@ export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    full_name: '',
     username: '',
     phone: '',
+    country: '',
+    wallet_address: '',
+    profile_image: '',
     monitored_emails: [],
     vpn_enabled: false,
     two_factor_enabled: false,
@@ -33,8 +37,12 @@ export default function Settings() {
     base44.auth.me().then(userData => {
       setUser(userData);
       setFormData({
-        username: userData.username || userData.full_name || '',
+        full_name: userData.full_name || '',
+        username: userData.username || '',
         phone: userData.phone || '',
+        country: userData.country || '',
+        wallet_address: userData.wallet_address || '',
+        profile_image: userData.profile_image || '',
         monitored_emails: userData.monitored_emails || [],
         vpn_enabled: userData.vpn_enabled || false,
         two_factor_enabled: userData.two_factor_enabled || false,
@@ -119,8 +127,12 @@ export default function Settings() {
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       setFormData({
-        username: updatedUser.username || updatedUser.full_name || '',
+        full_name: updatedUser.full_name || '',
+        username: updatedUser.username || '',
         phone: updatedUser.phone || '',
+        country: updatedUser.country || '',
+        wallet_address: updatedUser.wallet_address || '',
+        profile_image: updatedUser.profile_image || '',
         monitored_emails: updatedUser.monitored_emails || [],
         vpn_enabled: updatedUser.vpn_enabled || false,
         two_factor_enabled: updatedUser.two_factor_enabled || false,
@@ -140,6 +152,10 @@ export default function Settings() {
   const handleSave = async () => {
     if (!formData.username || formData.username.trim() === '') {
       toast.error('Please enter a username');
+      return;
+    }
+    if (!formData.full_name || formData.full_name.trim() === '') {
+      toast.error('Please enter your full name');
       return;
     }
     
@@ -242,15 +258,25 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label className="text-white font-semibold mb-2 block">Username *</Label>
-                <Input
-                  value={formData.username}
-                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="Enter your username"
-                />
-                <p className="text-xs text-gray-400 mt-1">This will be your display name</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white font-semibold mb-2 block">Full Name *</Label>
+                  <Input
+                    value={formData.full_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                    className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white font-semibold mb-2 block">Username *</Label>
+                  <Input
+                    value={formData.username}
+                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                    className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    placeholder="Enter your username"
+                  />
+                </div>
               </div>
               
               <div>
@@ -263,15 +289,46 @@ export default function Settings() {
                 <p className="text-xs text-gray-400 mt-1">Email address cannot be changed</p>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white font-semibold mb-2 block">Phone Number</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white font-semibold mb-2 block">Country</Label>
+                  <Input
+                    value={formData.country}
+                    onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                    className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    placeholder="Enter your country"
+                  />
+                </div>
+              </div>
+
               <div>
-                <Label className="text-white font-semibold mb-2 block">Phone Number</Label>
+                <Label className="text-white font-semibold mb-2 block">Personal Wallet Address (Optional)</Label>
                 <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="+1 (555) 123-4567"
+                  value={formData.wallet_address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, wallet_address: e.target.value }))}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  placeholder="0x..."
                 />
-                <p className="text-xs text-gray-400 mt-1">Used for account recovery and alerts</p>
+                <p className="text-xs text-gray-400 mt-1">Used for easier case creation and monitoring</p>
+              </div>
+
+              <div>
+                <Label className="text-white font-semibold mb-2 block">Profile Image URL</Label>
+                <Input
+                  value={formData.profile_image}
+                  onChange={(e) => setFormData(prev => ({ ...prev, profile_image: e.target.value }))}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  placeholder="https://..."
+                />
               </div>
 
               <div>

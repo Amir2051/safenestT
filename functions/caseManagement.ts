@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
             const blockchain = scammerNet; // Prioritize scammer network for investigation
 
-            // 2. Automatic Wallet Analysis
+            // 2. Automatic Wallet Analysis (Scammer)
             let walletAnalysis = {};
             let aiAnalysisSummary = "Pending analysis...";
             try {
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
                     data: { 
                         wallet_address: scammer_wallet, 
                         blockchain,
-                        fraud_case_id: null // We don't have ID yet, will update later or just get stats
+                        fraud_case_id: null 
                     }
                 });
                 
@@ -93,10 +93,22 @@ Deno.serve(async (req) => {
             // 3. Case Linking (Intelligence)
             let linkedCaseIds = [];
             try {
-                const existingCases = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
-                linkedCaseIds = existingCases.map(c => c.id);
+                // Link by Scammer Wallet
+                const existingCasesScammer = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
+                existingCasesScammer.forEach(c => {
+                    if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
+                });
+
+                // Link by Victim Wallet (Repeat Victim or Organized Ring)
+                if (victim_wallet) {
+                    const existingCasesVictim = await base44.asServiceRole.entities.MyCase.filter({ victim_wallet: victim_wallet });
+                    existingCasesVictim.forEach(c => {
+                        if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
+                    });
+                }
+
                 if (linkedCaseIds.length > 0) {
-                    aiAnalysisSummary += ` LINKED: This wallet is involved in ${linkedCaseIds.length} other reported cases.`;
+                    aiAnalysisSummary += ` LINKED: ${linkedCaseIds.length} related cases found via wallet matching.`;
                 }
             } catch(e) {}
 

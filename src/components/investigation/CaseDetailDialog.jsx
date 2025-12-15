@@ -552,6 +552,16 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           value={caseData.phone_number || caseData.victim_phone || ''} 
                           icon={Phone}
                       />
+                      {caseData.victim_wallet && (
+                          <div className="pt-1 mt-1 border-t border-cyan-500/10">
+                              <RenderSensitiveField 
+                                  field="victim_wallet" 
+                                  value={caseData.victim_wallet} 
+                                  label="Victim Wallet"
+                                  icon={Shield}
+                              />
+                          </div>
+                      )}
                   </div>
                 </div>
 
