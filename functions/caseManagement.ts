@@ -59,17 +59,18 @@ Deno.serve(async (req) => {
 
             const blockchain = scammerNet; // Prioritize scammer network for investigation
 
-            // 2. Automatic Wallet Analysis (Scammer)
+            // 2. Automatic Wallet Analysis (Scammer & Victim)
             let walletAnalysis = {};
             let aiAnalysisSummary = "Pending analysis...";
             try {
-                // Call internal intelligence function
+                // Track Scammer Wallet
                 const intelRes = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
                     action: 'track-wallet',
                     data: { 
                         wallet_address: scammer_wallet, 
                         blockchain,
-                        fraud_case_id: null 
+                        fraud_case_id: null,
+                        wallet_type: 'scammer'
                     }
                 });
                 
@@ -83,8 +84,23 @@ Deno.serve(async (req) => {
                         total_transactions: intel.transactions?.length,
                         analyzed_at: new Date().toISOString()
                     };
-                    aiAnalysisSummary = `High Risk Wallet Detected (Score: ${walletAnalysis.risk_score}/100). Indicators: ${walletAnalysis.indicators.join(', ')}. Balance: ${walletAnalysis.balance} ${blockchain.toUpperCase()}.`;
+                    aiAnalysisSummary = `High Risk Scammer Wallet (Score: ${walletAnalysis.risk_score}/100). Indicators: ${walletAnalysis.indicators.join(', ')}.`;
                 }
+
+                // Track Victim Wallet
+                if (victim_wallet) {
+                    const victimBlockchain = validateWallet(victim_wallet) || 'ethereum';
+                    await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+                        action: 'track-wallet',
+                        data: { 
+                            wallet_address: victim_wallet, 
+                            blockchain: victimBlockchain,
+                            fraud_case_id: null, // Will link later or via linking logic
+                            wallet_type: 'victim'
+                        }
+                    });
+                }
+
             } catch (e) {
                 console.error("Wallet analysis failed:", e);
                 aiAnalysisSummary = "Automated analysis failed. Manual review required.";
@@ -155,6 +171,18 @@ Deno.serve(async (req) => {
 
             // TARGET ENTITY: MyCase
             const newCase = await base44.entities.MyCase.create(caseData);
+
+            // Update Wallet Monitors with Case ID
+            try {
+                const monitors = await base44.asServiceRole.entities.WalletMonitor.filter({ 
+                    wallet_address: { $in: [scammer_wallet, victim_wallet].filter(Boolean) } 
+                });
+                for (const m of monitors) {
+                    if (!m.fraud_case_id) {
+                        await base44.asServiceRole.entities.WalletMonitor.update(m.id, { fraud_case_id: newCase.id });
+                    }
+                }
+            } catch(e) { console.error("Failed to link monitors", e); }
 
             // AUTOMATION: High Priority Notifications
             if (caseData.priority === 'critical' || caseData.priority === 'high' || caseData.amount_lost >= 50000) {
