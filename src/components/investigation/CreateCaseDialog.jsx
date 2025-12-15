@@ -14,13 +14,15 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [autofillText, setAutofillText] = useState("");
   const [formData, setFormData] = useState({
-    case_title: "",
+    case_title: "crypto_theft",
     victim_name: "",
     victim_email: "",
     victim_phone: "",
     fraud_type: "crypto_theft",
+    status: "Investigating",
     amount_stolen_usd: "",
-    cryptocurrency: "",
+    recovery_amount: "0",
+    cryptocurrency: "USD",
     blockchain: "",
     victim_wallet: "",
     scammer_wallet: "",
@@ -149,6 +151,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
           // Case Details
           issue_type: formData.fraud_type,
           amount_lost: parseFloat(formData.amount_stolen_usd) || 0,
+          recovery_amount: parseFloat(formData.recovery_amount) || 0,
           cryptocurrency: formData.cryptocurrency,
           blockchain: formData.blockchain, // Auto-detected
           transaction_date: formData.incident_date,
@@ -157,7 +160,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
           priority: formData.priority,
           
           // Meta
-          status: "Pending",
+          status: formData.status,
           created_by: user.email,
           created_by_email: user.email,
           created_by_name: user.full_name,
@@ -229,7 +232,27 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
             </div>
 
             <div>
-              <Label className="text-white">Victim Name *</Label>
+              <Label className="text-white">Status *</Label>
+              <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a2332] border-cyan-500/20">
+                  <SelectItem value="New">New</SelectItem>
+                  <SelectItem value="Investigating">Investigating</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2 border-t border-gray-700 pt-4 mt-2">
+              <h3 className="text-cyan-400 font-semibold mb-3">Client / Victim Information</h3>
+            </div>
+
+            <div>
+              <Label className="text-white">Client Name *</Label>
               <Input
                 value={formData.victim_name}
                 onChange={(e) => setFormData({...formData, victim_name: e.target.value})}
@@ -239,7 +262,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
             </div>
 
             <div>
-              <Label className="text-white">Victim Email</Label>
+              <Label className="text-white">Contact Email</Label>
               <Input
                 type="email"
                 value={formData.victim_email}
@@ -249,12 +272,31 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
             </div>
 
             <div>
-              <Label className="text-white">Victim Phone</Label>
+              <Label className="text-white">Contact Phone</Label>
               <Input
                 value={formData.victim_phone}
                 onChange={(e) => setFormData({...formData, victim_phone: e.target.value})}
                 className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
               />
+            </div>
+
+            <div>
+              <Label className="text-white">Urgency</Label>
+              <Select value={formData.priority} onValueChange={(val) => setFormData({...formData, priority: val})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/20 text-white mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a2332] border-cyan-500/20">
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2 border-t border-gray-700 pt-4 mt-2">
+              <h3 className="text-cyan-400 font-semibold mb-3">Financial Information</h3>
             </div>
 
             <div>
@@ -289,7 +331,16 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
               />
             </div>
 
-
+            <div>
+              <Label className="text-white">Recovery Amount (USD)</Label>
+              <Input
+                type="number"
+                value={formData.recovery_amount}
+                onChange={(e) => setFormData({...formData, recovery_amount: e.target.value})}
+                className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
+                placeholder="0.00"
+              />
+            </div>
 
             <div>
               <Label className="text-white">Cryptocurrency</Label>
@@ -297,7 +348,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
                 value={formData.cryptocurrency}
                 onChange={(e) => setFormData({...formData, cryptocurrency: e.target.value})}
                 className="bg-[#0f1419] border-cyan-500/20 text-white mt-2"
-                placeholder="BTC, ETH, etc."
+                placeholder="USD"
               />
             </div>
 
@@ -357,7 +408,7 @@ export default function CreateCaseDialog({ onClose, onSuccess }) {
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg mt-4">
               <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
                   <FileText className="w-4 h-4" /> 
-                  Mandatory Wallet Evidence
+                  Wallet & Blockchain
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
