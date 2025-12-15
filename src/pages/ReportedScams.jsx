@@ -14,27 +14,14 @@ export default function ReportedScams() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCase, setSelectedCase] = useState(null);
 
-  const { data: scamDatabase = [], isLoading } = useQuery({
-    queryKey: ['scam-database'],
-    queryFn: () => base44.entities.ScamDatabase.list('-created_date', 200),
+  const { data: uniqueScams = [], isLoading } = useQuery({
+    queryKey: ['public-scams-unified'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getPublicScams');
+      return res.data.data || [];
+    },
     initialData: [],
   });
-
-  // Only show ScamDatabase entries on Reported Scams page
-  const uniqueScams = scamDatabase.map(s => ({
-    id: s.id,
-    type: 'scam',
-    identifier: s.identifier,
-    scam_type: s.scam_type,
-    blockchain: s.blockchain,
-    risk_level: s.risk_level || 'medium',
-    description: s.scam_description,
-    victim_count: s.victim_count || 1,
-    total_stolen_usd: s.total_stolen_usd || 0,
-    first_reported: s.first_reported || s.created_date,
-    verified: s.verified,
-    status: s.status
-  }));
 
   const filteredScams = uniqueScams.filter(scam => 
     scam.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
