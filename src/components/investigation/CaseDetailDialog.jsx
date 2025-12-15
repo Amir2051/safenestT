@@ -508,6 +508,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="legacy-evidence" className="text-gray-500">Legacy Files</TabsTrigger>
               <TabsTrigger value="timeline">Timeline & Updates</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="tasks" className="data-[state=active]:bg-pink-500/20 data-[state=active]:text-pink-400">
+                <CheckCircle className="w-3 h-3 mr-1" />Tasks
+              </TabsTrigger>
               <TabsTrigger value="tracking">Wallet Tracking</TabsTrigger>
               <TabsTrigger value="technical-tools" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
                 <Shield className="w-3 h-3 mr-1" />IP Tracker
@@ -1437,6 +1440,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="notes" className="space-y-4">
               <InvestigationNotes caseId={caseData.id} caseData={caseData} onUpdate={onUpdate} />
+            </TabsContent>
+
+            <TabsContent value="tasks" className="space-y-4">
+              <CaseTaskManager caseId={caseData.id} user={user} />
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">

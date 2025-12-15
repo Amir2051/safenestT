@@ -268,6 +268,29 @@ Deno.serve(async (req) => {
                         metadata: JSON.stringify({ timestamp: new Date().toISOString() })
                     }).catch(e => console.error("Log failed:", e));
 
+                    // AUTOMATION 1: Trigger Workflow Tasks for 'Investigating'
+                    if (updates.status.toLowerCase() === 'investigating' && existing.status.toLowerCase() !== 'investigating') {
+                        const tasks = [
+                            { title: "Initial Victim Contact", description: "Reach out to the victim to confirm details and gather additional evidence.", priority: "high" },
+                            { title: "Trace Funds on Blockchain", description: "Use tracking tools to follow the stolen funds to a centralized exchange.", priority: "critical" },
+                            { title: "Check for Linked Cases", description: "Search database for similar wallet addresses or scammer profiles.", priority: "medium" },
+                            { title: "File Preliminary Report", description: "Draft the initial investigation findings.", priority: "medium" }
+                        ];
+
+                        for (const task of tasks) {
+                            await base44.asServiceRole.entities.CaseTask.create({
+                                case_id: id,
+                                title: task.title,
+                                description: task.description,
+                                assigned_to: existing.assigned_to || user.email, // Assign to case owner or current user
+                                assigned_by: 'system_automation',
+                                status: 'todo',
+                                priority: task.priority,
+                                due_date: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 48 hours due
+                            });
+                        }
+                    }
+
                     // AUTOMATION 2: Email Notification on Status Change
                     const recipientEmail = existing.client_email || existing.created_by_email;
                     if (recipientEmail) {

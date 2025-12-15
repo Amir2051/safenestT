@@ -23,6 +23,7 @@ import FraudReportsManager from "../components/admin/FraudReportsManager.jsx";
 import AdminGate from "../components/admin/AdminGate.jsx";
 import MasterKeyManagement from "../components/admin/MasterKeyManagement.jsx";
 import AccessHistory from "../components/admin/AccessHistory.jsx";
+import TeamPerformanceWidget from "../components/admin/TeamPerformanceWidget.js";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -212,6 +213,10 @@ export default function AdminDashboard() {
             <Lock className="w-4 h-4 mr-2" />
             Admin Security
           </TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="w-4 h-4 mr-2" />
+            Team Performance
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="fraud" className="mt-6">
@@ -243,6 +248,10 @@ export default function AdminDashboard() {
             <MasterKeyManagement />
             <AccessHistory />
           </div>
+        </TabsContent>
+
+        <TabsContent value="team" className="mt-6">
+          <TeamPerformanceWidget specialists={stats?.specialists || []} />
         </TabsContent>
       </Tabs>
     </div>

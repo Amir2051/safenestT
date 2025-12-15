@@ -58,21 +58,43 @@ Deno.serve(async (req) => {
             fraudByMonth[month] = (fraudByMonth[month] || 0) + 1;
         });
 
-        // --- 4. Specialist Workload ---
+        // --- 4. Specialist Workload & Performance ---
         const specialistLoad = {};
         cases.forEach(c => {
             if (c.assigned_to) {
                 const agent = c.assigned_to;
                 if (!specialistLoad[agent]) {
-                    specialistLoad[agent] = { total: 0, active: 0, resolved: 0 };
+                    specialistLoad[agent] = { total: 0, active: 0, resolved: 0, totalResolutionTimeMs: 0, resolvedCountForTime: 0 };
                 }
                 specialistLoad[agent].total++;
+                
                 if (closedStatuses.includes(c.status)) {
                     specialistLoad[agent].resolved++;
+                    
+                    // Calculate individual resolution time
+                    if (c.updated_date && c.created_date) {
+                        const start = new Date(c.created_date);
+                        const end = new Date(c.updated_date);
+                        const diff = end - start;
+                        if (diff > 0) {
+                            specialistLoad[agent].totalResolutionTimeMs += diff;
+                            specialistLoad[agent].resolvedCountForTime++;
+                        }
+                    }
                 } else {
                     specialistLoad[agent].active++;
                 }
             }
+        });
+
+        // Calculate averages
+        Object.keys(specialistLoad).forEach(agent => {
+            const data = specialistLoad[agent];
+            data.avgResolutionHours = data.resolvedCountForTime > 0 
+                ? (data.totalResolutionTimeMs / data.resolvedCountForTime / (1000 * 60 * 60)).toFixed(1) 
+                : 0;
+            delete data.totalResolutionTimeMs; // Clean up intermediate data
+            delete data.resolvedCountForTime;
         });
 
         // --- 5. Automation Success Rates ---
