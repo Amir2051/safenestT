@@ -119,6 +119,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
     
     // Common Fields
+    victim_wallet: caseData.victim_wallet || '',
     cryptocurrency: caseData.cryptocurrency || '',
     blockchain: caseData.blockchain || '',
     description: caseData.description || '',
@@ -223,6 +224,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         urgency: editedCase.urgency,
         
         // Crypto/Scam details
+        victim_wallet: editedCase.victim_wallet,
         cryptocurrency: editedCase.cryptocurrency,
         blockchain: editedCase.blockchain,
         scammer_wallet: editedCase.scammer_wallet,
@@ -823,13 +825,22 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
               {/* Wallet Info */}
               <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-cyan-400" />
-                  Wallet & Blockchain
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-300 mb-2 block">Blockchain</Label>
+              <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-cyan-400" />
+                Wallet & Blockchain
+              </h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label className="text-gray-300 mb-2 block">Victim Wallet Address</Label>
+                  <Input
+                    value={editedCase.victim_wallet}
+                    onChange={(e) => setEditedCase({...editedCase, victim_wallet: e.target.value})}
+                    className="bg-[#1a2332] border-cyan-500/30 text-white font-mono text-sm"
+                    placeholder="Enter victim's wallet address"
+                  />
+                </div>
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Blockchain</Label>
                     <Select 
                       value={editedCase.blockchain || ''} 
                       onValueChange={(v) => setEditedCase({...editedCase, blockchain: v})}
