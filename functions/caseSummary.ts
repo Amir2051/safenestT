@@ -21,8 +21,11 @@ export default async function handler(req) {
         return new Response(JSON.stringify({ error: 'Case ID required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // 1. Get current case
+    // 1. Get current case and extracted items
     let currentCase = null;
+    const evidenceItems = await base44.entities.CaseEvidenceItem.filter({ case_id: caseId });
+    const extractedTxCount = evidenceItems.filter(i => i.category === 'blockchain_transaction').length;
+    const extractedWalletCount = evidenceItems.filter(i => i.category === 'wallet_address').length;
     let foundEntity = entityName;
 
     const entitiesToTry = entityName ? [entityName] : ['MyCase', 'InvestigationCase', 'ClientCase', 'FraudCase'];
@@ -64,6 +67,7 @@ export default async function handler(req) {
     Key Evidence:
     Files: ${evidenceList || 'None'}
     Monitored Wallets: ${monitoredWallets || 'None'}
+    Extracted Data: ${extractedTxCount} transactions, ${extractedWalletCount} wallets identified from uploads.
     
     Wallet Intelligence Analysis:
     ${currentCase.wallet_analysis ? JSON.stringify(currentCase.wallet_analysis) : 'No automated wallet analysis available yet.'}

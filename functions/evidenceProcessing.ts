@@ -34,19 +34,54 @@ function extractTransactionsStandard(content, fileType) {
     const hashes = [...new Set(textContent.match(TX_HASH_REGEX) || [])];
     const addresses = [...new Set(textContent.match(ADDRESS_REGEX) || [])];
     
-    // Attempt to structure if CSV/JSON
+    // Attempt to structure if CSV
     if (fileType.includes('csv') || fileType.includes('spreadsheet')) {
-        // Handled in main flow via PapaParse usually, but if here:
-        // Already parsed? No, content is text.
-        // We'll trust the main flow to pass parsed data if it's CSV.
+        try {
+            const parsed = Papa.parse(textContent, { header: true, skipEmptyLines: true });
+            if (parsed.data && parsed.data.length > 0) {
+                parsed.data.forEach(row => {
+                    // Try to map common headers
+                    const hash = row['Transaction Hash'] || row['TxHash'] || row['hash'] || row['TXID'] || row['id'];
+                    const from = row['From'] || row['from'] || row['Sender'] || row['sender'];
+                    const to = row['To'] || row['to'] || row['Recipient'] || row['receiver'];
+                    const amount = row['Value'] || row['Amount'] || row['amount'] || row['value'] || row['quantity'];
+                    const token = row['Token'] || row['Asset'] || row['Symbol'] || row['currency'];
+                    const date = row['DateTime'] || row['Date'] || row['Timestamp'] || row['time'];
+
+                    if (hash || (from && to && amount)) {
+                        txs.push({
+                            hash: hash || `ext-${Math.random().toString(36).substring(7)}`,
+                            from: normalizeAddress(from),
+                            to: normalizeAddress(to),
+                            amount: amount,
+                            token: token || 'ETH',
+                            timestamp: date || new Date().toISOString(),
+                            status: 'Extracted'
+                        });
+                        
+                        if (hash) hashes.push(hash);
+                        if (from) addresses.push(from);
+                        if (to) addresses.push(to);
+                    }
+                });
+                // If we successfully parsed rows, return them
+                if (txs.length > 0) {
+                    return { transactions: txs, addresses: [...new Set(addresses)], hashes: [...new Set(hashes)] };
+                }
+            }
+        } catch (e) {
+            console.warn("CSV parsing fallback failed, using regex");
+        }
     }
     
-    // Basic fallback objects
+    // Fallback: Basic regex objects
     hashes.forEach(h => {
         txs.push({
             hash: h,
             from: addresses[0] || null, // Best guess if unstructured
             to: addresses[1] || null,
+            amount: 0,
+            token: 'ETH',
             timestamp: new Date().toISOString(),
             status: 'Extracted'
         });

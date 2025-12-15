@@ -38,6 +38,11 @@ Deno.serve(async (req) => {
     // 3. Fetch Evidence Files (Primary)
     const primaryEvidence = await base44.entities.CaseEvidenceFile.filter({ case_id: caseId });
 
+    // 3b. Fetch Extracted Evidence Items (Transactions & Wallets)
+    const evidenceItems = await base44.entities.CaseEvidenceItem.filter({ case_id: caseId });
+    const extractedTxs = evidenceItems.filter(i => i.category === 'blockchain_transaction');
+    const extractedWallets = evidenceItems.filter(i => i.category === 'wallet_address');
+
     // 4. Aggregate Data
     const aggregatedWallets = new Set();
     const aggregatedTx = new Set();
@@ -88,6 +93,12 @@ Deno.serve(async (req) => {
     
     Evidence Analysis:
     ${evidenceSummaries}
+
+    Extracted Transactions (${extractedTxs.length}):
+    ${extractedTxs.map(t => `- ${t.data.timestamp}: ${t.data.amount} ${t.data.token} from ${t.data.from_address} to ${t.data.to_address} (Hash: ${t.data.transaction_hash})`).join('\n').slice(0, 4000)}
+
+    Extracted Wallets (${extractedWallets.length}):
+    ${extractedWallets.map(w => `- ${w.data.wallet_address} (${w.data.role})`).join('\n')}
     
     Suspect Info:
     ${JSON.stringify(suspectInfo)}
