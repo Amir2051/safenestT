@@ -600,6 +600,13 @@ async function monitorWallets(base44) {
     monitoring_status: 'active'
   });
 
+  // Cache known scammer wallets for quick lookup
+  const knownScammers = new Set(
+      monitors
+          .filter(m => m.wallet_type === 'scammer' || m.wallet_type === 'mixer')
+          .map(m => m.wallet_address.toLowerCase())
+  );
+
   const alerts = [];
   let totalNewTx = 0;
 
@@ -656,10 +663,13 @@ async function monitorWallets(base44) {
           let alertSeverity = 'medium';
           let alertTitle = 'New Transaction Detected';
 
-          if (toType === 'exchange' || toType === 'mixer') {
+          if (knownScammers.has(counterparty.toLowerCase())) {
+              alertSeverity = 'critical';
+              alertTitle = 'CRITICAL: Interaction with Known Scammer/Mixer';
+          } else if (toType === 'exchange' || toType === 'mixer') {
               alertSeverity = 'critical';
               alertTitle = `Critical: Funds Moved to ${toType === 'exchange' ? 'Exchange' : 'Mixer'}`;
-          } else if (parseFloat(tx.value) > 1000) { // Arbitrary large value threshold in native token units? careful
+          } else if (parseFloat(tx.value) > 1000) { 
               alertSeverity = 'high';
               alertTitle = 'Large Value Transfer Detected';
           }
