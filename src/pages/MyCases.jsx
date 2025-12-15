@@ -48,7 +48,9 @@ export default function MyCases() {
             $or: [
                 { created_by: user.email }, 
                 { created_by_email: user.email },
-                { client_email: user.email }
+                { created_by_email: user.email.toLowerCase() },
+                { client_email: user.email },
+                { client_email: user.email.toLowerCase() }
             ] 
         }, '-created_date', 1000);
       }
