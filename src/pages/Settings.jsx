@@ -62,7 +62,16 @@ export default function Settings() {
         updateData.onboarding_completed = true;
       }
       
-      const result = await base44.auth.updateMe(updateData);
+      // Use Backend Function to ensure DB Write and bypass potential sync overwrites
+      const response = await base44.functions.invoke('updateUserProfile', {
+        updates: updateData
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Update failed');
+      }
+
+      const result = response.data.user;
       
       const changes = [];
       if (user && data.vpn_enabled !== user.vpn_enabled) { // Added user check

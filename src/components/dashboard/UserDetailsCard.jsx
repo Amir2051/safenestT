@@ -25,14 +25,20 @@ export default function UserDetailsCard({ user, onUpdate }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await base44.auth.updateMe({
-        full_name: formData.full_name,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        country: formData.country
+      // Use explicit backend function for reliable updates
+      const res = await base44.functions.invoke('updateUserProfile', {
+        updates: {
+            full_name: formData.full_name,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            country: formData.country
+        }
       });
+
+      if (!res.data.success) throw new Error(res.data.error);
+
       toast.success('Profile updated successfully!');
       setEditing(false);
       if (onUpdate) onUpdate();

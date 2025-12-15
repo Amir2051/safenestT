@@ -135,11 +135,15 @@ export default function AdminUserApprovals() {
     }
   });
 
-  // Update User Mutation (for Employment Details)
+  // Update User Mutation (using new robust backend function)
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }) => {
-        // Using entity update since we are admin
-        return await base44.entities.User.update(userId, data);
+        const res = await base44.functions.invoke('updateUserProfile', {
+            target_user_id: userId,
+            updates: data
+        });
+        if (!res.data.success) throw new Error(res.data.error);
+        return res.data.user;
     },
     onSuccess: () => {
         queryClient.invalidateQueries(['all-users']);
@@ -605,6 +609,20 @@ export default function AdminUserApprovals() {
                             </Select>
                         </div>
                     </div>
+                    {/* Admin Name Override */}
+                    <div className="mt-4 p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                        <h3 className="text-sm font-semibold text-cyan-400 mb-3">Admin Profile Override</h3>
+                        <div>
+                            <Label className="text-gray-400 mb-1.5 block">Full Name (Force Update)</Label>
+                            <Input 
+                                defaultValue={verifyingUser.full_name}
+                                onChange={(e) => verifyingUser.temp_full_name = e.target.value} // Temp direct mutation for simplicity in this view dialog
+                                placeholder="Enter correct full name"
+                                className="bg-black/20 border-gray-700 text-white"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Use this to correct names like "Six Dollar" directly.</p>
+                        </div>
+                    </div>
                   </div>
               )}
 
@@ -641,14 +659,18 @@ export default function AdminUserApprovals() {
                             // Easier to just call update mutation here:
                             updateUserMutation.mutate({
                                 userId: verifyingUser.id,
-                                data: { employee_id: employeeId, job_title: jobTitle }
+                                data: { 
+                                    employee_id: employeeId, 
+                                    job_title: jobTitle,
+                                    full_name: verifyingUser.temp_full_name !== undefined ? verifyingUser.temp_full_name : verifyingUser.full_name
+                                }
                             });
                         }}
                         disabled={updateUserMutation.isPending}
                         className="bg-purple-600 hover:bg-purple-700"
                     >
                         {updateUserMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Settings className="w-4 h-4 mr-2" />}
-                        Update Employee Details
+                        Update Profile & Details
                     </Button>
                 ) : (
                   <Button

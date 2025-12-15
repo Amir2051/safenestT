@@ -30,14 +30,19 @@ export default function ProfileCompletionPopup({ user, onUpdate }) {
 
     setLoading(true);
     try {
-      await base44.auth.updateMe({
-        full_name: formData.full_name,
-        phone: formData.phone,
-        onboarding_checklist: {
-          ...user.onboarding_checklist,
-          profile_completed: true
+      const res = await base44.functions.invoke('updateUserProfile', {
+        updates: {
+            full_name: formData.full_name,
+            phone: formData.phone,
+            onboarding_checklist: {
+            ...user.onboarding_checklist,
+            profile_completed: true
+            }
         }
       });
+      
+      if (!res.data.success) throw new Error(res.data.error);
+
       toast.success("Profile updated successfully!");
       if (onUpdate) onUpdate();
     } catch (error) {
