@@ -11,8 +11,38 @@ Deno.serve(async (req) => {
 
         // Fetch all necessary data (limit to reasonably recent for performance if needed, but strict requirements imply full stats)
         // For extensive data, we might need to paginate, but for now we fetch a large batch.
-        const cases = await base44.asServiceRole.entities.MyCase.list('-created_date', 2000);
+        // Parse filters from request
+        const { filters } = await req.json().catch(() => ({}));
+        
+        let cases = await base44.asServiceRole.entities.MyCase.list('-created_date', 2000);
         const automations = await base44.asServiceRole.entities.WorkflowAutomation.list('-executed_at', 1000);
+
+        // Apply Filters
+        if (filters) {
+            cases = cases.filter(c => {
+                let match = true;
+                
+                // Date Range
+                if (filters.startDate) {
+                    match = match && new Date(c.created_date) >= new Date(filters.startDate);
+                }
+                if (filters.endDate) {
+                    match = match && new Date(c.created_date) <= new Date(filters.endDate);
+                }
+
+                // Status
+                if (filters.status && filters.status !== 'all') {
+                    match = match && c.status?.toLowerCase() === filters.status.toLowerCase();
+                }
+
+                // Agent
+                if (filters.agent && filters.agent !== 'all') {
+                    match = match && c.assigned_to === filters.agent;
+                }
+
+                return match;
+            });
+        }
 
         // --- 1. Case Resolution Times ---
         let totalResolutionTimeMs = 0;

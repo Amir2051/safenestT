@@ -1,29 +1,93 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { 
   TrendingUp, Clock, ShieldCheck, Users, Activity, 
-  DollarSign, AlertCircle, CheckCircle2, Download 
+  DollarSign, AlertCircle, CheckCircle2, Download, FileText, Filter
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function AdminReports() {
-  const [timeRange, setTimeRange] = useState('all');
+  const [filters, setFilters] = useState({
+    status: 'all',
+    agent: 'all',
+    startDate: '',
+    endDate: ''
+  });
+  const reportRef = useRef(null);
 
-  const { data: analytics, isLoading } = useQuery({
-    queryKey: ['admin-analytics'],
+  const { data: analytics, isLoading, refetch } = useQuery({
+    queryKey: ['admin-analytics', filters],
     queryFn: async () => {
-      const res = await base44.functions.invoke('adminAnalytics');
+      const res = await base44.functions.invoke('adminAnalytics', { filters });
       return res.data;
     }
   });
+
+  // Fetch agents for filter
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents-list'],
+    queryFn: async () => {
+        // Extract unique agents from analytics if possible, or fetch users
+        const users = await base44.entities.User.list();
+        return users.filter(u => u.role === 'admin' || u.role === 'agent'); 
+    }
+  });
+
+  const handleExportCSV = () => {
+    if (!analytics) return;
+    
+    // Prepare data
+    const kpiData = [
+        ['Metric', 'Value'],
+        ['Avg Resolution Time', `${analytics.kpis.avgResolutionHours} hrs`],
+        ['Recovery Rate', `${analytics.kpis.recoveryRate}%`],
+        ['Total Recovered', `$${analytics.kpis.totalRecovered}`],
+        ['Active Cases', analytics.kpis.activeCases],
+        ['Total Cases', analytics.kpis.totalCases]
+    ];
+
+    const specialistData = analytics.specialists.map(s => [
+        s.email, s.total, s.active, s.resolved, s.avgResolutionHours
+    ]);
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+        + kpiData.map(e => e.join(",")).join("\n") + "\n\n"
+        + "Specialist,Total,Active,Resolved,Avg Time\n"
+        + specialistData.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "admin_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = async () => {
+    if (!reportRef.current) return;
+    
+    const canvas = await html2canvas(reportRef.current);
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save("admin_dashboard_report.pdf");
+  };
 
   if (isLoading) {
     return (
@@ -36,7 +100,7 @@ export default function AdminReports() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white">
+    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white" ref={reportRef}>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -46,12 +110,82 @@ export default function AdminReports() {
           <p className="text-gray-400 mt-1">Key performance indicators and operational metrics</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-gray-700 text-gray-300">
+          <Button variant="outline" onClick={handleExportCSV} className="border-gray-700 text-gray-300">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
+          <Button variant="outline" onClick={handleExportPDF} className="border-gray-700 text-gray-300">
+            <FileText className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
         </div>
       </div>
+
+      {/* Filters */}
+      <Card className="bg-[#1a2332] border-gray-700 mb-8">
+        <CardContent className="p-4">
+            <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-2">
+                    <label className="text-xs text-gray-400">Status</label>
+                    <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+                        <SelectTrigger className="w-[180px] bg-[#0f1419] border-gray-600">
+                            <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="investigating">Investigating</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs text-gray-400">Assigned Agent</label>
+                    <Select value={filters.agent} onValueChange={(v) => setFilters({...filters, agent: v})}>
+                        <SelectTrigger className="w-[180px] bg-[#0f1419] border-gray-600">
+                            <SelectValue placeholder="All Agents" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Agents</SelectItem>
+                            {agents.map(a => (
+                                <SelectItem key={a.id} value={a.email}>{a.full_name || a.email}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs text-gray-400">Start Date</label>
+                    <Input 
+                        type="date" 
+                        className="bg-[#0f1419] border-gray-600 w-[160px]"
+                        value={filters.startDate}
+                        onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs text-gray-400">End Date</label>
+                    <Input 
+                        type="date" 
+                        className="bg-[#0f1419] border-gray-600 w-[160px]"
+                        value={filters.endDate}
+                        onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+                    />
+                </div>
+
+                <Button 
+                    variant="ghost" 
+                    onClick={() => setFilters({ status: 'all', agent: 'all', startDate: '', endDate: '' })}
+                    className="mb-0.5 text-gray-400 hover:text-white"
+                >
+                    Reset
+                </Button>
+            </div>
+        </CardContent>
+      </Card>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
