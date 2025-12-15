@@ -31,6 +31,7 @@ import EvidenceIntake from "./evidence/EvidenceIntake.jsx";
 import CaseWalletTracer from "./CaseWalletTracer.jsx";
 import ResponseTemplates from "./ResponseTemplates.jsx";
 import QuickActionsPanel from "./QuickActionsPanel.jsx";
+import SensitiveField from "./SensitiveField.jsx";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
@@ -50,65 +51,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const isAdmin = user?.role === 'admin' || user?.is_admin;
   const redactedFields = caseData.redacted_fields || [];
 
-  const isFieldRedacted = (field) => redactedFields.includes(field);
 
-  // Helper to render sensitive fields with redaction logic
-  const RenderSensitiveField = ({ field, value, icon: Icon, label }) => {
-    const redacted = isFieldRedacted(field);
-    const showValue = isAdmin || !redacted ? value : '[REDACTED]';
-    
-    // Toggle Redaction Handler
-    const toggleRedaction = async (e) => {
-        e.stopPropagation();
-        try {
-            const res = await base44.functions.invoke('caseManagement', {
-                action: 'toggle_redaction',
-                data: {
-                    caseId: caseData.id,
-                    field: field,
-                    isRedacted: !redacted
-                }
-            });
-            if (res.data.success) {
-                if (onUpdate) onUpdate();
-                toast.success(`Field ${!redacted ? 'Redacted' : 'Unredacted'}`);
-            } else {
-                toast.error(res.data.error || "Failed to update redaction");
-            }
-        } catch (err) {
-            toast.error("Error updating redaction");
-        }
-    };
-
-    return (
-        <div className={`group relative p-2 rounded border transition-all ${redacted ? 'bg-red-500/5 border-red-500/20' : 'border-transparent hover:bg-white/5'}`}>
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    {label && <p className="text-xs text-gray-400 mb-0.5">{label}</p>}
-                    <div className="flex items-center gap-2">
-                        {Icon && <Icon className={`w-4 h-4 shrink-0 ${redacted ? 'text-red-400' : 'text-cyan-400'}`} />}
-                        <span className={`text-sm truncate ${redacted ? 'text-red-300 font-mono tracking-wider' : 'text-white'}`}>
-                            {showValue || 'N/A'}
-                        </span>
-                    </div>
-                </div>
-                {isAdmin && (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className={`h-7 px-2 shrink-0 transition-colors ${redacted ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'}`}
-                        onClick={toggleRedaction}
-                        title={redacted ? "Unredact Field" : "Redact Field"}
-                    >
-                        {redacted ? <EyeOff className="w-3.5 h-3.5 mr-1.5" /> : <Eye className="w-3.5 h-3.5 mr-1.5" />}
-                        <span className="text-[10px] font-bold tracking-wide">{redacted ? 'HIDDEN' : 'VISIBLE'}</span>
-                    </Button>
-                )}
-            </div>
-            {redacted && isAdmin && <span className="absolute -top-1 -right-1 flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
-        </div>
-    );
-  };
 
   const [editedCase, setEditedCase] = useState({
     // Standardized Fields (ClientCase Schema)
@@ -586,27 +529,31 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-xs text-gray-300 font-medium">Victim Details</p>
                   </div>
                   <div className="space-y-1">
-                      <RenderSensitiveField 
+                      <SensitiveField 
                           field="client_name" 
                           value={caseData.client_name || caseData.victim_name || 'N/A'} 
+                          caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
-                      <RenderSensitiveField 
+                      <SensitiveField 
                           field="client_email" 
                           value={[caseData.client_email, caseData.victim_email].find(e => e && typeof e === 'string' && !e.includes('no-reply.base44.com') && !e.startsWith('service+')) || ''} 
                           icon={Mail}
+                          caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
-                      <RenderSensitiveField 
+                      <SensitiveField 
                           field="phone_number" 
                           value={caseData.phone_number || caseData.victim_phone || ''} 
                           icon={Phone}
+                          caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
                       {caseData.victim_wallet && (
                           <div className="pt-1 mt-1 border-t border-cyan-500/10">
-                              <RenderSensitiveField 
+                              <SensitiveField 
                                   field="victim_wallet" 
                                   value={caseData.victim_wallet} 
                                   label="Victim Wallet"
                                   icon={Shield}
+                                  caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                               />
                           </div>
                       )}
@@ -632,19 +579,21 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   </p>
                   {caseData.cryptocurrency && (
                       <div className="mt-1">
-                          <RenderSensitiveField 
+                          <SensitiveField 
                               field="cryptocurrency" 
                               value={caseData.cryptocurrency} 
                               label="Crypto"
+                              caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                           />
                       </div>
                   )}
                   {caseData.scammer_wallet && (
                       <div className="mt-2 pt-2 border-t border-cyan-500/10">
-                          <RenderSensitiveField 
+                          <SensitiveField 
                               field="scammer_wallet" 
                               value={caseData.scammer_wallet} 
                               label="Scammer Wallet"
+                              caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                           />
                       </div>
                   )}
@@ -1145,29 +1094,33 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-sm text-gray-300 font-medium">Primary Contact</p>
                   </div>
                   <div className="space-y-2">
-                    <RenderSensitiveField 
+                    <SensitiveField 
                         field="client_name" 
                         value={caseData.client_name || caseData.victim_name || 'N/A'} 
                         label="Name"
+                        caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                     />
-                    <RenderSensitiveField 
+                    <SensitiveField 
                         field="client_email" 
                         value={caseData.client_email || caseData.victim_email || 'N/A'} 
                         icon={Mail}
                         label="Email"
+                        caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                     />
-                    <RenderSensitiveField 
+                    <SensitiveField 
                         field="phone_number" 
                         value={caseData.phone_number || caseData.victim_phone || 'N/A'} 
                         icon={Phone}
                         label="Phone"
+                        caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                     />
                     {caseData.victim_contact_info?.address && (
-                      <RenderSensitiveField 
+                      <SensitiveField 
                           field="address" 
                           value={caseData.victim_contact_info.address} 
                           icon={MapPin}
                           label="Address"
+                          caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
                     )}
                   </div>
@@ -1207,41 +1160,46 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <p className="text-red-400 font-semibold mb-3">Primary Suspect</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {(caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name) && (
-                        <RenderSensitiveField 
+                        <SensitiveField 
                             field="suspect_name" 
                             value={caseData.suspect_details?.primary_suspect?.name || caseData.scammer_info?.name} 
                             label="Name"
+                            caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                         />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email) && (
-                        <RenderSensitiveField 
+                        <SensitiveField 
                             field="suspect_email" 
                             value={caseData.suspect_details?.primary_suspect?.email || caseData.scammer_info?.email} 
                             label="Email"
+                            caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                         />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone) && (
-                         <RenderSensitiveField 
+                         <SensitiveField 
                             field="suspect_phone" 
                             value={caseData.suspect_details?.primary_suspect?.phone || caseData.scammer_info?.phone} 
                             label="Phone / Contact"
+                            caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                         />
                       )}
                       {(caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location) && (
-                         <RenderSensitiveField 
+                         <SensitiveField 
                             field="suspect_location" 
                             value={caseData.suspect_details?.primary_suspect?.location || caseData.scammer_info?.location} 
                             label="Location"
+                            caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                         />
                       )}
                       {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses)?.length > 0 && (
                         <div className="md:col-span-2 space-y-2">
                           <p className="text-xs text-gray-400 mb-2">Wallet Addresses</p>
                           {(caseData.suspect_details?.wallet_addresses || caseData.scammer_info?.wallet_addresses || []).map((wallet, idx) => (
-                            <RenderSensitiveField 
+                            <SensitiveField 
                                 key={idx}
                                 field={`suspect_wallet_${idx}`} 
                                 value={wallet} 
+                                caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                             />
                           ))}
                         </div>
@@ -1285,9 +1243,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                         {(caseData.scammer_info?.social_media || caseData.suspect_details?.social_profiles || []).map((profile, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">{typeof profile === 'string' ? 'Link' : profile.platform}</Badge>
-                            <RenderSensitiveField 
+                            <SensitiveField 
                                 field={`social_${idx}`} 
                                 value={typeof profile === 'string' ? profile : (profile.url || profile.profile)} 
+                                caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                             />
                           </div>
                         ))}

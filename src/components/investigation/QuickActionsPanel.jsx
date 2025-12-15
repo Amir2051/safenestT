@@ -27,14 +27,7 @@ export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, 
                 }
             });
             
-            // Log timeline event
-            await base44.asServiceRole.entities.CaseTimelineEvent.create({
-                case_id: caseData.id,
-                event_type: 'status_change',
-                description: 'Case escalated to CRITICAL by investigator via Quick Actions',
-                performed_by: 'Investigator',
-                timestamp: new Date().toISOString()
-            });
+            // Timeline event is logged automatically by caseManagement backend function
 
             toast.success("Case escalated to Critical");
             if (onUpdate) onUpdate();
