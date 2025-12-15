@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
   Loader2, Printer, RefreshCw, Shield, FileText, Lock, Unlock, 
-  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle, Network
+  Eye, EyeOff, Edit2, Save, X, Plus, Link as LinkIcon, AlertTriangle, Network, Download
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -128,6 +128,40 @@ export default function CryptoIntelligenceReport({ caseData }) {
     }
   };
 
+  const handleDownloadReport = async () => {
+    const toastId = toast.loading("Generating Full Case Report...");
+    try {
+        const response = await base44.functions.invoke('generateCasePdf', { caseId: caseData.id });
+
+        if (response.headers && response.headers['content-type'] === 'application/json') {
+            if (response.data.error) throw new Error(response.data.error);
+        }
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Full_Case_Report_${caseData.case_number || caseData.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Report Downloaded Successfully", { id: toastId });
+    } catch (e) {
+        let errorMsg = "Generation failed";
+        if (e.response?.data instanceof ArrayBuffer) {
+            try {
+                const dec = new TextDecoder();
+                const text = dec.decode(e.response.data);
+                const json = JSON.parse(text);
+                errorMsg = json.error || errorMsg;
+            } catch(err){}
+        } else if (e.message) {
+            errorMsg = e.message;
+        }
+        toast.error(errorMsg, { id: toastId });
+    }
+  };
+
   const toggleRedact = (id) => {
     const next = new Set(redactedFields);
     if (next.has(id)) next.delete(id);
@@ -222,9 +256,12 @@ export default function CryptoIntelligenceReport({ caseData }) {
             <RefreshCw className={`w-4 h-4 mr-2 ${fetchReportData.isPending ? 'animate-spin' : ''}`} />
             Refresh Data
           </Button>
-          <Button onClick={() => window.print()} className="bg-cyan-600 hover:bg-cyan-700">
-            <Printer className="w-4 h-4 mr-2" />
-            Print / PDF
+          <Button onClick={handleDownloadReport} className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700">
+            <Download className="w-4 h-4 mr-2" />
+            Download Full Report
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print View">
+            <Printer className="w-4 h-4 text-gray-400" />
           </Button>
         </div>
       </div>
