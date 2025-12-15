@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
                     identifier: identifier,
                     blockchain: c.blockchain || 'n/a',
                     risk_level: (c.urgency || 'medium').toLowerCase(),
+                    description: c.description, // Normalized for frontend
                     scam_description: c.description,
                     victim_count: 1,
                     total_stolen_usd: c.amount_lost || c.amount_stolen_usd || 0,
@@ -57,6 +58,7 @@ Deno.serve(async (req) => {
         // 4. Transform Direct Reports to Unified Format
         const directReports = scams.map(s => ({
             ...s,
+            description: s.scam_description, // Normalized for frontend
             source: 'report',
             id: `report_${s.id}`,
             original_report_id: s.id
