@@ -40,7 +40,7 @@ export default function AdminInvestigation() {
     });
   }, [navigate]);
 
-  const { data: clientCases = [], isLoading: loadingCases } = useQuery({
+  const { data: clientCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
     queryKey: ['client-cases-admin'],
     queryFn: async () => {
       // Use asServiceRole to ensure we get ALL cases regardless of RLS (though admin RLS allows it)
@@ -49,7 +49,8 @@ export default function AdminInvestigation() {
       return cases;
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
-    refetchInterval: 10000
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000 // 5 minutes cache
   });
 
   const { data: recoveryFunds = [] } = useQuery({
