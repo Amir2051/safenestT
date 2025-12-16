@@ -111,37 +111,7 @@ export default function ReportGenerator({ selectedCase }) {
     setGenerating(false);
   };
 
-  const downloadPDF = () => {
-    // Apply masking before download
-    const redacted = selectedCase?.redacted_fields || [];
-    const isRedacted = (f) => redacted.includes(f);
-    const mask = (f, v) => isRedacted(f) ? "[REDACTED]" : v;
-
-    const safeReport = {
-        ...report,
-        victimInformation: {
-            ...report.victimInformation,
-            wallet: mask('victim_wallet', report.victimInformation.wallet),
-            reportedBy: mask('client_email', report.victimInformation.reportedBy)
-        },
-        scammerInformation: {
-            ...report.scammerInformation,
-            wallet: mask('scammer_wallet', report.scammerInformation.wallet)
-        }
-    };
-
-    const reportText = JSON.stringify(safeReport, null, 2);
-    const blob = new Blob([reportText], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Investigation-Report-${report.reportId}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
-    toast.success("Report downloaded");
-  };
+  // Removed downloadPDF duplicate implementation
 
   return (
     <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20">
