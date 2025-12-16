@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield, Search, FileText, TrendingUp, AlertCircle,
-  Loader2, Database, Activity, Download
+  Loader2, Database, Activity, Download, UserPlus, RefreshCw
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,8 +19,10 @@ import ExchangeDetector from "../components/investigation/ExchangeDetector.jsx";
 import EvidenceCollector from "../components/investigation/EvidenceCollector.jsx";
 import ReportGenerator from "../components/investigation/ReportGenerator.jsx";
 import CaseManager from "../components/investigation/CaseManager.jsx";
+import CreateCaseForUserDialog from "@/components/admin/CreateCaseForUserDialog.jsx";
 
 export default function AdminInvestigation() {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
   const navigate = useNavigate();
@@ -103,7 +105,19 @@ export default function AdminInvestigation() {
           <RefreshCw className="w-4 h-4 mr-2" />
           Run ID Migration
         </Button>
+        <Button 
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Create Case for User
+        </Button>
       </div>
+
+      <CreateCaseForUserDialog 
+        isOpen={isCreateDialogOpen} 
+        onClose={() => setIsCreateDialogOpen(false)} 
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

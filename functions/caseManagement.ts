@@ -39,8 +39,15 @@ Deno.serve(async (req) => {
 
         const { action, data } = await req.json();
 
-        if (action === 'create') {
-            const { victim_wallet, scammer_wallet } = data;
+        if (action === 'create' || action === 'create_for_user') {
+            // Admin check for create_for_user
+            if (action === 'create_for_user') {
+                if (user.role !== 'admin' && !user.is_admin) {
+                    return Response.json({ error: 'Unauthorized: Only admins can create cases for others' }, { status: 403 });
+                }
+            }
+
+            const { victim_wallet, scammer_wallet, target_user_email, target_user_name } = data;
 
             // 1. Mandatory Wallet Validation
             const validateWallet = (addr) => {
@@ -139,6 +146,17 @@ Deno.serve(async (req) => {
             // Generate ID
             const caseId = await generateCaseId(base44);
             
+            // Determine Creator/Owner
+            let creatorEmail = user.email.toLowerCase();
+            let creatorName = user.full_name || user.first_name;
+            
+            // If admin creating for user, override creator fields to target user
+            // This ensures they have full RLS permissions (update/read)
+            if (action === 'create_for_user' && target_user_email) {
+                creatorEmail = target_user_email.toLowerCase();
+                creatorName = target_user_name || 'User';
+            }
+
             // Create Case
             const caseData = {
                 ...data,
@@ -158,9 +176,16 @@ Deno.serve(async (req) => {
                 // Ensure numbers are numbers
                 amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
                 status: data.status || "Pending",
-                created_by: user.email.toLowerCase(),
-                created_by_email: user.email.toLowerCase(),
-                created_by_name: user.full_name || user.first_name
+                // Ownership
+                created_by: creatorEmail,
+                created_by_email: creatorEmail,
+                created_by_name: creatorName,
+                // Admin metadata
+                created_by_admin: action === 'create_for_user',
+                admin_creator_email: action === 'create_for_user' ? user.email : null,
+                // Ensure client details match target
+                client_email: action === 'create_for_user' ? creatorEmail : (data.client_email || creatorEmail),
+                client_name: action === 'create_for_user' ? creatorName : (data.client_name || creatorName)
             };
 
             // AUTOMATION 1: Auto-Assignment
@@ -179,6 +204,29 @@ Deno.serve(async (req) => {
 
             // TARGET ENTITY: MyCase
             const newCase = await base44.entities.MyCase.create(caseData);
+
+            // AUTOMATION: Notify User if Created by Admin
+            if (action === 'create_for_user' && target_user_email) {
+                try {
+                    await base44.integrations.Core.SendEmail({
+                        to: target_user_email,
+                        subject: `New Case Created: ${newCase.case_number}`,
+                        body: `
+                            <div style="font-family: Arial, sans-serif;">
+                                <h2>Case Created on Your Behalf</h2>
+                                <p>Hello ${target_user_name || 'User'},</p>
+                                <p>A new investigation case has been created for you by the SafeNestT team.</p>
+                                <p><strong>Case ID:</strong> ${newCase.case_number}</p>
+                                <p><strong>Title:</strong> ${newCase.issue_type}</p>
+                                <p>You can view and manage this case in your dashboard under "My Cases".</p>
+                                <a href="https://safenestt.com/dashboard/cases" style="background-color: #0891b2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Case</a>
+                            </div>
+                        `
+                    });
+                } catch (e) {
+                    console.error("Failed to send user notification email", e);
+                }
+            }
 
             // Update Wallet Monitors with Case ID
             try {
