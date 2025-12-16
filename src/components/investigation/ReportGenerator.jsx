@@ -160,12 +160,12 @@ export default function ReportGenerator({ selectedCase }) {
               {generating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
+                  Generating Preview...
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Generate Report
+                  Generate Preview
                 </>
               )}
             </Button>
@@ -173,6 +173,51 @@ export default function ReportGenerator({ selectedCase }) {
         </div>
       </CardHeader>
       <CardContent>
+        {selectedCase && !report && (
+            <div className="mb-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="text-gray-300 text-sm font-medium mb-2 block">Report Template</label>
+                        <div className="space-y-2">
+                            {reportTypes.map((type) => (
+                                <div 
+                                    key={type.id}
+                                    onClick={() => handleTypeChange(type.id)}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                        reportType === type.id 
+                                        ? 'bg-red-500/20 border-red-500 text-white' 
+                                        : 'bg-[#0f1419] border-gray-800 text-gray-400 hover:border-gray-600'
+                                    }`}
+                                >
+                                    <p className="font-semibold text-sm">{type.name}</p>
+                                    <p className="text-xs opacity-70">{type.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-gray-300 text-sm font-medium mb-2 block">Customize Content</label>
+                        <div className="space-y-2 bg-[#0f1419] p-4 rounded-lg border border-gray-800">
+                            {Object.entries(sections).map(([key, enabled]) => (
+                                <div key={key} className="flex items-center gap-2">
+                                    <input 
+                                        type="checkbox" 
+                                        id={key}
+                                        checked={enabled}
+                                        onChange={(e) => setSections({...sections, [key]: e.target.checked})}
+                                        className="rounded border-gray-600 bg-gray-800 text-red-500 focus:ring-red-500"
+                                    />
+                                    <label htmlFor={key} className="text-sm text-gray-300 capitalize cursor-pointer select-none">
+                                        {key.replace(/_/g, ' ')}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {!selectedCase ? (
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
