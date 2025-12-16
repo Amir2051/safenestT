@@ -107,7 +107,7 @@ export default function UserDetailsCard({ user, onUpdate }) {
           <div className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-gray-300 mb-2 block">Full Name2</Label>
+                <Label className="text-gray-300 mb-2 block">Full Name</Label>
                 <Input
                   value={formData.full_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
