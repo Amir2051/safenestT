@@ -246,21 +246,28 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
       });
 
       // 2. Trigger Automated Parsing
-      // We don't await this strictly to keep UI responsive, but for now we'll wait to show success
-      base44.functions.invoke('evidenceProcessing', {
-          action: 'process_upload',
-          data: {
-              caseId: caseData.id,
-              entityName: caseData._entityName || 'MyCase', // Pass correct entity name
-              evidenceFileId: evidenceFile.id,
-              fileUrl: response.file_url,
-              fileType: file.type,
-              fileName: file.name
-          }
-      }).then(() => {
+      // Await to ensure we catch errors and show success
+      try {
+          const processRes = await base44.functions.invoke('evidenceProcessing', {
+              action: 'process_upload',
+              data: {
+                  caseId: caseData.id,
+                  entityName: caseData._entityName || 'MyCase', 
+                  evidenceFileId: evidenceFile.id,
+                  fileUrl: response.file_url,
+                  fileType: file.type,
+                  fileName: file.name
+              }
+          });
+          
+          if (processRes.data.error) throw new Error(processRes.data.error);
           toast.success("AI Analysis Complete", { id: toastId });
-          if (onUpdate) onUpdate(); // Refresh to show analysis
-      });
+          if (onUpdate) onUpdate();
+      } catch (err) {
+          console.error("AI Analysis failed:", err);
+          toast.warning("File uploaded, but AI analysis failed: " + err.message, { id: toastId });
+          if (onUpdate) onUpdate(); // Still refresh to show the file
+      }
 
       // 3. Update Case Arrays (Legacy/UI compatibility)
       const evidence = caseData.evidence_files || [];

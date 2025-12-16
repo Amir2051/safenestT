@@ -23,19 +23,21 @@ function parseCSV(content) {
 }
 
 function normalizeAddress(addr) {
-    return addr ? addr.toLowerCase().trim() : null;
+    try {
+        return addr ? String(addr).toLowerCase().trim() : null;
+    } catch(e) { return null; }
 }
 
 function extractTransactionsStandard(content, fileType) {
     const txs = [];
-    let textContent = content;
+    let textContent = content || "";
     
     // Simple Regex extraction for text-based content
     const hashes = [...new Set(textContent.match(TX_HASH_REGEX) || [])];
     const addresses = [...new Set(textContent.match(ADDRESS_REGEX) || [])];
     
     // Attempt to structure if CSV
-    if (fileType.includes('csv') || fileType.includes('spreadsheet')) {
+    if (fileType && (fileType.includes('csv') || fileType.includes('spreadsheet'))) {
         try {
             const parsed = Papa.parse(textContent, { header: true, skipEmptyLines: true });
             if (parsed.data && parsed.data.length > 0) {
@@ -95,7 +97,8 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me().catch(() => null);
 
-        if (!user || (!user.role === 'admin' && !user.is_admin)) {
+        // ALLOW authenticated users
+        if (!user) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -109,18 +112,24 @@ Deno.serve(async (req) => {
             const entityName = data.entityName || 'MyCase';
             let currentCase = null;
             try {
-                currentCase = await base44.asServiceRole.entities[entityName].get(caseId);
-            } catch (e) {
-                // Fallback logic for legacy cases or if entity name is wrong
+                // Try to get case, handle various entity names
                 try {
-                    currentCase = await base44.asServiceRole.entities.InvestigationCase.get(caseId);
-                } catch (ex) {
-                    return Response.json({ error: 'Case not found' }, { status: 404 });
+                    currentCase = await base44.asServiceRole.entities[entityName].get(caseId);
+                } catch (e) {
+                    if (entityName !== 'MyCase') {
+                        currentCase = await base44.asServiceRole.entities.MyCase.get(caseId);
+                    } else {
+                        currentCase = await base44.asServiceRole.entities.InvestigationCase.get(caseId);
+                    }
                 }
+            } catch (ex) {
+                console.warn("Case retrieval failed:", ex);
+                // Continue if case not found? No, needed for logic
+                return Response.json({ error: 'Case not found' }, { status: 404 });
             }
 
             const scammerWallet = normalizeAddress(currentCase.scammer_wallet);
-            const victimWallet = normalizeAddress(currentCase.victim_wallet);
+            // const victimWallet = normalizeAddress(currentCase.victim_wallet);
             const knownWallets = new Set([
                 scammerWallet,
                 ...(currentCase.scammer_info?.wallet_addresses || []).map(normalizeAddress),
@@ -132,7 +141,7 @@ Deno.serve(async (req) => {
             let processingMethod = "Standard Parsing";
 
             // If Image/PDF, use LLM Vision/Text Extraction
-            if (fileType.includes('image') || fileType.includes('pdf')) {
+            if (fileType && (fileType.includes('image') || fileType.includes('pdf'))) {
                 processingMethod = "AI OCR & Analysis";
                 const prompt = `
                     Analyze this evidence file (Screenshot, PDF, or Image) for a crypto fraud case.
@@ -176,52 +185,57 @@ Deno.serve(async (req) => {
                         }
                     });
                     extractedData = {
-                        addresses: llmRes.addresses || [],
-                        hashes: llmRes.hashes || [],
-                        transactions: llmRes.transactions || [],
-                        urls: llmRes.urls || [],
-                        phones: llmRes.phones || [],
-                        platforms: llmRes.platforms || [],
+                        addresses: Array.isArray(llmRes.addresses) ? llmRes.addresses : [],
+                        hashes: Array.isArray(llmRes.hashes) ? llmRes.hashes : [],
+                        transactions: Array.isArray(llmRes.transactions) ? llmRes.transactions : [],
+                        urls: Array.isArray(llmRes.urls) ? llmRes.urls : [],
+                        phones: Array.isArray(llmRes.phones) ? llmRes.phones : [],
+                        platforms: Array.isArray(llmRes.platforms) ? llmRes.platforms : [],
                         text: llmRes.summary_text || ""
                     };
                 } catch (e) {
                     console.error("LLM Extraction failed:", e);
-                    // Fallback to basic text if possible (not for images usually)
+                    // Fallback to empty
                 }
             } 
             // If Text/CSV/JSON
             else {
-                const content = await fetchFileContent(fileUrl);
-                extractedData.text = content.substring(0, 2000); // Sample
-                
-                if (fileType.includes('csv') || fileType.includes('spreadsheet')) {
-                    const rows = await parseCSV(content);
-                    // Use helper logic from before (simplified here for brevity, assume standardized keys)
-                    // ... (Include logic to map CSV columns to extractedData.transactions)
-                    // For now, using regex on raw content as robust fallback + rows
-                    const regexRes = extractTransactionsStandard(content, fileType);
-                    extractedData.addresses = regexRes.addresses;
-                    extractedData.hashes = regexRes.hashes;
-                    extractedData.transactions = regexRes.transactions; // Or improve with CSV rows
-                } else {
-                    const regexRes = extractTransactionsStandard(content, fileType);
-                    extractedData = { ...extractedData, ...regexRes };
+                try {
+                    const content = await fetchFileContent(fileUrl);
+                    extractedData.text = content.substring(0, 2000); // Sample
+                    
+                    if (fileType && (fileType.includes('csv') || fileType.includes('spreadsheet'))) {
+                        const regexRes = extractTransactionsStandard(content, fileType);
+                        extractedData.addresses = regexRes.addresses || [];
+                        extractedData.hashes = regexRes.hashes || [];
+                        extractedData.transactions = regexRes.transactions || [];
+                    } else {
+                        const regexRes = extractTransactionsStandard(content, fileType);
+                        extractedData = { ...extractedData, ...regexRes };
+                    }
+                } catch (e) {
+                    console.warn("Text extraction failed:", e);
                 }
             }
 
+            // Ensure addresses is array before mapping
+            if (!Array.isArray(extractedData.addresses)) extractedData.addresses = [];
+
             // 3. Comparison & Cross-Reference
-            const extractedWallets = extractedData.addresses.map(normalizeAddress);
+            const extractedWallets = extractedData.addresses.map(normalizeAddress).filter(Boolean);
             const matchesReported = extractedWallets.some(w => knownWallets.has(w));
             
             // Check Global DB (Simulated "ScamDatabase" entity check)
             let suspectMatches = [];
             if (extractedWallets.length > 0) {
-                // In efficient real-world, use specialized search. Here, we loop or use $in if supported.
-                // Assuming small batch or basic check.
-                // Checking first 10 for demo performance
-                for (const w of extractedWallets.slice(0, 10)) {
-                    const found = await base44.asServiceRole.entities.ScamDatabase.filter({ identifier: w });
-                    if (found && found.length > 0) suspectMatches.push({ wallet: w, info: found[0] });
+                try {
+                    // Checking first 10 for demo performance
+                    for (const w of extractedWallets.slice(0, 10)) {
+                        const found = await base44.asServiceRole.entities.ScamDatabase.filter({ identifier: w });
+                        if (found && found.length > 0) suspectMatches.push({ wallet: w, info: found[0] });
+                    }
+                } catch(e) {
+                    console.warn("ScamDatabase check failed:", e);
                 }
             }
 
@@ -233,7 +247,6 @@ Deno.serve(async (req) => {
                 Extracted: ${extractedData.addresses.length} wallets, ${extractedData.transactions.length} transactions.
                 Matched Reported Scammer: ${matchesReported ? "YES" : "NO"}
                 Matched Global Database: ${suspectMatches.length > 0 ? "YES" : "NO"}
-                Extracted Data Sample: ${JSON.stringify(extractedData.transactions.slice(0, 3))}
                 Context Text: ${extractedData.text}
                 
                 Output plain text summary (max 100 words) formatted as:
@@ -252,7 +265,7 @@ Deno.serve(async (req) => {
                 const summaryRes = await base44.integrations.Core.InvokeLLM({
                     prompt: analysisPrompt
                 });
-                summaryText = summaryRes; // String response
+                summaryText = typeof summaryRes === 'string' ? summaryRes : JSON.stringify(summaryRes);
             } catch (e) {
                 summaryText = "Automated analysis failed to generate text summary.";
             }
@@ -264,47 +277,47 @@ Deno.serve(async (req) => {
 
             // Helper to determine confidence
             const getConfidence = (item) => {
-                // Simple heuristic: if it matches extraction regex exactly, high. 
                 return 'medium'; 
             };
 
             // Process Transactions
-            if (extractedData.transactions && extractedData.transactions.length > 0) {
+            if (extractedData.transactions && Array.isArray(extractedData.transactions)) {
                 extractedData.transactions.forEach(t => {
-                    evidenceItems.push({
-                        case_id: caseId,
-                        evidence_file_id: evidenceFileId,
-                        category: 'blockchain_transaction',
-                        data: {
-                            transaction_hash: t.hash,
-                            blockchain: 'ETH', // Default, LLM can refine
-                            from_address: t.from,
-                            to_address: t.to,
-                            amount: parseFloat(t.amount || 0),
-                            token: t.token || 'ETH',
-                            timestamp: t.date || new Date().toISOString(),
-                            transaction_type: 'transfer' // Default
-                        },
-                        source: 'extracted',
-                        confidence: getConfidence(t),
-                        analyst_note: `Extracted from ${fileName}.` + (t.hash ? " Valid hash format." : ""),
-                        status: 'pending_review'
-                    });
+                    try {
+                        const amountVal = parseFloat(t.amount || t.value);
+                        evidenceItems.push({
+                            case_id: caseId,
+                            evidence_file_id: evidenceFileId,
+                            category: 'blockchain_transaction',
+                            data: {
+                                transaction_hash: t.hash || null,
+                                blockchain: 'ETH',
+                                from_address: t.from || null,
+                                to_address: t.to || null,
+                                amount: isNaN(amountVal) ? 0 : amountVal,
+                                token: t.token || 'ETH',
+                                timestamp: t.date || new Date().toISOString(),
+                                transaction_type: 'transfer'
+                            },
+                            source: 'extracted',
+                            confidence: getConfidence(t),
+                            analyst_note: `Extracted from ${fileName}.`,
+                            status: 'pending_review'
+                        });
+                    } catch(e) { console.warn("Skipping tx item:", e); }
                 });
             }
 
             // Process Wallets
-            if (extractedData.addresses && extractedData.addresses.length > 0) {
+            if (extractedData.addresses && Array.isArray(extractedData.addresses)) {
                 extractedData.addresses.forEach(addr => {
-                    // Check if already added as part of a transaction to avoid dupe noise? 
-                    // For now, add distinct wallet items for tracking roles
                     evidenceItems.push({
                         case_id: caseId,
                         evidence_file_id: evidenceFileId,
                         category: 'wallet_address',
                         data: {
                             wallet_address: addr,
-                            role: 'unknown', // Investigator to label
+                            role: 'unknown',
                             first_seen: new Date().toISOString()
                         },
                         source: 'extracted',
@@ -321,96 +334,111 @@ Deno.serve(async (req) => {
             }
 
             // Legacy support: Save Extracted Transactions (keeping for backward compatibility if needed)
-            if (extractedData.transactions.length > 0) {
-                const records = extractedData.transactions.map(t => ({
-                    case_id: caseId,
-                    evidence_file_id: evidenceFileId,
-                    tx_hash: t.hash || `gen-${Math.random()}`,
-                    from_address: t.from,
-                    to_address: t.to,
-                    value_eth: parseFloat(t.amount || t.value || 0),
-                    token_symbol: t.token || t.asset || 'ETH',
-                    timestamp: t.date || t.timestamp || new Date().toISOString(),
-                    detected_role: 'EVIDENCE_EXTRACT'
-                }));
+            if (extractedData.transactions && Array.isArray(extractedData.transactions)) {
+                const records = extractedData.transactions.map(t => {
+                    const val = parseFloat(t.amount || t.value);
+                    return {
+                        case_id: caseId,
+                        evidence_file_id: evidenceFileId,
+                        tx_hash: t.hash || `gen-${Math.random()}`,
+                        from_address: t.from,
+                        to_address: t.to,
+                        value_eth: isNaN(val) ? 0 : val,
+                        token_symbol: t.token || t.asset || 'ETH',
+                        timestamp: t.date || t.timestamp || new Date().toISOString(),
+                        detected_role: 'EVIDENCE_EXTRACT'
+                    };
+                });
                 // Bulk create allows array
-                await base44.asServiceRole.entities.ExtractedTransaction.bulkCreate(records).catch(e => console.warn("Tx save error", e));
+                if (records.length > 0) {
+                    await base44.asServiceRole.entities.ExtractedTransaction.bulkCreate(records).catch(e => console.warn("Tx save error", e));
+                }
             }
 
             // Update Evidence File Record
-            await base44.asServiceRole.entities.CaseEvidenceFile.update(evidenceFileId, {
-                parse_status: 'PARSED',
-                summary: {
-                    analysis_text: summaryText,
-                    wallet_count: extractedData.addresses?.length || 0,
-                    tx_count: extractedData.transactions?.length || 0,
-                    urls: extractedData.urls || [],
-                    phones: extractedData.phones || [],
-                    platforms: extractedData.platforms || [],
-                    match_reported: matchesReported,
-                    suspect_matches: suspectMatches.length,
-                    suspect_details: suspectMatches
-                },
-                detected_addresses: {
-                    extracted: extractedData.addresses || [],
-                    suspects: suspectMatches.map(m => m.wallet)
-                }
-            });
+            try {
+                await base44.asServiceRole.entities.CaseEvidenceFile.update(evidenceFileId, {
+                    parse_status: 'PARSED',
+                    summary: {
+                        analysis_text: summaryText,
+                        wallet_count: extractedData.addresses?.length || 0,
+                        tx_count: extractedData.transactions?.length || 0,
+                        urls: extractedData.urls || [],
+                        phones: extractedData.phones || [],
+                        platforms: extractedData.platforms || [],
+                        match_reported: matchesReported,
+                        suspect_matches: suspectMatches.length,
+                        suspect_details: suspectMatches
+                    },
+                    detected_addresses: {
+                        extracted: extractedData.addresses || [],
+                        suspects: suspectMatches.map(m => m.wallet)
+                    }
+                });
+            } catch(e) {
+                console.error("Failed to update CaseEvidenceFile:", e);
+            }
 
             // Update parent case evidence_log to reflect analysis (for UI consistency)
             if (currentCase) {
-                const evidenceLog = currentCase.evidence_log || [];
-                const updatedLog = evidenceLog.map(item => {
-                    if (item.file_url === fileUrl) {
-                        return {
-                            ...item,
-                            summary: {
-                                analysis_text: summaryText,
-                                match_reported: matchesReported,
-                                suspect_matches: suspectMatches.length
-                            },
-                            extracted_data: {
-                                urls: extractedData.urls,
-                                phones: extractedData.phones,
-                                platforms: extractedData.platforms
-                            }
-                        };
-                    }
-                    return item;
-                });
-                
-                // Only update if changes found
-                if (JSON.stringify(evidenceLog) !== JSON.stringify(updatedLog)) {
-                    await base44.asServiceRole.entities[entityName || 'MyCase'].update(caseId, {
-                        evidence_log: updatedLog
+                try {
+                    const evidenceLog = currentCase.evidence_log || [];
+                    const updatedLog = evidenceLog.map(item => {
+                        if (item.file_url === fileUrl) {
+                            return {
+                                ...item,
+                                summary: {
+                                    analysis_text: summaryText,
+                                    match_reported: matchesReported,
+                                    suspect_matches: suspectMatches.length
+                                },
+                                extracted_data: {
+                                    urls: extractedData.urls,
+                                    phones: extractedData.phones,
+                                    platforms: extractedData.platforms
+                                }
+                            };
+                        }
+                        return item;
                     });
-                }
+                    
+                    // Only update if changes found
+                    if (JSON.stringify(evidenceLog) !== JSON.stringify(updatedLog)) {
+                        await base44.asServiceRole.entities[entityName || 'MyCase'].update(caseId, {
+                            evidence_log: updatedLog
+                        });
+                    }
+                } catch(e) { console.warn("Case update warning", e); }
             }
 
             // 6. Update Timeline
-            await base44.asServiceRole.entities.CaseTimelineEvent.create({
-                case_id: caseId,
-                event_type: 'automated_intelligence',
-                description: `Automated Intelligence Update: Analyzed ${fileName}. ${matchesReported ? "MATCH FOUND." : "No direct match."}`,
-                performed_by: 'System (AI)',
-                metadata: JSON.stringify({ file_id: evidenceFileId, match: matchesReported }),
-                timestamp: new Date().toISOString()
-            });
+            try {
+                await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                    case_id: caseId,
+                    event_type: 'automated_intelligence',
+                    description: `Automated Intelligence Update: Analyzed ${fileName}. ${matchesReported ? "MATCH FOUND." : "No direct match."}`,
+                    performed_by: 'System (AI)',
+                    metadata: JSON.stringify({ file_id: evidenceFileId, match: matchesReported }),
+                    timestamp: new Date().toISOString()
+                });
+            } catch(e) {}
 
             // 7. Update Case (Last Activity & Flags)
             const caseUpdates = { last_activity: new Date().toISOString() };
             if (matchesReported) {
-                // Add note or flag
-                // We won't overwrite existing manually set fields, but we can add to notes
-                await base44.asServiceRole.entities.CaseNote.create({
-                    case_id: caseId,
-                    author: "System (Evidence Match)",
-                    content: `ALERT: Evidence ${fileName} contains activity linked to reported scammer wallet.`,
-                    type: "system_alert",
-                    timestamp: new Date().toISOString()
-                });
+                try {
+                    await base44.asServiceRole.entities.CaseNote.create({
+                        case_id: caseId,
+                        author: "System (Evidence Match)",
+                        content: `ALERT: Evidence ${fileName} contains activity linked to reported scammer wallet.`,
+                        type: "system_alert",
+                        timestamp: new Date().toISOString()
+                    });
+                } catch(e){}
             }
-            await base44.asServiceRole.entities.MyCase.update(caseId, caseUpdates);
+            try {
+                await base44.asServiceRole.entities.MyCase.update(caseId, caseUpdates);
+            } catch(e) {}
 
             return Response.json({ success: true, summary: summaryText });
         }
@@ -430,6 +458,7 @@ Deno.serve(async (req) => {
 
     } catch (error) {
         console.error("Function Error:", error);
-        return Response.json({ error: error.message }, { status: 500 });
+        // Clean error for user
+        return Response.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 });
