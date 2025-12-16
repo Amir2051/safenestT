@@ -20,6 +20,7 @@ import EvidenceCollector from "../components/investigation/EvidenceCollector.jsx
 import ReportGenerator from "../components/investigation/ReportGenerator.jsx";
 import CaseManager from "../components/investigation/CaseManager.jsx";
 import CreateCaseForUserDialog from "@/components/admin/CreateCaseForUserDialog.jsx";
+import CaseRecoveryPanel from "@/components/admin/CaseRecoveryPanel.jsx";
 
 export default function AdminInvestigation() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -221,10 +222,18 @@ export default function AdminInvestigation() {
           <TabsTrigger value="report">
             <Download className="w-4 h-4 mr-2" />
             Generate Report
-          </TabsTrigger>
-        </TabsList>
+            </TabsTrigger>
+            <TabsTrigger value="recovery">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Recovery Tool
+            </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="cases" className="mt-6">
+            <TabsContent value="recovery" className="mt-6">
+            <CaseRecoveryPanel />
+            </TabsContent>
+
+            <TabsContent value="cases" className="mt-6">
           <CaseManager 
             cases={allCases}
             onSelectCase={setSelectedCase}
