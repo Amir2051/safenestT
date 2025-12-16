@@ -411,6 +411,70 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
                     </div>
                 </TabsContent>
 
+                <TabsContent value="linked" className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                            <p className="text-sm text-purple-300">Linked Cases</p>
+                            <p className="text-2xl font-bold text-white">{profile.linked_intelligence?.summary?.total_linked || 0}</p>
+                        </div>
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                            <p className="text-sm text-red-300">Total Linked Loss</p>
+                            <p className="text-2xl font-bold text-white">${(profile.linked_intelligence?.summary?.total_loss || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                            <p className="text-sm text-cyan-300">Assessment</p>
+                            <p className="text-lg font-semibold text-white truncate">{profile.linked_intelligence?.summary?.campaign_assessment || "N/A"}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-gray-300">Linked Case Inventory</Label>
+                        <div className="bg-[#0f1419] border border-cyan-500/20 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                                <thead className="bg-[#1a2332] text-gray-400">
+                                    <tr>
+                                        <th className="p-3 text-left">Case ID</th>
+                                        <th className="p-3 text-left">Loss</th>
+                                        <th className="p-3 text-left">Shared Indicators</th>
+                                        <th className="p-3 text-left">Confidence</th>
+                                        <th className="p-3 text-left">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
+                                    {profile.linked_intelligence?.linked_cases?.length > 0 ? (
+                                        profile.linked_intelligence.linked_cases.map((c, i) => (
+                                            <tr key={i} className="hover:bg-white/5">
+                                                <td className="p-3 font-mono text-cyan-400">{c.case_number}</td>
+                                                <td className="p-3 text-white">${c.loss_amount?.toLocaleString()}</td>
+                                                <td className="p-3 text-gray-300 max-w-xs truncate" title={c.match_value}>
+                                                    <span className="text-xs border border-gray-600 rounded px-1 mr-1">{c.match_type}</span>
+                                                    {c.match_value}
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-0.5 rounded text-xs ${
+                                                        c.confidence === 'High' ? 'bg-red-500/20 text-red-400 border border-red-500/50' :
+                                                        c.confidence === 'Medium' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' :
+                                                        'bg-gray-500/20 text-gray-400'
+                                                    }`}>
+                                                        {c.confidence}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-gray-400">{c.status}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-6 text-center text-gray-500">
+                                                No linked cases found. Run Auto-Fill to scan the database.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </TabsContent>
+
                 <TabsContent value="evidence" className="space-y-4">
                     <div className="space-y-2">
                         <Label className="text-gray-300">Evidence Summary</Label>
