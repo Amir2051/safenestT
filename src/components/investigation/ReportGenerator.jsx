@@ -9,6 +9,47 @@ import { toast } from "sonner";
 export default function ReportGenerator({ selectedCase }) {
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState(null);
+  const [reportType, setReportType] = useState('full_investigation');
+  const [sections, setSections] = useState({
+    case_overview: true,
+    victim_info: true,
+    suspect_info: true,
+    transaction_evidence: true,
+    evidence_files: true,
+    observations: true
+  });
+
+  const reportTypes = [
+    { id: 'full_investigation', name: 'Full Investigation Report', description: 'Comprehensive report with all details.' },
+    { id: 'summary_report', name: 'Summary Report', description: 'Executive summary and key findings only.' },
+    { id: 'evidence_report', name: 'Evidence Report', description: 'Focuses on collected evidence and transaction logs.' },
+    { id: 'suspect_profile', name: 'Suspect Profile', description: 'Detailed profile of the suspect and wallet analysis.' }
+  ];
+
+  const handleTypeChange = (type) => {
+    setReportType(type);
+    if (type === 'full_investigation') {
+      setSections({
+        case_overview: true, victim_info: true, suspect_info: true, 
+        transaction_evidence: true, evidence_files: true, observations: true
+      });
+    } else if (type === 'summary_report') {
+      setSections({
+        case_overview: true, victim_info: false, suspect_info: false, 
+        transaction_evidence: false, evidence_files: false, observations: true
+      });
+    } else if (type === 'evidence_report') {
+      setSections({
+        case_overview: true, victim_info: false, suspect_info: false, 
+        transaction_evidence: true, evidence_files: true, observations: false
+      });
+    } else if (type === 'suspect_profile') {
+      setSections({
+        case_overview: true, victim_info: false, suspect_info: true, 
+        transaction_evidence: true, evidence_files: false, observations: true
+      });
+    }
+  };
 
   const generateReport = async () => {
     if (!selectedCase) {
@@ -27,6 +68,45 @@ export default function ReportGenerator({ selectedCase }) {
       toast.success("Investigation report generated");
     } catch (error) {
       toast.error("Failed to generate report: " + error.message);
+    }
+    setGenerating(false);
+  };
+
+  const downloadPDF = async () => {
+    setGenerating(true);
+    try {
+        const response = await base44.functions.invoke('generateCasePdf', { 
+            caseId: selectedCase.id,
+            template: reportType,
+            sections: sections
+        });
+
+        if (response.headers && response.headers['content-type'] === 'application/json') {
+            if (response.data.error) throw new Error(response.data.error);
+        }
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Case_${selectedCase.case_number || 'Report'}_${reportType}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Report downloaded");
+    } catch (error) {
+        let errorMsg = "Generation failed";
+        if (error.response?.data instanceof ArrayBuffer) {
+            try {
+                const dec = new TextDecoder();
+                const text = dec.decode(error.response.data);
+                const json = JSON.parse(text);
+                errorMsg = json.error || errorMsg;
+            } catch(err){}
+        } else if (error.message) {
+            errorMsg = error.message;
+        }
+        toast.error(errorMsg);
     }
     setGenerating(false);
   };
