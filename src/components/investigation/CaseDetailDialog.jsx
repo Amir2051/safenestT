@@ -39,6 +39,7 @@ import CyberFraudProfileBuilder from "./CyberFraudProfileBuilder.jsx";
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [previewFile, setPreviewFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [newNote, setNewNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
