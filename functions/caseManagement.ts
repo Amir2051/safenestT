@@ -557,6 +557,53 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, case: updatedCase });
             }
 
+            if (action === 'recover_access') {
+                if (user.role !== 'admin' && !user.is_admin) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 403 });
+                }
+
+                // Fetch all cases
+                const cases = await base44.asServiceRole.entities.MyCase.list(null, 2000);
+                let updatedCount = 0;
+                let fixedDates = 0;
+
+                for (const c of cases) {
+                    let updates = {};
+
+                    // 1. Recover created_date from ID if possible or keep existing
+                    // Sometimes created_date might be missing or corrupted
+                    if (!c.created_date) {
+                        updates.created_date = new Date().toISOString(); // Fallback to now if totally lost
+                        fixedDates++;
+                    }
+
+                    // 2. Sync client_email if missing but created_by is email
+                    if (!c.client_email && c.created_by && c.created_by.includes('@')) {
+                        updates.client_email = c.created_by;
+                    }
+
+                    // 3. Ensure created_by_email matches created_by if missing
+                    if (!c.created_by_email && c.created_by && c.created_by.includes('@')) {
+                        updates.created_by_email = c.created_by;
+                    }
+
+                    // 4. Ensure created_by_name matches client_name if missing
+                    if (!c.created_by_name && c.client_name) {
+                        updates.created_by_name = c.client_name;
+                    }
+
+                    if (Object.keys(updates).length > 0) {
+                        await base44.asServiceRole.entities.MyCase.update(c.id, updates);
+                        updatedCount++;
+                    }
+                }
+
+                return Response.json({ 
+                    success: true, 
+                    message: `Recovery Complete. Updated ${updatedCount} cases. Fixed dates for ${fixedDates} cases.` 
+                });
+            }
+
             return Response.json({ error: 'Invalid action' }, { status: 400 });
 
     } catch (error) {

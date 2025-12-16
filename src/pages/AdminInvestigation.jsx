@@ -106,6 +106,20 @@ export default function AdminInvestigation() {
           Run ID Migration
         </Button>
         <Button 
+          variant="outline" 
+          onClick={() => {
+            if (confirm("Run Case Data Recovery? This will fix missing dates and access permissions.")) {
+              base44.functions.invoke('caseManagement', { action: 'recover_access' })
+                .then(res => toast.success(res.data.message))
+                .catch(err => toast.error("Recovery failed"));
+            }
+          }}
+          className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+        >
+          <Shield className="w-4 h-4 mr-2" />
+          Recover Data
+        </Button>
+        <Button 
           onClick={() => setIsCreateDialogOpen(true)}
           className="bg-purple-600 hover:bg-purple-700 text-white"
         >
