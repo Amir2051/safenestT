@@ -45,7 +45,9 @@ export default function CreateCaseForUserDialog({ isOpen, onClose }) {
         }
         return [];
     },
-    enabled: isOpen
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
   });
 
   // Filter users based on search
