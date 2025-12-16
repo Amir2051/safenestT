@@ -29,15 +29,19 @@ export default function AdminInvestigation() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
     base44.auth.me().then(userData => {
-      setUser(userData);
-      if (userData.role !== 'admin' && !userData.is_admin) {
-        navigate(createPageUrl('Dashboard'));
-        toast.error('Admin access required');
+      if (mounted) {
+        setUser(userData);
+        if (userData.role !== 'admin' && !userData.is_admin) {
+          navigate(createPageUrl('Dashboard'));
+          toast.error('Admin access required');
+        }
       }
     }).catch(() => {
-      navigate(createPageUrl('Dashboard'));
+      if (mounted) navigate(createPageUrl('Dashboard'));
     });
+    return () => { mounted = false; };
   }, [navigate]);
 
   const { data: clientCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
