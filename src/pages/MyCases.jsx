@@ -97,7 +97,11 @@ export default function MyCases() {
       admin_status: s.status
   }));
 
-  const allCases = [...normalizedCases, ...normalizedScams].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  const allCases = [...normalizedCases, ...normalizedScams].sort((a, b) => {
+      const dateA = a.created_date ? new Date(a.created_date) : new Date(0);
+      const dateB = b.created_date ? new Date(b.created_date) : new Date(0);
+      return dateB - dateA;
+  });
 
   const isLoading = loadingMyCases || loadingMyScams;
 

@@ -108,16 +108,23 @@ export default function AdminInvestigation() {
         <Button 
           variant="outline" 
           onClick={() => {
-            if (confirm("Run Case Data Recovery? This will fix missing dates and access permissions.")) {
+            if (confirm("Run Full Case Audit & Recovery?\n\nThis will:\n1. Scan ALL cases and users\n2. Re-link orphaned cases to owners (case-insensitive)\n3. Fix missing dates from Case IDs\n4. Restore user visibility for legacy cases")) {
+              const toastId = toast.loading("Running Audit & Recovery... This may take a moment.");
               base44.functions.invoke('caseManagement', { action: 'recover_access' })
-                .then(res => toast.success(res.data.message))
-                .catch(err => toast.error("Recovery failed"));
+                .then(res => {
+                    toast.dismiss(toastId);
+                    toast.success("Recovery Complete", { description: res.data.message, duration: 8000 });
+                })
+                .catch(err => {
+                    toast.dismiss(toastId);
+                    toast.error("Recovery failed: " + err.message);
+                });
             }
           }}
           className="border-green-500/30 text-green-400 hover:bg-green-500/10"
         >
           <Shield className="w-4 h-4 mr-2" />
-          Recover Data
+          Recover & Audit Data
         </Button>
         <Button 
           onClick={() => setIsCreateDialogOpen(true)}
