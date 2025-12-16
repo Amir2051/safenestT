@@ -1349,16 +1349,24 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="legacy-evidence" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-semibold text-lg">Raw File Log</h3>
-                {/* Upload allowed for Admins only per prompt "Keep full permissions for Admins... Users must NOT be able to Modify" */}
-                {isAdmin && (
-                  <label>
-                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                    <Button size="sm" disabled={uploading} className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer">
+                <div>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      className="hidden" 
+                      onChange={handleFileUpload} 
+                      disabled={uploading} 
+                    />
+                    <Button 
+                      size="sm" 
+                      disabled={uploading} 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer"
+                    >
                       <Upload className="w-4 h-4 mr-2" />
                       {uploading ? "Uploading..." : "Upload Evidence"}
                     </Button>
-                  </label>
-                )}
+                </div>
               </div>
 
               {(caseData.evidence_log || caseData.evidence_files)?.length > 0 ? (
