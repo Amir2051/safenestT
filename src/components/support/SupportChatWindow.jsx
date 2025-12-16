@@ -16,7 +16,7 @@ export default function SupportChatWindow({ chat, onClose, isUser = true }) {
   // Poll for messages
   const { data: messages = [] } = useQuery({
     queryKey: ['support-messages', chat.id],
-    queryFn: () => base44.entities.SupportMessage.filter({ chat_id: chat.id }, 'created_date', 100),
+    queryFn: () => base44.entities.SupportMessage.filter({ chat_id: chat.id }, '-created_date', 100),
     refetchInterval: 3000, // 3s polling for "real-time"
   });
 

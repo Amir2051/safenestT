@@ -105,17 +105,17 @@ export default function Subscription() {
                     </div>
                     
                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg break-words leading-tight mb-2">
-                        Cyber Monday Deal
+                        Yearly Premium Deal
                     </h2>
                     
                     <p className="text-base sm:text-lg md:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-snug break-words mb-3">
-                        Save big on your yearly SafeNestt subscription — today only!
+                        Save big on your yearly SafeNestt subscription.
                     </p>
                     
                     <p className="text-white/80 text-xs sm:text-sm md:text-base max-w-2xl mx-auto break-words whitespace-normal leading-relaxed mb-6">
-                        Unlock a full year of protection, case support, and scam prevention tools for a special Cyber Monday price. 
+                        Unlock a full year of protection, case support, and scam prevention tools for a special yearly price. 
                         Subscribe now and secure faster case handling, priority assistance, and exclusive premium features. 
-                        This offer expires soon — don’t miss your chance to save and stay protected all year long.
+                        Secure your digital life with our best value plan.
                     </p>
                     
                     <div className="mt-auto flex justify-center w-full">
