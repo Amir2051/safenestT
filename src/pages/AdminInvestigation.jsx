@@ -131,15 +131,16 @@ export default function AdminInvestigation() {
           <Button 
           variant="outline"
           onClick={() => {
-             const toastId = toast.loading("Syncing & Importing Cases...");
-             base44.functions.invoke('caseManagement', { action: 'sync_scam_reports' })
+             const toastId = toast.loading("Running Full Archive Import... This may take a minute.");
+             base44.functions.invoke('caseManagement', { action: 'import_all_legacy_cases' })
                 .then(res => {
                     toast.dismiss(toastId);
-                    toast.success("Sync Complete", { description: res.data.message });
+                    toast.success("Import Complete", { description: res.data.message, duration: 10000 });
+                    refetchCases(); // Manual refresh after import
                 })
                 .catch(err => {
                     toast.dismiss(toastId);
-                    toast.error("Sync failed: " + err.message);
+                    toast.error("Import failed: " + err.message);
                 });
           }}
           className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
