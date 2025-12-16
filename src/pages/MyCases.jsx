@@ -280,7 +280,9 @@ export default function MyCases() {
                           </span>
                           <span className="text-gray-400 flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {caseItem.created_date ? new Date(caseItem.created_date).toLocaleDateString() : 'Date N/A'}
+                            {caseItem.created_date && caseItem.created_date !== 'Invalid Date' 
+                              ? new Date(caseItem.created_date).toLocaleDateString() 
+                              : 'Processing Date...'}
                           </span>
                         </div>
 

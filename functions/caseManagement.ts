@@ -562,45 +562,89 @@ Deno.serve(async (req) => {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
-                // Fetch all cases
-                const cases = await base44.asServiceRole.entities.MyCase.list(null, 2000);
+                // 1. Fetch ALL data (Cases and Users) to perform deep linking
+                const cases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+                const users = await base44.asServiceRole.entities.User.list(null, 5000);
+
                 let updatedCount = 0;
                 let fixedDates = 0;
+                let reLinked = 0;
+
+                // Map users by normalized email for case-insensitive lookup
+                const userMap = {};
+                users.forEach(u => {
+                    if (u.email) userMap[u.email.toLowerCase().trim()] = u;
+                });
 
                 for (const c of cases) {
                     let updates = {};
+                    let needsUpdate = false;
 
-                    // 1. Recover created_date from ID if possible or keep existing
-                    // Sometimes created_date might be missing or corrupted
-                    if (!c.created_date) {
-                        // Attempt to extract year from ID if possible (e.g. SN-2024-XXXXX)
+                    // --- A. Date Recovery ---
+                    if (!c.created_date || c.created_date === 'Invalid Date' || c.created_date.startsWith('0000')) {
                         let date = new Date().toISOString();
+                        // Try to recover from Case ID (SN-YYYY-XXXXX)
                         if (c.case_number && c.case_number.startsWith('SN-')) {
-                            const year = c.case_number.split('-')[1];
-                            if (year && !isNaN(year)) {
-                                date = new Date(`${year}-01-01`).toISOString();
+                            const parts = c.case_number.split('-');
+                            if (parts[1] && !isNaN(parts[1]) && parts[1].length === 4) {
+                                // Use Jan 1st of that year as fallback, or try to guess from sequence?
+                                // Better: if we have updated_date, use that, else use year start
+                                date = new Date(`${parts[1]}-01-01T12:00:00Z`).toISOString();
                             }
+                        } else if (c.updated_date) {
+                            date = c.updated_date;
                         }
                         updates.created_date = date;
                         fixedDates++;
+                        needsUpdate = true;
                     }
 
-                    // 2. Sync client_email if missing but created_by is email
-                    if (!c.client_email && c.created_by && c.created_by.includes('@')) {
-                        updates.client_email = c.created_by;
+                    // --- B. User Re-linking (Fix Visibility) ---
+                    // We need to ensure 'created_by' and 'client_email' match the EXACT string in the User entity
+                    // because RLS often compares exact strings.
+
+                    let targetEmail = null;
+
+                    // 1. Try to find user by created_by
+                    if (c.created_by && typeof c.created_by === 'string') {
+                        const match = userMap[c.created_by.toLowerCase().trim()];
+                        if (match) targetEmail = match.email;
                     }
 
-                    // 3. Ensure created_by_email matches created_by if missing
-                    if (!c.created_by_email && c.created_by && c.created_by.includes('@')) {
-                        updates.created_by_email = c.created_by;
+                    // 2. If not found, try client_email
+                    if (!targetEmail && c.client_email && typeof c.client_email === 'string') {
+                        const match = userMap[c.client_email.toLowerCase().trim()];
+                        if (match) targetEmail = match.email;
                     }
 
-                    // 4. Ensure created_by_name matches client_name if missing
-                    if (!c.created_by_name && c.client_name) {
-                        updates.created_by_name = c.client_name;
+                    // 3. If not found, try created_by_email
+                    if (!targetEmail && c.created_by_email && typeof c.created_by_email === 'string') {
+                        const match = userMap[c.created_by_email.toLowerCase().trim()];
+                        if (match) targetEmail = match.email;
                     }
 
-                    if (Object.keys(updates).length > 0) {
+                    // Apply Email Fixes
+                    if (targetEmail) {
+                        // If any of the key fields don't match the canonical user email, update them
+                        if (c.created_by !== targetEmail) { updates.created_by = targetEmail; needsUpdate = true; }
+                        if (c.created_by_email !== targetEmail) { updates.created_by_email = targetEmail; needsUpdate = true; }
+                        if (c.client_email !== targetEmail) { updates.client_email = targetEmail; needsUpdate = true; }
+
+                        if (needsUpdate) reLinked++;
+                    } else {
+                        // Orphaned case? If we have a valid-looking email in created_by but no user, we leave it
+                        // But if fields are inconsistent (e.g. created_by is null but client_email exists), sync them
+                        if (!c.created_by && c.client_email) { updates.created_by = c.client_email; needsUpdate = true; }
+                        if (!c.created_by_email && c.created_by) { updates.created_by_email = c.created_by; needsUpdate = true; }
+                    }
+
+                    // --- C. Status Safety ---
+                    if (!c.status) {
+                        updates.status = 'Pending';
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
                         await base44.asServiceRole.entities.MyCase.update(c.id, updates);
                         updatedCount++;
                     }
@@ -608,7 +652,8 @@ Deno.serve(async (req) => {
 
                 return Response.json({ 
                     success: true, 
-                    message: `Recovery Complete. Updated ${updatedCount} cases. Fixed dates for ${fixedDates} cases.` 
+                    message: `Recovery Complete.\nScanned: ${cases.length}\nUpdated: ${updatedCount}\nFixed Dates: ${fixedDates}\nRe-linked Users: ${reLinked}`,
+                    details: { total_cases: cases.length, updated: updatedCount }
                 });
             }
 
