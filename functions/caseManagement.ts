@@ -657,6 +657,96 @@ Deno.serve(async (req) => {
                 });
             }
 
+            if (action === 'sync_scam_reports') {
+                if (user.role !== 'admin' && !user.is_admin) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 403 });
+                }
+
+                let syncedCount = 0;
+                let updatedCount = 0;
+                
+                // 1. Sync ScamDatabase (User Reports) -> MyCase
+                const reports = await base44.asServiceRole.entities.ScamDatabase.list(null, 2000);
+                const cases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+                
+                // 2. Also try to fetch legacy InvestigationCase if any
+                let legacyCases = [];
+                try {
+                    legacyCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 1000);
+                } catch(e) {}
+
+                // Helper to check existence
+                const caseExists = (sourceId, description, creator) => {
+                    return cases.find(c => 
+                        (c.metadata && typeof c.metadata === 'string' && c.metadata.includes(sourceId)) ||
+                        (c.description === description && c.created_by === creator)
+                    );
+                };
+
+                // Sync Reports
+                for (const report of reports) {
+                    const exists = caseExists(report.id, report.scam_description, report.created_by);
+
+                    if (!exists) {
+                        const date = report.created_date ? new Date(report.created_date) : new Date();
+                        const year = date.getFullYear();
+                        const seq = await getNextSequence(base44, year);
+                        const caseId = `SN-${year}-${seq.toString().padStart(5, '0')}`;
+
+                        await base44.asServiceRole.entities.MyCase.create({
+                            case_number: caseId,
+                            client_name: report.reporter_name || report.created_by_name || 'Anonymous',
+                            client_email: report.created_by || 'unknown@report.com',
+                            issue_type: 'scam_report',
+                            status: 'Pending',
+                            description: report.scam_description || 'Imported Scam Report',
+                            amount_lost: report.total_stolen_usd || 0,
+                            scammer_wallet: report.scam_type === 'wallet' ? report.identifier : null,
+                            blockchain: report.blockchain,
+                            created_by: report.created_by,
+                            created_date: report.created_date,
+                            metadata: JSON.stringify({ source_id: report.id, source: 'ScamDatabase', imported_at: new Date().toISOString() })
+                        });
+                        syncedCount++;
+                    } else {
+                        // Keep up to date: ensure critical fields are set if missing in MyCase but present in Report
+                        // Only update if MyCase field is empty/null to avoid overwriting admin work
+                        let updates = {};
+                        if (!exists.amount_lost && report.total_stolen_usd) updates.amount_lost = report.total_stolen_usd;
+                        if (!exists.scammer_wallet && report.scam_type === 'wallet' && report.identifier) updates.scammer_wallet = report.identifier;
+                        
+                        if (Object.keys(updates).length > 0) {
+                            await base44.asServiceRole.entities.MyCase.update(exists.id, updates);
+                            updatedCount++;
+                        }
+                    }
+                }
+
+                // Sync Legacy Cases (InvestigationCase -> MyCase)
+                for (const lCase of legacyCases) {
+                    const exists = caseExists(lCase.id, lCase.case_title, lCase.created_by);
+                    if (!exists) {
+                         const date = lCase.created_date ? new Date(lCase.created_date) : new Date();
+                         const year = date.getFullYear();
+                         const seq = await getNextSequence(base44, year);
+                         const caseId = `SN-${year}-${seq.toString().padStart(5, '0')}`;
+                         
+                         await base44.asServiceRole.entities.MyCase.create({
+                             ...lCase, // Copy compatible fields
+                             id: undefined, // New ID
+                             case_number: caseId,
+                             status: lCase.status || 'Pending',
+                             client_email: lCase.client_email || lCase.created_by,
+                             issue_type: lCase.fraud_type || 'other',
+                             metadata: JSON.stringify({ source_id: lCase.id, source: 'InvestigationCase', imported_at: new Date().toISOString() })
+                         });
+                         syncedCount++;
+                    }
+                }
+
+                return Response.json({ success: true, message: `Synced ${syncedCount} new records. Updated ${updatedCount} existing records.` });
+            }
+
             return Response.json({ error: 'Invalid action' }, { status: 400 });
 
     } catch (error) {
