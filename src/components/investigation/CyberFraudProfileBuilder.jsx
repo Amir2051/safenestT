@@ -33,13 +33,13 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
     if (existingProfile) {
       setProfile(existingProfile);
     } else if (!isLoading && !profile) {
-      // Initialize Draft with data from Case
+      // Initialize Draft (Empty State)
       setProfile({
         case_id: caseId,
         status: "Draft",
         victim_profile: {
           identifier: caseData?.client_name || "Unknown",
-          contact_method: "Unknown",
+          contact_method: "",
           platforms: "",
           loss_amount: caseData?.amount_lost || 0,
           currency: caseData?.cryptocurrency || "USD",
@@ -76,6 +76,24 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
       });
     }
   }, [existingProfile, isLoading, caseData]);
+
+  // Auto-Fill Function
+  const handleAutoFill = async () => {
+      setIsAutoFilling(true);
+      const toastId = toast.loading("Analyzing case data and generating profile...");
+      try {
+          const res = await base44.functions.invoke('generateCyberProfileDraft', { caseId });
+          if (res.data.success) {
+              setProfile(res.data.profile);
+              toast.success("Profile Auto-Generated Successfully", { id: toastId });
+          } else {
+              throw new Error(res.data.error || "Generation failed");
+          }
+      } catch (err) {
+          toast.error("Auto-Fill Failed: " + err.message, { id: toastId });
+      }
+      setIsAutoFilling(false);
+  };
 
   // Save Mutation
   const saveMutation = useMutation({
