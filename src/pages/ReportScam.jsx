@@ -24,6 +24,7 @@ export default function ReportScam() {
     victim_name: '',
     victim_email: '',
     victim_phone: '',
+    victim_wallet: '',
     
     // Scammer
     scammer_name: '',
