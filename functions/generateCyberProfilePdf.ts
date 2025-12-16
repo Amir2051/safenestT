@@ -1,0 +1,176 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { jsPDF } from 'npm:jspdf@2.5.1';
+
+Deno.serve(async (req) => {
+    try {
+        const base44 = createClientFromRequest(req);
+        const user = await base44.auth.me();
+
+        if (!user || (user.role !== 'admin' && !user.is_admin && user.job_title !== 'Fraud Specialist')) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { profile, caseData } = await req.json();
+
+        if (!profile || !caseData) {
+             return Response.json({ error: 'Missing data' }, { status: 400 });
+        }
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        let y = 20;
+
+        // --- HEADER ---
+        doc.setFillColor(10, 20, 40); // Dark Blue/Black
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("CYBER FRAUD INTELLIGENCE PROFILE", pageWidth / 2, 25, { align: 'center' });
+        
+        doc.setFontSize(10);
+        doc.setTextColor(200, 200, 200);
+        doc.text("CONFIDENTIAL - LAW ENFORCEMENT SENSITIVE", pageWidth / 2, 35, { align: 'center' });
+
+        y = 50;
+        doc.setTextColor(0, 0, 0);
+
+        // Helper for sections
+        const addSectionTitle = (title) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setFillColor(240, 240, 240);
+            doc.rect(margin, y - 5, pageWidth - (margin * 2), 8, 'F');
+            doc.text(title.toUpperCase(), margin + 2, y);
+            y += 15;
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+        };
+
+        const addField = (label, value) => {
+             if (y > 275) { doc.addPage(); y = 20; }
+             doc.setFont(undefined, 'bold');
+             doc.text(`${label}:`, margin, y);
+             doc.setFont(undefined, 'normal');
+             
+             // Simple text wrap
+             const textLines = doc.splitTextToSize(value || "N/A", pageWidth - margin - 60);
+             doc.text(textLines, margin + 50, y);
+             y += (textLines.length * 5) + 2;
+        };
+
+        const addTextBlock = (text) => {
+             if (y > 275) { doc.addPage(); y = 20; }
+             const textLines = doc.splitTextToSize(text || "N/A", pageWidth - (margin * 2));
+             doc.text(textLines, margin, y);
+             y += (textLines.length * 5) + 5;
+        };
+
+        // --- A. CASE IDENTIFICATION ---
+        addSectionTitle("A. Case Identification");
+        addField("Case ID", caseData.case_number);
+        addField("Case Type", caseData.issue_type);
+        addField("Date Opened", new Date(caseData.created_date).toLocaleDateString());
+        addField("Status", caseData.status);
+        addField("Investigation Unit", "SafeNestT Cyber Fraud Division");
+
+        // --- B. VICTIM PROFILE ---
+        y += 5;
+        addSectionTitle("B. Victim Profile");
+        const vp = profile.victim_profile || {};
+        addField("Identifier", vp.identifier);
+        addField("Contact Method", vp.contact_method);
+        addField("Platforms", vp.platforms);
+        addField("Reported Loss", `${(vp.loss_amount || 0).toLocaleString()} ${vp.currency || 'USD'}`);
+        addField("Date Range", vp.date_range);
+        
+        if (y > 260) { doc.addPage(); y = 20; }
+        y += 5;
+        doc.setFont(undefined, 'bold');
+        doc.text("Victim Statement:", margin, y);
+        y += 6;
+        doc.setFont(undefined, 'italic');
+        addTextBlock(vp.statement || "No statement provided.");
+        doc.setFont(undefined, 'normal');
+
+        // --- C. SUSPECT PROFILE ---
+        y += 5;
+        addSectionTitle("C. Suspect Profile");
+        const sp = profile.suspect_profile || {};
+        addField("Alias(es)", sp.aliases);
+        addField("Reported Location", sp.location);
+        addField("Social Media", sp.social_media);
+        addField("Comm. Methods", sp.communication_methods);
+        addField("Behavioral Indicators", sp.behavioral_indicators);
+        addField("Suspected Scam Type", sp.scam_type);
+        addField("Confidence Level", sp.confidence_level);
+        
+        y += 5;
+        doc.setFont(undefined, 'bold');
+        doc.text("Associated Wallets / Identifiers:", margin, y);
+        y += 6;
+        doc.setFont(undefined, 'normal');
+        doc.setFont("courier");
+        addTextBlock(sp.wallets || "No wallets identified.");
+        doc.setFont("helvetica");
+
+        // --- D. MODUS OPERANDI ---
+        y += 5;
+        addSectionTitle("D. Modus Operandi");
+        const mo = profile.modus_operandi || {};
+        addField("Initial Contact", mo.initial_contact);
+        addField("Escalation", mo.escalation);
+        addField("Manipulation", mo.manipulation);
+        addField("Financial Extraction", mo.financial_extraction);
+        
+        y += 5;
+        doc.setFont(undefined, 'bold');
+        doc.text("Timeline Summary:", margin, y);
+        y += 6;
+        doc.setFont(undefined, 'normal');
+        addTextBlock(mo.timeline_summary || "N/A");
+
+        // --- E. EVIDENCE SUMMARY ---
+        y += 5;
+        addSectionTitle("E. Evidence Summary");
+        addTextBlock(profile.evidence_summary || "No summary provided.");
+
+        // --- F. INVESTIGATOR ANALYSIS ---
+        y += 5;
+        addSectionTitle("F. Investigator Analysis");
+        const ia = profile.investigator_analysis || {};
+        addField("Pattern Assessment", ia.pattern_assessment);
+        addField("Organized Fraud Ind.", ia.organized_fraud_indicators);
+        addField("Cross-Case Links", ia.similarities);
+        addField("Repeat Risk", ia.repeat_risk);
+        
+        y += 5;
+        doc.setFont(undefined, 'bold');
+        doc.text("Attribution Notes:", margin, y);
+        y += 6;
+        doc.setFont(undefined, 'normal');
+        addTextBlock(ia.attribution_notes || "N/A");
+
+        // --- FOOTER ---
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text(`Generated by SafeNestT Platform | Investigator: ${user.full_name || user.email} | ${new Date().toLocaleString()}`, margin, 285);
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 10, 285);
+        }
+
+        const pdfBytes = doc.output('arraybuffer');
+        const pdfBase64 = btoa(
+            new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+
+        return Response.json({ success: true, pdfBase64 });
+
+    } catch (error) {
+        return Response.json({ error: error.message }, { status: 500 });
+    }
+});
