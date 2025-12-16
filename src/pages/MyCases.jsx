@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
+import UserCaseDetail from "@/components/cases/UserCaseDetail.jsx";
 import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator";
 import { DialogTrigger } from "@/components/ui/dialog";
 
@@ -340,11 +341,18 @@ export default function MyCases() {
       </Card>
 
       {selectedCase && (
-        <CaseDetailDialog
-          caseData={selectedCase}
-          onClose={() => setSelectedCase(null)}
-          onUpdate={handleCaseUpdate}
-        />
+        (user.role === 'admin' || user.is_admin || user.job_title === 'Fraud Specialist') ? (
+          <CaseDetailDialog
+            caseData={selectedCase}
+            onClose={() => setSelectedCase(null)}
+            onUpdate={handleCaseUpdate}
+          />
+        ) : (
+          <UserCaseDetail 
+            caseData={selectedCase}
+            onClose={() => setSelectedCase(null)}
+          />
+        )
       )}
     </div>
   );
