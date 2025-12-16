@@ -249,6 +249,14 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
+    id: 'admin-investigation',
+    title: 'Admin Investigation',
+    icon: ShieldCheck,
+    url: createPageUrl('AdminInvestigation'),
+    glow: 'red',
+    badge: 'ADMIN'
+  },
+  {
     id: 'intel-center',
     title: 'Intelligence Center',
     icon: Brain,
