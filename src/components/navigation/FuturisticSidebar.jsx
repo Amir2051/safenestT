@@ -523,22 +523,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
               />
             ))}
 
-            {/* Case Management Section */}
-            {(user?.role === 'admin' || user?.is_admin) && (
-              <div className="space-y-2 pt-4 border-t border-gray-800/50">
-                <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Case Management</span>
-                </div>
-                {caseItems.map((item) => (
-                  <NavItem 
-                    key={item.id} 
-                    item={item} 
-                    activeItem={activeItem} 
-                    onNavClick={handleNavClick} 
-                  />
-                ))}
-              </div>
-            )}
+
 
             {/* Investigation Suite */}
                <div className="space-y-2 pt-4 border-t border-gray-800/50">
