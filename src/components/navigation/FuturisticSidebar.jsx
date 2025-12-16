@@ -160,24 +160,7 @@ const navigationItems = [
   },
 ];
 
-const caseItems = [
-  {
-    id: 'case-manager',
-    title: 'Client Cases',
-    icon: Briefcase,
-    url: createPageUrl('Cases'),
-    glow: 'blue',
-    badge: 'NEW'
-  },
-  {
-    id: 'case-docs',
-    title: 'Document Manager',
-    icon: FileText,
-    url: createPageUrl('CaseDocumentManager'),
-    glow: 'cyan',
-    badge: 'NEW'
-  }
-];
+
 
 const investigationItems = [
   {
