@@ -187,6 +187,17 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
                 </p>
             </div>
             <div className="flex gap-2">
+                {(!existingProfile || profile.status === 'Draft') && (
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleAutoFill} 
+                        disabled={isAutoFilling || saveMutation.isPending}
+                        className="bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/30"
+                    >
+                        {isAutoFilling ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
+                        Auto-Fill from Case
+                    </Button>
+                )}
                 <Button variant="outline" onClick={handleSave} disabled={saveMutation.isPending}>
                     <Save className="w-4 h-4 mr-2" />
                     Save Draft
