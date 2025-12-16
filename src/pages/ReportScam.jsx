@@ -97,6 +97,7 @@ export default function ReportScam() {
         client_name: formData.victim_name,
         client_email: formData.victim_email,
         phone_number: formData.victim_phone,
+        victim_wallet: formData.victim_wallet,
         
         // Scammer Info
         scammer_info: {
@@ -224,6 +225,15 @@ export default function ReportScam() {
                       onChange={(e) => setFormData({...formData, victim_phone: e.target.value})}
                       placeholder="+1 (555) 123-4567"
                       className="bg-[#1a2332] border-gray-700 text-white mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white">Your Wallet Address (Optional)</Label>
+                    <Input
+                      value={formData.victim_wallet || ''}
+                      onChange={(e) => setFormData({...formData, victim_wallet: e.target.value})}
+                      placeholder="Your wallet address where funds were taken from"
+                      className="bg-[#1a2332] border-gray-700 text-white mt-2 font-mono"
                     />
                   </div>
                 </div>

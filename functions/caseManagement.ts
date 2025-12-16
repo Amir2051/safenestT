@@ -44,17 +44,25 @@ Deno.serve(async (req) => {
 
             // 1. Mandatory Wallet Validation
             const validateWallet = (addr) => {
+                if (!addr) return null;
                 if (/^0x[a-fA-F0-9]{40}$/.test(addr)) return "ethereum";
                 if (/^(1|3)[a-zA-Z0-9]{25,34}$|^bc1[a-zA-Z0-9]{39,59}$/.test(addr)) return "bitcoin";
                 if (/^T[a-zA-Z0-9]{33}$/.test(addr)) return "tron";
                 return null;
             };
 
-            const victimNet = validateWallet(victim_wallet);
+            // Only scammer wallet is strictly required for tracking, victim wallet is optional
             const scammerNet = validateWallet(scammer_wallet);
+            const victimNet = victim_wallet ? validateWallet(victim_wallet) : null;
 
-            if (!victimNet || !scammerNet) {
-                return Response.json({ error: "Both Client and Scammer wallets are required and must be valid formats (ETH, BTC, TRON)." }, { status: 400 });
+            if (!scammerNet) {
+                return Response.json({ error: "Scammer wallet is required and must be a valid format (ETH, BTC, TRON)." }, { status: 400 });
+            }
+            
+            // If victim wallet is provided but invalid, warn or ignore? 
+            // Better to fail if provided but invalid to avoid data bad entry, but let's be lenient or check if it was intended.
+            if (victim_wallet && !victimNet) {
+                 return Response.json({ error: "Victim wallet provided is invalid. Please check the format or leave it empty." }, { status: 400 });
             }
 
             const blockchain = scammerNet; // Prioritize scammer network for investigation
