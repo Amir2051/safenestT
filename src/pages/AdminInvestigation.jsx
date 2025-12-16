@@ -126,15 +126,34 @@ export default function AdminInvestigation() {
         >
           <Shield className="w-4 h-4 mr-2" />
           Recover & Audit Data
-        </Button>
-        <Button 
+          </Button>
+          <Button 
+          variant="outline"
+          onClick={() => {
+             const toastId = toast.loading("Syncing & Importing Cases...");
+             base44.functions.invoke('caseManagement', { action: 'sync_scam_reports' })
+                .then(res => {
+                    toast.dismiss(toastId);
+                    toast.success("Sync Complete", { description: res.data.message });
+                })
+                .catch(err => {
+                    toast.dismiss(toastId);
+                    toast.error("Sync failed: " + err.message);
+                });
+          }}
+          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+          >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Sync / Import Cases
+          </Button>
+          <Button 
           onClick={() => setIsCreateDialogOpen(true)}
           className="bg-purple-600 hover:bg-purple-700 text-white"
-        >
+          >
           <UserPlus className="w-4 h-4 mr-2" />
           Create Case for User
-        </Button>
-      </div>
+          </Button>
+          </div>
 
       <CreateCaseForUserDialog 
         isOpen={isCreateDialogOpen} 
