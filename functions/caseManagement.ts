@@ -159,6 +159,10 @@ Deno.serve(async (req) => {
 
             // Create Case
             const caseData = {
+                // Ensure proper visibility for both Admin and User
+                // created_by should be the user's email for RLS if it's their case
+                // but we also track admin creator if applicable
+                ...data,
                 ...data,
                 case_number: caseId,
                 // Wallets & Blockchain
