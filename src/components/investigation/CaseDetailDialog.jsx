@@ -1395,11 +1395,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                                 View Analysis
                             </Button>
                             
-                            {isAdmin && (
-                                <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')} title="Download (Admin Only)">
-                                    <ExternalLink className="w-4 h-4 text-gray-400" />
-                                </Button>
-                            )}
+                            <Button size="sm" variant="ghost" onClick={() => window.open(item.file_url || item.url, '_blank')} title="Download File">
+                                <ExternalLink className="w-4 h-4 text-gray-400" />
+                            </Button>
                         </div>
                       </div>
                       
