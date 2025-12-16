@@ -228,6 +228,7 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
                 <TabsTrigger value="victim">Victim Data</TabsTrigger>
                 <TabsTrigger value="suspect">Suspect Intel</TabsTrigger>
                 <TabsTrigger value="mo">Modus Operandi</TabsTrigger>
+                <TabsTrigger value="linked">Linked Intelligence</TabsTrigger>
                 <TabsTrigger value="evidence">Evidence</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
