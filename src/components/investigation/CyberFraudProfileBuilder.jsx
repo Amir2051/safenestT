@@ -15,6 +15,7 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
   const [activeTab, setActiveTab] = useState("victim");
   const [profile, setProfile] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch Existing Profile
