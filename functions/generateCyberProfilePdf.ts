@@ -132,6 +132,61 @@ Deno.serve(async (req) => {
         doc.setFont(undefined, 'normal');
         addTextBlock(mo.timeline_summary || "N/A");
 
+        // --- LINKED INTELLIGENCE ---
+        y += 5;
+        addSectionTitle("Linked Intelligence & Campaign Correlation");
+        
+        const li = profile.linked_intelligence || {};
+        const lis = li.summary || {};
+        
+        // Summary Box
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y, pageWidth - (margin * 2), 25, 'F');
+        doc.setFont(undefined, 'bold');
+        doc.text(`Total Linked Cases: ${lis.total_linked || 0}`, margin + 5, y + 8);
+        doc.text(`Combined Reported Loss: $${(lis.total_loss || 0).toLocaleString()}`, margin + 5, y + 16);
+        doc.text(`Campaign Assessment: ${lis.campaign_assessment || "N/A"}`, margin + 70, y + 8);
+        doc.setFont(undefined, 'normal');
+        y += 35;
+
+        // Linked Cases Table Header
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text("CASE ID", margin, y);
+        doc.text("LOSS", margin + 40, y);
+        doc.text("SHARED INDICATOR", margin + 70, y);
+        doc.text("CONFIDENCE", margin + 140, y);
+        y += 4;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        doc.setTextColor(0, 0, 0);
+        
+        // Rows
+        const linked = li.linked_cases || [];
+        if (linked.length > 0) {
+            linked.slice(0, 10).forEach(c => { // Limit to 10 for PDF brevity
+                if (y > 275) { doc.addPage(); y = 20; }
+                doc.text(c.case_number || "N/A", margin, y);
+                doc.text(`$${(c.loss_amount || 0).toLocaleString()}`, margin + 40, y);
+                
+                // Truncate indicator
+                const indicator = `${c.match_type}: ${c.match_value}`.substring(0, 35) + "...";
+                doc.text(indicator, margin + 70, y);
+                
+                doc.text(c.confidence || "Low", margin + 140, y);
+                y += 8;
+            });
+            if (linked.length > 10) {
+                doc.setFont(undefined, 'italic');
+                doc.text(`...and ${linked.length - 10} more cases.`, margin, y);
+                doc.setFont(undefined, 'normal');
+                y += 8;
+            }
+        } else {
+            doc.text("No linked cases identified at this time.", margin, y);
+            y += 10;
+        }
+
         // --- E. EVIDENCE SUMMARY ---
         y += 5;
         addSectionTitle("E. Evidence Summary");
