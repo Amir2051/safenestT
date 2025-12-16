@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
                 // Ensure numbers are numbers
                 amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
                 status: data.status || "Pending",
-                // Ownership
+                // Ownership - CRITICAL: 'created_by' must match the user's email for RLS visibility on their end
                 created_by: creatorEmail,
                 created_by_email: creatorEmail,
                 created_by_name: creatorName,
@@ -189,7 +189,9 @@ Deno.serve(async (req) => {
                 admin_creator_email: action === 'create_for_user' ? user.email : null,
                 // Ensure client details match target
                 client_email: action === 'create_for_user' ? creatorEmail : (data.client_email || creatorEmail),
-                client_name: action === 'create_for_user' ? creatorName : (data.client_name || creatorName)
+                client_name: action === 'create_for_user' ? creatorName : (data.client_name || creatorName),
+                // Ensure metadata is stringified if present
+                metadata: typeof data.metadata === 'object' ? JSON.stringify(data.metadata) : data.metadata
             };
 
             // AUTOMATION 1: Auto-Assignment
