@@ -63,6 +63,16 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
           financial_extraction: "",
           timeline_summary: ""
         },
+        linked_intelligence: {
+          summary: {
+            total_linked: 0,
+            total_loss: 0,
+            earliest_activity: "",
+            latest_activity: "",
+            campaign_assessment: ""
+          },
+          linked_cases: []
+        },
         evidence_summary: "",
         investigator_analysis: {
           pattern_assessment: "",
