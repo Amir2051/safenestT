@@ -573,7 +573,15 @@ Deno.serve(async (req) => {
                     // 1. Recover created_date from ID if possible or keep existing
                     // Sometimes created_date might be missing or corrupted
                     if (!c.created_date) {
-                        updates.created_date = new Date().toISOString(); // Fallback to now if totally lost
+                        // Attempt to extract year from ID if possible (e.g. SN-2024-XXXXX)
+                        let date = new Date().toISOString();
+                        if (c.case_number && c.case_number.startsWith('SN-')) {
+                            const year = c.case_number.split('-')[1];
+                            if (year && !isNaN(year)) {
+                                date = new Date(`${year}-01-01`).toISOString();
+                            }
+                        }
+                        updates.created_date = date;
                         fixedDates++;
                     }
 

@@ -40,21 +40,9 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
     queryKey: ['my-cases'],
     queryFn: async () => {
-      // Admin sees all
-      if (user.role === 'admin' || user.is_admin) {
-        return base44.entities.MyCase.list('-created_date', 1000);
-      } else {
-        // User sees cases they created (check system owner, manual email field, and client email)
-        return base44.entities.MyCase.filter({ 
-            $or: [
-                { created_by: user.email }, 
-                { created_by_email: user.email },
-                { created_by_email: user.email.toLowerCase() },
-                { client_email: user.email },
-                { client_email: user.email.toLowerCase() }
-            ] 
-        }, '-created_date', 1000);
-      }
+      // RLS (Row Level Security) handles the filtering on the server side.
+      // Admins see all, Users see only their cases (created_by, client_email, etc.)
+      return base44.entities.MyCase.list('-created_date', 1000);
     },
     enabled: !!user
   });
@@ -292,7 +280,7 @@ export default function MyCases() {
                           </span>
                           <span className="text-gray-400 flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {new Date(caseItem.created_date).toLocaleDateString()}
+                            {caseItem.created_date ? new Date(caseItem.created_date).toLocaleDateString() : 'Date N/A'}
                           </span>
                         </div>
 
