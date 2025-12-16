@@ -54,13 +54,16 @@ export default function AdminInvestigation() {
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // 5 minutes cache
+    staleTime: Infinity, // Prevent auto-refetching
+    cacheTime: Infinity
   });
 
   const { data: recoveryFunds = [] } = useQuery({
     queryKey: ['recovery-funds'],
     queryFn: () => base44.asServiceRole.entities.RecoveryFund.list('-created_date', 1000),
-    enabled: !!user && (user.role === 'admin' || user.is_admin)
+    enabled: !!user && (user.role === 'admin' || user.is_admin),
+    refetchOnWindowFocus: false,
+    staleTime: Infinity
   });
 
   if (!user || loadingCases) {
