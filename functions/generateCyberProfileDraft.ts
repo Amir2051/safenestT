@@ -16,6 +16,139 @@ Deno.serve(async (req) => {
         const caseData = await base44.asServiceRole.entities.MyCase.get(caseId);
         if (!caseData) return Response.json({ error: 'Case not found' }, { status: 404 });
 
+        // --- INTELLIGENCE CORRELATION ENGINE (ICE) ---
+        const linkedCases = [];
+        let totalLinkedLoss = 0;
+        let earliestDate = caseData.created_date;
+        let latestDate = caseData.created_date;
+
+        // Identifiers to scan for
+        const identifiers = {
+            wallets: [
+                caseData.scammer_wallet, 
+                ...(caseData.monitored_wallets || []),
+                ...(caseData.scammer_info?.wallet_addresses || [])
+            ].filter(Boolean),
+            emails: [
+                caseData.scammer_info?.email, 
+                ...(caseData.scammer_info?.known_emails || [])
+            ].filter(Boolean),
+            phones: [
+                caseData.scammer_info?.phone
+            ].filter(Boolean),
+            socials: [
+                 // Handle object or string
+                 ...(caseData.scammer_info?.social_media || []).map(s => typeof s === 'string' ? s : s.url || s.profile)
+            ].filter(Boolean)
+        };
+
+        // Scan Database (Optimized for key indexed fields if possible, otherwise list recent/all)
+        // For performance, we'll fetch relevant cases using specific filters if possible, 
+        // but `filter` with OR across multiple fields might be complex. 
+        // We'll fetch recent cases (e.g. last 1000) or use specific field filters in parallel.
+        
+        const scanResults = new Map();
+
+        const addMatch = (c, type, value, confidence) => {
+            if (c.id === caseId) return; // Don't match self
+            if (!scanResults.has(c.id)) {
+                scanResults.set(c.id, {
+                    case_id: c.id,
+                    case_number: c.case_number,
+                    loss_amount: c.amount_lost || 0,
+                    status: c.status,
+                    created_date: c.created_date,
+                    matches: []
+                });
+            }
+            const record = scanResults.get(c.id);
+            // Avoid duplicate match reasons
+            if (!record.matches.some(m => m.type === type && m.value === value)) {
+                record.matches.push({ type, value, confidence });
+            }
+        };
+
+        // 1. Wallet Matches (High Confidence)
+        if (identifiers.wallets.length > 0) {
+            // Can use $in if supported, or parallel queries
+            // Assuming filter supports $in or we loop
+             const walletCases = await base44.asServiceRole.entities.MyCase.filter({
+                scammer_wallet: { $in: identifiers.wallets }
+            });
+            walletCases.forEach(c => addMatch(c, 'Wallet', c.scammer_wallet, 'High'));
+            
+            // Check monitored_wallets field (array) - might need specific query or check locally if fetching all
+            // For now, relies on primary scammer_wallet match which is most common
+        }
+
+        // 2. Email Matches (High Confidence)
+        if (identifiers.emails.length > 0) {
+             // Basic implementation, usually emails are in a JSON blob (scammer_info), so difficult to query directly unless extracted
+             // or we fetch a batch and check. 
+             // If we can't query JSON fields efficiently, we rely on the scanned set from wallet or fetch recent.
+             // Let's assume we can query 'scammer_info.email' if it's a top level field in JSON or just skip strict DB query for JSON
+             // and rely on a broader fetch.
+             // Strategy: Fetch last 500 cases to scan in-memory for complex JSON matches
+             const recentCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 500);
+             recentCases.forEach(c => {
+                 if (c.id === caseId) return;
+
+                 // Check Emails
+                 const cEmails = [c.scammer_info?.email, ...(c.scammer_info?.known_emails || [])].filter(Boolean);
+                 const commonEmail = identifiers.emails.find(e => cEmails.includes(e));
+                 if (commonEmail) addMatch(c, 'Email', commonEmail, 'High');
+
+                 // Check Phones
+                 const cPhone = c.scammer_info?.phone;
+                 if (cPhone && identifiers.phones.includes(cPhone)) addMatch(c, 'Phone', cPhone, 'High');
+
+                 // Check Socials
+                 const cSocials = (c.scammer_info?.social_media || []).map(s => typeof s === 'string' ? s : s.url || s.profile);
+                 const commonSocial = identifiers.socials.find(s => cSocials.includes(s));
+                 if (commonSocial) addMatch(c, 'Social Handle', commonSocial, 'Medium');
+                 
+                 // Fuzzy Title/Description (Low/Medium) - Simple containment or keywords
+                 // This is basic, LLM will do better analysis later
+             });
+        }
+
+        // Compile Results
+        const linkedCasesList = Array.from(scanResults.values()).map(r => {
+            // Determine aggregate confidence
+            const isHigh = r.matches.some(m => m.confidence === 'High');
+            const isMedium = r.matches.some(m => m.confidence === 'Medium');
+            const confidence = isHigh ? 'High' : (isMedium ? 'Medium' : 'Low');
+
+            // Update stats
+            totalLinkedLoss += (r.loss_amount || 0);
+            if (new Date(r.created_date) < new Date(earliestDate)) earliestDate = r.created_date;
+            if (new Date(r.created_date) > new Date(latestDate)) latestDate = r.created_date;
+
+            return {
+                case_id: r.case_id,
+                case_number: r.case_number,
+                loss_amount: r.loss_amount,
+                match_type: r.matches.map(m => m.type).join(', '),
+                match_value: r.matches.map(m => m.value).join(', '),
+                confidence,
+                status: r.status
+            };
+        });
+
+        // Linked Intelligence Object
+        const linkedIntelligence = {
+            summary: {
+                total_linked: linkedCasesList.length,
+                total_loss: totalLinkedLoss,
+                earliest_activity: earliestDate,
+                latest_activity: latestDate,
+                campaign_assessment: linkedCasesList.length > 2 ? "Organized Campaign Likely" : (linkedCasesList.length > 0 ? "Repeat Offender" : "Isolated Incident")
+            },
+            linked_cases: linkedCasesList
+        };
+
+        // --- END ICE ---
+
         // 2. Prepare Deterministic Data (Auto-Fill)
         const evidenceList = (caseData.evidence_files || []).map(f => `- ${f.name} (${f.type})`).join('\n');
         const walletList = [
@@ -31,11 +164,8 @@ ${evidenceList || "None"}
 **Identified Wallets:**
 ${walletList || "None"}
 
-**Transaction Hashes:**
-${(caseData.transaction_hashes || []).join('\n') || "None"}
-
 **Linked Cases:**
-${(caseData.linked_case_ids || []).join(', ') || "None"}
+${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') || "None found"}
         `.trim();
 
         // 3. AI Extraction
@@ -44,7 +174,8 @@ ${(caseData.linked_case_ids || []).join(', ') || "None"}
             scammer_info: caseData.scammer_info,
             timeline: caseData.timeline,
             notes: (caseData.case_notes || []).map(n => n.note).join('\n'),
-            issue_type: caseData.issue_type
+            issue_type: caseData.issue_type,
+            linked_intelligence: linkedIntelligence // Pass Intelligence to AI
         };
 
         const prompt = `
@@ -58,29 +189,30 @@ ${(caseData.linked_case_ids || []).join(', ') || "None"}
         - Be objective and professional.
         - Mark uncertain info as "Unknown".
         - Infer behavioral indicators and MO from the narrative.
+        - **Analyze Linked Intelligence**: Use the provided linked cases to assess if this is an organized ring. Mention linked cases in the analysis.
         
         Generate a JSON object with these keys:
-        - victim_platform: Platforms involved (e.g. WhatsApp, Tinder)
-        - victim_contact: Initial contact method
-        - victim_dates: Date range of activity
-        - victim_statement: A professional summary of the victim's narrative
-        - suspect_aliases: Names/Aliases used
-        - suspect_location: Claimed or inferred location
-        - suspect_socials: Social media handles/links
-        - suspect_comms: Communication methods used
-        - suspect_behavior: Psychological tactics (e.g. Love bombing, Urgency)
-        - suspect_scam_type: Specific fraud classification
-        - suspect_confidence: Low/Medium/High (based on detail level)
-        - mo_contact: Initial contact vector description
-        - mo_escalation: How the scam progressed
-        - mo_manipulation: Psychological manipulation used
-        - mo_extraction: Method of financial extraction
-        - mo_timeline: Brief timeline summary
-        - analysis_pattern: Assessment of the scam pattern
-        - analysis_organized: Indicators of organized crime
-        - analysis_similarities: Potential links to other scams (general)
-        - analysis_risk: Risk of re-targeting
-        - analysis_attribution: Preliminary attribution notes
+        - victim_platform
+        - victim_contact
+        - victim_dates
+        - victim_statement
+        - suspect_aliases
+        - suspect_location
+        - suspect_socials
+        - suspect_comms
+        - suspect_behavior
+        - suspect_scam_type
+        - suspect_confidence
+        - mo_contact
+        - mo_escalation
+        - mo_manipulation
+        - mo_extraction
+        - mo_timeline
+        - analysis_pattern
+        - analysis_organized
+        - analysis_similarities: Explicitly reference linked cases and shared indicators found.
+        - analysis_risk
+        - analysis_attribution
         `;
 
         const llmRes = await base44.integrations.Core.InvokeLLM({
@@ -145,6 +277,7 @@ ${(caseData.linked_case_ids || []).join(', ') || "None"}
                 financial_extraction: aiData.mo_extraction || "",
                 timeline_summary: aiData.mo_timeline || ""
             },
+            linked_intelligence: linkedIntelligence, // New Section
             evidence_summary: evidenceSummary,
             investigator_analysis: {
                 pattern_assessment: aiData.analysis_pattern || "",
@@ -157,7 +290,7 @@ ${(caseData.linked_case_ids || []).join(', ') || "None"}
             edit_log: [{
                 timestamp: new Date().toISOString(),
                 user_email: user.email,
-                action: "Auto-Generated Profile from Case Data"
+                action: "Auto-Generated Profile (with Intelligence Scan)"
             }]
         };
 
