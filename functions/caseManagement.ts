@@ -657,94 +657,175 @@ Deno.serve(async (req) => {
                 });
             }
 
-            if (action === 'sync_scam_reports') {
+            if (action === 'import_all_legacy_cases') {
                 if (user.role !== 'admin' && !user.is_admin) {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
-                let syncedCount = 0;
-                let updatedCount = 0;
-                
-                // 1. Sync ScamDatabase (User Reports) -> MyCase
-                const reports = await base44.asServiceRole.entities.ScamDatabase.list(null, 2000);
-                const cases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
-                
-                // 2. Also try to fetch legacy InvestigationCase if any
-                let legacyCases = [];
+                let stats = { imported: 0, updated: 0, skipped: 0, errors: 0 };
+                const importedIds = [];
+
                 try {
-                    legacyCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 1000);
-                } catch(e) {}
+                    // FETCH ALL SOURCES
+                    const [
+                        myCases,
+                        scamReports,
+                        investigationCases,
+                        clientCases,
+                        fraudCases
+                    ] = await Promise.all([
+                        base44.asServiceRole.entities.MyCase.list(null, 10000),
+                        base44.asServiceRole.entities.ScamDatabase.list(null, 5000),
+                        base44.asServiceRole.entities.InvestigationCase.list(null, 2000).catch(() => []),
+                        base44.asServiceRole.entities.ClientCase.list(null, 2000).catch(() => []),
+                        base44.asServiceRole.entities.FraudCase.list(null, 2000).catch(() => [])
+                    ]);
 
-                // Helper to check existence
-                const caseExists = (sourceId, description, creator) => {
-                    return cases.find(c => 
-                        (c.metadata && typeof c.metadata === 'string' && c.metadata.includes(sourceId)) ||
-                        (c.description === description && c.created_by === creator)
-                    );
-                };
+                    // Helper: Check if already imported
+                    // We check metadata for source_id match, or fallback to exact description/creator match
+                    const findExisting = (sourceId, uniqueDesc, creator) => {
+                        return myCases.find(c => 
+                            (c.metadata && typeof c.metadata === 'string' && c.metadata.includes(sourceId)) ||
+                            (c.description === uniqueDesc && c.created_by === creator) ||
+                            (c.case_number === sourceId) // Some might have used case number as ID
+                        );
+                    };
 
-                // Sync Reports
-                for (const report of reports) {
-                    const exists = caseExists(report.id, report.scam_description, report.created_by);
+                    const importRecord = async (sourceRecord, sourceType, mapFn) => {
+                        try {
+                            // SKIP: If record is already a MyCase (shouldn't happen given logic, but safety)
+                            if (sourceType === 'MyCase') return;
 
-                    if (!exists) {
-                        const date = report.created_date ? new Date(report.created_date) : new Date();
-                        const year = date.getFullYear();
-                        const seq = await getNextSequence(base44, year);
-                        const caseId = `SN-${year}-${seq.toString().padStart(5, '0')}`;
+                            const existing = findExisting(sourceRecord.id, sourceRecord.description || sourceRecord.case_title, sourceRecord.created_by);
+                            
+                            if (existing) {
+                                // UPDATE: Only sync missing/empty critical fields to avoid overwriting admin edits
+                                let updates = {};
+                                const mapped = mapFn(sourceRecord);
+                                
+                                // Fields to check for updates
+                                const checkFields = ['amount_lost', 'scammer_wallet', 'transaction_hash', 'victim_wallet'];
+                                checkFields.forEach(field => {
+                                    if (!existing[field] && mapped[field]) {
+                                        updates[field] = mapped[field];
+                                    }
+                                });
 
-                        await base44.asServiceRole.entities.MyCase.create({
-                            case_number: caseId,
-                            client_name: report.reporter_name || report.created_by_name || 'Anonymous',
-                            client_email: report.created_by || 'unknown@report.com',
-                            issue_type: 'scam_report',
-                            status: 'Pending',
-                            description: report.scam_description || 'Imported Scam Report',
-                            amount_lost: report.total_stolen_usd || 0,
-                            scammer_wallet: report.scam_type === 'wallet' ? report.identifier : null,
-                            blockchain: report.blockchain,
-                            created_by: report.created_by,
-                            created_date: report.created_date,
-                            metadata: JSON.stringify({ source_id: report.id, source: 'ScamDatabase', imported_at: new Date().toISOString() })
-                        });
-                        syncedCount++;
-                    } else {
-                        // Keep up to date: ensure critical fields are set if missing in MyCase but present in Report
-                        // Only update if MyCase field is empty/null to avoid overwriting admin work
-                        let updates = {};
-                        if (!exists.amount_lost && report.total_stolen_usd) updates.amount_lost = report.total_stolen_usd;
-                        if (!exists.scammer_wallet && report.scam_type === 'wallet' && report.identifier) updates.scammer_wallet = report.identifier;
-                        
-                        if (Object.keys(updates).length > 0) {
-                            await base44.asServiceRole.entities.MyCase.update(exists.id, updates);
-                            updatedCount++;
+                                if (Object.keys(updates).length > 0) {
+                                    await base44.asServiceRole.entities.MyCase.update(existing.id, updates);
+                                    stats.updated++;
+                                } else {
+                                    stats.skipped++;
+                                }
+                            } else {
+                                // CREATE NEW COPY
+                                const mapped = mapFn(sourceRecord);
+                                
+                                // Generate Case ID if missing
+                                if (!mapped.case_number || !mapped.case_number.startsWith('SN-')) {
+                                    const date = mapped.created_date ? new Date(mapped.created_date) : new Date();
+                                    const year = date.getFullYear();
+                                    const seq = await getNextSequence(base44, year);
+                                    mapped.case_number = `SN-${year}-${seq.toString().padStart(5, '0')}`;
+                                }
+
+                                // Append Metadata
+                                mapped.metadata = JSON.stringify({
+                                    source_id: sourceRecord.id,
+                                    source_type: sourceType,
+                                    imported_at: new Date().toISOString(),
+                                    original_data: JSON.stringify(sourceRecord).substring(0, 500) // Truncate to save space
+                                });
+
+                                await base44.asServiceRole.entities.MyCase.create(mapped);
+                                stats.imported++;
+                                importedIds.push(mapped.case_number);
+                            }
+                        } catch (err) {
+                            console.error(`Error importing ${sourceType} ${sourceRecord.id}:`, err);
+                            stats.errors++;
                         }
-                    }
-                }
+                    };
 
-                // Sync Legacy Cases (InvestigationCase -> MyCase)
-                for (const lCase of legacyCases) {
-                    const exists = caseExists(lCase.id, lCase.case_title, lCase.created_by);
-                    if (!exists) {
-                         const date = lCase.created_date ? new Date(lCase.created_date) : new Date();
-                         const year = date.getFullYear();
-                         const seq = await getNextSequence(base44, year);
-                         const caseId = `SN-${year}-${seq.toString().padStart(5, '0')}`;
-                         
-                         await base44.asServiceRole.entities.MyCase.create({
-                             ...lCase, // Copy compatible fields
-                             id: undefined, // New ID
-                             case_number: caseId,
-                             status: lCase.status || 'Pending',
-                             client_email: lCase.client_email || lCase.created_by,
-                             issue_type: lCase.fraud_type || 'other',
-                             metadata: JSON.stringify({ source_id: lCase.id, source: 'InvestigationCase', imported_at: new Date().toISOString() })
-                         });
-                         syncedCount++;
+                    // 1. IMPORT SCAM DATABASE (Reports)
+                    for (const rec of scamReports) {
+                        await importRecord(rec, 'ScamDatabase', (r) => ({
+                            client_name: r.reporter_name || r.created_by_name || 'Anonymous',
+                            client_email: r.created_by || 'unknown',
+                            issue_type: 'scam_report',
+                            status: 'Pending', // Default for reports
+                            description: r.scam_description || 'Imported Scam Report',
+                            amount_lost: r.total_stolen_usd || 0,
+                            scammer_wallet: r.scam_type === 'wallet' ? r.identifier : null,
+                            blockchain: r.blockchain,
+                            created_by: r.created_by,
+                            created_date: r.created_date
+                        }));
                     }
-                }
 
-                return Response.json({ success: true, message: `Synced ${syncedCount} new records. Updated ${updatedCount} existing records.` });
+                    // 2. IMPORT INVESTIGATION CASES (Legacy)
+                    for (const rec of investigationCases) {
+                        await importRecord(rec, 'InvestigationCase', (r) => ({
+                            client_name: r.client_name || 'Unknown',
+                            client_email: r.client_email || r.created_by,
+                            issue_type: r.fraud_type || 'other',
+                            status: r.status || 'Pending',
+                            description: r.description || r.case_title,
+                            amount_lost: r.amount_lost || 0,
+                            scammer_wallet: r.scammer_wallet,
+                            victim_wallet: r.victim_wallet,
+                            blockchain: r.blockchain,
+                            created_by: r.created_by,
+                            created_date: r.created_date,
+                            assigned_to: r.assigned_to
+                        }));
+                    }
+
+                    // 3. IMPORT CLIENT CASES (Legacy)
+                    for (const rec of clientCases) {
+                        await importRecord(rec, 'ClientCase', (r) => ({
+                            client_name: r.client_name || r.created_by_name || 'Unknown',
+                            client_email: r.client_email || r.created_by_email || r.created_by,
+                            issue_type: r.issue_type || 'other',
+                            status: r.status || 'Pending',
+                            description: r.description,
+                            amount_lost: r.amount_lost || 0,
+                            scammer_wallet: r.scammer_wallet,
+                            victim_wallet: r.victim_wallet,
+                            created_by: r.created_by,
+                            created_date: r.created_date,
+                            evidence_files: r.evidence_files
+                        }));
+                    }
+
+                    // 4. IMPORT FRAUD CASES (Legacy)
+                    for (const rec of fraudCases) {
+                        await importRecord(rec, 'FraudCase', (r) => ({
+                            client_name: r.victim_contact_info?.name || 'Unknown',
+                            client_email: r.victim_contact_info?.email || r.created_by,
+                            phone_number: r.victim_contact_info?.phone,
+                            issue_type: r.fraud_type || 'scam',
+                            status: r.status === 'reported' ? 'Pending' : r.status,
+                            description: r.description,
+                            amount_lost: r.amount_stolen || r.amount_stolen_usd || 0,
+                            cryptocurrency: r.currency_type === 'USD' ? '' : r.currency_type,
+                            blockchain: r.blockchain,
+                            scammer_wallet: r.scammer_wallet,
+                            scammer_info: r.suspect_details,
+                            created_by: r.created_by,
+                            created_date: r.created_date || r.incident_date
+                        }));
+                    }
+
+                    return Response.json({ 
+                        success: true, 
+                        message: `Full Import Complete.\nImported: ${stats.imported}\nUpdated: ${stats.updated}\nSkipped: ${stats.skipped}\nErrors: ${stats.errors}`,
+                        stats 
+                    });
+
+                } catch (e) {
+                    return Response.json({ error: e.message }, { status: 500 });
+                }
             }
 
             return Response.json({ error: 'Invalid action' }, { status: 400 });
