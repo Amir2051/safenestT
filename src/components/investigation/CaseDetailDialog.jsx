@@ -1551,6 +1551,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   </div>
               </div>
             </TabsContent>
+
+            <TabsContent value="cyber-profile" className="space-y-4">
+              <CyberFraudProfileBuilder caseId={caseData.id} caseData={caseData} />
+            </TabsContent>
             </Tabs>
             </div>
             </DialogContent>
