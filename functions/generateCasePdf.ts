@@ -11,11 +11,22 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { caseId } = await req.json();
+        const { caseId, template = 'full_investigation', sections = {} } = await req.json();
 
         if (!caseId) {
             return Response.json({ error: 'Case ID is required' }, { status: 400 });
         }
+
+        const defaultSections = {
+            case_overview: true,
+            victim_info: true,
+            suspect_info: true,
+            transaction_evidence: true,
+            evidence_files: true,
+            observations: true
+        };
+
+        const activeSections = { ...defaultSections, ...sections };
 
         // 1. Fetch Case Data
         const caseData = await base44.asServiceRole.entities.MyCase.get(caseId);
