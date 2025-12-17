@@ -27,6 +27,8 @@ Deno.serve(async (req) => {
                 { case_number: { $regex: q, $options: 'i' } },
                 { client_name: { $regex: q, $options: 'i' } },
                 { client_email: { $regex: q, $options: 'i' } },
+                { victim_name: { $regex: q, $options: 'i' } },
+                { victim_email: { $regex: q, $options: 'i' } },
                 { created_by_name: { $regex: q, $options: 'i' } },
                 { created_by_email: { $regex: q, $options: 'i' } },
                 { case_title: { $regex: q, $options: 'i' } },
