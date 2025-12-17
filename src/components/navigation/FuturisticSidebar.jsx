@@ -64,13 +64,7 @@ const navigationItems = [
     glow: 'green',
     badge: 'SCAN'
   },
-  {
-    id: 'device-security',
-    title: 'Device Security',
-    icon: Smartphone,
-    url: createPageUrl('DeviceSecurity'),
-    glow: 'green'
-  },
+
   {
     id: 'electra',
     title: 'Electra Wallet',
