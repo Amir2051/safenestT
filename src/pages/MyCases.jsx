@@ -42,9 +42,9 @@ export default function MyCases() {
   useEffect(() => {
     if (!user || (user.role !== 'admin' && !user.is_admin && user.job_title !== 'Fraud Specialist')) return;
     const timer = setTimeout(() => {
-        if (searchQuery.trim().length >= 2) performSearch();
+        if (searchQuery.trim().length >= 1) performSearch();
         else if (searchQuery.trim().length === 0) setSearchResults(null);
-    }, 500);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, user]);
 
