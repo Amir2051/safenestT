@@ -206,13 +206,21 @@ const mediaNavItems = [
    },
 ];
 
-const unifiedAdminItems = [
+const adminItems = [
   {
-    id: 'admin-dashboard',
-    title: 'Admin Dashboard',
-    icon: Command,
-    url: createPageUrl('AdminDashboard'),
-    glow: 'cyan',
+    id: 'admin-verified-companies',
+    title: 'Verified Investment Hub',
+    icon: Building2,
+    url: createPageUrl('AdminVerifiedCompanies'),
+    glow: 'blue',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-investment-monitor',
+    title: 'Investment Monitor',
+    icon: Activity,
+    url: createPageUrl('AdminInvestmentMonitor'),
+    glow: 'emerald',
     badge: 'ADMIN'
   },
   {
@@ -240,43 +248,27 @@ const unifiedAdminItems = [
     badge: 'ADMIN'
   },
   {
-    id: 'threat-intel',
-    title: 'Threat Intelligence',
-    icon: Globe,
-    url: createPageUrl('ThreatIntelligence'),
-    glow: 'purple',
-    badge: 'INTEL'
+    id: 'wallet-checker',
+    title: 'Crypto Wallet Checker',
+    icon: Wallet,
+    url: createPageUrl('CryptoWalletChecker'),
+    glow: 'orange',
+    badge: 'TOOL'
   },
   {
-    id: 'forensics',
-    title: 'Digital Forensics',
-    icon: Search,
-    url: createPageUrl('DigitalForensics'),
-    glow: 'cyan',
-    badge: 'TOOLS'
-  },
-  {
-    id: 'admin-verified-companies',
-    title: 'Verified Investment Hub',
-    icon: Building2,
-    url: createPageUrl('AdminVerifiedCompanies'),
+    id: 'le-access',
+    title: 'LEO Portal Access',
+    icon: Lock,
+    url: createPageUrl('LawEnforcementAccess'),
     glow: 'blue',
-    badge: 'ADMIN'
+    badge: 'LEO'
   },
   {
-    id: 'admin-investment-monitor',
-    title: 'Investment Monitor',
-    icon: Activity,
-    url: createPageUrl('AdminInvestmentMonitor'),
-    glow: 'emerald',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-approvals',
-    title: 'User Approvals',
-    icon: UserCheck,
-    url: createPageUrl('AdminUserApprovals'),
-    glow: 'purple',
+    id: 'admin-dashboard',
+    title: 'Admin Dashboard',
+    icon: Command,
+    url: createPageUrl('AdminDashboard'),
+    glow: 'cyan',
     badge: 'ADMIN'
   },
   {
@@ -288,11 +280,11 @@ const unifiedAdminItems = [
     badge: 'KPI'
   },
   {
-    id: 'admin-subscriptions',
-    title: 'Subscriptions',
-    icon: CreditCard,
-    url: createPageUrl('AdminSubscriptions'),
-    glow: 'emerald',
+    id: 'admin-approvals',
+    title: 'User Approvals',
+    icon: UserCheck,
+    url: createPageUrl('AdminUserApprovals'),
+    glow: 'purple',
     badge: 'ADMIN'
   },
   {
@@ -312,27 +304,20 @@ const unifiedAdminItems = [
     badge: 'ADMIN'
   },
   {
+    id: 'admin-subscriptions',
+    title: 'Subscriptions',
+    icon: CreditCard,
+    url: createPageUrl('AdminSubscriptions'),
+    glow: 'emerald',
+    badge: 'ADMIN'
+  },
+  {
     id: 'admin-support',
     title: 'Support Chat',
     icon: MessageSquare,
     url: createPageUrl('AdminSupport'),
     glow: 'blue',
     badge: 'ADMIN'
-  },
-  {
-    id: 'le-access',
-    title: 'LEO Portal Access',
-    icon: Lock,
-    url: createPageUrl('LawEnforcementAccess'),
-    glow: 'blue',
-    badge: 'LEO'
-  },
-  {
-    id: 'settings',
-    title: 'Settings',
-    icon: SettingsIcon,
-    url: createPageUrl('Settings'),
-    glow: 'gray'
   }
 ];
 
@@ -428,7 +413,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const [lastLogin, setLastLogin] = useState(null);
 
   useEffect(() => {
-    const allItems = [...navigationItems, ...investigationItems, ...mediaNavItems, ...unifiedAdminItems];
+    const allItems = [...navigationItems, ...adminItems, ...mediaNavItems];
     
     const current = allItems.find(item => location.pathname === item.url);
     if (current) {
@@ -508,13 +493,27 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
 
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
           <AnimatePresence>
-            {(user?.role === 'admin' || user?.is_admin) ? (
-              // ADMIN VIEW (Unified)
-              <div className="space-y-2">
+            {navigationItems.filter(item => {
+              // Hide generic Support link for admins (they have Admin Support)
+              if (item.id === 'support' && (user?.role === 'admin' || user?.is_admin)) return false;
+              return true;
+            }).map((item) => (
+              <NavItem 
+                key={item.id} 
+                item={item} 
+                activeItem={activeItem} 
+                onNavClick={handleNavClick} 
+              />
+            ))}
+
+
+
+            {/* Investigation Suite */}
+               <div className="space-y-2 pt-4 border-t border-gray-800/50">
                 <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Dashboard</span>
+                  <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
                 </div>
-                {unifiedAdminItems.map((item) => (
+                {investigationItems.map((item) => (
                   <NavItem 
                     key={item.id} 
                     item={item} 
@@ -523,10 +522,14 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   />
                 ))}
               </div>
-            ) : (
-              // USER / INVESTIGATOR VIEW
-              <>
-                {navigationItems.map((item) => (
+
+            {/* Media Director Navigation - Show for Media Directors OR Admins */}
+            {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
+              <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                <div className="px-4 mb-2">
+                  <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
+                </div>
+                {mediaNavItems.map((item) => (
                   <NavItem 
                     key={item.id} 
                     item={item} 
@@ -534,39 +537,24 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                     onNavClick={handleNavClick} 
                   />
                 ))}
+              </div>
+            )}
 
-                {/* Investigation Suite */}
-                <div className="space-y-2 pt-4 border-t border-gray-800/50">
-                  <div className="px-4 mb-2">
-                    <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
-                  </div>
-                  {investigationItems.map((item) => (
-                    <NavItem 
-                      key={item.id} 
-                      item={item} 
-                      activeItem={activeItem} 
-                      onNavClick={handleNavClick} 
-                    />
-                  ))}
+            {/* Admin Navigation */}
+            {(user?.role === 'admin' || user?.is_admin) && (
+              <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                <div className="px-4 mb-2">
+                  <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Zone</span>
                 </div>
-
-                {/* Media Director Navigation */}
-                {user?.job_title === 'Media Director' && (
-                  <div className="space-y-2 pt-4 border-t border-gray-800/50">
-                    <div className="px-4 mb-2">
-                      <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
-                    </div>
-                    {mediaNavItems.map((item) => (
-                      <NavItem 
-                        key={item.id} 
-                        item={item} 
-                        activeItem={activeItem} 
-                        onNavClick={handleNavClick} 
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
+                {adminItems.map((item) => (
+                  <NavItem 
+                    key={item.id} 
+                    item={item} 
+                    activeItem={activeItem} 
+                    onNavClick={handleNavClick} 
+                  />
+                ))}
+              </div>
             )}
           </AnimatePresence>
         </div>
