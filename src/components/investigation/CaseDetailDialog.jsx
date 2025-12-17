@@ -548,7 +548,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <Network className="w-3 h-3 mr-1" />Connections
               </TabsTrigger>
               <TabsTrigger value="communications" className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">
-                <MessageSquare className="w-3 h-3 mr-1" />Responses
+                <MessageSquare className="w-3 h-3 mr-1" />Comms & Logs
               </TabsTrigger>
               <TabsTrigger value="cyber-profile" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
                 <ShieldAlert className="w-3 h-3 mr-1" />Cyber Profile
