@@ -36,7 +36,6 @@ import { toast } from "sonner";
 import CaseTaskManager from "@/components/collaboration/CaseTaskManager.jsx";
 import CyberFraudProfileBuilder from "./CyberFraudProfileBuilder.jsx";
 import CommunicationLog from "./communication/CommunicationLog.jsx";
-import CommunicationLog from "./communication/CommunicationLog.jsx";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
