@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
@@ -30,11 +30,32 @@ export default function MyCases() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [editingCase, setEditingCase] = useState(null);
   const [editFormData, setEditFormData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'admin' && !user.is_admin && user.job_title !== 'Fraud Specialist')) return;
+    const timer = setTimeout(() => {
+        if (searchQuery.trim().length >= 2) performSearch();
+        else if (searchQuery.trim().length === 0) setSearchResults(null);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, user]);
+
+  const performSearch = async () => {
+    setIsSearching(true);
+    try {
+        const res = await base44.functions.invoke('adminCaseSearch', { query: searchQuery });
+        if (res.data.cases) setSearchResults(res.data.cases);
+    } catch (e) { console.error(e); }
+    setIsSearching(false);
+  };
 
   // Fetch MyCase (New Unified Entity)
   const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
@@ -97,7 +118,25 @@ export default function MyCases() {
       admin_status: s.status
   }));
 
-  const allCases = [...normalizedCases, ...normalizedScams].sort((a, b) => {
+  const baseCases = [...normalizedCases, ...normalizedScams];
+  const activeList = (searchQuery && searchResults) ? searchResults.map(c => ({
+      ...c,
+      id: c.id,
+      case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
+      status: c.status,
+      amount: c.amount_lost,
+      currency: c.cryptocurrency || 'USD',
+      created_date: c.created_date,
+      type: 'client',
+      _entityName: 'MyCase',
+      fraud_type: c.issue_type,
+      description: c.description,
+      blockchain: c.blockchain,
+      scammer_wallet: c.scammer_wallet,
+      admin_status: c.status
+  })) : baseCases;
+
+  const allCases = activeList.sort((a, b) => {
       const dateA = a.created_date ? new Date(a.created_date) : new Date(0);
       const dateB = b.created_date ? new Date(b.created_date) : new Date(0);
       return dateB - dateA;
@@ -163,12 +202,28 @@ export default function MyCases() {
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <FileText className="w-8 h-8 text-cyan-400" />
             My Cases
           </h1>
-          <p className="text-gray-400 mt-1">Track and monitor your submitted scam reports</p>
+          <p className="text-gray-400 mt-1 mb-2">Track and monitor your submitted scam reports</p>
+          {(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') && (
+            <div className="relative max-w-md mt-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input 
+                    placeholder="Admin Search: Name, Email, Case ID..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-[#1a2332] border-cyan-500/30 text-white h-10 focus:border-cyan-500"
+                />
+                {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />
+                    </div>
+                )}
+            </div>
+          )}
         </div>
         <Dialog>
           <DialogTrigger asChild>
