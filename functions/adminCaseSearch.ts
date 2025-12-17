@@ -29,7 +29,9 @@ Deno.serve(async (req) => {
                 { client_email: { $regex: q, $options: 'i' } },
                 { created_by_name: { $regex: q, $options: 'i' } },
                 { created_by_email: { $regex: q, $options: 'i' } },
-                { case_title: { $regex: q, $options: 'i' } }
+                { case_title: { $regex: q, $options: 'i' } },
+                { scammer_wallet: { $regex: q, $options: 'i' } },
+                { victim_wallet: { $regex: q, $options: 'i' } }
             ]
         };
 
