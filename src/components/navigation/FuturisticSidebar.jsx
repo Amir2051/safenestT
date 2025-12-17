@@ -488,8 +488,11 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
           <AnimatePresence>
             {navigationItems.filter(item => {
+              const isAdmin = user?.role === 'admin' || user?.is_admin;
               // Hide generic Support link for admins (they have Admin Support)
-              if (item.id === 'support' && (user?.role === 'admin' || user?.is_admin)) return false;
+              if (item.id === 'support' && isAdmin) return false;
+              // Hide Verified Investments for admins (they have Admin Verified Hub)
+              if (item.id === 'verified-hub' && isAdmin) return false;
               return true;
             }).map((item) => (
               <NavItem 
