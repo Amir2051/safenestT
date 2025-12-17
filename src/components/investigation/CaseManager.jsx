@@ -59,12 +59,35 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-300px)] min-h-[600px]">
       {/* Left Side: Case List */}
       <Card className="lg:col-span-2 bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/20 flex flex-col h-full">
-        <CardHeader>
-          <CardTitle className="text-white">Crypto Fraud Cases</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <CardTitle className="text-white">Crypto Fraud Cases</CardTitle>
+            <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input 
+                    placeholder="Search by name, email, or Case ID..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-[#0f1419] border-gray-700 h-9 text-sm focus:border-cyan-500/50"
+                />
+                {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-3 w-3 text-cyan-400 animate-spin" />
+                    </div>
+                )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
           <div className="space-y-4">
-            {cases.map((fraudCase) => {
+            {displayCases.length === 0 && (searchResults !== null || cases.length === 0) ? (
+                <div className="text-center py-12 text-gray-500 border border-dashed border-gray-800 rounded-lg">
+                    <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p>No cases found</p>
+                    {searchQuery && <p className="text-xs mt-1 opacity-70">Try a different search term</p>}
+                </div>
+            ) : null}
+            {displayCases.map((fraudCase) => {
               const fundSupport = getCaseFundSupport(fraudCase.id);
               const amountRecovered = (fraudCase.amount_stolen_usd * (fraudCase.recovery_progress || 0)) / 100;
               const isSelected = selectedCase?.id === fraudCase.id;
