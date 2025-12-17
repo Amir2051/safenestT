@@ -1556,13 +1556,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="communications" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[500px]">
-                  <ResponseTemplates caseData={caseData} />
-                  {/* Placeholder for future chat/history component */}
-                  <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20 flex flex-col items-center justify-center text-gray-500">
-                      <MessageSquare className="w-12 h-12 mb-2 opacity-50" />
-                      <p>Communication History</p>
-                      <p className="text-xs opacity-70">(Coming Soon)</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+                  <div className="lg:col-span-2 h-full overflow-y-auto pr-2 custom-scrollbar">
+                      <CommunicationLog caseId={caseData.id} user={user} />
+                  </div>
+                  <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                      <ResponseTemplates caseData={caseData} />
                   </div>
               </div>
             </TabsContent>
