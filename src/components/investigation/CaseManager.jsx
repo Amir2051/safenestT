@@ -2,12 +2,44 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, DollarSign, TrendingUp, X } from "lucide-react";
+import { AlertCircle, DollarSign, TrendingUp, X, Search, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { base44 } from "@/api/base44Client";
 import CollaborationPanel from "@/components/collaboration/CollaborationPanel";
 import CaseRiskWidget from "@/components/ai/CaseRiskWidget";
 import FederalCaseManager from "@/components/investigation/FederalCaseManager";
 
 export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user }) {
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchResults, setSearchResults] = React.useState(null);
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+        if (searchQuery.trim().length >= 2) {
+            performSearch();
+        } else if (searchQuery.trim().length === 0) {
+            setSearchResults(null);
+        }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const performSearch = async () => {
+    setIsSearching(true);
+    try {
+        const res = await base44.functions.invoke('adminCaseSearch', { query: searchQuery });
+        if (res.data.cases) {
+            setSearchResults(res.data.cases);
+        }
+    } catch (e) {
+        console.error("Search error:", e);
+    }
+    setIsSearching(false);
+  };
+
+  const displayCases = searchResults || cases;
+
   const getCaseFundSupport = (caseId) => {
     return recoveryFunds
       .filter(f => f.fraud_case_id === caseId && f.transaction_type === 'distribution' && f.status === 'distributed')
