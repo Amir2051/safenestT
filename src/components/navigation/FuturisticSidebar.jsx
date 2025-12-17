@@ -206,21 +206,13 @@ const mediaNavItems = [
    },
 ];
 
-const adminItems = [
+const unifiedAdminItems = [
   {
-    id: 'admin-verified-companies',
-    title: 'Verified Investment Hub',
-    icon: Building2,
-    url: createPageUrl('AdminVerifiedCompanies'),
-    glow: 'blue',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-investment-monitor',
-    title: 'Investment Monitor',
-    icon: Activity,
-    url: createPageUrl('AdminInvestmentMonitor'),
-    glow: 'emerald',
+    id: 'admin-dashboard',
+    title: 'Admin Dashboard',
+    icon: Command,
+    url: createPageUrl('AdminDashboard'),
+    glow: 'cyan',
     badge: 'ADMIN'
   },
   {
@@ -248,27 +240,43 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
-    id: 'wallet-checker',
-    title: 'Crypto Wallet Checker',
-    icon: Wallet,
-    url: createPageUrl('CryptoWalletChecker'),
-    glow: 'orange',
-    badge: 'TOOL'
+    id: 'threat-intel',
+    title: 'Threat Intelligence',
+    icon: Globe,
+    url: createPageUrl('ThreatIntelligence'),
+    glow: 'purple',
+    badge: 'INTEL'
   },
   {
-    id: 'le-access',
-    title: 'LEO Portal Access',
-    icon: Lock,
-    url: createPageUrl('LawEnforcementAccess'),
-    glow: 'blue',
-    badge: 'LEO'
-  },
-  {
-    id: 'admin-dashboard',
-    title: 'Admin Dashboard',
-    icon: Command,
-    url: createPageUrl('AdminDashboard'),
+    id: 'forensics',
+    title: 'Digital Forensics',
+    icon: Search,
+    url: createPageUrl('DigitalForensics'),
     glow: 'cyan',
+    badge: 'TOOLS'
+  },
+  {
+    id: 'admin-verified-companies',
+    title: 'Verified Investment Hub',
+    icon: Building2,
+    url: createPageUrl('AdminVerifiedCompanies'),
+    glow: 'blue',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-investment-monitor',
+    title: 'Investment Monitor',
+    icon: Activity,
+    url: createPageUrl('AdminInvestmentMonitor'),
+    glow: 'emerald',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-approvals',
+    title: 'User Approvals',
+    icon: UserCheck,
+    url: createPageUrl('AdminUserApprovals'),
+    glow: 'purple',
     badge: 'ADMIN'
   },
   {
@@ -280,11 +288,11 @@ const adminItems = [
     badge: 'KPI'
   },
   {
-    id: 'admin-approvals',
-    title: 'User Approvals',
-    icon: UserCheck,
-    url: createPageUrl('AdminUserApprovals'),
-    glow: 'purple',
+    id: 'admin-subscriptions',
+    title: 'Subscriptions',
+    icon: CreditCard,
+    url: createPageUrl('AdminSubscriptions'),
+    glow: 'emerald',
     badge: 'ADMIN'
   },
   {
@@ -304,20 +312,27 @@ const adminItems = [
     badge: 'ADMIN'
   },
   {
-    id: 'admin-subscriptions',
-    title: 'Subscriptions',
-    icon: CreditCard,
-    url: createPageUrl('AdminSubscriptions'),
-    glow: 'emerald',
-    badge: 'ADMIN'
-  },
-  {
     id: 'admin-support',
     title: 'Support Chat',
     icon: MessageSquare,
     url: createPageUrl('AdminSupport'),
     glow: 'blue',
     badge: 'ADMIN'
+  },
+  {
+    id: 'le-access',
+    title: 'LEO Portal Access',
+    icon: Lock,
+    url: createPageUrl('LawEnforcementAccess'),
+    glow: 'blue',
+    badge: 'LEO'
+  },
+  {
+    id: 'settings',
+    title: 'Settings',
+    icon: SettingsIcon,
+    url: createPageUrl('Settings'),
+    glow: 'gray'
   }
 ];
 
