@@ -508,27 +508,13 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
 
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
           <AnimatePresence>
-            {navigationItems.filter(item => {
-              // Hide generic Support link for admins (they have Admin Support)
-              if (item.id === 'support' && (user?.role === 'admin' || user?.is_admin)) return false;
-              return true;
-            }).map((item) => (
-              <NavItem 
-                key={item.id} 
-                item={item} 
-                activeItem={activeItem} 
-                onNavClick={handleNavClick} 
-              />
-            ))}
-
-
-
-            {/* Investigation Suite */}
-               <div className="space-y-2 pt-4 border-t border-gray-800/50">
+            {(user?.role === 'admin' || user?.is_admin) ? (
+              // ADMIN VIEW (Unified)
+              <div className="space-y-2">
                 <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
+                  <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Dashboard</span>
                 </div>
-                {investigationItems.map((item) => (
+                {unifiedAdminItems.map((item) => (
                   <NavItem 
                     key={item.id} 
                     item={item} 
@@ -537,14 +523,10 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                   />
                 ))}
               </div>
-
-            {/* Media Director Navigation - Show for Media Directors OR Admins */}
-            {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
-              <div className="space-y-2 pt-4 border-t border-gray-800/50">
-                <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
-                </div>
-                {mediaNavItems.map((item) => (
+            ) : (
+              // USER / INVESTIGATOR VIEW
+              <>
+                {navigationItems.map((item) => (
                   <NavItem 
                     key={item.id} 
                     item={item} 
@@ -552,24 +534,39 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                     onNavClick={handleNavClick} 
                   />
                 ))}
-              </div>
-            )}
 
-            {/* Admin Navigation */}
-            {(user?.role === 'admin' || user?.is_admin) && (
-              <div className="space-y-2 pt-4 border-t border-gray-800/50">
-                <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Zone</span>
+                {/* Investigation Suite */}
+                <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                  <div className="px-4 mb-2">
+                    <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
+                  </div>
+                  {investigationItems.map((item) => (
+                    <NavItem 
+                      key={item.id} 
+                      item={item} 
+                      activeItem={activeItem} 
+                      onNavClick={handleNavClick} 
+                    />
+                  ))}
                 </div>
-                {adminItems.map((item) => (
-                  <NavItem 
-                    key={item.id} 
-                    item={item} 
-                    activeItem={activeItem} 
-                    onNavClick={handleNavClick} 
-                  />
-                ))}
-              </div>
+
+                {/* Media Director Navigation */}
+                {user?.job_title === 'Media Director' && (
+                  <div className="space-y-2 pt-4 border-t border-gray-800/50">
+                    <div className="px-4 mb-2">
+                      <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
+                    </div>
+                    {mediaNavItems.map((item) => (
+                      <NavItem 
+                        key={item.id} 
+                        item={item} 
+                        activeItem={activeItem} 
+                        onNavClick={handleNavClick} 
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </AnimatePresence>
         </div>
