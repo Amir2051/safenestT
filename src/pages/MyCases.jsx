@@ -212,7 +212,7 @@ export default function MyCases() {
             <div className="relative max-w-md mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input 
-                    placeholder="Admin Search: Name, Email, Case ID..." 
+                    placeholder="Admin Search: Name, Email, Victim, Case ID..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 bg-[#1a2332] border-cyan-500/30 text-white h-10 focus:border-cyan-500"
