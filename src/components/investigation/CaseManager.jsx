@@ -8,11 +8,50 @@ import { base44 } from "@/api/base44Client";
 import CollaborationPanel from "@/components/collaboration/CollaborationPanel";
 import CaseRiskWidget from "@/components/ai/CaseRiskWidget";
 import FederalCaseManager from "@/components/investigation/FederalCaseManager";
+import MergeCasesDialog from "./MergeCasesDialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [searchResults, setSearchResults] = React.useState(null);
   const [isSearching, setIsSearching] = React.useState(false);
+  
+  // Multi-select state
+  const [selectedCaseIds, setSelectedCaseIds] = React.useState([]);
+  const [isMergeDialogOpen, setIsMergeDialogOpen] = React.useState(false);
+  const [isMerging, setIsMerging] = React.useState(false);
+
+  const isAdmin = user?.role === 'admin' || user?.is_admin;
+
+  const toggleCaseSelection = (caseId, e) => {
+    e.stopPropagation();
+    setSelectedCaseIds(prev => 
+      prev.includes(caseId) ? prev.filter(id => id !== caseId) : [...prev, caseId]
+    );
+  };
+
+  const handleMergeCases = async () => {
+    setIsMerging(true);
+    try {
+      const res = await base44.functions.invoke('caseManagement', { 
+        action: 'merge_cases', 
+        data: { caseIds: selectedCaseIds } 
+      });
+      
+      if (res.data.success) {
+        toast.success("Profile Case Created Successfully");
+        setSelectedCaseIds([]);
+        setIsMergeDialogOpen(false);
+        // Optionally refresh cases logic would go here if we had refetch prop
+      } else {
+        toast.error("Merge Failed: " + res.data.error);
+      }
+    } catch (e) {
+      toast.error("Error merging cases: " + e.message);
+    }
+    setIsMerging(false);
+  };
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -62,23 +101,41 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="text-white">Crypto Fraud Cases</CardTitle>
-            <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input 
-                    placeholder="Search by name, email, or Case ID..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 bg-[#0f1419] border-gray-700 h-9 text-sm focus:border-cyan-500/50"
-                />
-                {isSearching && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-3 w-3 text-cyan-400 animate-spin" />
-                    </div>
+            <div className="flex items-center gap-2 w-full sm:max-w-lg">
+                {isAdmin && selectedCaseIds.length >= 2 && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => setIsMergeDialogOpen(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white animate-in fade-in"
+                  >
+                    Create Profile Case ({selectedCaseIds.length})
+                  </Button>
                 )}
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <Input 
+                        placeholder="Search by name, email, or Case ID..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-[#0f1419] border-gray-700 h-9 text-sm focus:border-cyan-500/50"
+                    />
+                    {isSearching && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-3 w-3 text-cyan-400 animate-spin" />
+                        </div>
+                    )}
+                </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
+          <MergeCasesDialog 
+            isOpen={isMergeDialogOpen}
+            onClose={() => setIsMergeDialogOpen(false)}
+            selectedCases={displayCases.filter(c => selectedCaseIds.includes(c.id))}
+            onConfirm={handleMergeCases}
+            isProcessing={isMerging}
+          />
           <div className="space-y-4">
             {displayCases.length === 0 && (searchResults !== null || cases.length === 0) ? (
                 <div className="text-center py-12 text-gray-500 border border-dashed border-gray-800 rounded-lg">
@@ -103,6 +160,19 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
                   onClick={() => onSelectCase(fraudCase)}
                 >
                   <div className="flex items-start justify-between gap-4 mb-3">
+                    {isAdmin && (
+                      <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox 
+                          checked={selectedCaseIds.includes(fraudCase.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedCaseIds(prev => 
+                              checked ? [...prev, fraudCase.id] : prev.filter(id => id !== fraudCase.id)
+                            );
+                          }}
+                          className="border-gray-500 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                        />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <h3 className="text-white font-bold mb-2">{fraudCase.case_title || fraudCase.case_number}</h3>
                       <div className="flex items-center gap-2 mb-2">
