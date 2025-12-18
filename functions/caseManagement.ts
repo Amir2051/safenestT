@@ -854,10 +854,19 @@ Deno.serve(async (req) => {
                 }
 
                 // 1. Verify Same User
-                // We use the 'created_by' or 'client_email' as the primary identifier for ownership
-                const getOwner = (c) => (c.created_by || c.client_email || '').toLowerCase().trim();
+                // We use 'client_email' as primary, fallback to 'created_by'. 
+                // This ensures admin-created cases (where created_by=admin) match user-created cases (where created_by=user)
+                // provided the client_email is consistent.
+                const getOwner = (c) => (c.client_email || c.created_by || '').toLowerCase().trim();
                 const primaryOwner = getOwner(cases[0]);
-                const isSameUser = cases.every(c => getOwner(c) === primaryOwner);
+                
+                // Allow merge if ANY of the identifiers match (client_email OR created_by)
+                // This is a more permissive check to handle cases where email might be in one field but not the other
+                const isSameUser = cases.every(c => {
+                    const cClient = (c.client_email || '').toLowerCase().trim();
+                    const cCreated = (c.created_by || '').toLowerCase().trim();
+                    return cClient === primaryOwner || cCreated === primaryOwner;
+                });
 
                 if (!isSameUser) {
                     return Response.json({ error: "All selected cases must belong to the same user." }, { status: 400 });
