@@ -47,10 +47,30 @@ export default function AdminInvestigation() {
   const { data: clientCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
     queryKey: ['client-cases-admin'],
     queryFn: async () => {
-      // Use client SDK (admin RLS allows access to all cases)
-      // Switched to MyCase to match user submissions
-      const cases = await base44.entities.MyCase.list('-created_date', 1000);
-      return cases;
+      // Fetch both individual cases and profile cases
+      const [cases, profileCases] = await Promise.all([
+        base44.entities.MyCase.list('-created_date', 1000),
+        base44.entities.MasterCase.list('-generated_date', 1000)
+      ]);
+
+      // Normalize profile cases to match case structure for the list
+      const normalizedProfiles = profileCases.map(pc => ({
+        ...pc,
+        id: pc.id,
+        case_title: `PROFILE: ${pc.user_id || 'Unknown User'}`,
+        case_number: `PROF-${pc.id.slice(0,6).toUpperCase()}`,
+        status: 'Profile', // Special status
+        amount_stolen_usd: pc.total_loss,
+        created_date: pc.generated_date,
+        is_profile: true,
+        client_name: pc.user_id, // Use ID as name proxy
+        description: pc.merged_summary
+      }));
+
+      // Combine and sort
+      return [...cases, ...normalizedProfiles].sort((a, b) => 
+        new Date(b.created_date) - new Date(a.created_date)
+      );
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
     refetchOnWindowFocus: false,
@@ -268,6 +288,7 @@ export default function AdminInvestigation() {
             selectedCase={selectedCase}
             recoveryFunds={recoveryFunds}
             user={user}
+            onUpdate={refetchCases}
           />
         </TabsContent>
 

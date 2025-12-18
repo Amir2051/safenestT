@@ -12,7 +12,7 @@ import MergeCasesDialog from "./MergeCasesDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
-export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user }) {
+export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user, onUpdate }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [searchResults, setSearchResults] = React.useState(null);
   const [isSearching, setIsSearching] = React.useState(false);
@@ -43,7 +43,7 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
         toast.success("Profile Case Created Successfully");
         setSelectedCaseIds([]);
         setIsMergeDialogOpen(false);
-        // Optionally refresh cases logic would go here if we had refetch prop
+        if (onUpdate) onUpdate();
       } else {
         toast.error("Merge Failed: " + res.data.error);
       }
