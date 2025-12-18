@@ -47,9 +47,9 @@ export default function AdminInvestigation() {
   const { data: clientCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
     queryKey: ['client-cases-admin'],
     queryFn: async () => {
-      // Use asServiceRole to ensure we get ALL cases regardless of RLS (though admin RLS allows it)
+      // Use client SDK (admin RLS allows access to all cases)
       // Switched to MyCase to match user submissions
-      const cases = await base44.asServiceRole.entities.MyCase.list('-created_date', 1000);
+      const cases = await base44.entities.MyCase.list('-created_date', 1000);
       return cases;
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
@@ -60,7 +60,7 @@ export default function AdminInvestigation() {
 
   const { data: recoveryFunds = [] } = useQuery({
     queryKey: ['recovery-funds'],
-    queryFn: () => base44.asServiceRole.entities.RecoveryFund.list('-created_date', 1000),
+    queryFn: () => base44.entities.RecoveryFund.list('-created_date', 1000),
     enabled: !!user && (user.role === 'admin' || user.is_admin),
     refetchOnWindowFocus: false,
     staleTime: Infinity
