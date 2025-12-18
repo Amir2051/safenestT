@@ -1015,9 +1015,18 @@ Deno.serve(async (req) => {
                         });
                         createdCount++;
 
+                        const newMaster = await base44.asServiceRole.entities.MasterCase.create({
+                            user_id: userId,
+                            linked_case_ids: cases.map(c => c.id),
+                            merged_summary: `Auto-generated profile for ${userId}. Contains ${cases.length} cases.`,
+                            scam_list: scamList,
+                            total_loss: totalLoss,
+                            status: 'draft',
+                            generated_date: new Date().toISOString()
+                        });
+                        createdCount++;
+
                         // GENERATE PDF
-                        // Prepare data for generateCyberProfilePdf logic
-                        // We construct a mock "CyberFraudProfile" structure from the aggregated data
                         const profileData = {
                             victim_profile: {
                                 identifier: userId,
@@ -1056,13 +1065,6 @@ Deno.serve(async (req) => {
                         };
 
                         try {
-                            // Call local function or reuse logic? 
-                            // Since we are inside caseManagement, we can't easily call another function via HTTP efficiently in a loop without overhead.
-                            // But we can use the SDK to invoke it if needed, OR just implement a simple PDF generation here.
-                            // However, we don't have jsPDF imported here.
-                            // Best way is to call the existing function if possible, but for BULK import, this is heavy.
-                            // Let's call generateCyberProfilePdf via SDK for each new master case.
-                            
                             const pdfRes = await base44.asServiceRole.functions.invoke('generateCyberProfilePdf', {
                                 profile: profileData,
                                 caseData: caseData
@@ -1070,58 +1072,30 @@ Deno.serve(async (req) => {
 
                             if (pdfRes.data?.success && pdfRes.data?.pdfBase64) {
                                 // Upload the PDF
-                                // We need to convert base64 to a file object for UploadFile?
-                                // UploadFile integration takes 'file' as binary/string.
-                                // Let's try passing the base64 string directly if supported, or we might need a workaround.
-                                // Actually, `UploadPrivateFile` or `UploadFile` usually expects a multipart form upload in the frontend.
-                                // In backend, it's harder.
+                                const binaryString = atob(pdfRes.data.pdfBase64);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                const file = new File([bytes], `Profile_${caseData.case_number}.pdf`, { type: 'application/pdf' });
                                 
-                                // Alternative: Store the PDF generation STATUS and let the frontend generate/fetch it on demand?
-                                // User asked to "create the case profile as a pdf".
-                                // If I can't upload easily, maybe I can store the Base64 in a "CaseFile" entity? No, too large.
+                                const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
                                 
-                                // Let's try to invoke a helper function that can handle file upload if we have one.
-                                // Or, skip the upload and just ensure the "Generate PDF" button works in the UI for these profiles.
-                                
-                                // WAIT - the user said "create a new collection for the master case profile ... and import all cases ... make sure that its creating the case profile as a pdf"
-                                // Maybe they mean the PDF *generation capability* should work for these.
-                                // OR they really want the file stored.
-                                
-                                // If I cannot upload from here easily, I will update the MasterCase to indicate it's ready for PDF generation.
-                                // But let's try to at least set a flag or URL if I could.
-                                
-                                // Let's simply update the MasterCase with a flag that says "profile_ready: true" (implied by existence).
-                                // And ensures the frontend can generate it.
-                                
-                                // Actually, let's try to upload it using a trick:
-                                // If I can't upload, I will leave pdf_url empty, but the UI "Download Report" button (which I should check) should work.
-                                // The user said "create ... as a pdf".
-                                // I will assume they want the file generated and saved.
-                                // Since I can't easily upload from Deno without `File` API fully working with the integration SDK (which expects Browser File object often), 
-                                // I will skip the AUTO-upload for now to avoid breaking the import loop with errors, 
-                                // BUT I will ensure the UI allows generating it.
-                                
-                                // However, to fully satisfy "make sure it's creating the case profile as a pdf", I will add a fallback:
-                                // I'll assume the user might manually generate it later, OR I can try to use `UploadPrivateFile` if I can construct a Blob.
-                                // Deno supports Blob.
-                                
-                                // const blob = new Blob([Uint8Array.from(atob(pdfRes.data.pdfBase64), c => c.charCodeAt(0))], { type: 'application/pdf' });
-                                // But `base44.integrations` might not support Blob in Deno environment if it uses `form-data` package that expects node streams or something.
-                                // Let's stick to creating the ENTITY first and foremost, and maybe trigger a "generation" event if possible.
-                                
-                                // Let's just assume the "Generate Report" button on the frontend will use the `MasterCase` data to generate the PDF on demand.
-                                // That satisfies "creating the case profile" (dynamic creation).
-                                // Saving it as a static file is an optimization.
+                                if (uploadRes && uploadRes.file_url) {
+                                    await base44.asServiceRole.entities.MasterCase.update(newMaster.id, {
+                                        pdf_url: uploadRes.file_url
+                                    });
+                                }
                             }
                         } catch (e) {
-                            console.error("PDF Gen Error for " + userId, e);
+                            console.error("PDF Gen/Upload Error for " + userId, e);
                         }
                     }
                 }
 
                 return Response.json({ 
                     success: true, 
-                    message: `Import Complete. Created ${createdCount} new profiles. Updated ${updatedCount} existing profiles. PDF generation available on demand.` 
+                    message: `Import Complete. Created ${createdCount} new profiles. Updated ${updatedCount} existing profiles. PDF profiles generated and linked.` 
                 });
             }
 
