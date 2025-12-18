@@ -944,6 +944,87 @@ Deno.serve(async (req) => {
 
             return Response.json({ error: 'Invalid action' }, { status: 400 });
 
+            if (action === 'import_to_master_profile') {
+                if (user.role !== 'admin' && !user.is_admin) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 403 });
+                }
+
+                // 1. Fetch ALL MyCases
+                const allCases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+                
+                // 2. Group by User (client_email)
+                const userGroups = {};
+                for (const c of allCases) {
+                    const owner = (c.client_email || c.created_by || 'unknown').toLowerCase().trim();
+                    if (!userGroups[owner]) userGroups[owner] = [];
+                    userGroups[owner].push(c);
+                }
+
+                let createdCount = 0;
+                let updatedCount = 0;
+
+                // 3. Process Groups
+                for (const [userId, cases] of Object.entries(userGroups)) {
+                    if (userId === 'unknown') continue;
+
+                    // Check if MasterCase exists for this user
+                    const existingMasters = await base44.asServiceRole.entities.MasterCase.filter({ user_id: userId });
+                    
+                    if (existingMasters.length > 0) {
+                        // Update existing? Or skip?
+                        // Let's ensure all cases are linked
+                        const master = existingMasters[0];
+                        const currentLinks = new Set(master.linked_case_ids || []);
+                        let changed = false;
+                        
+                        cases.forEach(c => {
+                            if (!currentLinks.has(c.id)) {
+                                currentLinks.add(c.id);
+                                changed = true;
+                            }
+                        });
+
+                        if (changed) {
+                            await base44.asServiceRole.entities.MasterCase.update(master.id, {
+                                linked_case_ids: Array.from(currentLinks),
+                                total_loss: cases.reduce((sum, c) => sum + (c.amount_lost || 0), 0)
+                            });
+                            updatedCount++;
+                        }
+                    } else {
+                        // Create New MasterCase Profile
+                        const totalLoss = cases.reduce((sum, c) => sum + (c.amount_lost || 0), 0);
+                        
+                        // Aggregate minimal data
+                        const scamList = cases.map(c => ({
+                            date: c.incident_date || c.created_date,
+                            platform: c.platform || 'Unknown',
+                            method: c.issue_type || 'Unknown',
+                            amount: c.amount_lost || 0,
+                            case_id: c.case_number || c.id
+                        })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                        await base44.asServiceRole.entities.MasterCase.create({
+                            user_id: userId,
+                            linked_case_ids: cases.map(c => c.id),
+                            merged_summary: `Auto-generated profile for ${userId}. Contains ${cases.length} cases.`,
+                            scam_list: scamList,
+                            total_loss: totalLoss,
+                            status: 'draft',
+                            generated_date: new Date().toISOString()
+                        });
+                        createdCount++;
+                    }
+                }
+
+                return Response.json({ 
+                    success: true, 
+                    message: `Import Complete. Created ${createdCount} new profiles. Updated ${updatedCount} existing profiles.` 
+                });
+            }
+
+            return Response.json({ error: 'Invalid action' }, { status: 400 });
+
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
     }

@@ -275,10 +275,46 @@ export default function AdminInvestigation() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Recovery Tool
             </TabsTrigger>
+            <TabsTrigger value="master-import">
+            <Database className="w-4 h-4 mr-2" />
+            Master Profile Import
+            </TabsTrigger>
             </TabsList>
 
             <TabsContent value="recovery" className="mt-6">
             <CaseRecoveryPanel />
+            </TabsContent>
+
+            <TabsContent value="master-import" className="mt-6">
+                <div className="p-6 bg-[#0f1419] border border-gray-800 rounded-lg text-center">
+                    <Database className="w-12 h-12 text-purple-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Master Profile Import</h3>
+                    <p className="text-gray-400 max-w-lg mx-auto mb-6">
+                        Automatically scan the database and create Master Case Profiles for all users. 
+                        This groups individual cases by user email into a consolidated profile view.
+                    </p>
+                    <Button 
+                        size="lg"
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={async () => {
+                            const toastId = toast.loading("Running Master Profile Import...");
+                            try {
+                                const res = await base44.functions.invoke('caseManagement', { action: 'import_to_master_profile' });
+                                if (res.data.success) {
+                                    toast.success(res.data.message, { id: toastId, duration: 5000 });
+                                    refetchCases();
+                                } else {
+                                    toast.error("Import Failed: " + res.data.error, { id: toastId });
+                                }
+                            } catch (e) {
+                                toast.error("Error: " + e.message, { id: toastId });
+                            }
+                        }}
+                    >
+                        <RefreshCw className="w-5 h-5 mr-2" />
+                        Run Full Import
+                    </Button>
+                </div>
             </TabsContent>
 
             <TabsContent value="cases" className="mt-6">
