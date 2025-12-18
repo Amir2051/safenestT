@@ -7,7 +7,10 @@ export default function MergeCasesDialog({ isOpen, onClose, selectedCases, onCon
   if (!isOpen || !selectedCases || selectedCases.length < 2) return null;
 
   // Group by user to check for conflicts visually
-  const owners = [...new Set(selectedCases.map(c => c.client_email || c.created_by))];
+  // Normalize emails to lowercase and trim
+  const owners = [...new Set(selectedCases.map(c => 
+    (c.client_email || c.created_by || 'Unknown').toLowerCase().trim()
+  ))];
   const isSingleOwner = owners.length === 1;
   const totalLoss = selectedCases.reduce((sum, c) => sum + (c.amount_stolen_usd || c.amount_lost || 0), 0);
 

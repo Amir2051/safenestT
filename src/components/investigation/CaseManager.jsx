@@ -91,7 +91,8 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
     traced: "bg-purple-500/20 text-purple-400 border-purple-500/50",
     recovering: "bg-orange-500/20 text-orange-400 border-orange-500/50",
     recovered: "bg-green-500/20 text-green-400 border-green-500/50",
-    closed: "bg-gray-500/20 text-gray-400 border-gray-500/50"
+    closed: "bg-gray-500/20 text-gray-400 border-gray-500/50",
+    Profile: "bg-purple-600 text-white border-purple-400"
   };
 
   return (
@@ -109,6 +110,17 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
                     className="bg-purple-600 hover:bg-purple-700 text-white animate-in fade-in"
                   >
                     Create Profile Case ({selectedCaseIds.length})
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onUpdate && onUpdate()}
+                    className="border-gray-700 hover:bg-gray-800"
+                    title="Refresh List"
+                  >
+                    <Loader2 className={`w-4 h-4 ${!displayCases ? 'animate-spin' : ''}`} />
                   </Button>
                 )}
                 <div className="relative flex-1">
