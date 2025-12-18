@@ -1,11 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
-import { jsPDF } from 'npm:jspdf@2.5.1';
+import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        // Service role context usually, or validate user
-        // We accept calls from other functions (service role) or admin users
         
         const { masterCaseId, profileData, caseData } = await req.json();
 
@@ -13,41 +11,64 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Missing required data' }, { status: 400 });
         }
 
-        // 1. GENERATE PDF
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 20;
-        let y = 20;
+        // 1. GENERATE PDF using pdf-lib (More robust for backend)
+        const pdfDoc = await PDFDocument.create();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        
+        let page = pdfDoc.addPage();
+        const { width, height } = page.getSize();
+        let y = height - 50;
+        const margin = 50;
+
+        const drawText = (text, options = {}) => {
+            const size = options.size || 10;
+            const currentFont = options.font || font;
+            
+            // Simple line wrapping
+            const maxWidth = width - (margin * 2);
+            const words = text.split(' ');
+            let line = '';
+            
+            for (const word of words) {
+                const testLine = line + word + ' ';
+                const textWidth = currentFont.widthOfTextAtSize(testLine, size);
+                if (textWidth > maxWidth) {
+                    page.drawText(line, { x: margin, y, size, font: currentFont, color: options.color || rgb(0, 0, 0) });
+                    y -= (size + 5);
+                    line = word + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            page.drawText(line, { x: margin, y, size, font: currentFont, color: options.color || rgb(0, 0, 0) });
+            y -= (size + 10);
+
+            if (y < 50) {
+                page = pdfDoc.addPage();
+                y = height - 50;
+            }
+        };
 
         // Header
-        doc.setFillColor(10, 20, 40);
-        doc.rect(0, 0, pageWidth, 40, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.text("CYBER FRAUD INTELLIGENCE PROFILE", pageWidth / 2, 25, { align: 'center' });
-        doc.setFontSize(10);
-        doc.setTextColor(200, 200, 200);
-        doc.text("CONFIDENTIAL - MASTER PROFILE", pageWidth / 2, 35, { align: 'center' });
-
-        y = 50;
-        doc.setTextColor(0, 0, 0);
+        page.drawRectangle({ x: 0, y: height - 80, width, height: 80, color: rgb(0.05, 0.1, 0.2) });
+        page.drawText("CYBER FRAUD INTELLIGENCE PROFILE", { x: margin, y: height - 50, size: 18, font: boldFont, color: rgb(1, 1, 1) });
+        page.drawText("CONFIDENTIAL - MASTER PROFILE", { x: margin, y: height - 70, size: 10, font: font, color: rgb(0.8, 0.8, 0.8) });
+        
+        y = height - 100;
 
         const addSection = (title, content) => {
-            if (y > 250) { doc.addPage(); y = 20; }
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.setFillColor(240, 240, 240);
-            doc.rect(margin, y - 5, pageWidth - (margin * 2), 8, 'F');
-            doc.text(title.toUpperCase(), margin + 2, y);
-            y += 10;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
+            if (y < 100) { page = pdfDoc.addPage(); y = height - 50; }
             
+            // Section Header
+            page.drawRectangle({ x: margin, y: y - 5, width: width - (margin * 2), height: 20, color: rgb(0.95, 0.95, 0.95) });
+            page.drawText(title.toUpperCase(), { x: margin + 10, y: y + 2, size: 12, font: boldFont, color: rgb(0, 0, 0) });
+            y -= 30;
+
             if (content) {
-                const lines = doc.splitTextToSize(content, pageWidth - (margin * 2));
-                doc.text(lines, margin, y);
-                y += (lines.length * 5) + 10;
+                drawText(content, { size: 10, font: font });
             }
+            y -= 10;
         };
 
         addSection("Case Information", `Case Number: ${caseData.case_number}\nDate: ${new Date(caseData.created_date).toLocaleDateString()}\nType: ${caseData.issue_type}\nStatus: ${caseData.status}`);
@@ -56,30 +77,29 @@ Deno.serve(async (req) => {
         addSection("Victim Profile", `ID: ${vp.identifier}\nContact: ${vp.contact_method}\nLoss: $${(vp.loss_amount || 0).toLocaleString()}\nPlatforms: ${vp.platforms}\nStatement: ${vp.statement}`);
 
         const sp = profileData.suspect_profile || {};
-        addSection("Suspect Intelligence", `Scam Type: ${sp.scam_type}\nIdentified Wallets:\n${sp.wallets}`);
+        addSection("Suspect Intelligence", `Scam Type: ${sp.scam_type}\nIdentified Wallets: ${sp.wallets}`);
 
         const li = profileData.linked_intelligence || {};
         addSection("Linked Cases Analysis", `Total Linked Cases: ${li.summary?.total_linked}\nTotal Aggregated Loss: $${(li.summary?.total_loss || 0).toLocaleString()}\nAssessment: ${li.summary?.campaign_assessment}`);
 
-        // Output as Blob/File
-        const pdfBytes = doc.output('arraybuffer');
+        // Save
+        const pdfBytes = await pdfDoc.save();
         
         // 2. UPLOAD FILE
-        // Create a File object from the buffer
-        // Note: Deno's File implementation might differ slightly but standard File(bits, name, options) is supported
-        const file = new File([new Uint8Array(pdfBytes)], `MasterProfile_${caseData.case_number}.pdf`, { type: 'application/pdf' });
+        // Create a File object
+        const file = new File([pdfBytes], `MasterProfile_${caseData.case_number}.pdf`, { type: 'application/pdf' });
         
-        // Use service role for upload to ensure permissions
+        // Use service role for upload
         const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
 
         if (!uploadRes || !uploadRes.file_url) {
-            throw new Error("Upload failed");
+            throw new Error("Upload returned no URL");
         }
 
         // 3. UPDATE MASTER CASE
         await base44.asServiceRole.entities.MasterCase.update(masterCaseId, {
             pdf_url: uploadRes.file_url,
-            status: 'finalized', // Mark as ready
+            status: 'finalized',
             updated_date: new Date().toISOString()
         });
 
@@ -87,6 +107,6 @@ Deno.serve(async (req) => {
 
     } catch (error) {
         console.error("AutoPDF Error:", error);
-        return Response.json({ error: error.message }, { status: 500 });
+        return Response.json({ error: error.message, stack: error.stack }, { status: 500 });
     }
 });

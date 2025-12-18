@@ -962,6 +962,7 @@ Deno.serve(async (req) => {
 
                 let createdCount = 0;
                 let updatedCount = 0;
+                let pdfErrors = [];
 
                 // 3. Process Groups
                 for (const [userId, cases] of Object.entries(userGroups)) {
@@ -1064,24 +1065,35 @@ Deno.serve(async (req) => {
                             status: 'Draft'
                         };
 
-                        // TRIGGER PDF GENERATION (Async-ish)
-                        // We await it to ensure it completes, but catch errors so the loop continues.
-                        // We use the specialized function that handles generation + upload + update in one go.
+                        // TRIGGER PDF GENERATION
                         try {
-                            await base44.asServiceRole.functions.invoke('autoGenerateProfilePdf', {
+                            const pdfRes = await base44.asServiceRole.functions.invoke('autoGenerateProfilePdf', {
                                 masterCaseId: newMaster.id,
                                 profileData: profileData,
                                 caseData: caseData
                             });
+                            
+                            if (pdfRes.data?.error) {
+                                pdfErrors.push({ userId, error: pdfRes.data.error });
+                            }
                         } catch (e) {
                             console.error("AutoPDF Trigger Failed for " + userId, e);
+                            pdfErrors.push({ userId, error: e.message });
                         }
                     }
                 }
 
+                let msg = `Import Complete. Created ${createdCount} new profiles. Updated ${updatedCount} existing profiles.`;
+                if (pdfErrors.length > 0) {
+                    msg += ` PDF Generation failed for ${pdfErrors.length} profiles. Check logs.`;
+                } else {
+                    msg += ` All PDFs generated successfully.`;
+                }
+
                 return Response.json({ 
                     success: true, 
-                    message: `Import Complete. Created ${createdCount} new profiles. Updated ${updatedCount} existing profiles. PDF profiles generated and linked.` 
+                    message: msg,
+                    pdfErrors: pdfErrors.length > 0 ? pdfErrors : undefined
                 });
             }
 
