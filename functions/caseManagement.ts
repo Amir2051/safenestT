@@ -1064,31 +1064,17 @@ Deno.serve(async (req) => {
                             status: 'Draft'
                         };
 
+                        // TRIGGER PDF GENERATION (Async-ish)
+                        // We await it to ensure it completes, but catch errors so the loop continues.
+                        // We use the specialized function that handles generation + upload + update in one go.
                         try {
-                            const pdfRes = await base44.asServiceRole.functions.invoke('generateCyberProfilePdf', {
-                                profile: profileData,
+                            await base44.asServiceRole.functions.invoke('autoGenerateProfilePdf', {
+                                masterCaseId: newMaster.id,
+                                profileData: profileData,
                                 caseData: caseData
                             });
-
-                            if (pdfRes.data?.success && pdfRes.data?.pdfBase64) {
-                                // Upload the PDF
-                                const binaryString = atob(pdfRes.data.pdfBase64);
-                                const bytes = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    bytes[i] = binaryString.charCodeAt(i);
-                                }
-                                const file = new File([bytes], `Profile_${caseData.case_number}.pdf`, { type: 'application/pdf' });
-                                
-                                const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
-                                
-                                if (uploadRes && uploadRes.file_url) {
-                                    await base44.asServiceRole.entities.MasterCase.update(newMaster.id, {
-                                        pdf_url: uploadRes.file_url
-                                    });
-                                }
-                            }
                         } catch (e) {
-                            console.error("PDF Gen/Upload Error for " + userId, e);
+                            console.error("AutoPDF Trigger Failed for " + userId, e);
                         }
                     }
                 }
