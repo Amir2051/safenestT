@@ -855,11 +855,9 @@ Deno.serve(async (req) => {
 
                 // 1. Verify Same User
                 // We use the 'created_by' or 'client_email' as the primary identifier for ownership
-                const primaryOwner = cases[0].created_by || cases[0].client_email;
-                const isSameUser = cases.every(c => 
-                    (c.created_by === primaryOwner) || 
-                    (c.client_email === primaryOwner)
-                );
+                const getOwner = (c) => (c.created_by || c.client_email || '').toLowerCase().trim();
+                const primaryOwner = getOwner(cases[0]);
+                const isSameUser = cases.every(c => getOwner(c) === primaryOwner);
 
                 if (!isSameUser) {
                     return Response.json({ error: "All selected cases must belong to the same user." }, { status: 400 });
