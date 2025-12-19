@@ -99,20 +99,49 @@ export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = 
                 caseSummary = caseData?.description || "No description available.";
             }
 
+            // Fetch Logo
+            const logoUrl = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg";
+            let logoBase64 = null;
+            try {
+                const logoRes = await fetch(logoUrl);
+                const logoBuf = await logoRes.arrayBuffer();
+                logoBase64 = btoa(new Uint8Array(logoBuf).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+            } catch (e) {
+                console.warn("Logo fetch failed", e);
+            }
+
             const doc = new jsPDF();
-            
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 20;
+
             // Branding & Header
-            doc.setFillColor(26, 35, 50); // Dark Blue Header
-            doc.rect(0, 0, 210, 40, 'F');
+            if (logoBase64) {
+                doc.addImage(logoBase64, 'JPEG', margin, 10, 15, 15);
+            }
             
-            doc.setFontSize(22);
-            doc.setTextColor(255, 255, 255);
-            doc.text("Crypto Intelligence Report", 20, 20);
+            doc.setFontSize(18);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text("SafeNestT®", margin + 20, 20);
             
             doc.setFontSize(10);
-            doc.setTextColor(200, 200, 200);
-            doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
-            doc.text(`Case ID: ${caseData?.case_number || caseId}`, 140, 30);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text("CRYPTO INTELLIGENCE REPORT", margin + 20, 25);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(200, 0, 0);
+            doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth - margin, 20, { align: 'right' });
+
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 26, { align: 'right' });
+            doc.text(`Case ID: ${caseData?.case_number || caseId}`, pageWidth - margin, 32, { align: 'right' });
+
+            // Line separator
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, 38, pageWidth - margin, 38);
 
             // 1. Case Context Section
             let y = 55;
