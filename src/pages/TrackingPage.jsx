@@ -16,23 +16,6 @@ export default function TrackingPage() {
       }
 
       try {
-        // Fetch IP and geo data from client-side API
-        let ipData = { ip: 'Unknown', country: 'Unknown', city: 'Unknown', region: 'Unknown' };
-        try {
-          const ipResponse = await fetch('https://ipapi.co/json/');
-          if (ipResponse.ok) {
-            const data = await ipResponse.json();
-            ipData = {
-              ip: data.ip || 'Unknown',
-              country: data.country_name || 'Unknown',
-              city: data.city || 'Unknown',
-              region: data.region || 'Unknown'
-            };
-          }
-        } catch (e) {
-          console.log('IP fetch failed, using fallback');
-        }
-
         // Collect visitor data
         const visitorData = {
           user_agent: navigator.userAgent,
@@ -40,10 +23,7 @@ export default function TrackingPage() {
           screen_width: window.screen.width,
           screen_height: window.screen.height,
           language: navigator.language,
-          client_ip: ipData.ip,
-          client_country: ipData.country,
-          client_city: ipData.city,
-          client_region: ipData.region
+          // We let the server resolve IP and Location for better accuracy and to avoid ad-blockers
         };
 
         // Log the click
