@@ -179,8 +179,8 @@ ${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') ||
         };
 
         const prompt = `
-        You are a Cyber Fraud Intelligence Analyst. 
-        Extract a structured intelligence profile from the provided case data.
+        You are a Cyber Fraud Intelligence Analyst using advanced profiling techniques.
+        Extract a structured intelligence profile from the provided case data, incorporating Behavioral and Psychological Profiling.
         
         CASE DATA:
         ${JSON.stringify(aiContext, null, 2)}
@@ -188,8 +188,9 @@ ${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') ||
         REQUIREMENTS:
         - Be objective and professional.
         - Mark uncertain info as "Unknown".
-        - Infer behavioral indicators and MO from the narrative.
-        - **Analyze Linked Intelligence**: Use the provided linked cases to assess if this is an organized ring. Mention linked cases in the analysis.
+        - **Psychological Profiling**: Infer the suspect's psychological traits (e.g., predatory, opportunistic, sophisticated social engineer) based on communication style and manipulation tactics.
+        - **Threat Attribution**: Compare the observed MO and technical indicators with known global threat actor patterns (e.g., Pig Butchering/Sha Zhu Pan, Tech Support syndicates, Ponzi schemes). Suggest a likely threat group category.
+        - **Linked Intelligence**: Use the provided linked cases to assess the scale of the operation. Is it a lone wolf or an organized syndicate?
         
         Generate a JSON object with these keys:
         - victim_platform
@@ -200,7 +201,7 @@ ${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') ||
         - suspect_location
         - suspect_socials
         - suspect_comms
-        - suspect_behavior
+        - suspect_behavior: Include psychological assessment here.
         - suspect_scam_type
         - suspect_confidence
         - mo_contact
@@ -212,7 +213,7 @@ ${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') ||
         - analysis_organized
         - analysis_similarities: Explicitly reference linked cases and shared indicators found.
         - analysis_risk
-        - analysis_attribution
+        - analysis_attribution: Suggest specific threat campaign types (e.g., "Southeast Asian Pig Butchering Ring").
         `;
 
         const llmRes = await base44.integrations.Core.InvokeLLM({
