@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
         if (textCandidates.length > 0) {
             const prompt = `
-                Analyze the following fraud cases for textual similarities suggesting a linked modus operandi or same perpetrator.
+                Act as a Criminal Intelligence Analyst. Compare the Source Case against Candidate Cases to identify hidden connections, criminal campaigns, or shared Modus Operandi (MO).
                 
                 SOURCE CASE:
                 Title: ${sourceCase.case_title}
@@ -117,10 +117,16 @@ Deno.serve(async (req) => {
                     Description: ${c.description}
                 `).join('\n')}
 
+                TASK:
+                Identify "Criminal Campaigns" or "MO Clusters". Look for:
+                - Identical scripts or phrasing in scam messages.
+                - Specific technical tradecraft (e.g. same fake trading platform template).
+                - Behavioral patterns (e.g. "grooming for weeks then requesting tax fee").
+                
                 Return a JSON object with a list of matches:
                 {
                     "matches": [
-                        { "id": "candidate_id", "confidence": "medium|high", "reason": "explanation of similarity" }
+                        { "id": "candidate_id", "confidence": "medium|high", "reason": "Detailed explanation of the campaign link or MO cluster." }
                     ]
                 }
                 Only return matches with medium or high confidence.
