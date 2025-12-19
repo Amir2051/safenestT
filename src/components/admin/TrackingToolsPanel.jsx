@@ -188,8 +188,7 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
             {!trackingLink ? (
               <div className="flex flex-col items-end gap-2">
                  <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded text-[10px] text-yellow-200 max-w-md">
-                    ⚠️ Compliance Notice: This link collects network metadata for security investigations. 
-                    Ensure you have authorization before deployment.
+                    ⚠️ Compliance Notice: This link may collect network metadata for fraud prevention and security investigations.
                  </div>
                  <Button
                   onClick={() => generateLinkMutation.mutate()}

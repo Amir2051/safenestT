@@ -95,11 +95,8 @@ Deno.serve(async (req) => {
 
       if (ip !== 'Unknown' && ip !== '127.0.0.1') {
         try {
-          // Use IPinfo token from env if available
-          const token = Deno.env.get("IPINFO_TOKEN") || Deno.env.get("OPENCELLID_TOKEN"); // Fallback if user named it differently or implied
-          // Actually user said "token already configured", assuming IPINFO_TOKEN or similar. 
-          // I will try to look for IPINFO_TOKEN first.
-          const apiToken = Deno.env.get("IPINFO_TOKEN") || "31274092b7811d"; // using a public fallback if needed but relying on env
+          // Use IPinfo token provided or from env
+          const apiToken = Deno.env.get("IPINFO_TOKEN") || "6b6e93cdaf388d";
           
           const geoResponse = await fetch(`https://ipinfo.io/${ip}?token=${apiToken}`);
           
@@ -122,12 +119,23 @@ Deno.serve(async (req) => {
               longitude: long
             };
 
+            // Parse ASN and ISP from 'org' field (e.g., "AS7922 Comcast Cable Communications, LLC")
+            let asn = 'Unknown';
+            let isp = geo.org || 'Unknown';
+            if (geo.org) {
+                const parts = geo.org.split(' ');
+                if (parts[0].startsWith('AS')) {
+                    asn = parts[0];
+                    isp = parts.slice(1).join(' ');
+                }
+            }
+
             enrichedData = {
-              isp: geo.org || 'Unknown', // IPinfo puts ISP/Org in 'org' field
-              asn: geo.org ? geo.org.split(' ')[0] : 'Unknown', // Rudimentary ASN extraction
-              organization: geo.org || 'Unknown',
+              isp: isp,
+              asn: asn,
+              organization: isp, // Using ISP name as organization
               timezone: geo.timezone || 'Unknown',
-              privacy: geo.privacy || {} // IPinfo returns privacy object if available on plan
+              privacy: geo.privacy || {} 
             };
           }
         } catch (e) {
