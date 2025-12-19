@@ -38,6 +38,8 @@ Deno.serve(async (req) => {
         // 2. Fetch Related Data
         const evidenceFiles = await base44.asServiceRole.entities.CaseEvidenceFile.filter({ case_id: caseId });
         const transactions = await base44.asServiceRole.entities.Transaction.filter({ case_id: caseId });
+        const profiles = await base44.asServiceRole.entities.CyberFraudProfile.filter({ case_id: caseId });
+        const cyberProfile = profiles.length > 0 ? profiles[0] : null;
         
         // 3. Generate PDF
         const doc = new jsPDF();
@@ -80,22 +82,23 @@ Deno.serve(async (req) => {
         doc.setFillColor(...colors.primary);
         doc.rect(0, 0, pageWidth, 40, 'F');
 
-        // SafeNestt Name & Logo (Text representation)
-        doc.setTextColor(...colors.accent);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text("SafeNestt", margin, 20);
-
-        // Report Title
-        doc.setFontSize(20);
+        // SafeNestt Name & Logo
         doc.setTextColor(255, 255, 255);
-        doc.text("Case Investigation Report", pageWidth - margin, 20, { align: 'right' });
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text("SafeNestT® OFFICIAL REPORT", margin, 25);
+
+        // Confidentiality Notice
+        doc.setFontSize(10);
+        doc.setTextColor(200, 200, 200);
+        doc.setFont('helvetica', 'normal');
+        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", margin, 35);
         
         // Meta Info
         doc.setFontSize(10);
-        doc.setTextColor(200, 200, 200);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - margin, 28, { align: 'right' });
-        doc.text(`Case ID: ${caseData.case_number || caseData.id}`, pageWidth - margin, 34, { align: 'right' });
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin, 20, { align: 'right' });
+        doc.text(`Case ID: ${caseData.case_number || caseData.id}`, pageWidth - margin, 26, { align: 'right' });
+        doc.text(`Status: ${(caseData.status || 'Pending').toUpperCase()}`, pageWidth - margin, 32, { align: 'right' });
 
         yPos = 55;
 
@@ -288,8 +291,34 @@ Deno.serve(async (req) => {
             }
         }
 
-        // --- 7. OBSERVATIONS ---
-        if (activeSections.observations) {
+        // --- 7. INVESTIGATOR & CORRELATION ANALYSIS (FROM CYBER PROFILE) ---
+        if (cyberProfile && activeSections.observations) {
+            checkPageBreak(40);
+            drawSectionHeader("7. Investigator & Correlation Analysis");
+            
+            const ia = cyberProfile.investigator_analysis || {};
+            const li = cyberProfile.linked_intelligence || {};
+            
+            // Investigator Analysis
+            doc.setFont('helvetica', 'bold');
+            doc.text("Pattern Assessment:", margin, yPos + 5);
+            doc.setFont('helvetica', 'normal');
+            const patternLines = doc.splitTextToSize(ia.pattern_assessment || "N/A", pageWidth - margin - 60);
+            doc.text(patternLines, margin + 50, yPos + 5);
+            yPos += (patternLines.length * 5) + 5;
+
+            // Linked Cases
+            if (li.summary) {
+                checkPageBreak(30);
+                doc.setFont('helvetica', 'bold');
+                doc.text("Linked Intelligence:", margin, yPos + 5);
+                doc.setFont('helvetica', 'normal');
+                const linkText = `Total Linked Cases: ${li.summary.total_linked || 0} | Total Linked Loss: $${(li.summary.total_loss || 0).toLocaleString()} | Assessment: ${li.summary.campaign_assessment || 'N/A'}`;
+                const linkLines = doc.splitTextToSize(linkText, pageWidth - margin - 50);
+                doc.text(linkLines, margin + 50, yPos + 5);
+                yPos += (linkLines.length * 5) + 5;
+            }
+        } else if (activeSections.observations) {
             checkPageBreak(40);
             drawSectionHeader("7. Observations");
 
@@ -312,30 +341,37 @@ Deno.serve(async (req) => {
             yPos += (obsLines.length * 5) + 10;
         }
 
-        // --- 8. DISCLAIMER ---
-        // Footer section
-        if (yPos > pageHeight - 40) { doc.addPage(); yPos = pageHeight - 40; }
-        else { yPos = Math.max(yPos + 10, pageHeight - 30); }
-
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
-        
-        doc.setFontSize(8);
-        doc.setTextColor(...colors.lightText);
-        doc.setFont('helvetica', 'italic');
-        
-        const disclaimer = "DISCLAIMER: This report is based on victim-submitted data and publicly available blockchain information. SafeNestt does not guarantee the recovery of assets. This document is intended for documentation and escalation purposes only.";
-        const discLines = doc.splitTextToSize(disclaimer, pageWidth - (margin * 2));
-        doc.text(discLines, margin, yPos, { align: 'center' });
-
-        // Page Numbering
+        // --- 8. DISCLAIMER & FOOTER ---
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
+            
+            // Footer Separator
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+            
+            // Disclaimer Text
             doc.setFontSize(8);
-            doc.setTextColor(...colors.lightText);
-            doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.setTextColor(100, 100, 100);
+            doc.setFont('helvetica', 'normal');
+            
+            const disclaimerLines = [
+                "This report is generated by SafeNestT® for intelligence and documentation purposes only.",
+                "SafeNestT® is not a law enforcement agency and does not guarantee recovery.",
+                "CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE."
+            ];
+            
+            let footerY = pageHeight - 25;
+            disclaimerLines.forEach((line, idx) => {
+                const textWidth = doc.getStringUnitWidth(line) * doc.internal.getFontSize() / doc.internal.scaleFactor;
+                const x = (pageWidth - textWidth) / 2;
+                if (idx === 2) doc.setFont('helvetica', 'bold');
+                doc.text(line, x, footerY + (idx * 4));
+                if (idx === 2) doc.setFont('helvetica', 'normal');
+            });
+
+            // Page Number
+            doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 15, pageHeight - 15);
         }
 
         const pdfBytes = doc.output('arraybuffer');
