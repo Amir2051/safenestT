@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Link2, Copy, Globe, Smartphone, Monitor, Clock, MapPin,
-  Download, Loader2, Eye, Shield, AlertTriangle, Check, Tablet
+  Download, Loader2, Eye, Shield, AlertTriangle, Check, Tablet, Map as MapIcon
 } from "lucide-react";
 import { toast } from "sonner";
+import TrackingMap from "./TrackingMap";
 
 export default function TrackingToolsPanel({ caseId, caseTitle }) {
   const queryClient = useQueryClient();
@@ -252,7 +253,17 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-6">
+                {/* Map Visualization */}
+                <div>
+                  <h5 className="text-gray-300 font-medium mb-3 flex items-center gap-2">
+                    <MapIcon className="w-4 h-4 text-cyan-400" />
+                    Geographical Visualization
+                  </h5>
+                  <TrackingMap clicks={clicks} />
+                </div>
+
+                <div className="space-y-3">
                 {clicks.map((click, idx) => (
                   <div
                     key={idx}

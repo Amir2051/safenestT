@@ -93,7 +93,9 @@ Deno.serve(async (req) => {
             geoData = {
               country: geo.country_name || 'Unknown',
               city: geo.city || 'Unknown',
-              region: geo.region || 'Unknown'
+              region: geo.region || 'Unknown',
+              latitude: geo.latitude || null,
+              longitude: geo.longitude || null
             };
           }
         } catch (e) {
@@ -136,6 +138,8 @@ Deno.serve(async (req) => {
         country: geoData.country,
         city: geoData.city,
         region: geoData.region,
+        latitude: geoData.latitude,
+        longitude: geoData.longitude,
         device_type,
         browser,
         os,
