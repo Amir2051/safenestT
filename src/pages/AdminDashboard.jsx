@@ -18,6 +18,7 @@ import SecurityPolicies from "../components/admin/SecurityPolicies.jsx";
 import ApprovalCriteria from "../components/admin/ApprovalCriteria.jsx";
 import AdminAuditLog from "../components/admin/AdminAuditLog.jsx";
 import UserGroupsManager from "../components/admin/UserGroupsManager.jsx";
+import UserManagement from "../components/admin/UserManagement.jsx";
 import InviteCodeManager from "../components/admin/InviteCodeManager.jsx";
 import FraudReportsManager from "../components/admin/FraudReportsManager.jsx";
 import AdminGate from "../components/admin/AdminGate.jsx";
@@ -185,6 +186,10 @@ export default function AdminDashboard() {
       {/* Main Tabs */}
       <Tabs defaultValue="fraud" className="w-full">
         <TabsList className="bg-[#1a2332] border border-cyan-500/20">
+          <TabsTrigger value="users">
+            <Users className="w-4 h-4 mr-2" />
+            User Management
+          </TabsTrigger>
           <TabsTrigger value="fraud">
             <AlertTriangle className="w-4 h-4 mr-2" />
             Fraud Reports
@@ -218,6 +223,10 @@ export default function AdminDashboard() {
             Team Performance
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users" className="mt-6">
+          <UserManagement />
+        </TabsContent>
 
         <TabsContent value="fraud" className="mt-6">
           <FraudReportsManager />

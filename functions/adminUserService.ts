@@ -228,6 +228,105 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Add User (Create/Invite)
+    if (endpoint === 'add-user') {
+      const { email, password, full_name, role } = body;
+      
+      if (!email || !password) {
+        return Response.json({ error: 'Email and password are required' }, { status: 400 });
+      }
+
+      // 1. Create User in Auth System
+      // We use the admin API to create the user with a verified email
+      const { data: newUser, error: createError } = await base44.asServiceRole.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: full_name || '',
+          role: role || 'user'
+        }
+      });
+
+      if (createError) {
+        return Response.json({ error: createError.message }, { status: 400 });
+      }
+
+      // 2. The User entity should be auto-created by triggers in many base44 setups, 
+      // but if not, we might need to wait or it might be handled.
+      // However, we can try to update it or ensure it exists if we have access.
+      // For now, we assume auth creation is enough.
+
+      // 3. Log Action
+      await base44.asServiceRole.entities.AdminAction.create({
+        action_type: 'user_created',
+        admin_email: adminUser.email,
+        target_user: email,
+        target_resource: newUser.user.id,
+        details: {
+          role: role || 'user',
+          full_name: full_name
+        }
+      });
+
+      return Response.json({ success: true, user: newUser.user });
+    }
+
+    // Reset Password
+    if (endpoint === 'reset-password') {
+      const { user_id, new_password } = body;
+
+      if (!user_id || !new_password) {
+        return Response.json({ error: 'User ID and new password are required' }, { status: 400 });
+      }
+
+      // 1. Get user email for logging
+      const users = await base44.asServiceRole.entities.User.filter({ id: user_id });
+      const targetEmail = users.length > 0 ? users[0].email : 'unknown';
+
+      // 2. Update Password
+      const { data: updatedUser, error: updateError } = await base44.asServiceRole.auth.admin.updateUserById(
+        user_id,
+        { password: new_password }
+      );
+
+      if (updateError) {
+        return Response.json({ error: updateError.message }, { status: 400 });
+      }
+
+      // 3. Log Action
+      await base44.asServiceRole.entities.AdminAction.create({
+        action_type: 'password_reset',
+        admin_email: adminUser.email,
+        target_user: targetEmail,
+        target_resource: user_id,
+        details: {
+          method: 'admin_manual_reset'
+        }
+      });
+
+      // 4. Notify User
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: targetEmail,
+          subject: 'Security Alert: Your Password Was Reset',
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #06b6d4;">Password Reset Notification</h1>
+              <p>Your password was recently reset by an administrator.</p>
+              <p>If you did not request this change, please contact support immediately.</p>
+              <p>You can now log in with your new password.</p>
+              <p><strong>The SafeNestt Team</strong></p>
+            </div>
+          `
+        });
+      } catch (e) {
+        console.error("Failed to send reset notification", e);
+      }
+
+      return Response.json({ success: true });
+    }
+
     return Response.json({ error: 'Unknown endpoint' }, { status: 400 });
 
   } catch (error) {
