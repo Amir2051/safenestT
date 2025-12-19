@@ -50,6 +50,8 @@ export default function IntakeForm({ onSubmit }) {
                         <SelectItem value="billing">Billing & Subscription</SelectItem>
                         <SelectItem value="technical">Technical Issue</SelectItem>
                         <SelectItem value="fraud">Report Fraud</SelectItem>
+                        <SelectItem value="forensic">Forensic Investigation</SelectItem>
+                        <SelectItem value="threat_intel">Threat Intelligence</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                 </Select>
