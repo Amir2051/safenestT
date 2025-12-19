@@ -13,11 +13,14 @@ export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = 
     const [loading, setLoading] = useState(false);
     const [traceData, setTraceData] = useState(null);
     const [adding, setAdding] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
 
     const handleTrace = async () => {
         if (!address) return;
         setLoading(true);
         setTraceData(null);
+        setAiAnalysis(null);
         try {
             const res = await base44.functions.invoke('blockchainIntelligence', { 
                 action: 'track-wallet',
@@ -51,6 +54,27 @@ export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = 
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAnalyzeAI = async () => {
+        if (!traceData?.transactions) return;
+        setAnalyzing(true);
+        const toastId = toast.loading("AI analyzing transaction patterns...");
+        try {
+            const res = await base44.functions.invoke('analyzeTransactionsAI', {
+                transactions: traceData.transactions,
+                address: traceData.address
+            });
+            if (res.data.success) {
+                setAiAnalysis(res.data.analysis);
+                toast.success("Pattern analysis complete", { id: toastId });
+            } else {
+                throw new Error(res.data.error);
+            }
+        } catch (e) {
+            toast.error("Analysis failed: " + e.message, { id: toastId });
+        }
+        setAnalyzing(false);
     };
 
     const handleAddToReport = async () => {
@@ -282,6 +306,16 @@ export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = 
                                     <FileText className="w-3 h-3 mr-2" />
                                     Add to Report (PDF)
                                 </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={handleAnalyzeAI}
+                                    disabled={analyzing}
+                                    className="border-purple-500/30 text-purple-400 hover:bg-purple-900/20"
+                                >
+                                    {analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 mr-2" />}
+                                    AI Pattern Scan
+                                </Button>
                                 {!monitoredWallets.includes(traceData.address) && (
                                     <Button 
                                         size="sm" 
@@ -296,6 +330,29 @@ export default function CaseWalletTracer({ caseId, caseData, monitoredWallets = 
                                 )}
                             </div>
                         </div>
+
+                        {aiAnalysis && (
+                            <div className="mb-4 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg animate-in fade-in zoom-in duration-300">
+                                <h5 className="text-purple-400 font-bold flex items-center gap-2 mb-2">
+                                    <Sparkles className="w-4 h-4" /> AI Forensic Insight
+                                </h5>
+                                <p className="text-sm text-gray-200 mb-3">{aiAnalysis.summary}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                        <p className="font-semibold text-gray-400 mb-1">Detected Patterns</p>
+                                        <ul className="list-disc list-inside text-gray-300">
+                                            {aiAnalysis.patterns?.map((p, i) => <li key={i}>{p}</li>)}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-400 mb-1">Anomalies</p>
+                                        <ul className="list-disc list-inside text-red-300">
+                                            {aiAnalysis.anomalies?.map((a, i) => <li key={i}>{a}</li>)}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div className="p-3 bg-black/20 rounded">
