@@ -50,12 +50,35 @@ Deno.serve(async (req) => {
             }
         };
 
+        // Fetch Logo
+        const logoUrl = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg";
+        let logoImage = null;
+        try {
+            const logoRes = await fetch(logoUrl);
+            const logoBuf = await logoRes.arrayBuffer();
+            logoImage = await pdfDoc.embedJpg(logoBuf);
+        } catch (e) {
+            console.error("Failed to fetch logo", e);
+        }
+
         // Header
-        page.drawRectangle({ x: 0, y: height - 80, width, height: 80, color: rgb(0.05, 0.1, 0.2) });
-        page.drawText("CYBER FRAUD INTELLIGENCE PROFILE", { x: margin, y: height - 50, size: 18, font: boldFont, color: rgb(1, 1, 1) });
-        page.drawText("CONFIDENTIAL - MASTER PROFILE", { x: margin, y: height - 70, size: 10, font: font, color: rgb(0.8, 0.8, 0.8) });
+        if (logoImage) {
+            page.drawImage(logoImage, { x: margin, y: height - 60, width: 30, height: 30 });
+        }
         
-        y = height - 100;
+        page.drawText("SafeNestT®", { x: margin + 40, y: height - 40, size: 18, font: boldFont, color: rgb(0, 0, 0) });
+        page.drawText("CYBER INTELLIGENCE PROFILE", { x: margin + 40, y: height - 55, size: 10, font: font, color: rgb(0.4, 0.4, 0.4) });
+        page.drawText("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", { x: width - margin - 220, y: height - 40, size: 9, font: boldFont, color: rgb(0.8, 0, 0) });
+        
+        // Separator
+        page.drawLine({
+            start: { x: margin, y: height - 70 },
+            end: { x: width - margin, y: height - 70 },
+            thickness: 1,
+            color: rgb(0.8, 0.8, 0.8),
+        });
+
+        y = height - 90;
 
         const addSection = (title, content) => {
             if (y < 100) { page = pdfDoc.addPage(); y = height - 50; }
