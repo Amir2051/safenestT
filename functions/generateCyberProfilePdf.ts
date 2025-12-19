@@ -21,17 +21,40 @@ Deno.serve(async (req) => {
         const margin = 20;
         let y = 20;
 
+        // Fetch Logo
+        const logoUrl = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg";
+        let logoBase64 = null;
+        try {
+            const logoRes = await fetch(logoUrl);
+            const logoBuf = await logoRes.arrayBuffer();
+            logoBase64 = btoa(new Uint8Array(logoBuf).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        } catch (e) {
+            console.error("Failed to fetch logo", e);
+        }
+
         // --- HEADER ---
-        doc.setFillColor(10, 20, 40); // Dark Blue/Black
-        doc.rect(0, 0, pageWidth, 40, 'F');
+        // White background, professional header
+        if (logoBase64) {
+            doc.addImage(logoBase64, 'JPEG', margin, 10, 15, 15);
+        }
         
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.text("SafeNestT® INTELLIGENCE PROFILE", pageWidth / 2, 25, { align: 'center' });
+        doc.setFontSize(18);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'bold');
+        doc.text("SafeNestT®", margin + 20, 20);
         
         doc.setFontSize(10);
-        doc.setTextColor(200, 200, 200);
-        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth / 2, 35, { align: 'center' });
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text("INTELLIGENCE PROFILE", margin + 20, 25);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(200, 0, 0); // Red for sensitive
+        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth - margin, 20, { align: 'right' });
+        
+        // Line separator
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, 35, pageWidth - margin, 35);
 
         y = 50;
         doc.setTextColor(0, 0, 0);
