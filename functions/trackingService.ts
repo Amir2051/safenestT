@@ -66,12 +66,16 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Link disabled' }, { status: 403 });
       }
 
-      // Get IP from client data first, fallback to headers
-      const ip = visitor_data?.client_ip || 
-                 req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                 req.headers.get('x-real-ip') || 
-                 req.headers.get('cf-connecting-ip') ||
-                 'Unknown';
+      // Get IP from headers (more reliable than client data)
+      let ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+               req.headers.get('x-real-ip') || 
+               req.headers.get('cf-connecting-ip') ||
+               'Unknown';
+
+      // Use client-provided IP only if server detection failed and client provided a valid one
+      if ((!ip || ip === 'Unknown') && visitor_data?.client_ip && visitor_data?.client_ip !== 'Unknown') {
+          ip = visitor_data.client_ip;
+      }
 
       // Use client-provided geo data if available, otherwise try to fetch
       let geoData = { 
@@ -81,7 +85,7 @@ Deno.serve(async (req) => {
       };
       
       // If no client geo data, try server-side lookup
-      if (geoData.country === 'Unknown' && ip !== 'Unknown') {
+      if (geoData.country === 'Unknown' && ip !== 'Unknown' && ip !== '127.0.0.1') {
         try {
           const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
           if (geoResponse.ok) {
