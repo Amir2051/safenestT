@@ -313,6 +313,7 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
                   </div>
                 ))}
               </div>
+            </div>
             )}
           </div>
         )}
