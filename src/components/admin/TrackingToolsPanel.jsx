@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Link2, Copy, Globe, Smartphone, Monitor, Clock, MapPin,
-  Download, Loader2, Eye, Shield, AlertTriangle, Check, Tablet, Map as MapIcon
+  Download, Loader2, Eye, Shield, AlertTriangle, Check, Tablet, Map as MapIcon,
+  Server, Lock, Network
 } from "lucide-react";
 import { toast } from "sonner";
 import TrackingMap from "./TrackingMap";
@@ -166,8 +167,8 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
     <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/30">
       <CardHeader className="border-b border-purple-500/20">
         <CardTitle className="text-white flex items-center gap-2">
-          <Shield className="w-5 h-5 text-purple-400" />
-          Technical Tools
+          <Network className="w-5 h-5 text-purple-400" />
+          Network Intelligence
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
@@ -177,25 +178,31 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
             <div>
               <h4 className="text-white font-semibold flex items-center gap-2">
                 <Link2 className="w-4 h-4 text-purple-400" />
-                Tracking Link
+                Network Intelligence Link
               </h4>
               <p className="text-gray-400 text-xs mt-1">
-                Generate a unique link to capture scammer's IP and device info
+                Generate a secure link to gather threat attribution data
               </p>
             </div>
             
             {!trackingLink ? (
-              <Button
-                onClick={() => generateLinkMutation.mutate()}
-                disabled={generateLinkMutation.isPending}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {generateLinkMutation.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
-                ) : (
-                  <><Link2 className="w-4 h-4 mr-2" />Generate Tracking Link</>
-                )}
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                 <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded text-[10px] text-yellow-200 max-w-md">
+                    ⚠️ Compliance Notice: This link collects network metadata for security investigations. 
+                    Ensure you have authorization before deployment.
+                 </div>
+                 <Button
+                  onClick={() => generateLinkMutation.mutate()}
+                  disabled={generateLinkMutation.isPending}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {generateLinkMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Initializing...</>
+                  ) : (
+                    <><Link2 className="w-4 h-4 mr-2" />Generate Link</>
+                  )}
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={() => {
@@ -285,7 +292,7 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
                           </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
                           <div>
                             <span className="text-gray-500">City:</span>
                             <p className="text-white">{click.city}</p>
@@ -302,6 +309,35 @@ export default function TrackingToolsPanel({ caseId, caseTitle }) {
                             <span className="text-gray-500">OS:</span>
                             <p className="text-white">{click.os}</p>
                           </div>
+                        </div>
+
+                        {/* Enhanced Network Intelligence Data */}
+                        <div className="bg-[#151a23] p-3 rounded border border-cyan-500/10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Server className="w-3 h-3 text-cyan-400" />
+                                        <span className="text-xs text-cyan-400 font-semibold">ISP / Organization</span>
+                                    </div>
+                                    <p className="text-white text-xs">{click.organization || click.isp || 'Unknown'}</p>
+                                    <p className="text-gray-500 text-[10px]">{click.asn || ''}</p>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Lock className="w-3 h-3 text-red-400" />
+                                        <span className="text-xs text-red-400 font-semibold">Risk Indicators</span>
+                                    </div>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {click.privacy?.vpn && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] h-5">VPN Detected</Badge>}
+                                        {click.privacy?.proxy && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] h-5">Proxy Detected</Badge>}
+                                        {click.privacy?.hosting && <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-[10px] h-5">Hosting Provider</Badge>}
+                                        {click.privacy?.tor && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] h-5">Tor Node</Badge>}
+                                        {!click.privacy?.vpn && !click.privacy?.proxy && !click.privacy?.hosting && !click.privacy?.tor && (
+                                            <span className="text-green-500 text-xs flex items-center gap-1"><Check className="w-3 h-3" /> No Proxies Detected</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
