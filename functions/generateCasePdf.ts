@@ -78,29 +78,46 @@ Deno.serve(async (req) => {
             return false;
         };
 
-        // --- 1. COVER SECTION ---
-        doc.setFillColor(...colors.primary);
-        doc.rect(0, 0, pageWidth, 40, 'F');
+        // Fetch Logo
+        const logoUrl = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg";
+        let logoBase64 = null;
+        try {
+            const logoRes = await fetch(logoUrl);
+            const logoBuf = await logoRes.arrayBuffer();
+            logoBase64 = btoa(new Uint8Array(logoBuf).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        } catch (e) {
+            console.error("Failed to fetch logo", e);
+        }
 
-        // SafeNestt Name & Logo
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
+        // --- 1. HEADER SECTION ---
+        if (logoBase64) {
+            doc.addImage(logoBase64, 'JPEG', margin, 10, 15, 15);
+        }
+
+        doc.setFontSize(18);
+        doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        doc.text("SafeNestT® OFFICIAL REPORT", margin, 25);
-
-        // Confidentiality Notice
-        doc.setFontSize(10);
-        doc.setTextColor(200, 200, 200);
-        doc.setFont('helvetica', 'normal');
-        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", margin, 35);
+        doc.text("SafeNestT®", margin + 20, 20);
         
-        // Meta Info
         doc.setFontSize(10);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin, 20, { align: 'right' });
-        doc.text(`Case ID: ${caseData.case_number || caseData.id}`, pageWidth - margin, 26, { align: 'right' });
-        doc.text(`Status: ${(caseData.status || 'Pending').toUpperCase()}`, pageWidth - margin, 32, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text("OFFICIAL INVESTIGATION REPORT", margin + 20, 25);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(200, 0, 0);
+        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth - margin, 20, { align: 'right' });
+        
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Date: ${new Date().toLocaleString()}`, pageWidth - margin, 26, { align: 'right' });
+        doc.text(`Case ID: ${caseData.case_number || caseData.id}`, pageWidth - margin, 32, { align: 'right' });
 
-        yPos = 55;
+        // Line separator
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, 38, pageWidth - margin, 38);
+
+        yPos = 50;
 
         // --- 2. CASE OVERVIEW ---
         if (activeSections.case_overview) {
