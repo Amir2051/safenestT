@@ -4,45 +4,29 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        const emails = ['bring2help2@gmail.com', 'Dhgtrucking@gmail.com'];
-        // Also try lowercase
-        const searchEmails = [...emails, ...emails.map(e => e.toLowerCase())];
+        // 1. Search by Date (User creation date)
+        const startDate = "2025-11-22T00:00:00.000Z";
+        const endDate = "2025-11-24T23:59:59.999Z";
         
-        const entities = ['FraudCase', 'ClientCase', 'InvestigationCase', 'Report', 'ScamDatabase'];
-        const results = {};
+        const dateCases = await base44.asServiceRole.entities.MyCase.filter({ 
+            created_date: { $gte: startDate, $lte: endDate }
+        });
 
-        for (const entity of entities) {
-            const queries = [];
-            for (const email of searchEmails) {
-                // Try different field names depending on entity
-                if (entity === 'ScamDatabase') {
-                    queries.push(base44.asServiceRole.entities[entity].filter({ reported_by: email })); // Check schema?
-                    // Schema says: reported_by enum? No, just string maybe? Schema says enum: user, ai, admin...
-                    // So probably created_by?
-                    queries.push(base44.asServiceRole.entities[entity].filter({ created_by: email }));
-                } else {
-                    queries.push(base44.asServiceRole.entities[entity].filter({ client_email: email }));
-                    queries.push(base44.asServiceRole.entities[entity].filter({ created_by: email }));
-                    queries.push(base44.asServiceRole.entities[entity].filter({ created_by_email: email }));
-                    // FraudCase specific
-                    if (entity === 'FraudCase') {
-                         // victim_contact_info is object, can't filter nested easily usually.
-                    }
-                }
-            }
-            
-            try {
-                const res = await Promise.all(queries);
-                const found = res.flat();
-                if (found.length > 0) {
-                    results[entity] = found.map(f => ({ id: f.id, created: f.created_date }));
-                }
-            } catch(e) {
-                console.log(`Error filtering ${entity}: ${e.message}`);
-            }
-        }
+        // 2. Search by Name Patterns
+        const allCases = await base44.asServiceRole.entities.MyCase.list(null, 2000);
+        const nameMatches = allCases.filter(c => {
+            const name = (c.client_name || '').toLowerCase();
+            const desc = (c.description || '').toLowerCase();
+            const email = (c.client_email || '').toLowerCase();
+            return name.includes('dhg') || name.includes('trucking') || 
+                   email.includes('dhg') || email.includes('bring') ||
+                   desc.includes('bring2help') || desc.includes('dhg');
+        });
 
-        return Response.json({ results });
+        return Response.json({ 
+            dateCases: dateCases.map(c => ({id: c.id, email: c.client_email, name: c.client_name, date: c.created_date})),
+            nameMatches: nameMatches.map(c => ({id: c.id, email: c.client_email, name: c.client_name}))
+        });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
