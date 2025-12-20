@@ -150,18 +150,26 @@ Deno.serve(async (req) => {
             let creatorEmail = user.email.toLowerCase();
             let creatorName = user.full_name || user.first_name;
             
+            // Find User ID for Robust RLS
+            let ownerUserId = user.id;
+            
             // If admin creating for user, override creator fields to target user
-            // This ensures they have full RLS permissions (update/read)
             if (action === 'create_for_user' && target_user_email) {
                 creatorEmail = target_user_email.toLowerCase();
                 creatorName = target_user_name || 'User';
+                
+                // Lookup target user ID
+                try {
+                    const targetUsers = await base44.asServiceRole.entities.User.list(null, 1000);
+                    const targetUser = targetUsers.find(u => u.email?.toLowerCase() === creatorEmail);
+                    if (targetUser) ownerUserId = targetUser.id;
+                } catch(e) { console.error("Failed to lookup target user", e); }
             }
 
             // Create Case
             const caseData = {
                 // Ensure proper visibility for both Admin and User
-                // created_by should be the user's email for RLS if it's their case
-                // but we also track admin creator if applicable
+                user_id: ownerUserId,
                 ...data,
                 ...data,
                 case_number: caseId,
@@ -629,8 +637,15 @@ Deno.serve(async (req) => {
                         if (match) targetEmail = match.email;
                     }
 
-                    // Apply Email Fixes
+                    // Apply Email & User ID Fixes
                     if (targetEmail) {
+                        // Link User ID for robust RLS (Case Insensitive Fix)
+                        const targetUser = userMap[targetEmail.toLowerCase().trim()];
+                        if (targetUser && c.user_id !== targetUser.id) {
+                            updates.user_id = targetUser.id;
+                            needsUpdate = true;
+                        }
+
                         // If any of the key fields don't match the canonical user email, update them
                         if (c.created_by !== targetEmail) { updates.created_by = targetEmail; needsUpdate = true; }
                         if (c.created_by_email !== targetEmail) { updates.created_by_email = targetEmail; needsUpdate = true; }

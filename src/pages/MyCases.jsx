@@ -63,7 +63,19 @@ export default function MyCases() {
     queryFn: async () => {
       // RLS (Row Level Security) handles the filtering on the server side.
       // Admins see all, Users see only their cases (created_by, client_email, etc.)
-      return base44.entities.MyCase.list('-created_date', 1000);
+      // We add an explicit filter fallback for user_id to ensure visibility even if email case mismatches occur
+      if (user.role === 'admin' || user.is_admin || user.job_title === 'Fraud Specialist') {
+          return base44.entities.MyCase.list('-created_date', 1000);
+      } else {
+          // Robust filtering for users
+          return base44.entities.MyCase.filter({
+              $or: [
+                  { user_id: user.id },
+                  { created_by: user.email },
+                  { client_email: user.email }
+              ]
+          }, '-created_date', 1000);
+      }
     },
     enabled: !!user
   });
@@ -209,19 +221,37 @@ export default function MyCases() {
           </h1>
           <p className="text-gray-400 mt-1 mb-2">Track and monitor your submitted scam reports</p>
           {(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') && (
-            <div className="relative max-w-md mt-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input 
-                    placeholder="Admin Search: Name, Email, Victim, Case ID..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 bg-[#1a2332] border-cyan-500/30 text-white h-10 focus:border-cyan-500"
-                />
-                {isSearching && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />
-                    </div>
-                )}
+            <div className="flex gap-2 items-center mt-2">
+                <div className="relative max-w-md flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <Input 
+                        placeholder="Admin Search: Name, Email, Victim, Case ID..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-[#1a2332] border-cyan-500/30 text-white h-10 focus:border-cyan-500"
+                    />
+                    {isSearching && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />
+                        </div>
+                    )}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                    onClick={async () => {
+                        toast.info("Running permissions repair...");
+                        try {
+                            const res = await base44.functions.invoke('caseManagement', { action: 'recover_access' });
+                            if (res.data.success) toast.success("Fixed: " + res.data.message);
+                            else toast.error("Error: " + res.data.error);
+                        } catch (e) { toast.error("Failed to run repair"); }
+                    }}
+                    title="Fix User Visibility Issues"
+                >
+                    <ShieldCheck className="w-4 h-4" />
+                </Button>
             </div>
           )}
         </div>
