@@ -4,35 +4,30 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        const results = {};
+        // Search cases created around Nov 23, 2025
+        const startDate = "2025-11-20T00:00:00.000Z";
+        const endDate = "2025-11-30T23:59:59.999Z";
         
-        // 1. Search by Name Patterns
-        const namePatterns = ["bring", "help", "Dhg", "trucking"];
-        const entity = 'MyCase';
+        // We can't always filter by date range easily with simple filter object if backend doesn't support operators
+        // But we can list and filter.
+        // Let's list a larger batch and filter by date.
         
-        // Get recent cases first to inspect
-        const recentCases = await base44.asServiceRole.entities[entity].list('-created_date', 20);
-        results.recent_cases = recentCases.map(c => ({
-            id: c.id,
-            client_name: c.client_name,
-            client_email: c.client_email,
-            created_by: c.created_by,
-            created_by_email: c.created_by_email,
-            user_id: c.user_id
-        }));
-
-        // 2. Search for name matches (client-side filtering as filter() is exact match often)
-        // Note: SDK filter is exact match usually, so we rely on listing and filtering in memory if we can't do regex.
-        // We'll filter the recent 100 cases.
-        const allRecent = await base44.asServiceRole.entities[entity].list('-created_date', 100);
+        const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 500);
         
-        results.matches = allRecent.filter(c => {
+        const matches = allCases.filter(c => {
+            return c.created_date >= startDate && c.created_date <= endDate;
+        });
+        
+        // Also check specifically for "bring" in any field
+        const stringMatches = allCases.filter(c => {
             const str = JSON.stringify(c).toLowerCase();
-            return namePatterns.some(p => str.includes(p.toLowerCase()));
+            return str.includes("bring") || str.includes("dhg");
         });
 
         return Response.json({
-            results: results
+            date_matches_count: matches.length,
+            string_matches: stringMatches,
+            first_date_match: matches[0] || null
         });
 
     } catch (error) {
