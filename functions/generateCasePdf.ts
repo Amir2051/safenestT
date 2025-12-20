@@ -41,7 +41,31 @@ Deno.serve(async (req) => {
         const profiles = await base44.asServiceRole.entities.CyberFraudProfile.filter({ case_id: caseId });
         const cyberProfile = profiles.length > 0 ? profiles[0] : null;
         
-        // 3. Generate PDF
+        // 4. Fetch Linked Sub-Cases
+        let linkedCases = [];
+        let totalLinkedAmount = parseFloat(caseData.amount_lost || caseData.amount_stolen_usd || 0);
+        
+        if (cyberProfile && cyberProfile.linked_intelligence?.linked_cases?.length > 0) {
+            const linkedCaseIds = cyberProfile.linked_intelligence.linked_cases.map(lc => lc.case_id);
+            if (linkedCaseIds.length > 0) {
+                // Fetch details for linked cases to show in report
+                // We'll try to fetch them in parallel. 
+                try {
+                    const promises = linkedCaseIds.map(id => base44.asServiceRole.entities.MyCase.get(id));
+                    const results = await Promise.all(promises);
+                    linkedCases = results.filter(c => c !== null && c.id !== caseData.id);
+                    
+                    // Add amounts
+                    linkedCases.forEach(lc => {
+                        totalLinkedAmount += parseFloat(lc.amount_lost || lc.amount_stolen_usd || 0);
+                    });
+                } catch (e) {
+                    console.error("Error fetching linked cases", e);
+                }
+            }
+        }
+
+        // 5. Generate PDF with "Primary Case + Linked Sub-Cases" Structure
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.width;
         const pageHeight = doc.internal.pageSize.height;
@@ -53,6 +77,7 @@ Deno.serve(async (req) => {
             primary: [15, 23, 42], // Slate 900
             secondary: [71, 85, 105], // Slate 600
             accent: [6, 182, 212], // Cyan 500
+            alert: [220, 38, 38], // Red 600
             text: [30, 41, 59], // Slate 800
             lightText: [100, 116, 139], // Slate 500
             bg: [248, 250, 252] // Slate 50
@@ -78,6 +103,15 @@ Deno.serve(async (req) => {
             return false;
         };
 
+        const addText = (text, fontSize = 10, fontStyle = 'normal', color = colors.text, maxWidth = pageWidth - (margin * 2)) => {
+            doc.setFontSize(fontSize);
+            doc.setFont('helvetica', fontStyle);
+            doc.setTextColor(...color);
+            const lines = doc.splitTextToSize(text || "", maxWidth);
+            doc.text(lines, margin, yPos);
+            yPos += (lines.length * (fontSize * 0.5)) + 2;
+        };
+
         // Fetch Logo
         const logoUrl = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg";
         let logoBase64 = null;
@@ -89,304 +123,293 @@ Deno.serve(async (req) => {
             console.error("Failed to fetch logo", e);
         }
 
-        // --- 1. HEADER SECTION ---
+        // --- 1. COVER PAGE ---
         if (logoBase64) {
-            doc.addImage(logoBase64, 'JPEG', margin, 10, 15, 15);
+            doc.addImage(logoBase64, 'JPEG', pageWidth / 2 - 15, 40, 30, 30);
         }
+        yPos = 80;
 
-        doc.setFontSize(18);
-        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(24);
+        doc.setTextColor(...colors.primary);
         doc.setFont('helvetica', 'bold');
-        doc.text("SafeNestT®", margin + 20, 20);
-        
-        doc.setFontSize(10);
+        doc.text("PRIMARY FRAUD INVESTIGATION REPORT", pageWidth / 2, yPos, { align: 'center' });
+        yPos += 20;
+
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.secondary);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text("OFFICIAL INVESTIGATION REPORT", margin + 20, 25);
+        doc.text(`Primary Case ID: ${caseData.case_number || caseData.id}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 10;
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 30;
+
+        // Status & Risk Box
+        const status = (caseData.status || 'Active').toUpperCase();
+        const risk = (caseData.priority || caseData.case_priority || 'Medium').toUpperCase();
         
+        doc.setFillColor(...colors.bg);
+        doc.roundedRect(pageWidth / 2 - 60, yPos, 120, 40, 2, 2, 'F');
+        
+        doc.setFontSize(12);
+        doc.setTextColor(...colors.secondary);
+        doc.text("STATUS", pageWidth / 2, yPos + 10, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.text(status, pageWidth / 2, yPos + 18, { align: 'center' });
+
+        doc.setFontSize(12);
+        doc.setTextColor(...colors.secondary);
+        doc.setFont('helvetica', 'normal');
+        doc.text("RISK LEVEL", pageWidth / 2, yPos + 28, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(risk === 'CRITICAL' || risk === 'HIGH' ? colors.alert : colors.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.text(risk, pageWidth / 2, yPos + 36, { align: 'center' });
+        
+        // Footer for Cover
         doc.setFontSize(10);
         doc.setTextColor(200, 0, 0);
-        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth - margin, 20, { align: 'right' });
+        doc.text("CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE", pageWidth / 2, pageHeight - 30, { align: 'center' });
+
+        doc.addPage();
+        yPos = 20;
+
+        // --- 2. EXECUTIVE SUMMARY (Primary Case Overview) ---
+        drawSectionHeader("2. Executive Summary");
+
+        const summaryStats = [
+            ['Suspect Wallet', caseData.scammer_wallet || caseData.scammer_info?.wallet_addresses?.[0] || 'Unknown / Not Identified'],
+            ['Total Linked Amount', `$${totalLinkedAmount.toLocaleString()}`],
+            ['Total Victims Linked', `${1 + linkedCases.length}`],
+            ['Classification', (cyberProfile?.investigator_analysis?.pattern_assessment || caseData.fraud_type || 'General Fraud').replace(/_/g, ' ').toUpperCase()],
+            ['Activity Period', `${new Date(caseData.incident_date || caseData.created_date).toLocaleDateString()} - Present`]
+        ];
+
+        autoTable(doc, {
+            startY: yPos,
+            body: summaryStats,
+            theme: 'plain',
+            styles: { fontSize: 10, cellPadding: 3 },
+            columnStyles: {
+                0: { fontStyle: 'bold', textColor: colors.secondary, cellWidth: 60 },
+                1: { textColor: colors.text, fontStyle: 'bold' }
+            },
+            margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text("Case Narrative & Linkage Statement:", margin, yPos);
+        yPos += 6;
         
+        let narrative = caseData.description || "No primary narrative provided.";
+        if (linkedCases.length > 0) {
+            narrative += `\n\nThis investigation treats Case ${caseData.case_number} as the PRIMARY anchor for ${linkedCases.length} additional linked incidents. The aggregation of these cases establishes a pattern of organized fraudulent activity, utilizing shared infrastructure (wallet addresses, digital fingerprints) to defraud multiple victims systematically.`;
+        }
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.text);
+        const narrativeLines = doc.splitTextToSize(narrative, pageWidth - (margin * 2));
+        doc.text(narrativeLines, margin, yPos);
+        yPos += (narrativeLines.length * 5) + 15;
+
+        // --- 3. SUSPECT WALLET ANALYSIS ---
+        checkPageBreak(60);
+        drawSectionHeader("3. Suspect Wallet Analysis");
+
+        const primaryWallet = caseData.scammer_wallet || 'Not Identified';
+        
+        // Mock analysis if real data isn't in MyCase (CaseWalletTracer usually has it but we might not have it here)
+        // We'll use placeholder or real data if available in cyberProfile
+        const analysis = cyberProfile?.suspect_profile || {};
+
+        const walletData = [
+            ['Address', primaryWallet],
+            ['Risk Score', analysis.confidence_level || 'High'],
+            ['Known Tags/Flags', (caseData.wallet_analysis?.indicators || []).join(', ') || 'Scam, High Risk'],
+            ['Behavior Pattern', analysis.behavioral_indicators || 'Sequential transfers, rapid dissipation of funds']
+        ];
+
+        autoTable(doc, {
+            startY: yPos,
+            body: walletData,
+            theme: 'striped',
+            headStyles: { fillColor: colors.secondary },
+            styles: { fontSize: 10, cellPadding: 3 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { fontStyle: 'mono' } },
+            margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+
+        // --- 4. LINKED VICTIM SUB-CASES ---
+        checkPageBreak(50);
+        drawSectionHeader(`4. Linked Victim Sub-Cases (${linkedCases.length + 1})`);
+
+        // 4a. Primary Case (as first sub-case)
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin, yPos, pageWidth - (margin * 2), 6, 'F');
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Date: ${new Date().toLocaleString()}`, pageWidth - margin, 26, { align: 'right' });
-        doc.text(`Case ID: ${caseData.case_number || caseData.id}`, pageWidth - margin, 32, { align: 'right' });
+        doc.setTextColor(...colors.primary);
+        doc.text(`PRIMARY VICTIM: ${caseData.case_number}`, margin + 2, yPos + 4);
+        yPos += 8;
 
-        // Line separator
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, 38, pageWidth - margin, 38);
+        const primaryRow = [
+            ['Victim Ref', caseData.client_name || 'Redacted'],
+            ['Amount Lost', `$${(caseData.amount_lost || 0).toLocaleString()}`],
+            ['Date', new Date(caseData.incident_date || caseData.created_date).toLocaleDateString()],
+            ['Platform', caseData.platform || 'N/A'],
+            ['Status', caseData.status],
+            ['Tx Hash', caseData.transaction_hash || (transactions[0]?.tx_hash ? `${transactions[0].tx_hash.substring(0, 10)}...` : 'N/A')]
+        ];
 
-        yPos = 50;
+        autoTable(doc, {
+            startY: yPos,
+            head: [['Victim Ref', 'Loss', 'Date', 'Platform', 'Status', 'Tx Hash']],
+            body: primaryRow,
+            theme: 'grid',
+            headStyles: { fillColor: colors.primary, fontSize: 8 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 5;
 
-        // --- 2. CASE OVERVIEW ---
-        if (activeSections.case_overview) {
-            drawSectionHeader("2. Case Overview");
-            
-            const overviewData = [
-                ['Case ID', caseData.case_number || caseData.id],
-                ['Case Type', (caseData.issue_type || caseData.fraud_type || 'Unknown').replace(/_/g, ' ').toUpperCase()],
-                ['Date Reported', new Date(caseData.created_date).toLocaleDateString()],
-                ['Date of Incident', caseData.incident_date ? new Date(caseData.incident_date).toLocaleDateString() : 'N/A'],
-                ['Current Status', (caseData.status || 'Pending').toUpperCase()],
-                ['Priority Level', (caseData.priority || caseData.case_priority || 'Medium').toUpperCase()],
-                ['Total Reported Loss', `$${(caseData.amount_lost || caseData.amount_stolen_usd || 0).toLocaleString()}`]
-            ];
+        // 4b. Linked Cases
+        if (linkedCases.length > 0) {
+            linkedCases.forEach((lc, idx) => {
+                checkPageBreak(30);
+                doc.setFillColor(240, 240, 240);
+                doc.rect(margin, yPos, pageWidth - (margin * 2), 6, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(...colors.secondary);
+                doc.text(`LINKED SUB-CASE #${idx + 1}: ${lc.case_number || lc.id}`, margin + 2, yPos + 4);
+                yPos += 8;
 
-            autoTable(doc, {
-                startY: yPos,
-                body: overviewData,
-                theme: 'plain',
-                styles: { fontSize: 10, cellPadding: 2 },
-                columnStyles: {
-                    0: { fontStyle: 'bold', textColor: colors.secondary, cellWidth: 50 },
-                    1: { textColor: colors.text }
-                },
-                margin: { left: margin, right: margin }
-            });
-            yPos = doc.lastAutoTable.finalY + 10;
-        }
+                const row = [[
+                    lc.client_name || 'Redacted',
+                    `$${(lc.amount_lost || lc.amount_stolen_usd || 0).toLocaleString()}`,
+                    new Date(lc.incident_date || lc.created_date).toLocaleDateString(),
+                    lc.platform || 'N/A',
+                    lc.status || 'Pending',
+                    lc.transaction_hash || 'See Appendix'
+                ]];
 
-        // --- 3. VICTIM-SUBMITTED INFORMATION ---
-        if (activeSections.victim_info) {
-            drawSectionHeader("3. Victim-Submitted Information");
-
-            const victimData = [
-                ['Victim Name', caseData.client_name || caseData.victim_name || 'Redacted'],
-                ['Contact Email', caseData.client_email || caseData.victim_email || 'Redacted'],
-                ['Platform Used', caseData.platform || caseData.scam_source || 'N/A']
-            ];
-
-            autoTable(doc, {
-                startY: yPos,
-                body: victimData,
-                theme: 'plain',
-                styles: { fontSize: 10, cellPadding: 2 },
-                columnStyles: {
-                    0: { fontStyle: 'bold', textColor: colors.secondary, cellWidth: 50 },
-                    1: { textColor: colors.text }
-                },
-                margin: { left: margin, right: margin }
-            });
-            yPos = doc.lastAutoTable.finalY + 5;
-
-            // Description / Narrative
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.secondary);
-            doc.text("Incident Description:", margin, yPos);
-            yPos += 5;
-            
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.text);
-            const description = caseData.description || "No detailed narrative provided by the victim.";
-            const descLines = doc.splitTextToSize(description, pageWidth - (margin * 2));
-            doc.text(descLines, margin, yPos);
-            yPos += (descLines.length * 5) + 10;
-        }
-
-        // --- 4. SUSPECT INFORMATION ---
-        if (activeSections.suspect_info) {
-            checkPageBreak(50);
-            drawSectionHeader("4. Suspect Information");
-
-            const suspectRows = [];
-            
-            // Scammer Wallet
-            if (caseData.scammer_wallet) {
-                suspectRows.push([
-                    caseData.scammer_wallet,
-                    caseData.blockchain || 'Unknown',
-                    'Primary Suspect Address'
-                ]);
-            }
-            
-            // Monitored Wallets (if interpreted as suspects/hops)
-            if (caseData.monitored_wallets && caseData.monitored_wallets.length > 0) {
-                caseData.monitored_wallets.forEach(w => {
-                    if (w !== caseData.scammer_wallet && w !== caseData.victim_wallet) {
-                        suspectRows.push([
-                            w,
-                            caseData.blockchain || 'Unknown',
-                            'Associated / Destination Address'
-                        ]);
-                    }
-                });
-            }
-
-            if (suspectRows.length > 0) {
                 autoTable(doc, {
                     startY: yPos,
-                    head: [['Suspect Wallet Address', 'Network', 'Role in Flow']],
-                    body: suspectRows,
-                    theme: 'striped',
-                    headStyles: { fillColor: colors.secondary, textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
-                    columnStyles: { 0: { cellWidth: 90, fontStyle: 'mono' } }, // Monospace for addresses
+                    head: [['Victim Ref', 'Loss', 'Date', 'Platform', 'Status', 'Tx Hash']],
+                    body: row,
+                    theme: 'grid',
+                    headStyles: { fillColor: colors.secondary, fontSize: 8 },
+                    styles: { fontSize: 8, cellPadding: 2 },
                     margin: { left: margin, right: margin }
                 });
                 yPos = doc.lastAutoTable.finalY + 5;
-            } else {
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'italic');
-                doc.text("No specific suspect wallet addresses identified.", margin, yPos);
-                yPos += 8;
-            }
-
-            // Mandatory Statement
-            doc.setFontSize(9);
+            });
+        } else {
             doc.setFont('helvetica', 'italic');
-            doc.setTextColor(...colors.lightText);
-            doc.text("Suspected involvement based on victim-submitted data and publicly verifiable blockchain transactions.", margin, yPos);
-            yPos += 12;
+            doc.setFontSize(9);
+            doc.text("No additional linked cases identified at this time.", margin, yPos);
+            yPos += 10;
         }
 
-        // --- 5. TRANSACTION EVIDENCE ---
-        if (activeSections.transaction_evidence) {
-            checkPageBreak(50);
-            drawSectionHeader("5. Transaction Evidence");
+        // --- 5. EVIDENCE CORRELATION & LINK ANALYSIS ---
+        checkPageBreak(50);
+        drawSectionHeader("5. Evidence Correlation & Link Analysis");
 
-            if (transactions.length > 0) {
-                const txRows = transactions.map(tx => [
-                    tx.tx_hash ? `${tx.tx_hash.substring(0, 16)}...` : 'N/A',
-                    new Date(tx.timestamp).toLocaleDateString() + ' ' + new Date(tx.timestamp).toLocaleTimeString(),
-                    tx.from_address ? `${tx.from_address.substring(0, 10)}...` : 'N/A',
-                    tx.to_address ? `${tx.to_address.substring(0, 10)}...` : 'N/A',
-                    tx.asset || 'N/A',
-                    tx.amount || '0',
-                    tx.blockchain || caseData.blockchain || 'Unknown',
-                    (tx.status || 'Confirmed').toUpperCase()
-                ]);
+        addText("The aggregation of these incidents under a single primary investigation is based on shared forensic identifiers, specifically the destination wallet addresses and behavioral patterns observed on-chain.");
+        yPos += 5;
+        
+        addText("CORRELATION TIMELINE:");
+        yPos += 2;
+        
+        // Simple timeline table
+        const timelineEvents = [
+            { date: caseData.incident_date || caseData.created_date, event: `Primary Incident (${caseData.case_number})`, amt: caseData.amount_lost },
+            ...linkedCases.map(lc => ({ date: lc.incident_date || lc.created_date, event: `Linked Incident (${lc.case_number})`, amt: lc.amount_lost }))
+        ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                autoTable(doc, {
-                    startY: yPos,
-                    head: [['Tx Hash', 'Date & Time', 'From', 'To', 'Token', 'Amt', 'Net', 'Status']],
-                    body: txRows,
-                    theme: 'striped',
-                    headStyles: { fillColor: colors.primary, textColor: 255, fontSize: 8 },
-                    styles: { fontSize: 7, cellPadding: 2, valign: 'middle' },
-                    columnStyles: { 0: { fontStyle: 'mono' }, 2: { fontStyle: 'mono' }, 3: { fontStyle: 'mono' } },
-                    margin: { left: margin, right: margin }
-                });
-                yPos = doc.lastAutoTable.finalY + 10;
-            } else {
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'italic');
-                doc.text("No transaction evidence currently linked to this case.", margin, yPos);
-                yPos += 10;
-            }
+        const timelineRows = timelineEvents.map(t => [
+            new Date(t.date).toLocaleDateString(),
+            t.event,
+            `$${(t.amt || 0).toLocaleString()}`
+        ]);
+
+        autoTable(doc, {
+            startY: yPos,
+            head: [['Date', 'Event / Incident', 'Amount Involved']],
+            body: timelineRows,
+            theme: 'plain',
+            headStyles: { fillColor: colors.bg, textColor: colors.primary, fontStyle: 'bold' },
+            styles: { fontSize: 9 },
+            margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+
+        // --- 6. LEGAL & ENFORCEMENT RELEVANCE ---
+        checkPageBreak(60);
+        drawSectionHeader("6. Legal & Enforcement Relevance");
+
+        const legalText = `
+        This aggregated report demonstrates that the identified suspect(s) are engaged in a systematic campaign of fraud, elevating the severity of the offense beyond individual petty theft to Organized Fraud and Money Laundering.
+
+        TOTAL AGGREGATED IMPACT: $${totalLinkedAmount.toLocaleString()}
+
+        1. SCALE: The total volume of funds confirms a professionalized operation.
+        2. INTENT: Repeated execution of the same modus operandi across multiple victims negates any defense of accidental error.
+        3. JURISDICTION: The decentralized nature of these crimes necessitates cooperation between exchanges (VASP), ISPs, and international law enforcement.
+
+        REQUEST FOR ACTION:
+        - Immediate freezing of assets at identified VASP endpoints.
+        - Preservation of KYC records for the primary suspect wallet.
+        - Cross-referencing of this cluster with other active investigations.
+        `;
+
+        addText(legalText.trim().replace(/  +/g, ''), 10, 'normal', colors.text);
+
+        // --- 7. APPENDIX ---
+        checkPageBreak(60);
+        drawSectionHeader("7. Appendix: Full Transaction Log");
+
+        if (transactions.length > 0) {
+            const txRows = transactions.map(tx => [
+                new Date(tx.timestamp).toLocaleDateString(),
+                tx.tx_hash ? `${tx.tx_hash.substring(0, 12)}...` : 'N/A',
+                tx.from_address ? `${tx.from_address.substring(0, 8)}...` : 'N/A',
+                tx.to_address ? `${tx.to_address.substring(0, 8)}...` : 'N/A',
+                tx.amount || '0'
+            ]);
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Date', 'Tx Hash', 'From', 'To', 'Amount']],
+                body: txRows,
+                theme: 'striped',
+                headStyles: { fillColor: colors.secondary, fontSize: 8 },
+                styles: { fontSize: 8, cellPadding: 2, fontStyle: 'mono' },
+                margin: { left: margin, right: margin }
+            });
+        } else {
+            addText("No detailed transaction logs available in this report version.");
         }
 
-        // --- 6. EVIDENCE SUMMARY ---
-        if (activeSections.evidence_files) {
-            checkPageBreak(40);
-            drawSectionHeader("6. Evidence Summary");
-
-            if (evidenceFiles.length > 0) {
-                const fileRows = evidenceFiles.map(f => [
-                    f.filename,
-                    f.mime_type || 'Unknown',
-                    f.description || f.summary?.analysis_text?.substring(0, 100) || "Supporting evidence uploaded to case."
-                ]);
-
-                autoTable(doc, {
-                    startY: yPos,
-                    head: [['Filename', 'File Type', 'Supports / Description']],
-                    body: fileRows,
-                    theme: 'plain',
-                    headStyles: { fillColor: colors.bg, textColor: colors.secondary, fontStyle: 'bold' },
-                    styles: { fontSize: 9, cellPadding: 3 },
-                    columnStyles: { 2: { cellWidth: 90 } },
-                    margin: { left: margin, right: margin }
-                });
-                yPos = doc.lastAutoTable.finalY + 10;
-            } else {
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'italic');
-                doc.text("No evidence files uploaded.", margin, yPos);
-                yPos += 10;
-            }
-        }
-
-        // --- 7. INVESTIGATOR & CORRELATION ANALYSIS (FROM CYBER PROFILE) ---
-        if (cyberProfile && activeSections.observations) {
-            checkPageBreak(40);
-            drawSectionHeader("7. Investigator & Correlation Analysis");
-            
-            const ia = cyberProfile.investigator_analysis || {};
-            const li = cyberProfile.linked_intelligence || {};
-            
-            // Investigator Analysis
-            doc.setFont('helvetica', 'bold');
-            doc.text("Pattern Assessment:", margin, yPos + 5);
-            doc.setFont('helvetica', 'normal');
-            const patternLines = doc.splitTextToSize(ia.pattern_assessment || "N/A", pageWidth - margin - 60);
-            doc.text(patternLines, margin + 50, yPos + 5);
-            yPos += (patternLines.length * 5) + 5;
-
-            // Linked Cases
-            if (li.summary) {
-                checkPageBreak(30);
-                doc.setFont('helvetica', 'bold');
-                doc.text("Linked Intelligence:", margin, yPos + 5);
-                doc.setFont('helvetica', 'normal');
-                const linkText = `Total Linked Cases: ${li.summary.total_linked || 0} | Total Linked Loss: $${(li.summary.total_loss || 0).toLocaleString()} | Assessment: ${li.summary.campaign_assessment || 'N/A'}`;
-                const linkLines = doc.splitTextToSize(linkText, pageWidth - margin - 50);
-                doc.text(linkLines, margin + 50, yPos + 5);
-                yPos += (linkLines.length * 5) + 5;
-            }
-        } else if (activeSections.observations) {
-            checkPageBreak(40);
-            drawSectionHeader("7. Observations");
-
-            // Use AI analysis or default text
-            const analysis = caseData.ai_analysis || caseData.pattern_analysis || "";
-            const walletIndicators = caseData.wallet_analysis?.indicators?.join(", ") || "";
-            
-            let observationsText = "";
-            if (analysis) observationsText += analysis + "\n\n";
-            if (walletIndicators) observationsText += `Detected Patterns: ${walletIndicators}\n`;
-            
-            if (!observationsText) observationsText = "No specific patterns or automated observations recorded at this time.";
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(...colors.text);
-            
-            const obsLines = doc.splitTextToSize(observationsText, pageWidth - (margin * 2));
-            doc.text(obsLines, margin, yPos);
-            yPos += (obsLines.length * 5) + 10;
-        }
-
-        // --- 8. DISCLAIMER & FOOTER ---
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
+        // --- FOOTER (ALL PAGES) ---
+        const totalP = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalP; i++) {
             doc.setPage(i);
             
-            // Footer Separator
             doc.setDrawColor(200, 200, 200);
-            doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+            doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
             
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
-            
-            const discl1 = "This document is generated by SafeNestT® for intelligence and documentation purposes only.";
-            const discl2 = "SafeNestT® is not a law enforcement agency and does not guarantee recovery.";
-            const discl3 = "CONFIDENTIAL – LAW ENFORCEMENT SENSITIVE.";
-            
-            const footerY = pageHeight - 25;
-            
-            doc.text(discl1, pageWidth / 2, footerY, { align: 'center' });
-            doc.text(discl2, pageWidth / 2, footerY + 4, { align: 'center' });
-            
-            doc.setTextColor(200, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.text(discl3, pageWidth / 2, footerY + 8, { align: 'center' });
-            
-            doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'normal');
-            doc.text("SafeNestT®", margin, footerY + 8);
-            doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, footerY + 8, { align: 'right' });
+            
+            doc.text("SafeNestT® Investigation Unit", margin, pageHeight - 15);
+            doc.text("CONFIDENTIAL", pageWidth / 2, pageHeight - 15, { align: 'center' });
+            doc.text(`Page ${i} of ${totalP}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
         }
 
         const pdfBytes = doc.output('arraybuffer');
