@@ -4,6 +4,7 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         const targetEmail = "bring2help2@gmail.com";
+        const altEmail = "Dhgtrucking@gmail.com";
         
         // 1. Try to find the user
         // Note: accessing User entity usually requires service role
@@ -31,7 +32,12 @@ Deno.serve(async (req) => {
                     { created_by: targetEmail },
                     { created_by_email: targetEmail },
                     { victim_email: targetEmail },
-                    { email: targetEmail }
+                    { email: targetEmail },
+                    { client_email: altEmail },
+                    { created_by: altEmail },
+                    { created_by_email: altEmail },
+                    { victim_email: altEmail },
+                    { email: altEmail }
                 ];
 
                 // If we found a user ID, search by that too
