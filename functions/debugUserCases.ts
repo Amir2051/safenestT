@@ -4,9 +4,8 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        // Search cases created +/- 5 days from user creation (Nov 23)
-        const startDate = "2025-11-18T00:00:00.000Z";
-        const endDate = "2025-11-28T23:59:59.999Z";
+        const startDate = "2025-12-19T00:00:00.000Z";
+        const endDate = "2025-12-19T23:59:59.999Z";
         
         const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 1000);
         
