@@ -195,8 +195,8 @@ Deno.serve(async (req) => {
                 // Admin metadata
                 created_by_admin: action === 'create_for_user',
                 admin_creator_email: action === 'create_for_user' ? user.email : null,
-                // Ensure client details match target
-                client_email: action === 'create_for_user' ? creatorEmail : (data.client_email || creatorEmail),
+                // Ensure client details match target (Force lowercase for RLS)
+                client_email: (action === 'create_for_user' ? creatorEmail : (data.client_email || creatorEmail)).toLowerCase(),
                 client_name: action === 'create_for_user' ? creatorName : (data.client_name || creatorName),
                 // Ensure metadata is stringified if present
                 metadata: typeof data.metadata === 'object' ? JSON.stringify(data.metadata) : data.metadata
