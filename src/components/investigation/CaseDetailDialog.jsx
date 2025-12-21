@@ -36,6 +36,9 @@ import { toast } from "sonner";
 import CaseTaskManager from "@/components/collaboration/CaseTaskManager.jsx";
 import CyberFraudProfileBuilder from "./CyberFraudProfileBuilder.jsx";
 import CommunicationLog from "./communication/CommunicationLog.jsx";
+import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
+import CrossCaseCorrelator from "./CrossCaseCorrelator.jsx";
+import PatternLibrary from "./PatternLibrary.jsx";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -546,6 +549,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </TabsTrigger>
               <TabsTrigger value="connections" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 <Network className="w-3 h-3 mr-1" />Connections
+              </TabsTrigger>
+              <TabsTrigger value="advanced-tools" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 border border-indigo-500/30">
+                <Sparkles className="w-3 h-3 mr-1" />Advanced Investigation
               </TabsTrigger>
               <TabsTrigger value="communications" className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">
                 <MessageSquare className="w-3 h-3 mr-1" />Comms & Logs
@@ -1553,6 +1559,35 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="connections" className="space-y-4">
               <RelatedCasesPanel caseId={caseData.id} entityName={caseData._entityName || caseData.entity_name} />
+            </TabsContent>
+
+            <TabsContent value="advanced-tools" className="space-y-6">
+                <div className="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                    <h3 className="text-indigo-400 font-semibold mb-2 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5" />
+                        Advanced Investigation Suite
+                    </h3>
+                    <p className="text-sm text-gray-300 mb-4">
+                        Powerful tools for deep blockchain analysis, cross-case correlation, and pattern matching.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-6">
+                            <AdvancedBlockchainViewer 
+                                walletAddress={caseData.scammer_wallet} 
+                                blockchain={caseData.blockchain || 'ethereum'} 
+                            />
+                        </div>
+                        <div className="space-y-6">
+                            <div className="h-[400px]">
+                                <CrossCaseCorrelator />
+                            </div>
+                            <div className="h-[400px]">
+                                <PatternLibrary />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </TabsContent>
 
             <TabsContent value="communications" className="space-y-4">
