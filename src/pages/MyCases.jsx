@@ -477,6 +477,30 @@ export default function MyCases() {
           />
         )
       )}
+
+      <AlertDialog open={!!caseToDelete} onOpenChange={(open) => !open && setCaseToDelete(null)}>
+        <AlertDialogContent className="bg-[#1a2332] border-cyan-500/20">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              This action cannot be undone. This will permanently delete the case 
+              <span className="font-mono text-cyan-400 mx-1">
+                {caseToDelete?.case_number || caseToDelete?.case_title}
+              </span>
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent text-gray-400 border-gray-600 hover:bg-gray-800 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white border-none"
+            >
+              Delete Case
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
