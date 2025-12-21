@@ -49,6 +49,33 @@ Deno.serve(async (req) => {
 
             const { victim_wallet, scammer_wallet, target_user_email, target_user_name } = data;
 
+            // 0. DUPLICATE CHECK (Prevent double submissions)
+            // Check for identical case created by same user in last 24h
+            try {
+                const recentCases = await base44.asServiceRole.entities.MyCase.filter({
+                    created_by: user.email.toLowerCase(),
+                    issue_type: data.issue_type || 'other',
+                    status: 'Pending'
+                });
+                
+                for (const rc of recentCases) {
+                    // Check if critical fields match (Scammer Wallet OR Amount if wallet missing)
+                    const sameWallet = rc.scammer_wallet && data.scammer_wallet && 
+                                      rc.scammer_wallet.toLowerCase() === data.scammer_wallet.toLowerCase();
+                    const sameAmount = Math.abs((rc.amount_lost || 0) - (data.amount_lost || 0)) < 1; // within $1
+                    
+                    if (sameWallet || (sameAmount && !rc.scammer_wallet && !data.scammer_wallet)) {
+                        return Response.json({ 
+                            error: "Duplicate Case Detected. You already have a pending case with these details.",
+                            duplicate: true,
+                            case_id: rc.id
+                        }, { status: 409 });
+                    }
+                }
+            } catch (dupErr) {
+                console.error("Duplicate check failed", dupErr);
+            }
+
             // 1. Mandatory Wallet Validation
             const validateWallet = (addr) => {
                 if (!addr) return null;
