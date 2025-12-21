@@ -43,6 +43,7 @@ export default function MyCases() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
+  const [caseToDelete, setCaseToDelete] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
