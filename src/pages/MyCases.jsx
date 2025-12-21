@@ -106,6 +106,26 @@ export default function MyCases() {
       queryClient.invalidateQueries({ queryKey: ['my-scams'] });
   };
 
+  const confirmDelete = async () => {
+    if (!caseToDelete) return;
+    try {
+      // MyCase or ScamDatabase?
+      // Assuming MyCase for now as per instructions, but let's handle both if possible or just MyCase.
+      // Instructions say "Delete Case action... My Case page".
+      // Let's stick to MyCase entity.
+      
+      const entity = caseToDelete._entityName === 'ScamDatabase' ? base44.entities.ScamDatabase : base44.entities.MyCase;
+      await entity.delete(caseToDelete.id);
+      
+      toast.success("Case deleted successfully");
+      handleCaseUpdate();
+    } catch (error) {
+      toast.error("Failed to delete case: " + error.message);
+    } finally {
+      setCaseToDelete(null);
+    }
+  };
+
   // Normalize cases for display
   const normalizedCases = myCases.map(c => ({
       ...c,
