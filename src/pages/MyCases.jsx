@@ -428,19 +428,32 @@ export default function MyCases() {
                       </div>
 
                       <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCase(caseItem);
-                        }}
-                      >
-                        <Pencil className="w-4 h-4 mr-1" />
-                        Manage Case
-                      </Button>
-                    </div>
+                        {(user.role === 'admin' || user.is_admin) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCaseToDelete(caseItem);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCase(caseItem);
+                          }}
+                        >
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Manage Case
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
