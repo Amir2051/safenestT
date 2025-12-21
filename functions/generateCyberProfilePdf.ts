@@ -155,6 +155,31 @@ Deno.serve(async (req) => {
         doc.setFont(undefined, 'normal');
         addTextBlock(mo.timeline_summary || "N/A");
 
+        // --- TRANSACTION FLOW ANALYSIS ---
+        const ta = profile.transaction_analysis;
+        if (ta && (ta.flow_summary || ta.risk_score > 0)) {
+            y += 5;
+            addSectionTitle("E. Transaction Flow Analysis");
+            
+            // Risk Header
+            doc.setFillColor(ta.risk_level === 'high' || ta.risk_level === 'critical' ? 255 : 240, 
+                             ta.risk_level === 'high' || ta.risk_level === 'critical' ? 240 : 240, 
+                             ta.risk_level === 'high' || ta.risk_level === 'critical' ? 240 : 240);
+            doc.rect(margin, y, pageWidth - (margin * 2), 15, 'F');
+            doc.setFont(undefined, 'bold');
+            doc.text(`Risk Score: ${ta.risk_score || 0}/100`, margin + 5, y + 10);
+            doc.text(`Risk Level: ${(ta.risk_level || 'Unknown').toUpperCase()}`, margin + 60, y + 10);
+            doc.setFont(undefined, 'normal');
+            y += 20;
+
+            // Summary
+            doc.setFont(undefined, 'bold');
+            doc.text("Flow Narrative:", margin, y);
+            y += 6;
+            doc.setFont(undefined, 'normal');
+            addTextBlock(ta.flow_summary || "No narrative provided.");
+        }
+
         // --- LINKED INTELLIGENCE ---
         y += 5;
         addSectionTitle("Linked Intelligence & Campaign Correlation");

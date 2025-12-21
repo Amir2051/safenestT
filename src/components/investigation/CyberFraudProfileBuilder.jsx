@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, FileText, Lock, ShieldAlert, User, Database, Eye } from "lucide-react";
+import { Loader2, Save, FileText, Lock, ShieldAlert, User, Database, Eye, Layers } from "lucide-react";
+import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
 import { toast } from "sonner";
 
 export default function CyberFraudProfileBuilder({ caseId, caseData }) {
@@ -82,6 +83,14 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
           attribution_notes: ""
         },
         investigator_notes: "",
+        transaction_analysis: {
+            flow_summary: "",
+            risk_score: 0,
+            risk_level: "Low",
+            total_hops: 0,
+            exchanges: [],
+            mixers_detected: false
+        },
         edit_log: []
       });
     }
@@ -229,6 +238,7 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
                 <TabsTrigger value="suspect">Suspect Intel</TabsTrigger>
                 <TabsTrigger value="mo">Modus Operandi</TabsTrigger>
                 <TabsTrigger value="linked">Linked Intelligence</TabsTrigger>
+                <TabsTrigger value="transaction_flow">Transaction Flow</TabsTrigger>
                 <TabsTrigger value="evidence">Evidence</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -408,6 +418,66 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
                             onChange={(e) => updateSection('modus_operandi', 'timeline_summary', e.target.value)}
                             className="bg-[#0f1419] border-gray-700"
                         />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="transaction_flow" className="space-y-4">
+                    <div className="grid grid-cols-1 gap-6">
+                        {/* Interactive Viewer */}
+                        <div>
+                            <Label className="text-gray-300 mb-2 block">Live Blockchain Analysis</Label>
+                            <AdvancedBlockchainViewer 
+                                walletAddress={profile.suspect_profile?.wallets?.split('\n')[0] || profile.suspect_profile?.wallets || ""} 
+                                blockchain={caseData?.blockchain || 'ethereum'}
+                            />
+                        </div>
+
+                        {/* Persistent Profile Data */}
+                        <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
+                            <h3 className="text-cyan-400 font-semibold mb-4 flex items-center gap-2">
+                                <Layers className="w-4 h-4" />
+                                Transaction Intelligence Report
+                            </h3>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Risk Score</Label>
+                                    <Input 
+                                        type="number"
+                                        value={profile.transaction_analysis?.risk_score || 0}
+                                        onChange={(e) => updateSection('transaction_analysis', 'risk_score', parseFloat(e.target.value))}
+                                        className="bg-[#1a2332] border-gray-700"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Risk Level</Label>
+                                    <Select 
+                                        value={profile.transaction_analysis?.risk_level || 'Low'} 
+                                        onValueChange={(v) => updateSection('transaction_analysis', 'risk_level', v)}
+                                    >
+                                        <SelectTrigger className="bg-[#1a2332] border-gray-700">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="low">Low</SelectItem>
+                                            <SelectItem value="medium">Medium</SelectItem>
+                                            <SelectItem value="high">High</SelectItem>
+                                            <SelectItem value="critical">Critical</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Flow Narrative Summary</Label>
+                                <Textarea 
+                                    value={profile.transaction_analysis?.flow_summary || ""}
+                                    onChange={(e) => updateSection('transaction_analysis', 'flow_summary', e.target.value)}
+                                    className="bg-[#1a2332] border-gray-700 min-h-[150px]"
+                                    placeholder="Describe the flow of funds, hops, and destination exchanges..."
+                                />
+                            </div>
+                        </div>
                     </div>
                 </TabsContent>
 
