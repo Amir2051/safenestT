@@ -16,8 +16,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
