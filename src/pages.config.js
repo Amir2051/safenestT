@@ -1,185 +1,187 @@
-import Dashboard from './pages/Dashboard';
-import PasswordVault from './pages/PasswordVault';
-import Alerts from './pages/Alerts';
-import MiaAssistant from './pages/MiaAssistant';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import DeviceCare from './pages/DeviceCare';
-import AutoProtection from './pages/AutoProtection';
-import Upgrade from './pages/Upgrade';
-import PaymentSuccess from './pages/PaymentSuccess';
-import DarkWebMonitor from './pages/DarkWebMonitor';
-import StorageOptimizer from './pages/StorageOptimizer';
-import Onboarding from './pages/Onboarding';
-import Achievements from './pages/Achievements';
-import Referrals from './pages/Referrals';
-import VPNPage from './pages/VPNPage';
-import Activity from './pages/Activity';
-import SecurityDashboard from './pages/SecurityDashboard';
-import CreditCardMonitor from './pages/CreditCardMonitor';
-import ReferralLanding from './pages/ReferralLanding';
-import AdminReferrals from './pages/AdminReferrals';
-import VPNAnalytics from './pages/VPNAnalytics';
-import TitleProtection from './pages/TitleProtection';
-import ViewAlerts from './pages/ViewAlerts';
-import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
-import LegalSupport from './pages/LegalSupport';
-import AdminReferralDashboard from './pages/AdminReferralDashboard';
-import Collaboration from './pages/Collaboration';
-import AttorneyTasks from './pages/AttorneyTasks';
-import LegalAssistant from './pages/LegalAssistant';
-import IdentityMonitor from './pages/IdentityMonitor';
-import SignalWatch from './pages/SignalWatch';
-import CreditMonitor from './pages/CreditMonitor';
-import FamilyProtection from './pages/FamilyProtection';
-import FamilyInvite from './pages/FamilyInvite';
-import AdvancedSecurity from './pages/AdvancedSecurity';
-import VPNDevices from './pages/VPNDevices';
-import AdminVPNServers from './pages/AdminVPNServers';
-import WebVPN from './pages/WebVPN';
-import PaymentOnboarding from './pages/PaymentOnboarding';
-import Billing from './pages/Billing';
-import AdminSubscriptions from './pages/AdminSubscriptions';
-import AdminInvites from './pages/AdminInvites';
-import PendingApproval from './pages/PendingApproval';
 import AccessDenied from './pages/AccessDenied';
-import AdminUserApprovals from './pages/AdminUserApprovals';
+import Achievements from './pages/Achievements';
+import Activity from './pages/Activity';
 import AdminDashboard from './pages/AdminDashboard';
-import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import CryptoProtection from './pages/CryptoProtection';
-import FraudRecovery from './pages/FraudRecovery';
-import LiveIntelligence from './pages/LiveIntelligence';
 import AdminInvestigation from './pages/AdminInvestigation';
-import CryptoTracker from './pages/CryptoTracker';
-import InvestigationHub from './pages/InvestigationHub';
+import AdminInvestmentMonitor from './pages/AdminInvestmentMonitor';
+import AdminInvites from './pages/AdminInvites';
+import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
+import AdminReferralDashboard from './pages/AdminReferralDashboard';
+import AdminReferrals from './pages/AdminReferrals';
+import AdminReports from './pages/AdminReports';
+import AdminSubscriptions from './pages/AdminSubscriptions';
+import AdminSupport from './pages/AdminSupport';
+import AdminUserApprovals from './pages/AdminUserApprovals';
+import AdminVPNServers from './pages/AdminVPNServers';
+import AdminVerifiedCompanies from './pages/AdminVerifiedCompanies';
+import AdvancedSecurity from './pages/AdvancedSecurity';
 import AgenciesDirectory from './pages/AgenciesDirectory';
+import Alerts from './pages/Alerts';
+import AttorneyTasks from './pages/AttorneyTasks';
+import AutoProtection from './pages/AutoProtection';
+import Billing from './pages/Billing';
+import CaseDocumentManager from './pages/CaseDocumentManager';
+import Cases from './pages/Cases';
+import ClientProtection from './pages/ClientProtection';
+import Collaboration from './pages/Collaboration';
+import CompanyProfile from './pages/CompanyProfile';
+import CreditCardMonitor from './pages/CreditCardMonitor';
+import CreditMonitor from './pages/CreditMonitor';
+import CryptoFraudCenter from './pages/CryptoFraudCenter';
+import CryptoProtection from './pages/CryptoProtection';
+import CryptoTracker from './pages/CryptoTracker';
+import CryptoWalletChecker from './pages/CryptoWalletChecker';
+import DarkWebMonitor from './pages/DarkWebMonitor';
+import Dashboard from './pages/Dashboard';
+import DeviceCare from './pages/DeviceCare';
+import DeviceSecurity from './pages/DeviceSecurity';
+import DigitalForensics from './pages/DigitalForensics';
+import ElectraWallet from './pages/ElectraWallet';
+import FamilyInvite from './pages/FamilyInvite';
+import FamilyProtection from './pages/FamilyProtection';
+import FraudRecovery from './pages/FraudRecovery';
+import FraudTracking from './pages/FraudTracking';
+import Home from './pages/Home';
+import IdentityMonitor from './pages/IdentityMonitor';
+import IntelligenceCenter from './pages/IntelligenceCenter';
+import InvestigationDashboard from './pages/InvestigationDashboard';
+import InvestigationHub from './pages/InvestigationHub';
+import InvestigatorDashboard from './pages/InvestigatorDashboard';
+import InvestmentCheckout from './pages/InvestmentCheckout';
+import LawEnforcementAccess from './pages/LawEnforcementAccess';
+import LegalAssistant from './pages/LegalAssistant';
+import LegalSupport from './pages/LegalSupport';
+import LiveIntelligence from './pages/LiveIntelligence';
+import MediaDashboard from './pages/MediaDashboard';
+import MediaDirectorAI from './pages/MediaDirectorAI';
+import MiaAssistant from './pages/MiaAssistant';
+import MyCases from './pages/MyCases';
+import MyPortfolio from './pages/MyPortfolio';
+import Onboarding from './pages/Onboarding';
+import PasswordVault from './pages/PasswordVault';
+import PaymentOnboarding from './pages/PaymentOnboarding';
+import PaymentRequired from './pages/PaymentRequired';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PendingApproval from './pages/PendingApproval';
+import ReferralLanding from './pages/ReferralLanding';
+import Referrals from './pages/Referrals';
+import RefundRequest from './pages/RefundRequest';
+import ReportScam from './pages/ReportScam';
+import ReportedScams from './pages/ReportedScams';
+import Reports from './pages/Reports';
+import SecurityDashboard from './pages/SecurityDashboard';
+import Settings from './pages/Settings';
+import SignalWatch from './pages/SignalWatch';
+import StorageOptimizer from './pages/StorageOptimizer';
 import Subscription from './pages/Subscription';
 import SubscriptionRequired from './pages/SubscriptionRequired';
-import PaymentRequired from './pages/PaymentRequired';
-import CryptoFraudCenter from './pages/CryptoFraudCenter';
-import ReportedScams from './pages/ReportedScams';
-import MyCases from './pages/MyCases';
-import TrackingPage from './pages/TrackingPage';
-import ElectraWallet from './pages/ElectraWallet';
-import VictimPortal from './pages/VictimPortal';
-import IntelligenceCenter from './pages/IntelligenceCenter';
-import LawEnforcementAccess from './pages/LawEnforcementAccess';
-import InvestigationDashboard from './pages/InvestigationDashboard';
-import ReportScam from './pages/ReportScam';
-import AdminVerifiedCompanies from './pages/AdminVerifiedCompanies';
-import AdminInvestmentMonitor from './pages/AdminInvestmentMonitor';
-import VerifiedHub from './pages/VerifiedHub';
-import CompanyProfile from './pages/CompanyProfile';
-import InvestmentCheckout from './pages/InvestmentCheckout';
-import MyPortfolio from './pages/MyPortfolio';
-import RefundRequest from './pages/RefundRequest';
-import MediaDirectorAI from './pages/MediaDirectorAI';
-import MediaDashboard from './pages/MediaDashboard';
-import Cases from './pages/Cases';
-import ThreatIntelligence from './pages/ThreatIntelligence';
-import DigitalForensics from './pages/DigitalForensics';
-import FraudTracking from './pages/FraudTracking';
-import DeviceSecurity from './pages/DeviceSecurity';
-import ClientProtection from './pages/ClientProtection';
-import CaseDocumentManager from './pages/CaseDocumentManager';
-import CryptoWalletChecker from './pages/CryptoWalletChecker';
-import AdminSupport from './pages/AdminSupport';
 import Support from './pages/Support';
-import AdminReports from './pages/AdminReports';
-import InvestigatorDashboard from './pages/InvestigatorDashboard';
+import ThreatIntelligence from './pages/ThreatIntelligence';
+import TitleProtection from './pages/TitleProtection';
+import TrackingPage from './pages/TrackingPage';
+import Upgrade from './pages/Upgrade';
+import VPNAnalytics from './pages/VPNAnalytics';
+import VPNDevices from './pages/VPNDevices';
+import VPNPage from './pages/VPNPage';
+import VerifiedHub from './pages/VerifiedHub';
+import VictimPortal from './pages/VictimPortal';
+import ViewAlerts from './pages/ViewAlerts';
+import WebVPN from './pages/WebVPN';
+import WelcomeOnboarding from './pages/WelcomeOnboarding';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "PasswordVault": PasswordVault,
-    "Alerts": Alerts,
-    "MiaAssistant": MiaAssistant,
-    "Reports": Reports,
-    "Settings": Settings,
-    "DeviceCare": DeviceCare,
-    "AutoProtection": AutoProtection,
-    "Upgrade": Upgrade,
-    "PaymentSuccess": PaymentSuccess,
-    "DarkWebMonitor": DarkWebMonitor,
-    "StorageOptimizer": StorageOptimizer,
-    "Onboarding": Onboarding,
-    "Achievements": Achievements,
-    "Referrals": Referrals,
-    "VPNPage": VPNPage,
-    "Activity": Activity,
-    "SecurityDashboard": SecurityDashboard,
-    "CreditCardMonitor": CreditCardMonitor,
-    "ReferralLanding": ReferralLanding,
-    "AdminReferrals": AdminReferrals,
-    "VPNAnalytics": VPNAnalytics,
-    "TitleProtection": TitleProtection,
-    "ViewAlerts": ViewAlerts,
-    "AdminMonitoringDashboard": AdminMonitoringDashboard,
-    "LegalSupport": LegalSupport,
-    "AdminReferralDashboard": AdminReferralDashboard,
-    "Collaboration": Collaboration,
-    "AttorneyTasks": AttorneyTasks,
-    "LegalAssistant": LegalAssistant,
-    "IdentityMonitor": IdentityMonitor,
-    "SignalWatch": SignalWatch,
-    "CreditMonitor": CreditMonitor,
-    "FamilyProtection": FamilyProtection,
-    "FamilyInvite": FamilyInvite,
-    "AdvancedSecurity": AdvancedSecurity,
-    "VPNDevices": VPNDevices,
-    "AdminVPNServers": AdminVPNServers,
-    "WebVPN": WebVPN,
-    "PaymentOnboarding": PaymentOnboarding,
-    "Billing": Billing,
-    "AdminSubscriptions": AdminSubscriptions,
-    "AdminInvites": AdminInvites,
-    "PendingApproval": PendingApproval,
     "AccessDenied": AccessDenied,
-    "AdminUserApprovals": AdminUserApprovals,
+    "Achievements": Achievements,
+    "Activity": Activity,
     "AdminDashboard": AdminDashboard,
-    "WelcomeOnboarding": WelcomeOnboarding,
-    "CryptoProtection": CryptoProtection,
-    "FraudRecovery": FraudRecovery,
-    "LiveIntelligence": LiveIntelligence,
     "AdminInvestigation": AdminInvestigation,
-    "CryptoTracker": CryptoTracker,
-    "InvestigationHub": InvestigationHub,
+    "AdminInvestmentMonitor": AdminInvestmentMonitor,
+    "AdminInvites": AdminInvites,
+    "AdminMonitoringDashboard": AdminMonitoringDashboard,
+    "AdminReferralDashboard": AdminReferralDashboard,
+    "AdminReferrals": AdminReferrals,
+    "AdminReports": AdminReports,
+    "AdminSubscriptions": AdminSubscriptions,
+    "AdminSupport": AdminSupport,
+    "AdminUserApprovals": AdminUserApprovals,
+    "AdminVPNServers": AdminVPNServers,
+    "AdminVerifiedCompanies": AdminVerifiedCompanies,
+    "AdvancedSecurity": AdvancedSecurity,
     "AgenciesDirectory": AgenciesDirectory,
+    "Alerts": Alerts,
+    "AttorneyTasks": AttorneyTasks,
+    "AutoProtection": AutoProtection,
+    "Billing": Billing,
+    "CaseDocumentManager": CaseDocumentManager,
+    "Cases": Cases,
+    "ClientProtection": ClientProtection,
+    "Collaboration": Collaboration,
+    "CompanyProfile": CompanyProfile,
+    "CreditCardMonitor": CreditCardMonitor,
+    "CreditMonitor": CreditMonitor,
+    "CryptoFraudCenter": CryptoFraudCenter,
+    "CryptoProtection": CryptoProtection,
+    "CryptoTracker": CryptoTracker,
+    "CryptoWalletChecker": CryptoWalletChecker,
+    "DarkWebMonitor": DarkWebMonitor,
+    "Dashboard": Dashboard,
+    "DeviceCare": DeviceCare,
+    "DeviceSecurity": DeviceSecurity,
+    "DigitalForensics": DigitalForensics,
+    "ElectraWallet": ElectraWallet,
+    "FamilyInvite": FamilyInvite,
+    "FamilyProtection": FamilyProtection,
+    "FraudRecovery": FraudRecovery,
+    "FraudTracking": FraudTracking,
+    "Home": Home,
+    "IdentityMonitor": IdentityMonitor,
+    "IntelligenceCenter": IntelligenceCenter,
+    "InvestigationDashboard": InvestigationDashboard,
+    "InvestigationHub": InvestigationHub,
+    "InvestigatorDashboard": InvestigatorDashboard,
+    "InvestmentCheckout": InvestmentCheckout,
+    "LawEnforcementAccess": LawEnforcementAccess,
+    "LegalAssistant": LegalAssistant,
+    "LegalSupport": LegalSupport,
+    "LiveIntelligence": LiveIntelligence,
+    "MediaDashboard": MediaDashboard,
+    "MediaDirectorAI": MediaDirectorAI,
+    "MiaAssistant": MiaAssistant,
+    "MyCases": MyCases,
+    "MyPortfolio": MyPortfolio,
+    "Onboarding": Onboarding,
+    "PasswordVault": PasswordVault,
+    "PaymentOnboarding": PaymentOnboarding,
+    "PaymentRequired": PaymentRequired,
+    "PaymentSuccess": PaymentSuccess,
+    "PendingApproval": PendingApproval,
+    "ReferralLanding": ReferralLanding,
+    "Referrals": Referrals,
+    "RefundRequest": RefundRequest,
+    "ReportScam": ReportScam,
+    "ReportedScams": ReportedScams,
+    "Reports": Reports,
+    "SecurityDashboard": SecurityDashboard,
+    "Settings": Settings,
+    "SignalWatch": SignalWatch,
+    "StorageOptimizer": StorageOptimizer,
     "Subscription": Subscription,
     "SubscriptionRequired": SubscriptionRequired,
-    "PaymentRequired": PaymentRequired,
-    "CryptoFraudCenter": CryptoFraudCenter,
-    "ReportedScams": ReportedScams,
-    "MyCases": MyCases,
-    "TrackingPage": TrackingPage,
-    "ElectraWallet": ElectraWallet,
-    "VictimPortal": VictimPortal,
-    "IntelligenceCenter": IntelligenceCenter,
-    "LawEnforcementAccess": LawEnforcementAccess,
-    "InvestigationDashboard": InvestigationDashboard,
-    "ReportScam": ReportScam,
-    "AdminVerifiedCompanies": AdminVerifiedCompanies,
-    "AdminInvestmentMonitor": AdminInvestmentMonitor,
-    "VerifiedHub": VerifiedHub,
-    "CompanyProfile": CompanyProfile,
-    "InvestmentCheckout": InvestmentCheckout,
-    "MyPortfolio": MyPortfolio,
-    "RefundRequest": RefundRequest,
-    "MediaDirectorAI": MediaDirectorAI,
-    "MediaDashboard": MediaDashboard,
-    "Cases": Cases,
-    "ThreatIntelligence": ThreatIntelligence,
-    "DigitalForensics": DigitalForensics,
-    "FraudTracking": FraudTracking,
-    "DeviceSecurity": DeviceSecurity,
-    "ClientProtection": ClientProtection,
-    "CaseDocumentManager": CaseDocumentManager,
-    "CryptoWalletChecker": CryptoWalletChecker,
-    "AdminSupport": AdminSupport,
     "Support": Support,
-    "AdminReports": AdminReports,
-    "InvestigatorDashboard": InvestigatorDashboard,
+    "ThreatIntelligence": ThreatIntelligence,
+    "TitleProtection": TitleProtection,
+    "TrackingPage": TrackingPage,
+    "Upgrade": Upgrade,
+    "VPNAnalytics": VPNAnalytics,
+    "VPNDevices": VPNDevices,
+    "VPNPage": VPNPage,
+    "VerifiedHub": VerifiedHub,
+    "VictimPortal": VictimPortal,
+    "ViewAlerts": ViewAlerts,
+    "WebVPN": WebVPN,
+    "WelcomeOnboarding": WelcomeOnboarding,
 }
 
 export const pagesConfig = {
