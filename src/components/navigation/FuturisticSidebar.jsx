@@ -520,11 +520,11 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
                 ))}
               </div>
 
-            {/* Media Director Navigation - Show for Media Directors OR Admins */}
+            {/* Media Command Center - Show for Media Directors OR Admins */}
             {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
               <div className="space-y-2 pt-4 border-t border-gray-800/50">
                 <div className="px-4 mb-2">
-                  <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Director</span>
+                  <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Command</span>
                 </div>
                 {mediaNavItems.map((item) => (
                   <NavItem 
