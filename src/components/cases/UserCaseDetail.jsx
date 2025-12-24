@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   X, FileText, Clock, User, DollarSign, Shield, Upload, 
   MessageSquare, Calendar, AlertCircle, Save, Phone, Mail, 
-  Download, Eye, Send
+  Download, Eye, Send, MapPin
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -253,6 +253,94 @@ export default function UserCaseDetail({ caseData, onClose }) {
                                 icon={Shield}
                                 caseData={caseData} onUpdate={() => queryClient.invalidateQueries(['my-cases'])}
                             />
+                        </div>
+
+                        {/* Address Information Section */}
+                        <div className="mt-6 pt-6 border-t border-gray-700">
+                            <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-cyan-400" />
+                                My Address (Optional)
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <Label className="text-gray-300 text-sm">Street Address</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.street_address}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                street_address: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-gray-300 text-sm">Apartment / Unit</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.apartment_unit}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                apartment_unit: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-gray-300 text-sm">City</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.city}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                city: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-gray-300 text-sm">State / Province</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.state_province}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                state_province: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-gray-300 text-sm">ZIP / Postal Code</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.zip_postal_code}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                zip_postal_code: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-gray-300 text-sm">Country</Label>
+                                    <Input 
+                                        className="bg-[#1a2332] border-gray-600 mt-1" 
+                                        defaultValue={caseData.address_information?.country}
+                                        onBlur={(e) => updateCaseMutation.mutate({ 
+                                            address_information: { 
+                                                ...caseData.address_information, 
+                                                country: e.target.value 
+                                            } 
+                                        })}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>

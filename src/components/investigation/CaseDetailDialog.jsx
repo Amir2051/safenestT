@@ -92,7 +92,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     client_email: caseData.client_email || caseData.victim_email || '',
     phone_number: caseData.phone_number || caseData.victim_phone || '',
     amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
-    
+    address_information: caseData.address_information || {},
+
     // Common Fields
     victim_wallet: caseData.victim_wallet || '',
     cryptocurrency: caseData.cryptocurrency || '',
@@ -190,6 +191,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         client_email: editedCase.client_email,
         phone_number: editedCase.phone_number,
         amount_lost: parseFloat(editedCase.amount_lost) || 0,
+        address_information: editedCase.address_information,
         
         // Additional fields
         case_number: editedCase.case_number,
@@ -594,6 +596,24 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           icon={Phone}
                           caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
+                      {caseData.address_information && (
+                          <div className="pt-1 mt-1 border-t border-cyan-500/10">
+                              <p className="text-xs text-gray-400 mb-1">Address</p>
+                              <SensitiveField 
+                                  field="address" 
+                                  value={[
+                                      caseData.address_information.street_address,
+                                      caseData.address_information.apartment_unit,
+                                      caseData.address_information.city,
+                                      caseData.address_information.state_province,
+                                      caseData.address_information.zip_postal_code,
+                                      caseData.address_information.country
+                                  ].filter(Boolean).join(', ') || 'N/A'} 
+                                  icon={MapPin}
+                                  caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
+                              />
+                          </div>
+                      )}
                       {caseData.victim_wallet && (
                           <div className="pt-1 mt-1 border-t border-cyan-500/10">
                               <SensitiveField 
@@ -823,6 +843,106 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                         <SelectItem value="Critical">Critical</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                {/* Address Section */}
+                <div className="mt-6 pt-6 border-t border-cyan-500/10">
+                  <h5 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-cyan-400" />
+                    Address Information (Optional)
+                  </h5>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label className="text-gray-300 mb-2 block">Street Address</Label>
+                      <Input
+                        value={editedCase.address_information?.street_address || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            street_address: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="Enter street address"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">Apartment / Unit</Label>
+                      <Input
+                        value={editedCase.address_information?.apartment_unit || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            apartment_unit: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="Apt, Suite, etc."
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">City</Label>
+                      <Input
+                        value={editedCase.address_information?.city || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            city: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="Enter city"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">State / Province</Label>
+                      <Input
+                        value={editedCase.address_information?.state_province || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            state_province: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="State or Province"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">ZIP / Postal Code</Label>
+                      <Input
+                        value={editedCase.address_information?.zip_postal_code || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            zip_postal_code: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="ZIP or Postal Code"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">Country</Label>
+                      <Input
+                        value={editedCase.address_information?.country || ''}
+                        onChange={(e) => setEditedCase({
+                          ...editedCase, 
+                          address_information: {
+                            ...editedCase.address_information,
+                            country: e.target.value
+                          }
+                        })}
+                        className="bg-[#1a2332] border-cyan-500/30 text-white"
+                        placeholder="Country"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
