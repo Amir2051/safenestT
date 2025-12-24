@@ -22,6 +22,30 @@ export default function Layout({ children, currentPageName }) {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
+  // Load external chat widget
+  React.useEffect(() => {
+    // Check if script already exists
+    if (document.querySelector('script[name="web-chat"]')) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
+    script.setAttribute('name', 'web-chat');
+    script.setAttribute('data-client-secret', '68d63f1d-d9ca-47be-b15c-f71cff5d3da3');
+    script.async = true;
+    
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup on unmount
+      const existingScript = document.querySelector('script[name="web-chat"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
   // Mobile menu button auto-hide logic
   useEffect(() => {
     // Show button briefly on page load
