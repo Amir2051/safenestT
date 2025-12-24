@@ -24,21 +24,33 @@ export default function Layout({ children, currentPageName }) {
 
   // Load external chat widget
   React.useEffect(() => {
-    // Check if script already exists
+    // Prevent duplicate loading
     if (document.querySelector('script[name="web-chat"]')) {
       return;
     }
 
+    // Create and configure script element
     const script = document.createElement('script');
     script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
     script.setAttribute('name', 'web-chat');
     script.setAttribute('data-client-secret', '68d63f1d-d9ca-47be-b15c-f71cff5d3da3');
     script.async = true;
+    script.defer = true;
     
-    document.body.appendChild(script);
+    // Add load event listener for debugging
+    script.onload = () => {
+      console.log('Chat widget script loaded successfully');
+    };
+    
+    script.onerror = () => {
+      console.error('Failed to load chat widget script');
+    };
+    
+    // Append to head instead of body for better reliability
+    document.head.appendChild(script);
 
+    // Cleanup function
     return () => {
-      // Cleanup on unmount
       const existingScript = document.querySelector('script[name="web-chat"]');
       if (existingScript) {
         existingScript.remove();
@@ -259,7 +271,17 @@ export default function Layout({ children, currentPageName }) {
                         inset 0 0 15px rgba(6, 182, 212, 0.4);
           }
         }
+
+        /* Ensure chat widget appears above content */
+        [name="web-chat"],
+        #web-chat-widget,
+        .web-chat-container {
+          z-index: 9999 !important;
+        }
       `}</style>
+
+      {/* Chat Widget Container */}
+      <div id="web-chat-widget-container" style={{ zIndex: 9999, position: 'relative' }} />
     </>
   );
 }
