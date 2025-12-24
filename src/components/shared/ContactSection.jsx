@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, MessageSquare, Shield, Phone, FileSearch, AlertTriangle } from "lucide-react";
+import { Mail, MessageSquare, Shield, Phone, FileSearch, AlertTriangle, Bot } from "lucide-react";
 
 export default function ContactSection() {
   const contacts = [
@@ -60,17 +60,33 @@ export default function ContactSection() {
                 </p>
               </div>
 
-              {/* Phone Contact - Prominent */}
-              <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/30 backdrop-blur-sm max-w-md mx-auto lg:mx-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <Phone className="w-6 h-6 text-blue-400" />
+              {/* Phone Contacts - Prominent */}
+              <div className="space-y-4 max-w-md mx-auto lg:mx-0">
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <Phone className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-200 font-medium mb-1">24/7 Support Line</p>
+                      <a href="tel:8776772336" className="text-2xl font-bold text-white hover:text-blue-300 transition-colors">
+                        (877) 677-2336
+                      </a>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-blue-200 font-medium mb-1">24/7 Support Line</p>
-                    <a href="tel:8776772336" className="text-2xl font-bold text-white hover:text-blue-300 transition-colors">
-                      (877) 677-2336
-                    </a>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-600/20 to-pink-600/20 border border-purple-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                      <Bot className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-purple-200 font-medium mb-1">MIA – AI Receptionist</p>
+                      <a href="tel:16506754166" className="text-2xl font-bold text-white hover:text-purple-300 transition-colors">
+                        +1 650-675-4166
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
