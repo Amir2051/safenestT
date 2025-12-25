@@ -58,6 +58,43 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
+  // Load Apollo tracker
+  React.useEffect(() => {
+    // Prevent duplicate loading
+    if (document.querySelector('script[data-apollo-tracker]')) {
+      return;
+    }
+
+    function initApollo() {
+      const n = Math.random().toString(36).substring(7);
+      const o = document.createElement('script');
+      o.src = "https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=" + n;
+      o.async = true;
+      o.defer = true;
+      o.setAttribute('data-apollo-tracker', 'true');
+      o.onload = function() {
+        if (window.trackingFunctions && window.trackingFunctions.onLoad) {
+          window.trackingFunctions.onLoad({ appId: "694c5977dbc21700115a85f0" });
+          console.log('Apollo tracker initialized successfully');
+        }
+      };
+      o.onerror = () => {
+        console.error('Failed to load Apollo tracker script');
+      };
+      document.head.appendChild(o);
+    }
+    
+    initApollo();
+
+    // Cleanup function
+    return () => {
+      const existingScript = document.querySelector('script[data-apollo-tracker]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
   // Mobile menu button auto-hide logic
   useEffect(() => {
     // Show button briefly on page load
