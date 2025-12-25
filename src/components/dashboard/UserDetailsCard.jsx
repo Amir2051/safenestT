@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,21 +6,105 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
-  User, Mail, Phone, MapPin, Edit, Save, X, Loader2, Calendar, Shield
+  User, Mail, Phone, MapPin, Edit, Save, X, Loader2, Calendar, Shield, Camera, Upload
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserDetailsCard({ user, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(user?.profile_picture || null);
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     full_name: user?.full_name || '',
     phone: user?.phone || '',
     address: user?.address || '',
     city: user?.city || '',
     state: user?.state || '',
-    country: user?.country || ''
+    country: user?.country || '',
+    profile_picture: user?.profile_picture || ''
   });
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a JPEG, PNG, or GIF image');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewUrl(e.target.result);
+      reader.readAsDataURL(file);
+
+      // Resize image before upload
+      const resizedFile = await resizeImage(file, 400, 400);
+      
+      // Upload to storage
+      const response = await base44.integrations.Core.UploadFile({ file: resizedFile });
+      
+      setFormData(prev => ({ ...prev, profile_picture: response.file_url }));
+      toast.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    }
+    setUploading(false);
+  };
+
+  const resizeImage = (file, maxWidth, maxHeight) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            }));
+          }, file.type, 0.9);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -33,7 +117,8 @@ export default function UserDetailsCard({ user, onUpdate }) {
             address: formData.address,
             city: formData.city,
             state: formData.state,
-            country: formData.country
+            country: formData.country,
+            profile_picture: formData.profile_picture
         }
       });
 
@@ -55,8 +140,10 @@ export default function UserDetailsCard({ user, onUpdate }) {
       address: user?.address || '',
       city: user?.city || '',
       state: user?.state || '',
-      country: user?.country || ''
+      country: user?.country || '',
+      profile_picture: user?.profile_picture || ''
     });
+    setPreviewUrl(user?.profile_picture || null);
     setEditing(false);
   };
 
@@ -105,6 +192,41 @@ export default function UserDetailsCard({ user, onUpdate }) {
         {editing ? (
           /* Edit Mode */
           <div className="space-y-4">
+            {/* Profile Picture Upload */}
+            <div className="flex flex-col items-center gap-4 pb-4 border-b border-cyan-500/10">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center overflow-hidden border-4 border-cyan-400/30">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-16 h-16 text-white" />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-cyan-500 hover:bg-cyan-600 flex items-center justify-center border-2 border-[#0f1419] transition-colors disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <p className="text-xs text-gray-400 text-center max-w-xs">
+                Upload JPEG, PNG, or GIF (max 5MB)
+              </p>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-gray-300 mb-2 block">Full Name</Label>
@@ -169,6 +291,17 @@ export default function UserDetailsCard({ user, onUpdate }) {
         ) : (
           /* View Mode */
           <div className="space-y-3">
+            {/* Profile Picture Display */}
+            <div className="flex justify-center pb-4 border-b border-cyan-500/10">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center overflow-hidden border-4 border-cyan-400/30">
+                {user?.profile_picture ? (
+                  <img src={user.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-white" />
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 p-3 bg-[#0f1419] rounded-lg border border-cyan-500/10">
               <User className="w-5 h-5 text-cyan-400" />
               <div>
