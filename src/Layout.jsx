@@ -61,7 +61,7 @@ export default function Layout({ children, currentPageName }) {
   // Load Apollo tracker
   React.useEffect(() => {
     // Prevent duplicate loading
-    if (document.querySelector('script[data-apollo-tracker]')) {
+    if (window.apolloTrackerInitialized) {
       return;
     }
 
@@ -75,6 +75,7 @@ export default function Layout({ children, currentPageName }) {
       o.onload = function() {
         if (window.trackingFunctions && window.trackingFunctions.onLoad) {
           window.trackingFunctions.onLoad({ appId: "694c5977dbc21700115a85f0" });
+          window.apolloTrackerInitialized = true;
           console.log('Apollo tracker initialized successfully');
         }
       };
@@ -85,15 +86,15 @@ export default function Layout({ children, currentPageName }) {
     }
     
     initApollo();
-
-    // Cleanup function
-    return () => {
-      const existingScript = document.querySelector('script[data-apollo-tracker]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
   }, []);
+
+  // Track route changes for Apollo (SPA support)
+  React.useEffect(() => {
+    if (window.trackingFunctions && window.trackingFunctions.trackPage) {
+      window.trackingFunctions.trackPage();
+      console.log('Apollo: Page view tracked -', location.pathname);
+    }
+  }, [location.pathname]);
 
   // Mobile menu button auto-hide logic
   useEffect(() => {
