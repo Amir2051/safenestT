@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FraudAnalyticsDashboard from "../components/analytics/FraudAnalyticsDashboard";
 import InvestigatorPerformance from "../components/analytics/InvestigatorPerformance";
+import NetworkAnalysisChart from "../components/analytics/NetworkAnalysisChart";
+import GeographicHeatMap from "../components/analytics/GeographicHeatMap";
+import TrendAnalysisDashboard from "../components/analytics/TrendAnalysisDashboard";
+import CustomReportBuilder from "../components/analytics/CustomReportBuilder";
 import AdminGate from "../components/admin/AdminGate";
-import { BarChart3, Users } from "lucide-react";
+import { BarChart3, Users, Network, Globe, TrendingUp, FileText } from "lucide-react";
 
 export default function AnalyticsDashboard() {
   const [user, setUser] = useState(null);
@@ -12,6 +17,12 @@ export default function AnalyticsDashboard() {
   React.useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
+
+  const { data: cases = [] } = useQuery({
+    queryKey: ['all-cases'],
+    queryFn: () => base44.entities.MyCase.list('-created_date', 1000),
+    enabled: !!user
+  });
 
   return (
     <AdminGate>
@@ -27,7 +38,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="bg-[#0f1419] border border-cyan-500/30">
+          <TabsList className="bg-[#0f1419] border border-cyan-500/30 flex-wrap h-auto">
             <TabsTrigger value="overview">
               <BarChart3 className="w-4 h-4 mr-2" />
               Overview
@@ -35,6 +46,22 @@ export default function AnalyticsDashboard() {
             <TabsTrigger value="performance">
               <Users className="w-4 h-4 mr-2" />
               Team Performance
+            </TabsTrigger>
+            <TabsTrigger value="network">
+              <Network className="w-4 h-4 mr-2" />
+              Network Analysis
+            </TabsTrigger>
+            <TabsTrigger value="geographic">
+              <Globe className="w-4 h-4 mr-2" />
+              Geographic Map
+            </TabsTrigger>
+            <TabsTrigger value="trends">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Trend Analysis
+            </TabsTrigger>
+            <TabsTrigger value="reports">
+              <FileText className="w-4 h-4 mr-2" />
+              Custom Reports
             </TabsTrigger>
           </TabsList>
 
@@ -44,6 +71,22 @@ export default function AnalyticsDashboard() {
 
           <TabsContent value="performance" className="mt-6">
             <InvestigatorPerformance />
+          </TabsContent>
+
+          <TabsContent value="network" className="mt-6">
+            <NetworkAnalysisChart cases={cases} />
+          </TabsContent>
+
+          <TabsContent value="geographic" className="mt-6">
+            <GeographicHeatMap cases={cases} />
+          </TabsContent>
+
+          <TabsContent value="trends" className="mt-6">
+            <TrendAnalysisDashboard cases={cases} />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-6">
+            <CustomReportBuilder cases={cases} />
           </TabsContent>
         </Tabs>
       </div>
