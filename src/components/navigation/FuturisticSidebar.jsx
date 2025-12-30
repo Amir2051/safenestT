@@ -8,7 +8,7 @@ import {
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain,
-  Megaphone, Sparkles, Briefcase, MessageSquare
+  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
