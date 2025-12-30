@@ -1145,3 +1145,24 @@ Deno.serve(async (req) => {
         return Response.json({ error: error.message }, { status: 500 });
     }
 });
+
+async function triggerAIAnalysis(base44, { caseId }) {
+  try {
+    const cases = await base44.asServiceRole.entities.MyCase.filter({ id: caseId });
+    if (cases.length === 0) {
+      return Response.json({ error: 'Case not found' }, { status: 404 });
+    }
+
+    const caseData = cases[0];
+    
+    const response = await base44.functions.invoke('fraudDetectionAI', {
+      action: 'analyze_case',
+      data: { caseId, caseData }
+    });
+
+    return Response.json({ success: true, analysis: response.data });
+  } catch (error) {
+    console.error('AI trigger error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}
