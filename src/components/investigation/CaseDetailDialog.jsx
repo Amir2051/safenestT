@@ -39,6 +39,7 @@ import CommunicationLog from "./communication/CommunicationLog.jsx";
 import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
 import CrossCaseCorrelator from "./CrossCaseCorrelator.jsx";
 import PatternLibrary from "./PatternLibrary.jsx";
+import MultiFileUploader from "@/components/shared/MultiFileUploader";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -1476,6 +1477,52 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             {/* NEW Structured Evidence Intake */}
             <TabsContent value="evidence" className="space-y-4">
+                <div className="mb-6">
+                  <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-cyan-400" />
+                    Quick Upload Evidence
+                  </h3>
+                  <MultiFileUploader
+                    maxFiles={20}
+                    onFilesUploaded={async (uploadedFiles) => {
+                      const toastId = toast.loading("Processing evidence files...");
+                      try {
+                        for (const file of uploadedFiles) {
+                          // Create evidence file record
+                          const evidenceFile = await base44.entities.CaseEvidenceFile.create({
+                            case_id: caseData.id,
+                            file_url: file.url,
+                            filename: file.name,
+                            file_size: file.size,
+                            mime_type: file.type,
+                            uploader_id: user?.id,
+                            case_owner_email: user?.email,
+                            uploaded_at: new Date().toISOString(),
+                            parse_status: 'PENDING'
+                          });
+
+                          // Trigger AI processing
+                          await base44.functions.invoke('evidenceProcessing', {
+                            action: 'process_upload',
+                            data: {
+                              caseId: caseData.id,
+                              entityName: caseData._entityName || 'MyCase',
+                              evidenceFileId: evidenceFile.id,
+                              fileUrl: file.url,
+                              fileType: file.type,
+                              fileName: file.name
+                            }
+                          });
+                        }
+
+                        toast.success(`${uploadedFiles.length} file(s) uploaded and processing`, { id: toastId });
+                        if (onUpdate) onUpdate();
+                      } catch (error) {
+                        toast.error('Failed to process some files', { id: toastId });
+                      }
+                    }}
+                  />
+                </div>
                 <EvidenceIntake caseId={caseData.id} onUpdate={onUpdate} />
             </TabsContent>
 
