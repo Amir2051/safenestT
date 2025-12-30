@@ -249,6 +249,11 @@ export default function MyCases() {
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <FileText className="w-8 h-8 text-cyan-400" />
             My Cases
+            {allCases.some(c => c.priority_score >= 80) && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/50 animate-pulse">
+                {allCases.filter(c => c.priority_score >= 80).length} Critical
+              </Badge>
+            )}
           </h1>
           <p className="text-gray-400 mt-1 mb-2">Track and monitor your submitted scam reports</p>
           {(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') && (

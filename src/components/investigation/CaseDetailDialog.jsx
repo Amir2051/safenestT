@@ -44,7 +44,7 @@ import SecureMessenger from "../communication/SecureMessenger";
 import AIFraudInsights from "../ai/AIFraudInsights";
 import AIPriorityBadge from "../ai/AIPriorityBadge";
 import WalletRiskChecker from "../ai/WalletRiskChecker";
-import { Brain } from "lucide-react";
+import AutomatedReportGenerator from "../reports/AutomatedReportGenerator";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -748,6 +748,15 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             {/* AI INSIGHTS TAB */}
             <TabsContent value="ai-insights" className="space-y-4">
               <AIFraudInsights caseData={caseData} onUpdate={onUpdate} />
+              
+              {/* Automated Reports Section */}
+              <div className="pt-6 border-t border-purple-500/20">
+                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-cyan-400" />
+                  AI-Generated Reports
+                </h3>
+                <AutomatedReportGenerator caseData={caseData} onReportGenerated={onUpdate} />
+              </div>
             </TabsContent>
 
             {/* EDIT TAB - Full Admin Case Editing */}

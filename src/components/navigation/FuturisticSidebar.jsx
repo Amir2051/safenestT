@@ -202,6 +202,14 @@ const mediaNavItems = [
 
 const adminItems = [
   {
+    id: 'analytics-dashboard',
+    title: 'Analytics & Intelligence',
+    icon: Brain,
+    url: createPageUrl('AnalyticsDashboard'),
+    glow: 'purple',
+    badge: 'AI'
+  },
+  {
     id: 'admin-verified-companies',
     title: 'Verified Investment Hub',
     icon: Building2,
