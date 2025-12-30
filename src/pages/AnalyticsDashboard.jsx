@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FraudAnalyticsDashboard from "../components/analytics/FraudAnalyticsDashboard";
+import InvestigatorPerformance from "../components/analytics/InvestigatorPerformance";
 import AdminGate from "../components/admin/AdminGate";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Users } from "lucide-react";
 
 export default function AnalyticsDashboard() {
   const [user, setUser] = useState(null);
@@ -24,7 +26,26 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        <FraudAnalyticsDashboard />
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="bg-[#0f1419] border border-cyan-500/30">
+            <TabsTrigger value="overview">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="performance">
+              <Users className="w-4 h-4 mr-2" />
+              Team Performance
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-6">
+            <FraudAnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="performance" className="mt-6">
+            <InvestigatorPerformance />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminGate>
   );
