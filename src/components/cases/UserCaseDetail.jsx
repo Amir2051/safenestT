@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import TimelineFeed from "../investigation/TimelineFeed.jsx";
 import SensitiveField from "../investigation/SensitiveField.jsx";
+import MultiFileUploader from "@/components/shared/MultiFileUploader";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -387,15 +388,47 @@ export default function UserCaseDetail({ caseData, onClose }) {
                 </TabsContent>
 
                 <TabsContent value="evidence" className="space-y-4 mt-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-white font-semibold">Evidence Files</h3>
-                        <label>
-                            <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                            <Button size="sm" disabled={uploading} className="bg-cyan-600 hover:bg-cyan-700 cursor-pointer">
-                                <Upload className="w-4 h-4 mr-2" />
-                                {uploading ? "Uploading..." : "Upload New Evidence"}
-                            </Button>
-                        </label>
+                    <div className="mb-6">
+                        <h3 className="text-white font-semibold mb-4">Upload Evidence Files</h3>
+                        <MultiFileUploader
+                            maxFiles={20}
+                            onFilesUploaded={async (uploadedFiles) => {
+                                try {
+                                    const evidence = caseData.evidence_files || [];
+                                    const newEvidence = uploadedFiles.map(f => ({
+                                        name: f.name,
+                                        url: f.url,
+                                        type: f.type,
+                                        uploaded_date: new Date().toISOString(),
+                                        description: f.name
+                                    }));
+
+                                    // Create evidence file records
+                                    for (const file of uploadedFiles) {
+                                        await base44.entities.CaseEvidenceFile.create({
+                                            case_id: caseData.id,
+                                            file_url: file.url,
+                                            filename: file.name,
+                                            file_size: file.size,
+                                            mime_type: file.type,
+                                            uploaded_at: new Date().toISOString()
+                                        });
+                                    }
+
+                                    await updateCaseMutation.mutateAsync({
+                                        evidence_files: [...evidence, ...newEvidence]
+                                    });
+
+                                    toast.success(`${uploadedFiles.length} file(s) added to your case`);
+                                } catch (error) {
+                                    toast.error('Failed to add files');
+                                }
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-white font-semibold">Your Uploaded Evidence</h3>
                     </div>
 
                     <div className="grid gap-2">
