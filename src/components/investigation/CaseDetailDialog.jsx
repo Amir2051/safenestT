@@ -43,6 +43,8 @@ import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
 import AIFraudInsights from "../ai/AIFraudInsights";
 import AIPriorityBadge from "../ai/AIPriorityBadge";
+import WalletRiskChecker from "../ai/WalletRiskChecker";
+import { Brain } from "lucide-react";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -350,6 +352,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 }`}>
                   {caseData.priority || caseData.case_priority || 'medium'}
                 </Badge>
+                {caseData.priority_score && (
+                  <AIPriorityBadge score={caseData.priority_score} />
+                )}
                 <Badge variant="outline" className="text-xs">
                   Progress: {progress}%
                 </Badge>
@@ -523,6 +528,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-[#0f1419] border border-cyan-500/30 flex-wrap h-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="ai-insights" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                <Brain className="w-3 h-3 mr-1" />AI Insights
+              </TabsTrigger>
               <TabsTrigger value="edit" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 <Edit className="w-3 h-3 mr-1" />Edit Case
               </TabsTrigger>
@@ -575,6 +583,17 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   onOpenResponse={() => setActiveTab('communications')}
                   onOpenTracking={() => setActiveTab('tracking')}
               />
+
+              {/* AI Priority Badge */}
+              {caseData.priority_score && (
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-purple-400" />
+                    <span className="text-white font-medium">AI Priority Assessment</span>
+                  </div>
+                  <AIPriorityBadge score={caseData.priority_score} />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/20">
@@ -724,6 +743,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   )}
                 </div>
               )}
+            </TabsContent>
+
+            {/* AI INSIGHTS TAB */}
+            <TabsContent value="ai-insights" className="space-y-4">
+              <AIFraudInsights caseData={caseData} onUpdate={onUpdate} />
             </TabsContent>
 
             {/* EDIT TAB - Full Admin Case Editing */}
@@ -1651,6 +1675,15 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="tracking" className="space-y-4">
+              {/* AI Wallet Risk Checker */}
+              <WalletRiskChecker 
+                onWalletChecked={(data) => {
+                  if (data.analysis.is_suspicious) {
+                    toast.warning('Suspicious wallet - consider adding to monitoring');
+                  }
+                }}
+              />
+
               <CaseWalletTracer 
                   caseId={caseData.id} 
                   caseData={caseData}
