@@ -319,6 +319,9 @@ Deno.serve(async (req) => {
             // Ensure numeric fields are numbers
             if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
             if (updates.amount_stolen_usd !== undefined) updates.amount_stolen_usd = parseFloat(updates.amount_stolen_usd) || 0;
+            
+            // Track recovery amount changes for workflow triggers
+            const oldRecoveryAmount = updates.recovery_amount !== undefined ? null : undefined;
             if (updates.recovery_amount !== undefined) updates.recovery_amount = parseFloat(updates.recovery_amount) || 0;
             if (updates.investigation_progress !== undefined) updates.investigation_progress = parseInt(updates.investigation_progress) || 0;
 
@@ -365,6 +368,14 @@ Deno.serve(async (req) => {
                         metadata: JSON.stringify({ timestamp: new Date().toISOString() })
                     }).catch(e => console.error("Log failed:", e));
 
+                    // WORKFLOW TRIGGER: Law Enforcement Status
+                    if (updates.status === 'law_enforcement') {
+                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                            trigger_type: 'case_status_law_enforcement',
+                            trigger_data: { case_id: id }
+                        }).catch(e => console.error("Workflow trigger failed:", e));
+                    }
+
                     // AUTOMATION 1: Trigger Workflow Tasks for 'Investigating'
                     if (updates.status.toLowerCase() === 'investigating' && existing.status.toLowerCase() !== 'investigating') {
                         const tasks = [
@@ -405,6 +416,31 @@ Deno.serve(async (req) => {
 
                 // PERFORM UPDATE
                 const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
+
+                // WORKFLOW TRIGGER: Priority Escalation
+                if (updates.priority && (updates.priority === 'high' || updates.priority === 'critical')) {
+                    if (existing.priority !== updates.priority) {
+                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                            trigger_type: 'priority_escalation',
+                            trigger_data: { case_id: id, priority: updates.priority }
+                        }).catch(e => console.error("Priority workflow failed:", e));
+                    }
+                }
+
+                // WORKFLOW TRIGGER: Recovery Amount Updated
+                if (updates.recovery_amount !== undefined && oldRecoveryAmount !== undefined) {
+                    if (updates.recovery_amount > (existing.recovery_amount || 0)) {
+                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                            trigger_type: 'recovery_amount_updated',
+                            trigger_data: {
+                                case_id: id,
+                                old_amount: existing.recovery_amount || 0,
+                                new_amount: updates.recovery_amount
+                            }
+                        }).catch(e => console.error("Recovery workflow failed:", e));
+                    }
+                }
+
                 return Response.json({ success: true, case: updatedCase });
 
             } catch (err) {
