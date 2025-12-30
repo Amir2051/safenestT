@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield, Users, Clock, CheckCircle, XCircle, AlertTriangle,
   Activity, TrendingUp, Settings, FileText, Loader2, Key, 
-  UserCheck, Lock, Zap
+  UserCheck, Lock, Zap, Brain, BarChart3
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
