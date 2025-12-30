@@ -17,6 +17,7 @@ import AdminVerifiedCompanies from './pages/AdminVerifiedCompanies';
 import AdvancedSecurity from './pages/AdvancedSecurity';
 import AgenciesDirectory from './pages/AgenciesDirectory';
 import Alerts from './pages/Alerts';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import AttorneyTasks from './pages/AttorneyTasks';
 import AutoProtection from './pages/AutoProtection';
 import Billing from './pages/Billing';
@@ -88,7 +89,6 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -112,6 +112,7 @@ export const PAGES = {
     "AdvancedSecurity": AdvancedSecurity,
     "AgenciesDirectory": AgenciesDirectory,
     "Alerts": Alerts,
+    "AnalyticsDashboard": AnalyticsDashboard,
     "AttorneyTasks": AttorneyTasks,
     "AutoProtection": AutoProtection,
     "Billing": Billing,
@@ -183,7 +184,6 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
-    "AnalyticsDashboard": AnalyticsDashboard,
 }
 
 export const pagesConfig = {
