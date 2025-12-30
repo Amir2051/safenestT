@@ -8,8 +8,9 @@ import NetworkAnalysisChart from "../components/analytics/NetworkAnalysisChart";
 import GeographicHeatMap from "../components/analytics/GeographicHeatMap";
 import TrendAnalysisDashboard from "../components/analytics/TrendAnalysisDashboard";
 import CustomReportBuilder from "../components/analytics/CustomReportBuilder";
+import WorkflowAutomationPanel from "../components/admin/WorkflowAutomationPanel";
 import AdminGate from "../components/admin/AdminGate";
-import { BarChart3, Users, Network, Globe, TrendingUp, FileText } from "lucide-react";
+import { BarChart3, Users, Network, Globe, TrendingUp, FileText, Zap } from "lucide-react";
 
 export default function AnalyticsDashboard() {
   const [user, setUser] = useState(null);
@@ -63,6 +64,10 @@ export default function AnalyticsDashboard() {
               <FileText className="w-4 h-4 mr-2" />
               Custom Reports
             </TabsTrigger>
+            <TabsTrigger value="automation">
+              <Zap className="w-4 h-4 mr-2" />
+              Workflow Automation
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
@@ -87,6 +92,10 @@ export default function AnalyticsDashboard() {
 
           <TabsContent value="reports" className="mt-6">
             <CustomReportBuilder cases={cases} />
+          </TabsContent>
+
+          <TabsContent value="automation" className="mt-6">
+            <WorkflowAutomationPanel />
           </TabsContent>
         </Tabs>
       </div>
