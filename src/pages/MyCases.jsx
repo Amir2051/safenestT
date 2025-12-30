@@ -388,6 +388,9 @@ export default function MyCases() {
                                 {caseItem.admin_status}
                               </Badge>
                           )}
+                          {caseItem.priority_score && (
+                            <AIPriorityBadge score={caseItem.priority_score} size="sm" />
+                          )}
                         </div>
 
                         <div className="flex items-center gap-4 text-sm flex-wrap">

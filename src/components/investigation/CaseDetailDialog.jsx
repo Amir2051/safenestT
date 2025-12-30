@@ -41,6 +41,8 @@ import CrossCaseCorrelator from "./CrossCaseCorrelator.jsx";
 import PatternLibrary from "./PatternLibrary.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
+import AIFraudInsights from "../ai/AIFraudInsights";
+import AIPriorityBadge from "../ai/AIPriorityBadge";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
