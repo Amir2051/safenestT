@@ -19,12 +19,17 @@ import { format } from "date-fns";
 import TimelineFeed from "../investigation/TimelineFeed.jsx";
 import SensitiveField from "../investigation/SensitiveField.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
+import SecureMessenger from "../communication/SecureMessenger";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [uploading, setUploading] = useState(false);
-  const [newMessage, setNewMessage] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   // Basic update mutation for user-allowed fields
   const updateCaseMutation = useMutation({
@@ -92,22 +97,7 @@ export default function UserCaseDetail({ caseData, onClose }) {
     setUploading(false);
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
-    
-    // Add to case notes/messages - treating notes as messages for now or use a dedicated system
-    // The prompt asks for Secure Messages. We'll use case_notes with a specific type or format
-    const notes = caseData.case_notes || [];
-    notes.push({
-      timestamp: new Date().toISOString(),
-      author: "client",
-      note: newMessage,
-      type: "message"
-    });
 
-    await updateCaseMutation.mutateAsync({ case_notes: notes });
-    setNewMessage("");
-  };
 
   const downloadReceipt = async () => {
     const toastId = toast.loading("Generating Receipt...");
@@ -133,8 +123,6 @@ export default function UserCaseDetail({ caseData, onClose }) {
         toast.error("Generation failed", { id: toastId });
     }
   };
-
-  const messages = (caseData.case_notes || []).filter(n => n.type === 'message' || n.type === 'response');
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -457,40 +445,23 @@ export default function UserCaseDetail({ caseData, onClose }) {
                 </TabsContent>
 
                 <TabsContent value="messages" className="space-y-4 mt-4">
-                    <div className="flex flex-col h-[400px]">
-                        <div className="flex-1 overflow-y-auto space-y-4 p-4 bg-[#0f1419] rounded-lg border border-gray-700 mb-4">
-                            {messages.length === 0 ? (
-                                <p className="text-gray-500 text-center my-auto">No messages yet. Start a conversation with your investigator.</p>
-                            ) : (
-                                messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex ${msg.author === 'client' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] p-3 rounded-lg ${
-                                            msg.author === 'client' 
-                                                ? 'bg-cyan-600/20 border border-cyan-500/30 text-white rounded-br-none' 
-                                                : 'bg-gray-700/50 border border-gray-600 text-gray-200 rounded-bl-none'
-                                        }`}>
-                                            <p className="text-sm">{msg.note}</p>
-                                            <p className="text-[10px] opacity-50 mt-1 text-right">
-                                                {new Date(msg.timestamp).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Input 
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type a secure message to the investigator..."
-                                className="bg-[#0f1419] border-gray-700"
-                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                            />
-                            <Button onClick={handleSendMessage} className="bg-cyan-600 hover:bg-cyan-700">
-                                <Send className="w-4 h-4" />
-                            </Button>
-                        </div>
+                    <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-lg mb-4">
+                        <h4 className="text-cyan-400 font-semibold flex items-center gap-2 mb-1">
+                            <Shield className="w-4 h-4" />
+                            Secure Communication Portal
+                        </h4>
+                        <p className="text-sm text-gray-300">
+                            All messages are encrypted and monitored by our security team. 
+                            Your investigator will respond within 24-48 hours.
+                        </p>
                     </div>
+
+                    <SecureMessenger 
+                        caseId={caseData.id}
+                        caseData={caseData}
+                        currentUser={currentUser}
+                        isAdmin={false}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

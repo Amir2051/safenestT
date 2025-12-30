@@ -9,6 +9,7 @@ import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
+import MessageNotifications from "./components/communication/MessageNotifications.jsx";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -162,6 +163,7 @@ export default function Layout({ children, currentPageName }) {
     <>
       <ReferralCodeHandler />
       <RealTimeReferralUpdates user={user} />
+      <MessageNotifications user={user} />
       <ProfileCompletionPopup user={user} onUpdate={handleUserUpdate} />
       <PaymentMethodPopup user={user} onUpdate={handleUserUpdate} />
       <div 

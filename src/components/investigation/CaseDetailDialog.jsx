@@ -40,6 +40,7 @@ import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
 import CrossCaseCorrelator from "./CrossCaseCorrelator.jsx";
 import PatternLibrary from "./PatternLibrary.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
+import SecureMessenger from "../communication/SecureMessenger";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -1758,9 +1759,29 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="communications" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-                  <div className="lg:col-span-2 h-full overflow-y-auto pr-2 custom-scrollbar">
-                      <CommunicationLog caseId={caseData.id} user={user} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-4">
+                      {/* Client Communication Portal */}
+                      <div className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-lg">
+                          <h3 className="text-purple-400 font-semibold mb-2 flex items-center gap-2">
+                              <MessageSquare className="w-5 h-5" />
+                              Client Communication Portal
+                          </h3>
+                          <p className="text-sm text-gray-300 mb-4">
+                              Secure messaging with the case owner. All messages are logged to timeline.
+                          </p>
+                          <SecureMessenger 
+                              caseId={caseData.id}
+                              caseData={caseData}
+                              currentUser={user}
+                              isAdmin={true}
+                          />
+                      </div>
+
+                      {/* Internal Team Communication Log */}
+                      <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                          <CommunicationLog caseId={caseData.id} user={user} />
+                      </div>
                   </div>
                   <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
                       <ResponseTemplates caseData={caseData} />

@@ -23,6 +23,7 @@ import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 import GettingStartedChecklist from "../components/onboarding/GettingStartedChecklist.jsx";
 import UserDetailsCard from "../components/dashboard/UserDetailsCard.jsx";
 import MyCasesWidget from "../components/dashboard/MyCasesWidget.jsx";
+import MessageNotifications from "../components/communication/MessageNotifications.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -184,6 +185,9 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {/* Real-time message notifications */}
+      <MessageNotifications user={user} />
+      
       {/* Maintenance Banner */}
       <MaintenanceBanner />
       
