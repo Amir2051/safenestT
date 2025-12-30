@@ -22,6 +22,7 @@ import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 import GettingStartedChecklist from "../components/onboarding/GettingStartedChecklist.jsx";
 import UserDetailsCard from "../components/dashboard/UserDetailsCard.jsx";
+import MyCasesWidget from "../components/dashboard/MyCasesWidget.jsx";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -483,6 +484,7 @@ export default function Dashboard() {
             user={user} 
             onUpdate={() => base44.auth.me().then(setUser)} 
           />
+          <MyCasesWidget user={user} />
           <VPNControl user={user} />
           <RecentAlertsCard alerts={alerts} isLoading={alertsLoading} />
           <MiaQuickChat user={user} />
