@@ -415,7 +415,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const [lastLogin, setLastLogin] = useState(null);
 
   useEffect(() => {
-    const allItems = [...navigationItems, ...adminItems, ...mediaNavItems];
+    const allItems = [...navigationItems, ...investigationItems, ...mediaNavItems, ...adminItems];
     
     const current = allItems.find(item => location.pathname === item.url);
     if (current) {
