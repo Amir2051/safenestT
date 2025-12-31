@@ -195,9 +195,9 @@ Deno.serve(async (req) => {
 
             // Create Case
             const caseData = {
-                // Ensure proper visibility for both Admin and User
+                // CRITICAL: Ensure proper visibility for both Admin and User
+                // user_id is the PRIMARY key for RLS matching
                 user_id: ownerUserId,
-                ...data,
                 ...data,
                 case_number: caseId,
                 // Wallets & Blockchain
@@ -215,16 +215,16 @@ Deno.serve(async (req) => {
                 // Ensure numbers are numbers
                 amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
                 status: data.status || "Pending",
-                // Ownership - CRITICAL: 'created_by' must match the user's email for RLS visibility on their end
+                // Ownership - ALL fields must be consistent for RLS visibility
                 created_by: creatorEmail,
                 created_by_email: creatorEmail,
                 created_by_name: creatorName,
+                // Client fields MUST match for user visibility
+                client_email: creatorEmail,
+                client_name: creatorName,
                 // Admin metadata
                 created_by_admin: action === 'create_for_user',
                 admin_creator_email: action === 'create_for_user' ? user.email : null,
-                // Ensure client details match target (Force lowercase for RLS)
-                client_email: (action === 'create_for_user' ? creatorEmail : (data.client_email || creatorEmail)).toLowerCase(),
-                client_name: action === 'create_for_user' ? creatorName : (data.client_name || creatorName),
                 // Ensure metadata is stringified if present
                 metadata: typeof data.metadata === 'object' ? JSON.stringify(data.metadata) : data.metadata
             };
@@ -646,11 +646,20 @@ Deno.serve(async (req) => {
                 let updatedCount = 0;
                 let fixedDates = 0;
                 let reLinked = 0;
+                let userIdFixed = 0;
 
-                // Map users by normalized email for case-insensitive lookup
+                // Map users by normalized email AND ID for comprehensive lookup
                 const userMap = {};
+                const userByEmail = {};
                 users.forEach(u => {
-                    if (u.email) userMap[u.email.toLowerCase().trim()] = u;
+                    if (u.email) {
+                        const normalizedEmail = u.email.toLowerCase().trim();
+                        userMap[normalizedEmail] = u;
+                        userByEmail[normalizedEmail] = u;
+                    }
+                    if (u.id) {
+                        userMap[u.id] = u;
+                    }
                 });
 
                 for (const c of cases) {
@@ -660,12 +669,9 @@ Deno.serve(async (req) => {
                     // --- A. Date Recovery ---
                     if (!c.created_date || c.created_date === 'Invalid Date' || c.created_date.startsWith('0000')) {
                         let date = new Date().toISOString();
-                        // Try to recover from Case ID (SN-YYYY-XXXXX)
                         if (c.case_number && c.case_number.startsWith('SN-')) {
                             const parts = c.case_number.split('-');
                             if (parts[1] && !isNaN(parts[1]) && parts[1].length === 4) {
-                                // Use Jan 1st of that year as fallback, or try to guess from sequence?
-                                // Better: if we have updated_date, use that, else use year start
                                 date = new Date(`${parts[1]}-01-01T12:00:00Z`).toISOString();
                             }
                         } else if (c.updated_date) {
@@ -676,50 +682,86 @@ Deno.serve(async (req) => {
                         needsUpdate = true;
                     }
 
-                    // --- B. User Re-linking (Fix Visibility) ---
-                    // We need to ensure 'created_by' and 'client_email' match the EXACT string in the User entity
-                    // because RLS often compares exact strings.
-
+                    // --- B. User Re-linking (COMPREHENSIVE Fix) ---
+                    let targetUser = null;
                     let targetEmail = null;
 
-                    // 1. Try to find user by created_by
-                    if (c.created_by && typeof c.created_by === 'string') {
-                        const match = userMap[c.created_by.toLowerCase().trim()];
-                        if (match) targetEmail = match.email;
+                    // Priority 1: Find user by user_id
+                    if (c.user_id && userMap[c.user_id]) {
+                        targetUser = userMap[c.user_id];
+                        targetEmail = targetUser.email;
                     }
 
-                    // 2. If not found, try client_email
-                    if (!targetEmail && c.client_email && typeof c.client_email === 'string') {
-                        const match = userMap[c.client_email.toLowerCase().trim()];
-                        if (match) targetEmail = match.email;
+                    // Priority 2: Find by created_by
+                    if (!targetUser && c.created_by && typeof c.created_by === 'string') {
+                        const normalized = c.created_by.toLowerCase().trim();
+                        if (userByEmail[normalized]) {
+                            targetUser = userByEmail[normalized];
+                            targetEmail = targetUser.email;
+                        }
                     }
 
-                    // 3. If not found, try created_by_email
-                    if (!targetEmail && c.created_by_email && typeof c.created_by_email === 'string') {
-                        const match = userMap[c.created_by_email.toLowerCase().trim()];
-                        if (match) targetEmail = match.email;
+                    // Priority 3: Find by client_email
+                    if (!targetUser && c.client_email && typeof c.client_email === 'string') {
+                        const normalized = c.client_email.toLowerCase().trim();
+                        if (userByEmail[normalized]) {
+                            targetUser = userByEmail[normalized];
+                            targetEmail = targetUser.email;
+                        }
                     }
 
-                    // Apply Email & User ID Fixes
-                    if (targetEmail) {
-                        // Link User ID for robust RLS (Case Insensitive Fix)
-                        const targetUser = userMap[targetEmail.toLowerCase().trim()];
-                        if (targetUser && c.user_id !== targetUser.id) {
+                    // Priority 4: Find by created_by_email
+                    if (!targetUser && c.created_by_email && typeof c.created_by_email === 'string') {
+                        const normalized = c.created_by_email.toLowerCase().trim();
+                        if (userByEmail[normalized]) {
+                            targetUser = userByEmail[normalized];
+                            targetEmail = targetUser.email;
+                        }
+                    }
+
+                    // Apply ALL critical fields for RLS visibility
+                    if (targetUser && targetEmail) {
+                        // CRITICAL: Set user_id for robust RLS matching
+                        if (c.user_id !== targetUser.id) {
                             updates.user_id = targetUser.id;
+                            userIdFixed++;
                             needsUpdate = true;
                         }
 
-                        // If any of the key fields don't match the canonical user email, update them
-                        if (c.created_by !== targetEmail) { updates.created_by = targetEmail; needsUpdate = true; }
-                        if (c.created_by_email !== targetEmail) { updates.created_by_email = targetEmail; needsUpdate = true; }
-                        if (c.client_email !== targetEmail) { updates.client_email = targetEmail; needsUpdate = true; }
+                        // Normalize ALL email fields to match exact user.email
+                        if (c.created_by !== targetEmail) { 
+                            updates.created_by = targetEmail; 
+                            needsUpdate = true; 
+                            reLinked++;
+                        }
+                        if (c.created_by_email !== targetEmail) { 
+                            updates.created_by_email = targetEmail; 
+                            needsUpdate = true; 
+                        }
+                        if (c.client_email !== targetEmail) { 
+                            updates.client_email = targetEmail; 
+                            needsUpdate = true; 
+                        }
 
-                        if (needsUpdate) reLinked++;
+                        // Set client_name if missing but we have user name
+                        if (!c.client_name && targetUser.full_name) {
+                            updates.client_name = targetUser.full_name;
+                            needsUpdate = true;
+                        }
                     } else {
-                        // Orphaned case? If we have a valid-looking email in created_by but no user, we leave it
-                        // But if fields are inconsistent (e.g. created_by is null but client_email exists), sync them
-                        if (!c.created_by && c.client_email) { updates.created_by = c.client_email; needsUpdate = true; }
-                        if (!c.created_by_email && c.created_by) { updates.created_by_email = c.created_by; needsUpdate = true; }
+                        // Orphaned case - sync internal fields at minimum
+                        if (!c.created_by && c.client_email) { 
+                            updates.created_by = c.client_email; 
+                            needsUpdate = true; 
+                        }
+                        if (!c.created_by_email && c.created_by) { 
+                            updates.created_by_email = c.created_by; 
+                            needsUpdate = true; 
+                        }
+                        if (!c.client_email && c.created_by) {
+                            updates.client_email = c.created_by;
+                            needsUpdate = true;
+                        }
                     }
 
                     // --- C. Status Safety ---
@@ -736,8 +778,13 @@ Deno.serve(async (req) => {
 
                 return Response.json({ 
                     success: true, 
-                    message: `Recovery Complete.\nScanned: ${cases.length}\nUpdated: ${updatedCount}\nFixed Dates: ${fixedDates}\nRe-linked Users: ${reLinked}`,
-                    details: { total_cases: cases.length, updated: updatedCount }
+                    message: `Recovery Complete.\nScanned: ${cases.length}\nUpdated: ${updatedCount}\nFixed Dates: ${fixedDates}\nRe-linked Users: ${reLinked}\nUser IDs Fixed: ${userIdFixed}`,
+                    details: { 
+                        total_cases: cases.length, 
+                        updated: updatedCount,
+                        user_id_fixed: userIdFixed,
+                        emails_normalized: reLinked 
+                    }
                 });
             }
 

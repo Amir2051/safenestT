@@ -73,21 +73,9 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
     queryKey: ['my-cases'],
     queryFn: async () => {
-      // RLS (Row Level Security) handles the filtering on the server side.
-      // Admins see all, Users see only their cases (created_by, client_email, etc.)
-      // We add an explicit filter fallback for user_id to ensure visibility even if email case mismatches occur
-      if (user.role === 'admin' || user.is_admin || user.job_title === 'Fraud Specialist') {
-          return base44.entities.MyCase.list('-created_date', 1000);
-      } else {
-          // Robust filtering for users
-          return base44.entities.MyCase.filter({
-              $or: [
-                  { user_id: user.id },
-                  { created_by: user.email },
-                  { client_email: user.email }
-              ]
-          }, '-created_date', 1000);
-      }
+      // Let RLS handle filtering - it's more reliable than client-side filters
+      // RLS checks: user_id, created_by, client_email, created_by_email
+      return base44.entities.MyCase.list('-created_date', 1000);
     },
     enabled: !!user
   });
