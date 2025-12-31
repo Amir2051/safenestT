@@ -25,6 +25,8 @@ import AdminGate from "../components/admin/AdminGate.jsx";
 import MasterKeyManagement from "../components/admin/MasterKeyManagement.jsx";
 import AccessHistory from "../components/admin/AccessHistory.jsx";
 import TeamPerformanceWidget from "../components/admin/TeamPerformanceWidget.jsx";
+import CaseVisibilityDiagnostic from "../components/admin/CaseVisibilityDiagnostic.jsx";
+import ProactiveAlertsWidget from "../components/admin/ProactiveAlertsWidget.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -222,6 +224,10 @@ export default function AdminDashboard() {
             <Users className="w-4 h-4 mr-2" />
             Team Performance
           </TabsTrigger>
+          <TabsTrigger value="diagnostics">
+            <Brain className="w-4 h-4 mr-2" />
+            Diagnostics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6">
@@ -261,6 +267,13 @@ export default function AdminDashboard() {
 
         <TabsContent value="team" className="mt-6">
           <TeamPerformanceWidget specialists={stats?.specialists || []} />
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CaseVisibilityDiagnostic />
+            <ProactiveAlertsWidget />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
