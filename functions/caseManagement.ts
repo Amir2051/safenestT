@@ -193,13 +193,18 @@ Deno.serve(async (req) => {
                 } catch(e) { console.error("Failed to lookup target user", e); }
             }
 
-            // Create Case
+            // 🚨 CRITICAL VISIBILITY ENFORCEMENT
+            // Create Case with ALL ownership fields for guaranteed visibility
             const caseData = {
-                // CRITICAL: Ensure proper visibility for both Admin and User
-                // user_id is the PRIMARY key for RLS matching
+                // PRIMARY OWNERSHIP FIELD - Required for RLS
                 user_id: ownerUserId,
+                
+                // Merge input data
                 ...data,
+                
+                // Case identifier
                 case_number: caseId,
+                
                 // Wallets & Blockchain
                 victim_wallet,
                 scammer_wallet,
@@ -212,22 +217,32 @@ Deno.serve(async (req) => {
                     wallet_addresses: [scammer_wallet],
                     ...data.scammer_info
                 },
+                
                 // Ensure numbers are numbers
                 amount_lost: data.amount_lost ? parseFloat(data.amount_lost) : 0,
                 status: data.status || "Pending",
-                // Ownership - ALL fields must be consistent for RLS visibility
+                
+                // 🔒 VISIBILITY GUARANTEE: ALL ownership fields MUST be consistent
+                // RLS reads: user_id, created_by, client_email, created_by_email
                 created_by: creatorEmail,
                 created_by_email: creatorEmail,
                 created_by_name: creatorName,
-                // Client fields MUST match for user visibility
-                client_email: creatorEmail,
-                client_name: creatorName,
+                client_email: creatorEmail,  // CRITICAL for user visibility
+                client_name: creatorName || data.client_name,
+                
+                // Activity tracking
+                last_activity: new Date().toISOString(),
+                
                 // Admin metadata
                 created_by_admin: action === 'create_for_user',
                 admin_creator_email: action === 'create_for_user' ? user.email : null,
+                
                 // Ensure metadata is stringified if present
                 metadata: typeof data.metadata === 'object' ? JSON.stringify(data.metadata) : data.metadata
             };
+            
+            // Validation log for audit
+            console.log(`✅ Creating case with ownership: user_id=${ownerUserId}, created_by=${creatorEmail}, client_email=${creatorEmail}`);
 
             // AUTOMATION 1: Auto-Assignment
             // Assign to specialist based on criteria if not already assigned
