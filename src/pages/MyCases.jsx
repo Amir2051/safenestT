@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search, Trash2
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search, Trash2, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
@@ -46,6 +46,17 @@ export default function MyCases() {
   const [searchResults, setSearchResults] = useState(null);
   const [caseToDelete, setCaseToDelete] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Advanced Filters
+  const [filters, setFilters] = useState({
+    status: 'all',
+    issueType: 'all',
+    urgency: 'all',
+    dateFrom: '',
+    dateTo: '',
+    sortBy: 'newest'
+  });
+  const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -168,10 +179,70 @@ export default function MyCases() {
       admin_status: c.status
   })) : baseCases;
 
-  const allCases = activeList.sort((a, b) => {
-      const dateA = a.created_date ? new Date(a.created_date) : new Date(0);
-      const dateB = b.created_date ? new Date(b.created_date) : new Date(0);
-      return dateB - dateA;
+  // Apply filters and global search
+  const filteredCases = activeList.filter(c => {
+    // Global search filter
+    if (globalSearch.trim()) {
+      const search = globalSearch.toLowerCase();
+      const matches = 
+        c.client_name?.toLowerCase().includes(search) ||
+        c.case_number?.toLowerCase().includes(search) ||
+        c.case_title?.toLowerCase().includes(search) ||
+        c.scammer_wallet?.toLowerCase().includes(search) ||
+        c.description?.toLowerCase().includes(search);
+      if (!matches) return false;
+    }
+    
+    // Status filter
+    if (filters.status !== 'all' && c.status?.toLowerCase() !== filters.status.toLowerCase()) {
+      return false;
+    }
+    
+    // Issue type filter
+    if (filters.issueType !== 'all' && c.fraud_type !== filters.issueType && c.issue_type !== filters.issueType) {
+      return false;
+    }
+    
+    // Urgency filter
+    if (filters.urgency !== 'all' && c.urgency?.toLowerCase() !== filters.urgency.toLowerCase()) {
+      return false;
+    }
+    
+    // Date range filter
+    if (filters.dateFrom && c.created_date) {
+      const caseDate = new Date(c.created_date);
+      const fromDate = new Date(filters.dateFrom);
+      if (caseDate < fromDate) return false;
+    }
+    if (filters.dateTo && c.created_date) {
+      const caseDate = new Date(c.created_date);
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      if (caseDate > toDate) return false;
+    }
+    
+    return true;
+  });
+
+  // Apply sorting
+  const allCases = [...filteredCases].sort((a, b) => {
+    const dateA = a.created_date ? new Date(a.created_date) : new Date(0);
+    const dateB = b.created_date ? new Date(b.created_date) : new Date(0);
+    
+    switch(filters.sortBy) {
+      case 'newest':
+        return dateB - dateA;
+      case 'oldest':
+        return dateA - dateB;
+      case 'amount-high':
+        return (b.amount || 0) - (a.amount || 0);
+      case 'amount-low':
+        return (a.amount || 0) - (b.amount || 0);
+      case 'priority':
+        return (b.priority_score || 0) - (a.priority_score || 0);
+      default:
+        return dateB - dateA;
+    }
   });
 
   const isLoading = loadingMyCases || loadingMyScams;
@@ -292,6 +363,158 @@ export default function MyCases() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Advanced Filters */}
+      <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Global Search */}
+            <div className="flex-1">
+              <Label className="text-gray-300 text-sm mb-2 block">Search Cases</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search by name, case #, wallet, or description..."
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="pl-10 bg-[#0f1419] border-cyan-500/30 text-white"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <Label className="text-gray-300 text-sm mb-2 block">Status</Label>
+              <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in review">In Review</SelectItem>
+                  <SelectItem value="in progress">In Progress</SelectItem>
+                  <SelectItem value="investigating">Investigating</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Issue Type Filter */}
+            <div>
+              <Label className="text-gray-300 text-sm mb-2 block">Issue Type</Label>
+              <Select value={filters.issueType} onValueChange={(v) => setFilters({...filters, issueType: v})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="crypto_theft">Crypto Theft</SelectItem>
+                  <SelectItem value="phishing">Phishing</SelectItem>
+                  <SelectItem value="investment_scam">Investment Scam</SelectItem>
+                  <SelectItem value="romance_scam">Romance Scam</SelectItem>
+                  <SelectItem value="rug_pull">Rug Pull</SelectItem>
+                  <SelectItem value="fake_exchange">Fake Exchange</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Urgency Filter */}
+            <div>
+              <Label className="text-gray-300 text-sm mb-2 block">Urgency</Label>
+              <Select value={filters.urgency} onValueChange={(v) => setFilters({...filters, urgency: v})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Second Row: Date Range & Sort */}
+          <div className="flex flex-col lg:flex-row gap-4 mt-4">
+            <div className="flex gap-2 items-end">
+              <div>
+                <Label className="text-gray-300 text-sm mb-2 block">From Date</Label>
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300 text-sm mb-2 block">To Date</Label>
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                  className="bg-[#0f1419] border-cyan-500/30 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <Label className="text-gray-300 text-sm mb-2 block">Sort By</Label>
+              <Select value={filters.sortBy} onValueChange={(v) => setFilters({...filters, sortBy: v})}>
+                <SelectTrigger className="bg-[#0f1419] border-cyan-500/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="amount-high">Highest Amount</SelectItem>
+                  <SelectItem value="amount-low">Lowest Amount</SelectItem>
+                  <SelectItem value="priority">Priority Score</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Reset Filters */}
+            {(globalSearch || filters.status !== 'all' || filters.issueType !== 'all' || 
+              filters.urgency !== 'all' || filters.dateFrom || filters.dateTo) && (
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setGlobalSearch("");
+                    setFilters({
+                      status: 'all',
+                      issueType: 'all',
+                      urgency: 'all',
+                      dateFrom: '',
+                      dateTo: '',
+                      sortBy: 'newest'
+                    });
+                  }}
+                  className="border-gray-500/30 text-gray-400 hover:bg-gray-500/10"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Filter Summary */}
+          {allCases.length !== baseCases.length && (
+            <div className="mt-4 pt-4 border-t border-cyan-500/10">
+              <p className="text-sm text-cyan-400">
+                Showing {allCases.length} of {baseCases.length} cases
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
