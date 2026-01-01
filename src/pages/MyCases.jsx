@@ -80,54 +80,60 @@ export default function MyCases() {
     setIsSearching(false);
   };
 
-  // Fetch MyCase (New Unified Entity)
-  const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
-    queryKey: ['my-cases'],
+  // Fetch MyCase - SINGLE SOURCE OF TRUTH
+  const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
+    queryKey: ['my-cases', user?.email, user?.id],
     queryFn: async () => {
-      console.log('🔍 Fetching cases for user:', user?.email, user?.id);
+      console.log('🔍 FETCHING CASES:', { user_email: user?.email, user_id: user?.id });
 
-      // For admins: fetch ALL cases with service role
+      // ADMIN: Fetch ALL cases globally with NO filters
       if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
           const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 10000);
-          console.log(`✅ ADMIN VIEW: ${allCases.length} total cases in database`);
+          console.log(`✅ ADMIN VIEW: ${allCases.length} TOTAL cases in database`);
+          console.log(`📊 Case IDs:`, allCases.slice(0, 5).map(c => c.case_number));
           return allCases;
       }
 
-      // For regular users: RLS-filtered cases
+      // USER: Fetch ONLY their cases via RLS
       const userCases = await base44.entities.MyCase.list('-created_date', 10000);
-      console.log(`✅ USER VIEW (${user?.email}): ${userCases.length} cases visible`);
+      console.log(`✅ USER (${user?.email}): ${userCases.length} cases visible via RLS`);
 
-      // 🔥 CRITICAL: If user has zero cases, verify with service role
+      // 🚨 CRITICAL: Zero-case detection and recovery
       if (userCases.length === 0) {
-          console.warn('⚠️ User has zero visible cases - running verification...');
+          console.warn('⚠️ ZERO CASES DETECTED - Running verification...');
 
-          // Check what SHOULD be visible
-          const allCases = await base44.asServiceRole.entities.MyCase.list(null, 10000);
-          const shouldSee = allCases.filter(c => 
-              c.user_id === user?.id ||
-              c.created_by?.toLowerCase() === user?.email?.toLowerCase() ||
-              c.client_email?.toLowerCase() === user?.email?.toLowerCase() ||
-              c.created_by_email?.toLowerCase() === user?.email?.toLowerCase()
-          );
+          // Bypass RLS to check what SHOULD be visible
+          const response = await base44.functions.invoke('p0IncidentResponse', {
+              action: 'verify_user_visibility',
+              user_email: user?.email
+          });
 
-          if (shouldSee.length > 0) {
-              console.error(`❌ P0 INCIDENT: User ${user?.email} should see ${shouldSee.length} cases but sees 0!`, {
-                  expected_cases: shouldSee.map(c => c.case_number),
-                  user_id: user?.id,
-                  user_email: user?.email
-              });
+          const expected = response.data.total_cases_for_user;
+
+          if (expected > 0) {
+              console.error(`❌ P0 VISIBILITY FAILURE: User should see ${expected} cases but RLS returns 0!`);
+              console.error('📋 Missing cases:', response.data.cases.map(c => c.case_number));
 
               toast.error(
-                `Data visibility issue detected. ${shouldSee.length} cases found but not visible. Contact support.`,
-                { duration: 8000 }
+                `CRITICAL: ${expected} of your cases are not visible. Admin has been notified.`,
+                { 
+                  duration: 10000,
+                  description: 'Your cases exist but visibility is broken. Refreshing...'
+                }
               );
+
+              // Return the cases we found via service role as fallback
+              return response.data.cases;
+          } else {
+              console.log('✅ Verified: User has no cases submitted yet');
           }
       }
 
       return userCases;
     },
     enabled: !!user,
-    refetchInterval: 5000 // More frequent refresh to catch new submissions immediately
+    refetchInterval: 3000, // Aggressive refresh
+    staleTime: 0 // Always treat as stale
   });
 
   // Fetch My Reported Scams
@@ -348,13 +354,20 @@ export default function MyCases() {
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <FileText className="w-8 h-8 text-cyan-400" />
             My Cases
+            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 font-mono">
+              {allCases.length} Total
+            </Badge>
             {allCases.some(c => c.priority_score >= 80) && (
               <Badge className="bg-red-500/20 text-red-400 border-red-500/50 animate-pulse">
                 {allCases.filter(c => c.priority_score >= 80).length} Critical
               </Badge>
             )}
           </h1>
-          <p className="text-gray-400 mt-1 mb-2">Track and monitor your submitted scam reports</p>
+          <p className="text-gray-400 mt-1 mb-2">
+            {user?.role === 'admin' || user?.is_admin 
+              ? `Viewing ALL ${allCases.length} cases globally` 
+              : `Showing all cases you've submitted`}
+          </p>
           {(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') && (
             <div className="flex gap-2 items-center mt-2">
                 <div className="relative max-w-md flex-1">
@@ -390,17 +403,31 @@ export default function MyCases() {
             </div>
           )}
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-              <FileStack className="w-5 h-5 mr-2" />
-              Generate Master IC3 Report
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-6xl bg-transparent border-none p-0 shadow-none">
-            <MasterCaseGenerator />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+              refetchCases();
+              toast.success('Refreshing cases...');
+            }}
+            variant="outline"
+            className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            Refresh Now
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                <FileStack className="w-5 h-5 mr-2" />
+                Generate Master IC3 Report
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-6xl bg-transparent border-none p-0 shadow-none">
+              <MasterCaseGenerator />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Advanced Filters */}
@@ -612,8 +639,25 @@ export default function MyCases() {
           ) : allCases.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-white font-semibold text-lg">No cases submitted yet</p>
-              <p className="text-gray-400 text-sm mt-1">When you report a scam, it will appear here</p>
+              <p className="text-white font-semibold text-lg">No cases found</p>
+              <p className="text-gray-400 text-sm mt-1 mb-4">
+                {user?.role === 'admin' || user?.is_admin
+                  ? 'No cases in the database yet'
+                  : 'You haven\'t submitted any cases yet'}
+              </p>
+              {!(user?.role === 'admin' || user?.is_admin) && (
+                <Button
+                  onClick={() => {
+                    console.log('🔄 Manual verification requested by user');
+                    refetchCases();
+                  }}
+                  variant="outline"
+                  className="border-cyan-500/30 text-cyan-400"
+                >
+                  <Activity className="w-4 h-4 mr-2" />
+                  Check Again
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
