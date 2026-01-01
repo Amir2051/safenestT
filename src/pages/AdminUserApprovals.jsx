@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
   UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, 
-  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck, Settings
+  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck, Settings, Zap, ToggleLeft
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -37,6 +38,10 @@ export default function AdminUserApprovals() {
   // Employment Details State
   const [employeeId, setEmployeeId] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  
+  // Auto-approval settings
+  const [autoApprovalEnabled, setAutoApprovalEnabled] = useState(false);
+  const [autoApprovalLoading, setAutoApprovalLoading] = useState(false);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -85,6 +90,42 @@ export default function AdminUserApprovals() {
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin)
   });
+
+  // Fetch auto-approval setting
+  useEffect(() => {
+    if (user && (user.role === 'admin' || user.is_admin)) {
+      base44.asServiceRole.entities.SystemConfig.filter({ key_name: 'auto_approve_users' })
+        .then(configs => {
+          if (configs.length > 0) {
+            setAutoApprovalEnabled(configs[0].value === 'true');
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const toggleAutoApproval = async (enabled) => {
+    setAutoApprovalLoading(true);
+    try {
+      const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: 'auto_approve_users' });
+      
+      if (configs.length > 0) {
+        await base44.asServiceRole.entities.SystemConfig.update(configs[0].id, { value: enabled.toString() });
+      } else {
+        await base44.asServiceRole.entities.SystemConfig.create({
+          key_name: 'auto_approve_users',
+          value: enabled.toString(),
+          description: 'Automatically approve new user registrations'
+        });
+      }
+      
+      setAutoApprovalEnabled(enabled);
+      toast.success(enabled ? '✅ Auto-approval enabled' : '⚠️ Auto-approval disabled');
+    } catch (error) {
+      toast.error('Failed to update setting');
+    }
+    setAutoApprovalLoading(false);
+  };
 
   const bulkApproveMutation = useMutation({
     mutationFn: async ({ userIds }) => {
@@ -302,6 +343,38 @@ export default function AdminUserApprovals() {
             )}
         </div>
       </div>
+
+      {/* Auto-Approval Settings */}
+      <Card className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border-purple-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold flex items-center gap-2">
+                  Automatic Approval
+                  <Badge className={autoApprovalEnabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}>
+                    {autoApprovalEnabled ? 'ENABLED' : 'DISABLED'}
+                  </Badge>
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {autoApprovalEnabled 
+                    ? 'New users are automatically approved upon registration' 
+                    : 'New users require manual admin approval'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={autoApprovalEnabled}
+              onCheckedChange={toggleAutoApproval}
+              disabled={autoApprovalLoading}
+              className="data-[state=checked]:bg-green-500"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
