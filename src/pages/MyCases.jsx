@@ -84,17 +84,38 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases', user?.email, user?.id],
     queryFn: async () => {
-      console.log('🔍 FETCHING CASES:', { user_email: user?.email, user_id: user?.id });
+      console.log('🔍 FETCHING CASES:', { 
+        user_email: user?.email, 
+        user_id: user?.id,
+        role: user?.role,
+        is_admin: user?.is_admin,
+        job_title: user?.job_title
+      });
 
       // ADMIN: Fetch ALL cases globally with NO filters
-      if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
-          const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 10000);
+      const isAdmin = user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist';
+      console.log('🔑 ADMIN CHECK:', isAdmin);
+
+      if (isAdmin) {
+          console.log('🚨 ADMIN MODE: Fetching ALL cases with service role...');
+          const allCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
           console.log(`✅ ADMIN VIEW: ${allCases.length} TOTAL cases in database`);
-          console.log(`📊 Case IDs:`, allCases.slice(0, 5).map(c => c.case_number));
+          console.log(`📊 Sample Case IDs:`, allCases.slice(0, 10).map(c => ({
+            id: c.id,
+            number: c.case_number,
+            status: c.status,
+            created: c.created_date
+          })));
+
+          if (allCases.length < 50) {
+            console.warn('⚠️ ADMIN LOW COUNT WARNING:', allCases.length, 'cases (expected ~80)');
+          }
+
           return allCases;
       }
 
       // USER: Fetch ONLY their cases via RLS
+      console.log('👤 USER MODE: Fetching user-specific cases...');
       const userCases = await base44.entities.MyCase.list('-created_date', 10000);
       console.log(`✅ USER (${user?.email}): ${userCases.length} cases visible via RLS`);
 
@@ -102,7 +123,6 @@ export default function MyCases() {
       if (userCases.length === 0) {
           console.warn('⚠️ ZERO CASES DETECTED - Running verification...');
 
-          // Bypass RLS to check what SHOULD be visible
           const response = await base44.functions.invoke('p0IncidentResponse', {
               action: 'verify_user_visibility',
               user_email: user?.email
@@ -122,7 +142,6 @@ export default function MyCases() {
                 }
               );
 
-              // Return the cases we found via service role as fallback
               return response.data.cases;
           } else {
               console.log('✅ Verified: User has no cases submitted yet');
@@ -132,8 +151,8 @@ export default function MyCases() {
       return userCases;
     },
     enabled: !!user,
-    refetchInterval: 3000, // Aggressive refresh
-    staleTime: 0 // Always treat as stale
+    refetchInterval: 3000,
+    staleTime: 0
   });
 
   // Fetch My Reported Scams
@@ -141,6 +160,16 @@ export default function MyCases() {
     queryKey: ['my-scams'],
     queryFn: async () => {
         if (!user) return [];
+
+        // ADMIN: Fetch ALL scam reports
+        const isAdmin = user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist';
+        if (isAdmin) {
+            const allScams = await base44.asServiceRole.entities.ScamDatabase.list(null, 10000);
+            console.log(`🔴 ADMIN: ${allScams.length} total scam reports`);
+            return allScams;
+        }
+
+        // USER: Only their reports
         return base44.entities.ScamDatabase.filter({ created_by: user.email }, '-created_date', 1000);
     },
     enabled: !!user
@@ -191,7 +220,7 @@ export default function MyCases() {
 
   const normalizedScams = myScams.map(s => ({
       ...s,
-      id: s.id, // Use original ID but note it's a scam report
+      id: s.id,
       case_title: `Report: ${s.identifier}`,
       status: s.status === 'active' ? 'Reported' : s.status,
       amount: s.total_stolen_usd,
@@ -207,6 +236,13 @@ export default function MyCases() {
   }));
 
   const baseCases = [...normalizedCases, ...normalizedScams];
+  console.log('📦 BASE CASES:', {
+    myCases_count: myCases.length,
+    normalizedCases_count: normalizedCases.length,
+    myScams_count: myScams.length,
+    normalizedScams_count: normalizedScams.length,
+    baseCases_count: baseCases.length
+  });
   const activeList = (searchQuery && searchResults) ? searchResults.map(c => ({
       ...c,
       id: c.id,
@@ -273,7 +309,7 @@ export default function MyCases() {
   const allCases = [...filteredCases].sort((a, b) => {
     const dateA = a.created_date ? new Date(a.created_date) : new Date(0);
     const dateB = b.created_date ? new Date(b.created_date) : new Date(0);
-    
+
     switch(filters.sortBy) {
       case 'newest':
         return dateB - dateA;
@@ -288,6 +324,13 @@ export default function MyCases() {
       default:
         return dateB - dateA;
     }
+  });
+
+  console.log('📊 FINAL COUNTS:', {
+    activeList_count: activeList.length,
+    filteredCases_count: filteredCases.length,
+    allCases_count: allCases.length,
+    filters: filters
   });
 
   const isLoading = loadingMyCases || loadingMyScams;
