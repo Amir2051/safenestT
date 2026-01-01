@@ -261,16 +261,32 @@ Deno.serve(async (req) => {
             // 🔥 CRITICAL: Use asServiceRole to bypass RLS during creation
             // This ensures the case is ALWAYS created regardless of RLS rules
             const newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
-            
+
             // 🚨 IMMEDIATE VERIFICATION: Confirm case was created successfully
             console.log(`✅ CASE CREATED: ID=${newCase.id}, Number=${newCase.case_number}, Owner=${creatorEmail}`);
-            
-            // Double-check visibility by fetching back
+
+            // Triple-verification: Check visibility from multiple angles
             const verifyCase = await base44.asServiceRole.entities.MyCase.get(newCase.id);
             if (!verifyCase) {
                 console.error(`❌ CRITICAL: Case ${newCase.id} created but not readable!`);
                 throw new Error("Case creation verification failed");
             }
+
+            // Verify ALL ownership fields are set correctly
+            const ownershipCheck = {
+                user_id: verifyCase.user_id === ownerUserId,
+                created_by: verifyCase.created_by === creatorEmail,
+                client_email: verifyCase.client_email === creatorEmail,
+                created_by_email: verifyCase.created_by_email === creatorEmail
+            };
+
+            const allFieldsCorrect = Object.values(ownershipCheck).every(v => v === true);
+            if (!allFieldsCorrect) {
+                console.error(`❌ OWNERSHIP MISMATCH DETECTED:`, ownershipCheck, verifyCase);
+                throw new Error("Case ownership verification failed");
+            }
+
+            console.log(`✅ OWNERSHIP VERIFIED: All fields match for ${creatorEmail}`);
 
             // AUTOMATION: Notify User if Created by Admin
             if (action === 'create_for_user' && target_user_email) {

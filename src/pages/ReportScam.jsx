@@ -186,15 +186,17 @@ export default function ReportScam() {
         amount_stolen: formData.amount_lost
       }).catch(err => console.error('AI analysis failed:', err));
 
-      // Show success with case number
-      toast.success(`Case ${createdCase.case_number} submitted successfully! Our team will review it within 24 hours.`, {
-          duration: 5000
-      });
+      // 🚨 CRITICAL: Show success with explicit case confirmation
+      toast.success(
+        `✅ CONFIRMED: Case ${createdCase.case_number} created successfully!`, 
+        {
+          duration: 6000,
+          description: `ID: ${createdCase.id} | Redirecting to My Cases...`
+        }
+      );
       
-      // Wait briefly to ensure backend processing completes
-      setTimeout(() => {
-          navigate(createPageUrl('MyCases'));
-      }, 1000);
+      // Immediate redirect to My Cases
+      navigate(createPageUrl('MyCases'));
     } catch (error) {
       console.error('❌ SUBMISSION FAILED:', error);
       

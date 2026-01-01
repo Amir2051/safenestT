@@ -88,27 +88,46 @@ export default function MyCases() {
 
       // For admins: fetch ALL cases with service role
       if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
-          const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 5000);
-          console.log(`✅ Admin fetched ${allCases.length} total cases`);
+          const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 10000);
+          console.log(`✅ ADMIN VIEW: ${allCases.length} total cases in database`);
           return allCases;
       }
 
       // For regular users: RLS-filtered cases
-      const userCases = await base44.entities.MyCase.list('-created_date', 1000);
-      console.log(`✅ User fetched ${userCases.length} cases`);
+      const userCases = await base44.entities.MyCase.list('-created_date', 10000);
+      console.log(`✅ USER VIEW (${user?.email}): ${userCases.length} cases visible`);
 
-      // 🔥 CRITICAL: If user has zero cases but should have some, log warning
+      // 🔥 CRITICAL: If user has zero cases, verify with service role
       if (userCases.length === 0) {
-          console.warn('⚠️ User has zero visible cases. Potential RLS issue.', {
-              user_email: user?.email,
-              user_id: user?.id
-          });
+          console.warn('⚠️ User has zero visible cases - running verification...');
+
+          // Check what SHOULD be visible
+          const allCases = await base44.asServiceRole.entities.MyCase.list(null, 10000);
+          const shouldSee = allCases.filter(c => 
+              c.user_id === user?.id ||
+              c.created_by?.toLowerCase() === user?.email?.toLowerCase() ||
+              c.client_email?.toLowerCase() === user?.email?.toLowerCase() ||
+              c.created_by_email?.toLowerCase() === user?.email?.toLowerCase()
+          );
+
+          if (shouldSee.length > 0) {
+              console.error(`❌ P0 INCIDENT: User ${user?.email} should see ${shouldSee.length} cases but sees 0!`, {
+                  expected_cases: shouldSee.map(c => c.case_number),
+                  user_id: user?.id,
+                  user_email: user?.email
+              });
+
+              toast.error(
+                `Data visibility issue detected. ${shouldSee.length} cases found but not visible. Contact support.`,
+                { duration: 8000 }
+              );
+          }
       }
 
       return userCases;
     },
     enabled: !!user,
-    refetchInterval: 10000 // Auto-refresh every 10 seconds to catch new submissions
+    refetchInterval: 5000 // More frequent refresh to catch new submissions immediately
   });
 
   // Fetch My Reported Scams
