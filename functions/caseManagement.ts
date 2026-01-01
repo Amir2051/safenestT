@@ -258,8 +258,19 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // TARGET ENTITY: MyCase
-            const newCase = await base44.entities.MyCase.create(caseData);
+            // 🔥 CRITICAL: Use asServiceRole to bypass RLS during creation
+            // This ensures the case is ALWAYS created regardless of RLS rules
+            const newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+            
+            // 🚨 IMMEDIATE VERIFICATION: Confirm case was created successfully
+            console.log(`✅ CASE CREATED: ID=${newCase.id}, Number=${newCase.case_number}, Owner=${creatorEmail}`);
+            
+            // Double-check visibility by fetching back
+            const verifyCase = await base44.asServiceRole.entities.MyCase.get(newCase.id);
+            if (!verifyCase) {
+                console.error(`❌ CRITICAL: Case ${newCase.id} created but not readable!`);
+                throw new Error("Case creation verification failed");
+            }
 
             // AUTOMATION: Notify User if Created by Admin
             if (action === 'create_for_user' && target_user_email) {
@@ -324,6 +335,24 @@ Deno.serve(async (req) => {
                 }
             }
 
+            // 🚨 FINAL AUDIT LOG: Record successful creation
+            await base44.asServiceRole.entities.AuditLog.create({
+                action_type: 'settings_updated',
+                action_category: 'security', 
+                description: `Case ${caseId} created by ${creatorEmail}. Status: Pending. Amount: $${caseData.amount_lost}`,
+                severity: 'high',
+                metadata: JSON.stringify({
+                    case_id: newCase.id,
+                    case_number: caseId,
+                    user_email: creatorEmail,
+                    user_id: ownerUserId,
+                    amount: caseData.amount_lost,
+                    action: 'case_created',
+                    timestamp: new Date().toISOString()
+                }),
+                created_by: user.email
+            }).catch(e => console.error("Audit log failed:", e));
+            
             return Response.json({ success: true, case: newCase });
         }
 

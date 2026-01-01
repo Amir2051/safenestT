@@ -34,6 +34,8 @@ export default function UserCaseDetail({ caseData, onClose }) {
   // Basic update mutation for user-allowed fields
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
+      console.log('📝 Updating case:', caseData.id, updates);
+      
       const response = await base44.functions.invoke('caseManagement', {
         action: 'update',
         data: {
@@ -46,7 +48,12 @@ export default function UserCaseDetail({ caseData, onClose }) {
         }
       });
       
-      if (response.data.error) throw new Error(response.data.error);
+      if (response.data.error) {
+          console.error('❌ Update failed:', response.data.error);
+          throw new Error(response.data.error);
+      }
+      
+      console.log('✅ Case updated successfully');
       return response.data.case;
     },
     onSuccess: () => {

@@ -89,6 +89,19 @@ export default function ReportScam() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 🔒 VALIDATION: Ensure user is authenticated
+    if (!user || !user.email) {
+        toast.error('You must be logged in to submit a case');
+        return;
+    }
+    
+    // 🔒 VALIDATION: Scammer wallet is required
+    if (!formData.scammer_wallet || formData.scammer_wallet.trim().length < 10) {
+        toast.error('Scammer wallet address is required');
+        return;
+    }
+    
     setLoading(true);
 
     try {
@@ -141,28 +154,63 @@ export default function ReportScam() {
         }))
       };
 
-      // Use backend function to create MyCase
+      // 🔥 CRITICAL: Create case with comprehensive error handling
+      console.log('📤 Submitting case:', { user: user?.email, scammer_wallet: formData.scammer_wallet });
+      
       const response = await base44.functions.invoke('caseManagement', {
           action: 'create',
           data: caseData
       });
       
-      if (response.data.error) throw new Error(response.data.error);
+      // Validate response
+      if (response.data.error) {
+          console.error('❌ Case creation failed:', response.data.error);
+          throw new Error(response.data.error);
+      }
+      
+      if (!response.data.case || !response.data.case.id) {
+          console.error('❌ Case created but no ID returned:', response.data);
+          throw new Error('Case creation failed - no case ID returned');
+      }
+      
+      const createdCase = response.data.case;
+      console.log('✅ Case created successfully:', createdCase.case_number, createdCase.id);
 
-      // Trigger AI Analysis
-      await base44.functions.invoke('cryptoScamDetection', {
+      // Trigger AI Analysis (non-blocking - don't fail submission if this fails)
+      base44.functions.invoke('cryptoScamDetection', {
         endpoint: 'report-scam',
         scam_type: 'wallet',
         identifier: formData.scammer_wallet,
         blockchain: formData.blockchain,
         description: `Related to fraud case: ${formData.description}`,
         amount_stolen: formData.amount_lost
-      });
+      }).catch(err => console.error('AI analysis failed:', err));
 
-      toast.success('Scam reported successfully. Our team will review it shortly.');
-      navigate(createPageUrl('MyCases'));
+      // Show success with case number
+      toast.success(`Case ${createdCase.case_number} submitted successfully! Our team will review it within 24 hours.`, {
+          duration: 5000
+      });
+      
+      // Wait briefly to ensure backend processing completes
+      setTimeout(() => {
+          navigate(createPageUrl('MyCases'));
+      }, 1000);
     } catch (error) {
-      toast.error('Failed to submit report: ' + error.message);
+      console.error('❌ SUBMISSION FAILED:', error);
+      
+      // Detailed error message for debugging
+      toast.error('Failed to submit report: ' + error.message, {
+          duration: 6000,
+          description: 'Please try again or contact support if the issue persists.'
+      });
+      
+      // Log for admin debugging
+      console.error('Submission error details:', {
+          user: user?.email,
+          scammer_wallet: formData.scammer_wallet,
+          error: error.message,
+          stack: error.stack
+      });
     }
 
     setLoading(false);

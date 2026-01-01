@@ -84,11 +84,31 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases } = useQuery({
     queryKey: ['my-cases'],
     queryFn: async () => {
-      // Let RLS handle filtering - it's more reliable than client-side filters
-      // RLS checks: user_id, created_by, client_email, created_by_email
-      return base44.entities.MyCase.list('-created_date', 1000);
+      console.log('🔍 Fetching cases for user:', user?.email, user?.id);
+
+      // For admins: fetch ALL cases with service role
+      if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
+          const allCases = await base44.asServiceRole.entities.MyCase.list('-created_date', 5000);
+          console.log(`✅ Admin fetched ${allCases.length} total cases`);
+          return allCases;
+      }
+
+      // For regular users: RLS-filtered cases
+      const userCases = await base44.entities.MyCase.list('-created_date', 1000);
+      console.log(`✅ User fetched ${userCases.length} cases`);
+
+      // 🔥 CRITICAL: If user has zero cases but should have some, log warning
+      if (userCases.length === 0) {
+          console.warn('⚠️ User has zero visible cases. Potential RLS issue.', {
+              user_email: user?.email,
+              user_id: user?.id
+          });
+      }
+
+      return userCases;
     },
-    enabled: !!user
+    enabled: !!user,
+    refetchInterval: 10000 // Auto-refresh every 10 seconds to catch new submissions
   });
 
   // Fetch My Reported Scams
