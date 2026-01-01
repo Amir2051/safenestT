@@ -102,87 +102,51 @@ export default function MyCases() {
         job_title: user?.job_title
       });
 
-      // ADMIN: Fetch ALL cases globally with NO filters
-      const isAdmin = user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist';
-      console.log('🔑 ADMIN CHECK:', isAdmin);
+      // 🚨 CRITICAL: Use backend function for ALL case fetching (admin + user)
+      const response = await base44.functions.invoke('getAllCases');
 
-      if (isAdmin) {
-          console.log('🚨 ADMIN MODE: Fetching ALL cases with service role...');
-          const allCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
-          console.log(`✅ ADMIN VIEW: ${allCases.length} TOTAL cases in database`);
-          console.log(`📊 Sample Case IDs:`, allCases.slice(0, 10).map(c => ({
-            id: c.id,
-            number: c.case_number,
-            status: c.status,
-            created: c.created_date
-          })));
-
-          if (allCases.length < 50) {
-            console.warn('⚠️ ADMIN LOW COUNT WARNING:', allCases.length, 'cases (expected ~80)');
-          }
-
-          return allCases;
+      if (!response.data.success) {
+          console.error('❌ GET ALL CASES FAILED:', response.data.error);
+          throw new Error(response.data.error || 'Failed to fetch cases');
       }
 
-      // USER: Fetch ONLY their cases via RLS
-      console.log('👤 USER MODE: Fetching user-specific cases...');
-      const userCases = await base44.entities.MyCase.list('-created_date', 10000);
-      console.log(`✅ USER (${user?.email}): ${userCases.length} cases visible via RLS`);
+      const cases = response.data.cases || [];
+      console.log(`✅ FETCHED: ${cases.length} cases (role: ${response.data.user_role})`);
 
-      // 🚨 CRITICAL: Zero-case detection and recovery
-      if (userCases.length === 0) {
-          console.warn('⚠️ ZERO CASES DETECTED - Running verification...');
+      // Zero-case verification for users only
+      if (cases.length === 0 && response.data.user_role === 'user') {
+          console.warn('⚠️ ZERO CASES - Running P0 verification...');
 
-          const response = await base44.functions.invoke('p0IncidentResponse', {
+          const verifyResponse = await base44.functions.invoke('p0IncidentResponse', {
               action: 'verify_user_visibility',
               user_email: user?.email
           });
 
-          const expected = response.data.total_cases_for_user;
-
-          if (expected > 0) {
-              console.error(`❌ P0 VISIBILITY FAILURE: User should see ${expected} cases but RLS returns 0!`);
-              console.error('📋 Missing cases:', response.data.cases.map(c => c.case_number));
-
-              toast.error(
-                `CRITICAL: ${expected} of your cases are not visible. Admin has been notified.`,
-                { 
-                  duration: 10000,
-                  description: 'Your cases exist but visibility is broken. Refreshing...'
-                }
-              );
-
-              return response.data.cases;
-          } else {
-              console.log('✅ Verified: User has no cases submitted yet');
+          if (verifyResponse.data.total_cases_for_user > 0) {
+              console.error(`❌ P0 INCIDENT: ${verifyResponse.data.total_cases_for_user} cases exist but not visible`);
+              toast.error(`${verifyResponse.data.total_cases_for_user} cases found but not visible. Contact support.`, {
+                  duration: 10000
+              });
+              return verifyResponse.data.cases || [];
           }
       }
 
-      return userCases;
+      return cases;
     },
     enabled: !!user,
     refetchInterval: 3000,
     staleTime: 0
   });
 
-  // Fetch My Reported Scams
+  // Fetch My Reported Scams (keep as-is for now, focus on MyCase entity)
   const { data: myScams = [], isLoading: loadingMyScams } = useQuery({
     queryKey: ['my-scams'],
     queryFn: async () => {
         if (!user) return [];
-
-        // ADMIN: Fetch ALL scam reports
-        const isAdmin = user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist';
-        if (isAdmin) {
-            const allScams = await base44.asServiceRole.entities.ScamDatabase.list(null, 10000);
-            console.log(`🔴 ADMIN: ${allScams.length} total scam reports`);
-            return allScams;
-        }
-
-        // USER: Only their reports
+        // USER ONLY: ScamDatabase reports (admins don't need these mixed in)
         return base44.entities.ScamDatabase.filter({ created_by: user.email }, '-created_date', 1000);
     },
-    enabled: !!user
+    enabled: !!user && user?.role !== 'admin' && !user?.is_admin
   });
 
   const handleCaseUpdate = () => {
