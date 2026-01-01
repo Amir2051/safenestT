@@ -28,6 +28,7 @@ import TeamPerformanceWidget from "../components/admin/TeamPerformanceWidget.jsx
 import CaseVisibilityDiagnostic from "../components/admin/CaseVisibilityDiagnostic.jsx";
 import ProactiveAlertsWidget from "../components/admin/ProactiveAlertsWidget.jsx";
 import EmergencyRecoveryPanel from "../components/admin/EmergencyRecoveryPanel.jsx";
+import P0IncidentPanel from "../components/admin/P0IncidentPanel.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -272,6 +273,7 @@ export default function AdminDashboard() {
 
         <TabsContent value="diagnostics" className="mt-6">
           <div className="space-y-6">
+            <P0IncidentPanel />
             <EmergencyRecoveryPanel />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CaseVisibilityDiagnostic />
