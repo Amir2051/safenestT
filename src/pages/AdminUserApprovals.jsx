@@ -65,6 +65,27 @@ export default function AdminUserApprovals() {
     refetchInterval: 5000
   });
 
+  // Fetch cases for each user
+  const { data: userCases = {} } = useQuery({
+    queryKey: ['user-cases-map'],
+    queryFn: async () => {
+      const allCases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+      
+      // Group cases by user email
+      const casesByUser = {};
+      allCases.forEach(c => {
+        const userEmail = c.client_email || c.created_by || c.created_by_email;
+        if (userEmail) {
+          if (!casesByUser[userEmail]) casesByUser[userEmail] = [];
+          casesByUser[userEmail].push(c);
+        }
+      });
+      
+      return casesByUser;
+    },
+    enabled: !!user && (user.role === 'admin' || user.is_admin)
+  });
+
   const bulkApproveMutation = useMutation({
     mutationFn: async ({ userIds }) => {
       const response = await base44.functions.invoke('adminUserService', {
@@ -444,23 +465,28 @@ export default function AdminUserApprovals() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Badge className={
-                          u.account_status === 'pending_approval' 
-                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
-                            : u.account_status === 'active'
-                            ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                            : 'bg-red-500/20 text-red-400 border-red-500/50'
-                        }>
-                          {u.account_status === 'pending_approval' ? 'Pending' : 
-                           u.account_status === 'active' ? 'Active' : 'Rejected'}
-                        </Badge>
-                        {u.is_admin && (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">
-                            <Shield className="w-3 h-3 mr-1" />
-                            Admin
-                          </Badge>
-                        )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                       <Badge className={
+                         u.account_status === 'pending_approval' 
+                           ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                           : u.account_status === 'active'
+                           ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                           : 'bg-red-500/20 text-red-400 border-red-500/50'
+                       }>
+                         {u.account_status === 'pending_approval' ? 'Pending' : 
+                          u.account_status === 'active' ? 'Active' : 'Rejected'}
+                       </Badge>
+                       {u.is_admin && (
+                         <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">
+                           <Shield className="w-3 h-3 mr-1" />
+                           Admin
+                         </Badge>
+                       )}
+                       {userCases[u.email]?.length > 0 && (
+                         <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50">
+                           {userCases[u.email].length} case{userCases[u.email].length > 1 ? 's' : ''}
+                         </Badge>
+                       )}
                       </div>
                     </div>
 
@@ -553,8 +579,37 @@ export default function AdminUserApprovals() {
                       {verifyingUser.account_status}
                     </Badge>
                   </div>
+                  <div>
+                    <p className="text-gray-400">Registered:</p>
+                    <p className="text-white">{new Date(verifyingUser.created_date).toLocaleDateString()}</p>
+                  </div>
                 </div>
               </div>
+
+              {/* User's Cases */}
+              {userCases[verifyingUser.email]?.length > 0 && (
+                <div className="p-4 bg-[#0f1419] rounded-lg border border-orange-500/20">
+                  <h3 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Submitted Cases ({userCases[verifyingUser.email].length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {userCases[verifyingUser.email].map(c => (
+                      <div key={c.id} className="p-3 bg-black/30 rounded border border-gray-700 text-xs">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-white font-semibold">{c.case_number}</span>
+                          <Badge className="bg-cyan-500/20 text-cyan-400 text-[10px]">{c.status}</Badge>
+                        </div>
+                        <p className="text-gray-400">{c.issue_type?.replace(/_/g, ' ')}</p>
+                        <p className="text-red-400 font-semibold">${c.amount_lost?.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-orange-300 mt-3 p-2 bg-orange-950/20 rounded">
+                    ⚠️ This user has active cases. Review carefully before rejecting.
+                  </p>
+                </div>
+              )}
 
               {/* Verification Checklist - Only for Approve */}
               {actionType === 'approve' && (
