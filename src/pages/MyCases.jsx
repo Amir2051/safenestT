@@ -382,18 +382,54 @@ export default function MyCases() {
               <div>isLoading: {String(isLoading)}</div>
               <div>Query enabled: {String(!!user)}</div>
             </div>
-            <Button 
-              onClick={async () => {
-                console.log('🔍 MANUAL FETCH TEST');
-                const test = await base44.asServiceRole.entities.MyCase.list(null, 50000);
-                console.log('📊 DIRECT FETCH RESULT:', test.length, 'cases');
-                alert(`Direct fetch returned ${test.length} cases`);
-              }}
-              className="mt-2 bg-red-500 hover:bg-red-600 text-xs"
-              size="sm"
-            >
-              Test Direct Fetch
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button 
+                onClick={async () => {
+                  console.log('🔍 RUNNING FULL AUDIT');
+                  toast.info('Running audit...');
+                  const res = await base44.functions.invoke('auditSubmissions', { action: 'full_audit' });
+                  console.log('📊 AUDIT RESULTS:', res.data);
+                  alert(`AUDIT COMPLETE:\n\nMyCase: ${res.data.summary.total_cases_mycase} cases\nLegacy: ${res.data.summary.total_cases_legacy} cases\nOrphaned: ${res.data.summary.orphaned_cases}\n\nCheck console for details`);
+                }}
+                className="bg-orange-500 hover:bg-orange-600 text-xs"
+                size="sm"
+              >
+                🔍 Run Audit
+              </Button>
+              <Button 
+                onClick={async () => {
+                  if (!confirm('Import ALL legacy cases to MyCase? This will migrate data from old entities.')) return;
+                  toast.info('Importing legacy cases...');
+                  const res = await base44.functions.invoke('auditSubmissions', { action: 'import_legacy' });
+                  if (res.data.success) {
+                    toast.success(res.data.message);
+                    refetchCases();
+                  } else {
+                    toast.error(res.data.error);
+                  }
+                }}
+                className="bg-purple-500 hover:bg-purple-600 text-xs"
+                size="sm"
+              >
+                📥 Import Legacy
+              </Button>
+              <Button 
+                onClick={async () => {
+                  toast.info('Fixing orphaned cases...');
+                  const res = await base44.functions.invoke('auditSubmissions', { action: 'fix_orphaned' });
+                  if (res.data.success) {
+                    toast.success(res.data.message);
+                    refetchCases();
+                  } else {
+                    toast.error(res.data.error);
+                  }
+                }}
+                className="bg-green-500 hover:bg-green-600 text-xs"
+                size="sm"
+              >
+                🔧 Fix Orphaned
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

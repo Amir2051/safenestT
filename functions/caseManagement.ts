@@ -258,35 +258,84 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // 🔥 CRITICAL: Use asServiceRole to bypass RLS during creation
-            // This ensures the case is ALWAYS created regardless of RLS rules
-            const newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+            // 🔥 CRITICAL: Database write with full audit trail
+            console.log('📝 ATTEMPTING DATABASE WRITE:', {
+                user_id: ownerUserId,
+                client_email: creatorEmail,
+                case_number: caseId,
+                scammer_wallet: scammer_wallet,
+                amount: caseData.amount_lost
+            });
 
-            // 🚨 IMMEDIATE VERIFICATION: Confirm case was created successfully
-            console.log(`✅ CASE CREATED: ID=${newCase.id}, Number=${newCase.case_number}, Owner=${creatorEmail}`);
-
-            // Triple-verification: Check visibility from multiple angles
-            const verifyCase = await base44.asServiceRole.entities.MyCase.get(newCase.id);
-            if (!verifyCase) {
-                console.error(`❌ CRITICAL: Case ${newCase.id} created but not readable!`);
-                throw new Error("Case creation verification failed");
+            let newCase;
+            try {
+                newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+            } catch (writeError) {
+                console.error('❌ DATABASE WRITE FAILED:', writeError);
+                console.error('💾 Failed data:', JSON.stringify(caseData, null, 2));
+                throw new Error(`Database write failed: ${writeError.message}`);
             }
 
-            // Verify ALL ownership fields are set correctly
+            if (!newCase || !newCase.id) {
+                console.error('❌ CRITICAL: Create returned invalid response:', newCase);
+                throw new Error("Case creation returned invalid response");
+            }
+
+            console.log(`✅ DATABASE WRITE CONFIRMED: ID=${newCase.id}, Number=${newCase.case_number}`);
+
+            // 🚨 TRIPLE VERIFICATION: Read back from database
+            const verifyCase = await base44.asServiceRole.entities.MyCase.get(newCase.id);
+            if (!verifyCase) {
+                console.error(`❌ VERIFICATION FAILED: Case ${newCase.id} not readable after creation!`);
+                throw new Error("Case verification failed - case not found after creation");
+            }
+
+            // Verify ALL ownership fields
             const ownershipCheck = {
                 user_id: verifyCase.user_id === ownerUserId,
                 created_by: verifyCase.created_by === creatorEmail,
                 client_email: verifyCase.client_email === creatorEmail,
-                created_by_email: verifyCase.created_by_email === creatorEmail
+                created_by_email: verifyCase.created_by_email === creatorEmail,
+                has_id: !!verifyCase.id,
+                has_case_number: !!verifyCase.case_number
             };
+
+            console.log('🔍 OWNERSHIP VERIFICATION:', ownershipCheck);
 
             const allFieldsCorrect = Object.values(ownershipCheck).every(v => v === true);
             if (!allFieldsCorrect) {
-                console.error(`❌ OWNERSHIP MISMATCH DETECTED:`, ownershipCheck, verifyCase);
-                throw new Error("Case ownership verification failed");
+                console.error(`❌ OWNERSHIP VERIFICATION FAILED:`, {
+                    expected: { user_id: ownerUserId, emails: creatorEmail },
+                    actual: {
+                        user_id: verifyCase.user_id,
+                        created_by: verifyCase.created_by,
+                        client_email: verifyCase.client_email,
+                        created_by_email: verifyCase.created_by_email
+                    },
+                    check_results: ownershipCheck
+                });
+                throw new Error("Ownership verification failed - field mismatch");
             }
 
-            console.log(`✅ OWNERSHIP VERIFIED: All fields match for ${creatorEmail}`);
+            console.log(`✅ FULL VERIFICATION PASSED: Case ${newCase.case_number} confirmed in database`);
+
+            // 🔒 AUDIT LOG: Record successful submission
+            await base44.asServiceRole.entities.AuditLog.create({
+                action_type: 'settings_updated',
+                action_category: 'security',
+                description: `CASE SUBMITTED: ${caseId} by ${creatorEmail}`,
+                severity: 'high',
+                metadata: JSON.stringify({
+                    case_id: newCase.id,
+                    case_number: caseId,
+                    user_id: ownerUserId,
+                    user_email: creatorEmail,
+                    amount: caseData.amount_lost,
+                    verified: true,
+                    timestamp: new Date().toISOString()
+                }),
+                created_by: user.email
+            }).catch(e => console.error("Audit log write failed:", e));
 
             // AUTOMATION: Notify User if Created by Admin
             if (action === 'create_for_user' && target_user_email) {

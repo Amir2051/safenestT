@@ -154,27 +154,57 @@ export default function ReportScam() {
         }))
       };
 
-      // 🔥 CRITICAL: Create case with comprehensive error handling
-      console.log('📤 Submitting case:', { user: user?.email, scammer_wallet: formData.scammer_wallet });
-      
-      const response = await base44.functions.invoke('caseManagement', {
-          action: 'create',
-          data: caseData
+      // 🔥 CRITICAL: Create case with full audit trail
+      console.log('📤 SUBMISSION START:', {
+          timestamp: new Date().toISOString(),
+          user: user?.email,
+          user_id: user?.id,
+          scammer_wallet: formData.scammer_wallet,
+          amount: formData.amount_lost
       });
       
-      // Validate response
+      let response;
+      try {
+          response = await base44.functions.invoke('caseManagement', {
+              action: 'create',
+              data: caseData
+          });
+      } catch (apiError) {
+          console.error('❌ API CALL FAILED:', apiError);
+          throw new Error(`API request failed: ${apiError.message}`);
+      }
+      
+      console.log('📨 BACKEND RESPONSE:', response.data);
+      
+      // Validate response structure
+      if (!response || !response.data) {
+          console.error('❌ INVALID RESPONSE: No data returned');
+          throw new Error('Invalid response from server');
+      }
+      
       if (response.data.error) {
-          console.error('❌ Case creation failed:', response.data.error);
+          console.error('❌ BACKEND ERROR:', response.data.error);
           throw new Error(response.data.error);
       }
       
-      if (!response.data.case || !response.data.case.id) {
-          console.error('❌ Case created but no ID returned:', response.data);
-          throw new Error('Case creation failed - no case ID returned');
+      if (!response.data.success || !response.data.case) {
+          console.error('❌ INCOMPLETE RESPONSE:', response.data);
+          throw new Error('Backend did not confirm case creation');
       }
       
       const createdCase = response.data.case;
-      console.log('✅ Case created successfully:', createdCase.case_number, createdCase.id);
+      
+      if (!createdCase.id || !createdCase.case_number) {
+          console.error('❌ MISSING CRITICAL FIELDS:', createdCase);
+          throw new Error('Case missing ID or case number');
+      }
+      
+      console.log('✅ SUBMISSION CONFIRMED:', {
+          id: createdCase.id,
+          case_number: createdCase.case_number,
+          user_id: createdCase.user_id,
+          client_email: createdCase.client_email
+      });
 
       // Trigger AI Analysis (non-blocking - don't fail submission if this fails)
       base44.functions.invoke('cryptoScamDetection', {
