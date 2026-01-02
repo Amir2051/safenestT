@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
 
             let newCase;
             try {
-                newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+                newCase = await base44.entities.MyCase.create(caseData);
             } catch (writeError) {
                 console.error('❌ DATABASE WRITE FAILED:', writeError);
                 console.error('💾 Failed data:', JSON.stringify(caseData, null, 2));
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
             console.log(`✅ DATABASE WRITE CONFIRMED: ID=${newCase.id}, Number=${newCase.case_number}`);
 
             // 🚨 TRIPLE VERIFICATION: Read back from database
-            const verifyCase = await base44.asServiceRole.entities.MyCase.get(newCase.id);
+            const verifyCase = await base44.entities.MyCase.get(newCase.id);
             if (!verifyCase) {
                 console.error(`❌ VERIFICATION FAILED: Case ${newCase.id} not readable after creation!`);
                 throw new Error("Case verification failed - case not found after creation");
@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
             console.log(`✅ FULL VERIFICATION PASSED: Case ${newCase.case_number} confirmed in database`);
 
             // 🔒 AUDIT LOG: Record successful submission
-            await base44.asServiceRole.entities.AuditLog.create({
+            await base44.entities.AuditLog.create({
                 action_type: 'settings_updated',
                 action_category: 'security',
                 description: `CASE SUBMITTED: ${caseId} by ${creatorEmail}`,

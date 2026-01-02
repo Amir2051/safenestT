@@ -22,19 +22,19 @@ Deno.serve(async (req) => {
         if (action === 'full_audit') {
             console.log('🚨 STARTING FULL SUBMISSION AUDIT');
             
-            // 1. Get ALL cases from MyCase entity
-            const myCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
+            // 1. Get ALL cases from MyCase entity (admin can see all via RLS)
+            const myCases = await base44.entities.MyCase.list(null, 50000);
             console.log(`📊 MyCase entity: ${myCases.length} records`);
             
             // 2. Check other legacy entities for orphaned submissions
-            const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 10000).catch(() => []);
-            const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 10000).catch(() => []);
-            const investigationCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 10000).catch(() => []);
+            const clientCases = await base44.entities.ClientCase.list(null, 10000).catch(() => []);
+            const fraudCases = await base44.entities.FraudCase.list(null, 10000).catch(() => []);
+            const investigationCases = await base44.entities.InvestigationCase.list(null, 10000).catch(() => []);
             
             console.log(`📊 Legacy entities: ClientCase=${clientCases.length}, FraudCase=${fraudCases.length}, Investigation=${investigationCases.length}`);
             
             // 3. Get all users for ownership mapping
-            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
+            const allUsers = await base44.entities.User.list(null, 10000);
             console.log(`👥 Total users: ${allUsers.length}`);
             
             // 4. Check for ownership issues
@@ -124,10 +124,10 @@ Deno.serve(async (req) => {
         if (action === 'import_legacy') {
             console.log('📥 IMPORTING ALL LEGACY CASES TO MyCase');
             
-            const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 10000).catch(() => []);
-            const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 10000).catch(() => []);
-            const investigationCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 10000).catch(() => []);
-            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
+            const clientCases = await base44.entities.ClientCase.list(null, 10000).catch(() => []);
+            const fraudCases = await base44.entities.FraudCase.list(null, 10000).catch(() => []);
+            const investigationCases = await base44.entities.InvestigationCase.list(null, 10000).catch(() => []);
+            const allUsers = await base44.entities.User.list(null, 10000);
             
             let imported = 0;
             
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
                     u.email?.toLowerCase() === c.created_by?.toLowerCase()
                 );
                 
-                await base44.asServiceRole.entities.MyCase.create({
+                await base44.entities.MyCase.create({
                     ...c,
                     id: undefined,
                     user_id: matchUser?.id || null,
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
                     metadata: JSON.stringify({ legacy_source: 'ClientCase', legacy_id: c.id })
                 });
                 
-                await base44.asServiceRole.entities.ClientCase.delete(c.id);
+                await base44.entities.ClientCase.delete(c.id);
                 imported++;
             }
             
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
                     u.email?.toLowerCase() === c.created_by?.toLowerCase()
                 );
                 
-                await base44.asServiceRole.entities.MyCase.create({
+                await base44.entities.MyCase.create({
                     client_name: c.victim_contact_info?.name || 'Unknown',
                     client_email: matchUser?.email || c.victim_contact_info?.email,
                     phone_number: c.victim_contact_info?.phone,
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
                     metadata: JSON.stringify({ legacy_source: 'FraudCase', legacy_id: c.id })
                 });
                 
-                await base44.asServiceRole.entities.FraudCase.delete(c.id);
+                await base44.entities.FraudCase.delete(c.id);
                 imported++;
             }
             
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
                     u.email?.toLowerCase() === c.created_by?.toLowerCase()
                 );
                 
-                await base44.asServiceRole.entities.MyCase.create({
+                await base44.entities.MyCase.create({
                     ...c,
                     id: undefined,
                     user_id: matchUser?.id || null,
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
                     metadata: JSON.stringify({ legacy_source: 'InvestigationCase', legacy_id: c.id })
                 });
                 
-                await base44.asServiceRole.entities.InvestigationCase.delete(c.id);
+                await base44.entities.InvestigationCase.delete(c.id);
                 imported++;
             }
             
@@ -211,8 +211,8 @@ Deno.serve(async (req) => {
         if (action === 'fix_orphaned') {
             console.log('🔧 FIXING ORPHANED CASES');
             
-            const myCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
-            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
+            const myCases = await base44.entities.MyCase.list(null, 50000);
+            const allUsers = await base44.entities.User.list(null, 10000);
             
             let fixed = 0;
             
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
                     );
                     
                     if (matchUser) {
-                        await base44.asServiceRole.entities.MyCase.update(c.id, {
+                        await base44.entities.MyCase.update(c.id, {
                             user_id: matchUser.id,
                             client_email: matchUser.email,
                             created_by: matchUser.email,
