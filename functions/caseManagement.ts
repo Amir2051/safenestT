@@ -2,16 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 async function getNextSequence(base44, year) {
     const configKey = `case_seq_${year}`;
-    // Use service role for system config access
-    const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
+    const configs = await base44.entities.SystemConfig.filter({ key_name: configKey });
     let seq = 1;
     
     if (configs && configs.length > 0) {
         const config = configs[0];
         seq = parseInt(config.value) + 1;
-        await base44.asServiceRole.entities.SystemConfig.update(config.id, { value: seq.toString() });
+        await base44.entities.SystemConfig.update(config.id, { value: seq.toString() });
     } else {
-        await base44.asServiceRole.entities.SystemConfig.create({ 
+        await base44.entities.SystemConfig.create({ 
             key_name: configKey, 
             value: "1", 
             description: `Case sequence counter for year ${year}` 
@@ -52,7 +51,7 @@ Deno.serve(async (req) => {
             // 0. DUPLICATE CHECK (Prevent double submissions)
             // Check for identical case created by same user in last 24h
             try {
-                const recentCases = await base44.asServiceRole.entities.MyCase.filter({
+                const recentCases = await base44.entities.MyCase.filter({
                     created_by: user.email.toLowerCase(),
                     issue_type: data.issue_type || 'other',
                     status: 'Pending'
@@ -106,7 +105,7 @@ Deno.serve(async (req) => {
             let aiAnalysisSummary = "Pending analysis...";
             try {
                 // Track Scammer Wallet
-                const intelRes = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+                const intelRes = await base44.functions.invoke('blockchainIntelligence', {
                     action: 'track-wallet',
                     data: { 
                         wallet_address: scammer_wallet, 
@@ -132,12 +131,12 @@ Deno.serve(async (req) => {
                 // Track Victim Wallet
                 if (victim_wallet) {
                     const victimBlockchain = validateWallet(victim_wallet) || 'ethereum';
-                    await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+                    await base44.functions.invoke('blockchainIntelligence', {
                         action: 'track-wallet',
                         data: { 
                             wallet_address: victim_wallet, 
                             blockchain: victimBlockchain,
-                            fraud_case_id: null, // Will link later or via linking logic
+                            fraud_case_id: null,
                             wallet_type: 'victim'
                         }
                     });
@@ -152,14 +151,14 @@ Deno.serve(async (req) => {
             let linkedCaseIds = [];
             try {
                 // Link by Scammer Wallet
-                const existingCasesScammer = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
+                const existingCasesScammer = await base44.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
                 existingCasesScammer.forEach(c => {
                     if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
                 });
 
                 // Link by Victim Wallet (Repeat Victim or Organized Ring)
                 if (victim_wallet) {
-                    const existingCasesVictim = await base44.asServiceRole.entities.MyCase.filter({ victim_wallet: victim_wallet });
+                    const existingCasesVictim = await base44.entities.MyCase.filter({ victim_wallet: victim_wallet });
                     existingCasesVictim.forEach(c => {
                         if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
                     });
@@ -187,7 +186,7 @@ Deno.serve(async (req) => {
                 
                 // Lookup target user ID
                 try {
-                    const targetUsers = await base44.asServiceRole.entities.User.list(null, 1000);
+                    const targetUsers = await base44.entities.User.list(null, 1000);
                     const targetUser = targetUsers.find(u => u.email?.toLowerCase() === creatorEmail);
                     if (targetUser) ownerUserId = targetUser.id;
                 } catch(e) { console.error("Failed to lookup target user", e); }
@@ -362,12 +361,12 @@ Deno.serve(async (req) => {
 
             // Update Wallet Monitors with Case ID
             try {
-                const monitors = await base44.asServiceRole.entities.WalletMonitor.filter({ 
+                const monitors = await base44.entities.WalletMonitor.filter({ 
                     wallet_address: { $in: [scammer_wallet, victim_wallet].filter(Boolean) } 
                 });
                 for (const m of monitors) {
                     if (!m.fraud_case_id) {
-                        await base44.asServiceRole.entities.WalletMonitor.update(m.id, { fraud_case_id: newCase.id });
+                        await base44.entities.WalletMonitor.update(m.id, { fraud_case_id: newCase.id });
                     }
                 }
             } catch(e) { console.error("Failed to link monitors", e); }
@@ -380,8 +379,8 @@ Deno.serve(async (req) => {
                 if (newCase.assigned_to) {
                     try {
                         // Create in-app notification
-                        await base44.asServiceRole.entities.Notification.create({
-                            user_id: newCase.assigned_to, // Assuming email is used as ID or mapped
+                        await base44.entities.Notification.create({
+                            user_id: newCase.assigned_to,
                             type: 'system',
                             title: 'New High Priority Case',
                             message: message,
@@ -401,7 +400,7 @@ Deno.serve(async (req) => {
             }
 
             // 🚨 FINAL AUDIT LOG: Record successful creation
-            await base44.asServiceRole.entities.AuditLog.create({
+            await base44.entities.AuditLog.create({
                 action_type: 'settings_updated',
                 action_category: 'security', 
                 description: `Case ${caseId} created by ${creatorEmail}. Status: Pending. Amount: $${caseData.amount_lost}`,
@@ -444,12 +443,12 @@ Deno.serve(async (req) => {
 
             try {
                 // Try MyCase first
-                let existing = await base44.asServiceRole.entities.MyCase.get(id).catch(() => null);
+                let existing = await base44.entities.MyCase.get(id).catch(() => null);
                 let entityType = 'MyCase';
 
                 if (!existing) {
                     // Fallback to InvestigationCase
-                    existing = await base44.asServiceRole.entities.InvestigationCase.get(id).catch(() => null);
+                    existing = await base44.entities.InvestigationCase.get(id).catch(() => null);
                     entityType = 'InvestigationCase';
                 }
 
@@ -467,7 +466,7 @@ Deno.serve(async (req) => {
 
                 // Log status changes
                 if (updates.status && existing.status !== updates.status) {
-                    await base44.asServiceRole.entities.CaseTimelineEvent.create({
+                    await base44.entities.CaseTimelineEvent.create({
                         case_id: id,
                         event_type: 'status_change',
                         description: `Status updated to ${updates.status}`,
@@ -479,7 +478,7 @@ Deno.serve(async (req) => {
 
                     // WORKFLOW TRIGGER: Law Enforcement Status
                     if (updates.status === 'law_enforcement') {
-                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                        base44.functions.invoke('workflowAutomation', {
                             trigger_type: 'case_status_law_enforcement',
                             trigger_data: { case_id: id }
                         }).catch(e => console.error("Workflow trigger failed:", e));
@@ -495,15 +494,15 @@ Deno.serve(async (req) => {
                         ];
 
                         for (const task of tasks) {
-                            await base44.asServiceRole.entities.CaseTask.create({
+                            await base44.entities.CaseTask.create({
                                 case_id: id,
                                 title: task.title,
                                 description: task.description,
-                                assigned_to: existing.assigned_to || user.email, // Assign to case owner or current user
+                                assigned_to: existing.assigned_to || user.email,
                                 assigned_by: 'system_automation',
                                 status: 'todo',
                                 priority: task.priority,
-                                due_date: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 48 hours due
+                                due_date: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
                             });
                         }
                     }
@@ -524,12 +523,12 @@ Deno.serve(async (req) => {
                 }
 
                 // PERFORM UPDATE
-                const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
+                const updatedCase = await base44.entities[entityType].update(id, updates);
 
                 // WORKFLOW TRIGGER: Priority Escalation
                 if (updates.priority && (updates.priority === 'high' || updates.priority === 'critical')) {
                     if (existing.priority !== updates.priority) {
-                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                        base44.functions.invoke('workflowAutomation', {
                             trigger_type: 'priority_escalation',
                             trigger_data: { case_id: id, priority: updates.priority }
                         }).catch(e => console.error("Priority workflow failed:", e));
@@ -539,7 +538,7 @@ Deno.serve(async (req) => {
                 // WORKFLOW TRIGGER: Recovery Amount Updated
                 if (updates.recovery_amount !== undefined && oldRecoveryAmount !== undefined) {
                     if (updates.recovery_amount > (existing.recovery_amount || 0)) {
-                        base44.asServiceRole.functions.invoke('workflowAutomation', {
+                        base44.functions.invoke('workflowAutomation', {
                             trigger_type: 'recovery_amount_updated',
                             trigger_data: {
                                 case_id: id,
@@ -566,8 +565,8 @@ Deno.serve(async (req) => {
 
             if (type === 'migrate_to_mycase') {
                 // MIGRATE CLIENTCASE -> MYCASE
-                const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 1000);
-                const users = await base44.asServiceRole.entities.User.list(null, 1000);
+                const clientCases = await base44.entities.ClientCase.list(null, 1000);
+                const users = await base44.entities.User.list(null, 1000);
                 
                 const migratedCases = [];
                 for (const cc of clientCases) {
@@ -594,14 +593,14 @@ Deno.serve(async (req) => {
                     };
                     
                     // Create in MyCase
-                    await base44.asServiceRole.entities.MyCase.create(newCase);
+                    await base44.entities.MyCase.create(newCase);
                     // Delete from ClientCase
-                    await base44.asServiceRole.entities.ClientCase.delete(cc.id);
+                    await base44.entities.ClientCase.delete(cc.id);
                     migratedCases.push(newCase);
                 }
 
                 // Also check for stragglers in FraudCase if any remain
-                const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 1000);
+                const fraudCases = await base44.entities.FraudCase.list(null, 1000);
                 for (const fc of fraudCases) {
                      // Match User
                     const matchingUser = users.find(u => 
@@ -631,8 +630,8 @@ Deno.serve(async (req) => {
                         metadata: JSON.stringify({ legacy_id: fc.id, source: 'fraud_case_migration_final' })
                     };
 
-                    await base44.asServiceRole.entities.MyCase.create(newCase);
-                    await base44.asServiceRole.entities.FraudCase.delete(fc.id);
+                    await base44.entities.MyCase.create(newCase);
+                    await base44.entities.FraudCase.delete(fc.id);
                     migratedCases.push(newCase);
                 }
 
@@ -649,24 +648,18 @@ Deno.serve(async (req) => {
             }
 
             // Default migration: ID generation (legacy code kept)
-            // Fetch all cases
-            const cases = await base44.asServiceRole.entities.ClientCase.list(null, 1000); // adjust limit as needed
-            
-            // Filter those without valid SN- ID
+            const cases = await base44.entities.ClientCase.list(null, 1000);
             const toMigrate = cases.filter(c => !c.case_number || !c.case_number.startsWith('SN-'));
-            
-            // Sort by date
             toMigrate.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
             
             const updates = [];
-            const yearSequences = {}; // cache sequences for migration run
+            const yearSequences = {};
 
             for (const c of toMigrate) {
                 const year = new Date(c.created_date).getFullYear();
                 if (!yearSequences[year]) {
-                    // Initialize from DB or 0 if creating fresh for old years
                     const configKey = `case_seq_${year}`;
-                    const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
+                    const configs = await base44.entities.SystemConfig.filter({ key_name: configKey });
                     yearSequences[year] = configs.length > 0 ? parseInt(configs[0].value) : 0;
                 }
                 
@@ -675,17 +668,16 @@ Deno.serve(async (req) => {
                 const padded = seq.toString().padStart(5, '0');
                 const newId = `SN-${year}-${padded}`;
                 
-                updates.push(base44.asServiceRole.entities.ClientCase.update(c.id, { case_number: newId }));
+                updates.push(base44.entities.ClientCase.update(c.id, { case_number: newId }));
             }
 
-            // Update config counters
             for (const year in yearSequences) {
                 const configKey = `case_seq_${year}`;
-                const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
+                const configs = await base44.entities.SystemConfig.filter({ key_name: configKey });
                 if (configs.length > 0) {
-                    await base44.asServiceRole.entities.SystemConfig.update(configs[0].id, { value: yearSequences[year].toString() });
+                    await base44.entities.SystemConfig.update(configs[0].id, { value: yearSequences[year].toString() });
                 } else {
-                    await base44.asServiceRole.entities.SystemConfig.create({ 
+                    await base44.entities.SystemConfig.create({ 
                         key_name: configKey, 
                         value: yearSequences[year].toString(), 
                         description: `Case sequence counter for year ${year}` 
@@ -694,7 +686,6 @@ Deno.serve(async (req) => {
             }
 
             await Promise.all(updates);
-
             return Response.json({ success: true, migrated_count: updates.length });
             }
 
@@ -708,7 +699,7 @@ Deno.serve(async (req) => {
                 return Response.json({ error: "Missing caseId or field" }, { status: 400 });
             }
 
-            const existing = await base44.asServiceRole.entities.MyCase.get(caseId);
+            const existing = await base44.entities.MyCase.get(caseId);
             if (!existing) {
                 return Response.json({ error: "Case not found" }, { status: 404 });
             }
@@ -720,13 +711,13 @@ Deno.serve(async (req) => {
                 redactedFields = redactedFields.filter(f => f !== field);
             }
 
-            const updatedCase = await base44.asServiceRole.entities.MyCase.update(caseId, { 
+            const updatedCase = await base44.entities.MyCase.update(caseId, { 
                 redacted_fields: redactedFields,
                 last_activity: new Date().toISOString()
             });
 
             // Log Audit
-            await base44.asServiceRole.entities.AuditLog.create({
+            await base44.entities.AuditLog.create({
                 action_type: 'settings_updated', // Using existing enum
                 action_category: 'security',
                 description: `Case ${existing.case_number} field '${field}' ${isRedacted ? 'redacted' : 'unredacted'}`,
@@ -749,8 +740,8 @@ Deno.serve(async (req) => {
                 }
 
                 // 1. Fetch ALL data (Cases and Users) to perform deep linking
-                const cases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
-                const users = await base44.asServiceRole.entities.User.list(null, 5000);
+                const cases = await base44.entities.MyCase.list(null, 5000);
+                const users = await base44.entities.User.list(null, 5000);
 
                 let updatedCount = 0;
                 let fixedDates = 0;
@@ -880,7 +871,7 @@ Deno.serve(async (req) => {
                     }
 
                     if (needsUpdate) {
-                        await base44.asServiceRole.entities.MyCase.update(c.id, updates);
+                        await base44.entities.MyCase.update(c.id, updates);
                         updatedCount++;
                     }
                 }
@@ -914,11 +905,11 @@ Deno.serve(async (req) => {
                         clientCases,
                         fraudCases
                     ] = await Promise.all([
-                        base44.asServiceRole.entities.MyCase.list(null, 10000),
-                        base44.asServiceRole.entities.ScamDatabase.list(null, 5000),
-                        base44.asServiceRole.entities.InvestigationCase.list(null, 2000).catch(() => []),
-                        base44.asServiceRole.entities.ClientCase.list(null, 2000).catch(() => []),
-                        base44.asServiceRole.entities.FraudCase.list(null, 2000).catch(() => [])
+                        base44.entities.MyCase.list(null, 10000),
+                        base44.entities.ScamDatabase.list(null, 5000),
+                        base44.entities.InvestigationCase.list(null, 2000).catch(() => []),
+                        base44.entities.ClientCase.list(null, 2000).catch(() => []),
+                        base44.entities.FraudCase.list(null, 2000).catch(() => [])
                     ]);
 
                     // Helper: Check if already imported
@@ -952,7 +943,7 @@ Deno.serve(async (req) => {
                                 });
 
                                 if (Object.keys(updates).length > 0) {
-                                    await base44.asServiceRole.entities.MyCase.update(existing.id, updates);
+                                    await base44.entities.MyCase.update(existing.id, updates);
                                     stats.updated++;
                                 } else {
                                     stats.skipped++;
@@ -974,10 +965,10 @@ Deno.serve(async (req) => {
                                     source_id: sourceRecord.id,
                                     source_type: sourceType,
                                     imported_at: new Date().toISOString(),
-                                    original_data: JSON.stringify(sourceRecord).substring(0, 500) // Truncate to save space
+                                    original_data: JSON.stringify(sourceRecord).substring(0, 500)
                                 });
 
-                                await base44.asServiceRole.entities.MyCase.create(mapped);
+                                await base44.entities.MyCase.create(mapped);
                                 stats.imported++;
                                 importedIds.push(mapped.case_number);
                             }
@@ -1081,7 +1072,7 @@ Deno.serve(async (req) => {
                 // Fetch all cases to be merged
                 // We fetch one by one or filter if supported. 
                 // Given the API limitations, parallel fetch is safer.
-                const cases = await Promise.all(caseIds.map(id => base44.asServiceRole.entities.MyCase.get(id)));
+                const cases = await Promise.all(caseIds.map(id => base44.entities.MyCase.get(id)));
                 
                 if (cases.some(c => !c)) {
                     return Response.json({ error: "One or more cases not found." }, { status: 404 });
@@ -1150,7 +1141,7 @@ Deno.serve(async (req) => {
                 scamList.sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 // 3. Create MasterCase (Profile Case)
-                const profileCase = await base44.asServiceRole.entities.MasterCase.create({
+                const profileCase = await base44.entities.MasterCase.create({
                     user_id: primaryOwner,
                     linked_case_ids: caseIds,
                     merged_summary: `Profile Case consolidated from ${cases.length} incidents. Total loss: $${totalLoss.toLocaleString()}.`,
@@ -1164,7 +1155,7 @@ Deno.serve(async (req) => {
                 });
 
                 // 4. Log Action
-                await base44.asServiceRole.entities.AuditLog.create({
+                await base44.entities.AuditLog.create({
                     action_type: 'settings_updated', // Reuse or add new enum if possible (using closest existing)
                     action_category: 'security',
                     description: `Admin ${user.email} merged ${cases.length} cases into Profile Case ${profileCase.id}`,
@@ -1184,7 +1175,7 @@ Deno.serve(async (req) => {
                 }
 
                 // 1. Fetch ALL MyCases
-                const allCases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+                const allCases = await base44.entities.MyCase.list(null, 5000);
                 
                 // 2. Group by User (client_email)
                 const userGroups = {};
@@ -1203,7 +1194,7 @@ Deno.serve(async (req) => {
                     if (userId === 'unknown') continue;
 
                     // Check if MasterCase exists for this user
-                    const existingMasters = await base44.asServiceRole.entities.MasterCase.filter({ user_id: userId });
+                    const existingMasters = await base44.entities.MasterCase.filter({ user_id: userId });
                     
                     if (existingMasters.length > 0) {
                         // Update existing? Or skip?
@@ -1220,7 +1211,7 @@ Deno.serve(async (req) => {
                         });
 
                         if (changed) {
-                            await base44.asServiceRole.entities.MasterCase.update(master.id, {
+                            await base44.entities.MasterCase.update(master.id, {
                                 linked_case_ids: Array.from(currentLinks),
                                 total_loss: cases.reduce((sum, c) => sum + (c.amount_lost || 0), 0)
                             });
@@ -1229,8 +1220,6 @@ Deno.serve(async (req) => {
                     } else {
                         // Create New MasterCase Profile
                         const totalLoss = cases.reduce((sum, c) => sum + (c.amount_lost || 0), 0);
-                        
-                        // Aggregate minimal data
                         const scamList = cases.map(c => ({
                             date: c.incident_date || c.created_date,
                             platform: c.platform || 'Unknown',
@@ -1239,18 +1228,7 @@ Deno.serve(async (req) => {
                             case_id: c.case_number || c.id
                         })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                        const newMaster = await base44.asServiceRole.entities.MasterCase.create({
-                            user_id: userId,
-                            linked_case_ids: cases.map(c => c.id),
-                            merged_summary: `Auto-generated profile for ${userId}. Contains ${cases.length} cases.`,
-                            scam_list: scamList,
-                            total_loss: totalLoss,
-                            status: 'draft',
-                            generated_date: new Date().toISOString()
-                        });
-                        createdCount++;
-
-                        const newMaster = await base44.asServiceRole.entities.MasterCase.create({
+                        const newMaster = await base44.entities.MasterCase.create({
                             user_id: userId,
                             linked_case_ids: cases.map(c => c.id),
                             merged_summary: `Auto-generated profile for ${userId}. Contains ${cases.length} cases.`,
@@ -1301,7 +1279,7 @@ Deno.serve(async (req) => {
 
                         // TRIGGER PDF GENERATION
                         try {
-                            const pdfRes = await base44.asServiceRole.functions.invoke('autoGenerateProfilePdf', {
+                            const pdfRes = await base44.functions.invoke('autoGenerateProfilePdf', {
                                 masterCaseId: newMaster.id,
                                 profileData: profileData,
                                 caseData: caseData
@@ -1340,7 +1318,7 @@ Deno.serve(async (req) => {
 
 async function triggerAIAnalysis(base44, { caseId }) {
   try {
-    const cases = await base44.asServiceRole.entities.MyCase.filter({ id: caseId });
+    const cases = await base44.entities.MyCase.filter({ id: caseId });
     if (cases.length === 0) {
       return Response.json({ error: 'Case not found' }, { status: 404 });
     }
