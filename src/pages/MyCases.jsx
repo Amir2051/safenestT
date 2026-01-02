@@ -365,24 +365,13 @@ export default function MyCases() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Debug Panel - Remove after fix */}
-      {user && (
-        <Card className="bg-red-500/10 border-red-500/30 mb-4">
+      {/* Admin Tools Panel */}
+      {user && (user.role === 'admin' || user.is_admin) && (
+        <Card className="bg-purple-500/10 border-purple-500/30 mb-4">
           <CardContent className="p-4">
-            <h3 className="text-red-400 font-bold mb-2">🔧 DEBUG PANEL</h3>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div>user.role: {user.role || 'null'}</div>
-              <div>user.is_admin: {String(user.is_admin)}</div>
-              <div>user.job_title: {user.job_title || 'null'}</div>
-              <div>isAdmin check: {String(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist')}</div>
-              <div>myCases.length: {myCases.length}</div>
-              <div>myScams.length: {myScams.length}</div>
-              <div>baseCases.length: {baseCases.length}</div>
-              <div>allCases.length: {allCases.length}</div>
-              <div>isLoading: {String(isLoading)}</div>
-              <div>Query enabled: {String(!!user)}</div>
-            </div>
-            <div className="flex gap-2 mt-2">
+            <h3 className="text-purple-400 font-bold mb-2">🔧 ADMIN DATA RECOVERY TOOLS</h3>
+            <p className="text-xs text-gray-400 mb-3">Use these tools to audit and recover case data</p>
+            <div className="flex gap-2 flex-wrap">
               <Button 
                 onClick={async () => {
                   console.log('🔍 RUNNING FULL AUDIT');
@@ -394,7 +383,7 @@ export default function MyCases() {
                 className="bg-orange-500 hover:bg-orange-600 text-xs"
                 size="sm"
               >
-                🔍 Run Audit
+                🔍 Run Full Audit
               </Button>
               <Button 
                 onClick={async () => {
