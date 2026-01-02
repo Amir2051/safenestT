@@ -74,7 +74,7 @@ export default function AdminUserApprovals() {
   const { data: userCases = {} } = useQuery({
     queryKey: ['user-cases-map'],
     queryFn: async () => {
-      const allCases = await base44.asServiceRole.entities.MyCase.list(null, 5000);
+      const allCases = await base44.entities.MyCase.list(null, 5000);
       
       // Group cases by user email
       const casesByUser = {};
@@ -94,7 +94,7 @@ export default function AdminUserApprovals() {
   // Fetch auto-approval setting
   useEffect(() => {
     if (user && (user.role === 'admin' || user.is_admin)) {
-      base44.asServiceRole.entities.SystemConfig.filter({ key_name: 'auto_approve_users' })
+      base44.entities.SystemConfig.filter({ key_name: 'auto_approve_users' })
         .then(configs => {
           if (configs.length > 0) {
             setAutoApprovalEnabled(configs[0].value === 'true');
@@ -107,12 +107,12 @@ export default function AdminUserApprovals() {
   const toggleAutoApproval = async (enabled) => {
     setAutoApprovalLoading(true);
     try {
-      const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: 'auto_approve_users' });
+      const configs = await base44.entities.SystemConfig.filter({ key_name: 'auto_approve_users' });
       
       if (configs.length > 0) {
-        await base44.asServiceRole.entities.SystemConfig.update(configs[0].id, { value: enabled.toString() });
+        await base44.entities.SystemConfig.update(configs[0].id, { value: enabled.toString() });
       } else {
-        await base44.asServiceRole.entities.SystemConfig.create({
+        await base44.entities.SystemConfig.create({
           key_name: 'auto_approve_users',
           value: enabled.toString(),
           description: 'Automatically approve new user registrations'
