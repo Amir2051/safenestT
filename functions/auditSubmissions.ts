@@ -9,6 +9,14 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Admin access required' }, { status: 403 });
         }
         
+        console.log('🔧 AUDIT: User authenticated as admin');
+        
+        // Verify service role is available
+        if (!base44.asServiceRole) {
+            console.error('❌ Service role not available');
+            return Response.json({ error: 'Service role not configured' }, { status: 500 });
+        }
+        
         const { action } = await req.json();
         
         if (action === 'full_audit') {
