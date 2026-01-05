@@ -89,160 +89,76 @@ export default function ReportScam() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // 🔒 VALIDATION: Ensure user is authenticated
+
     if (!user || !user.email) {
         toast.error('You must be logged in to submit a case');
         return;
     }
-    
-    // 🔒 VALIDATION: Scammer wallet is required
-    if (!formData.scammer_wallet || formData.scammer_wallet.trim().length < 10) {
-        toast.error('Scammer wallet address is required');
-        return;
-    }
-    
+
     setLoading(true);
 
     try {
-      // 🚨 CRITICAL: Map to MyCase with ALL ownership fields
-      const caseData = {
-        // Victim Information
-        client_name: formData.victim_name,
-        client_email: user?.email,  // 🔒 Use authenticated user email (not form input)
-        phone_number: formData.victim_phone,
-        victim_wallet: formData.victim_wallet,
-        
-        // Scammer Info
-        scammer_info: {
-          name: formData.scammer_name,
-          phone: formData.scammer_phone,
-          email: formData.scammer_email,
-          social_media: formData.scammer_social_media.split('\n').filter(s => s.trim()),
-          wallet_addresses: [formData.scammer_wallet]
-        },
-        scammer_wallet: formData.scammer_wallet,
-        
-        // Financial
-        amount_lost: parseFloat(formData.amount_lost) || 0,
-        cryptocurrency: formData.currency_type,
-        blockchain: formData.blockchain.toLowerCase(),
-        
-        // Case
-        issue_type: formData.fraud_type.toLowerCase().replace(/ /g, '_'),
-        transaction_date: formData.incident_date,
-        description: formData.description,
-        
-        // Meta - backend will add user_id, created_by, etc.
-        status: 'Pending',
-        urgency: 'Medium',
-        
-        // Legal
-        law_enforcement_authorization: {
-          authorized: formData.law_enforcement_authorized,
-          authorized_date: formData.law_enforcement_authorized ? new Date().toISOString() : null,
-          full_name: formData.law_enforcement_authorized ? formData.victim_name : null,
-          agencies: ['FBI', 'IC3', 'FTC']
-        },
-        
-        // Evidence
-        evidence_files: evidenceFiles.map(f => ({
-          name: f.name,
-          url: f.url,
-          type: f.type,
-          uploaded_date: new Date().toISOString()
-        }))
-      };
-
-      // 🔥 CRITICAL: Create case with full audit trail
-      console.log('📤 SUBMISSION START:', {
+      console.log('📤 DIRECT SUBMISSION:', {
           timestamp: new Date().toISOString(),
           user: user?.email,
-          user_id: user?.id,
-          scammer_wallet: formData.scammer_wallet,
-          amount: formData.amount_lost
+          user_id: user?.id
       });
-      
-      let response;
-      try {
-          response = await base44.functions.invoke('caseManagement', {
-              action: 'create',
-              data: caseData
-          });
-      } catch (apiError) {
-          console.error('❌ API CALL FAILED:', apiError);
-          throw new Error(`API request failed: ${apiError.message}`);
+
+      // 🔥 SIMPLIFIED SUBMISSION - Direct to new backend
+      const response = await base44.functions.invoke('submitCase', {
+          victim_name: formData.victim_name,
+          victim_phone: formData.victim_phone,
+          victim_wallet: formData.victim_wallet,
+          scammer_name: formData.scammer_name,
+          scammer_phone: formData.scammer_phone,
+          scammer_email: formData.scammer_email,
+          scammer_social_media: formData.scammer_social_media,
+          scammer_wallet: formData.scammer_wallet,
+          amount_lost: formData.amount_lost,
+          currency_type: formData.currency_type,
+          blockchain: formData.blockchain,
+          fraud_type: formData.fraud_type,
+          incident_date: formData.incident_date,
+          description: formData.description,
+          law_enforcement_authorization: {
+              authorized: formData.law_enforcement_authorized,
+              authorized_date: formData.law_enforcement_authorized ? new Date().toISOString() : null,
+              full_name: formData.law_enforcement_authorized ? formData.victim_name : null,
+              agencies: ['FBI', 'IC3', 'FTC']
+          },
+          evidence_files: evidenceFiles.map(f => ({
+              name: f.name,
+              url: f.url,
+              type: f.type,
+              uploaded_date: new Date().toISOString()
+          }))
+      });
+
+      console.log('📨 RESPONSE:', response.data);
+
+      if (!response.data.success) {
+          throw new Error(response.data.error || 'Submission failed');
       }
-      
-      console.log('📨 BACKEND RESPONSE:', response.data);
-      
-      // Validate response structure
-      if (!response || !response.data) {
-          console.error('❌ INVALID RESPONSE: No data returned');
-          throw new Error('Invalid response from server');
-      }
-      
-      if (response.data.error) {
-          console.error('❌ BACKEND ERROR:', response.data.error);
-          throw new Error(response.data.error);
-      }
-      
-      if (!response.data.success || !response.data.case) {
-          console.error('❌ INCOMPLETE RESPONSE:', response.data);
-          throw new Error('Backend did not confirm case creation');
-      }
-      
+
       const createdCase = response.data.case;
-      
-      if (!createdCase.id || !createdCase.case_number) {
-          console.error('❌ MISSING CRITICAL FIELDS:', createdCase);
-          throw new Error('Case missing ID or case number');
-      }
-      
-      console.log('✅ SUBMISSION CONFIRMED:', {
+
+      console.log('✅ CASE CREATED:', {
           id: createdCase.id,
-          case_number: createdCase.case_number,
-          user_id: createdCase.user_id,
-          client_email: createdCase.client_email
+          case_number: createdCase.case_number
       });
 
-      // Trigger AI Analysis (non-blocking - don't fail submission if this fails)
-      base44.functions.invoke('cryptoScamDetection', {
-        endpoint: 'report-scam',
-        scam_type: 'wallet',
-        identifier: formData.scammer_wallet,
-        blockchain: formData.blockchain,
-        description: `Related to fraud case: ${formData.description}`,
-        amount_stolen: formData.amount_lost
-      }).catch(err => console.error('AI analysis failed:', err));
-
-      // 🚨 CRITICAL: Show success with explicit case confirmation
       toast.success(
-        `✅ CONFIRMED: Case ${createdCase.case_number} created successfully!`, 
-        {
-          duration: 6000,
-          description: `ID: ${createdCase.id} | Redirecting to My Cases...`
-        }
+        `✅ Case ${createdCase.case_number || createdCase.id} submitted successfully!`, 
+        { duration: 5000 }
       );
-      
-      // Immediate redirect to My Cases
-      navigate(createPageUrl('MyCases'));
+
+      setTimeout(() => {
+          navigate(createPageUrl('MyCases'));
+      }, 1000);
+
     } catch (error) {
-      console.error('❌ SUBMISSION FAILED:', error);
-      
-      // Detailed error message for debugging
-      toast.error('Failed to submit report: ' + error.message, {
-          duration: 6000,
-          description: 'Please try again or contact support if the issue persists.'
-      });
-      
-      // Log for admin debugging
-      console.error('Submission error details:', {
-          user: user?.email,
-          scammer_wallet: formData.scammer_wallet,
-          error: error.message,
-          stack: error.stack
-      });
+      console.error('❌ SUBMISSION ERROR:', error);
+      toast.error('Submission failed: ' + error.message, { duration: 6000 });
     }
 
     setLoading(false);
