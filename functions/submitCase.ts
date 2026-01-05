@@ -11,10 +11,10 @@ Deno.serve(async (req) => {
 
         const payload = await req.json();
         
-        // MINIMAL REQUIRED FIELDS - Only what's absolutely necessary
+        // 🔥 CRITICAL: user_id is the PRIMARY key for My Cases visibility
         const caseData = {
-            // OWNERSHIP - CRITICAL FOR VISIBILITY
-            user_id: user.id,
+            // OWNERSHIP - MANDATORY for "My Cases" query
+            user_id: user.id,  // ← THIS IS THE KEY FIELD
             created_by: user.email,
             created_by_email: user.email,
             created_by_name: user.full_name || payload.victim_name || 'User',
@@ -62,10 +62,15 @@ Deno.serve(async (req) => {
 
         console.log('🚀 CREATING CASE:', {
             user_email: user.email,
-            user_id: user.id,
+            user_id: user.id,  // ← VERIFY THIS IS SET
             issue_type: caseData.issue_type,
             amount: caseData.amount_lost
         });
+        
+        // 🔥 CRITICAL CHECK: Verify user_id is set
+        if (!caseData.user_id) {
+            throw new Error('CRITICAL: user_id not set - case will not appear in My Cases');
+        }
 
         // DIRECT DATABASE WRITE - NO COMPLEX LOGIC
         const newCase = await base44.entities.MyCase.create(caseData);
