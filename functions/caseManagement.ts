@@ -324,7 +324,7 @@ Deno.serve(async (req) => {
                 action_category: 'security',
                 description: `CASE SUBMITTED: ${caseId} by ${creatorEmail}`,
                 severity: 'high',
-                metadata: JSON.stringify({
+                metadata: {
                     case_id: newCase.id,
                     case_number: caseId,
                     user_id: ownerUserId,
@@ -332,7 +332,7 @@ Deno.serve(async (req) => {
                     amount: caseData.amount_lost,
                     verified: true,
                     timestamp: new Date().toISOString()
-                }),
+                },
                 created_by: user.email
             }).catch(e => console.error("Audit log write failed:", e));
 
@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
                 action_category: 'security', 
                 description: `Case ${caseId} created by ${creatorEmail}. Status: Pending. Amount: $${caseData.amount_lost}`,
                 severity: 'high',
-                metadata: JSON.stringify({
+                metadata: {
                     case_id: newCase.id,
                     case_number: caseId,
                     user_email: creatorEmail,
@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
                     amount: caseData.amount_lost,
                     action: 'case_created',
                     timestamp: new Date().toISOString()
-                }),
+                },
                 created_by: user.email
             }).catch(e => console.error("Audit log failed:", e));
             
@@ -1156,12 +1156,12 @@ Deno.serve(async (req) => {
 
                 // 4. Log Action
                 await base44.entities.AuditLog.create({
-                    action_type: 'settings_updated', // Reuse or add new enum if possible (using closest existing)
+                    action_type: 'settings_updated',
                     action_category: 'security',
                     description: `Admin ${user.email} merged ${cases.length} cases into Profile Case ${profileCase.id}`,
                     severity: 'high',
                     created_by: user.email,
-                    metadata: JSON.stringify({ merged_cases: caseIds, profile_case_id: profileCase.id })
+                    metadata: { merged_cases: caseIds, profile_case_id: profileCase.id }
                 });
 
                 return Response.json({ success: true, profileCase });
