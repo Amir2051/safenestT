@@ -11,17 +11,29 @@ Deno.serve(async (req) => {
         
         console.log('🔍 GET ALL CASES REQUEST:', {
             user: user.email,
+            user_id: user.id,
             role: user.role,
             is_admin: user.is_admin,
             job_title: user.job_title
         });
         
-        // Fetch cases using user context (RLS will handle filtering)
-        // Admin users can see all cases via RLS rules
-        const cases = await base44.entities.MyCase.list('-created_date', 50000);
-        console.log(`✅ FETCHED: ${cases.length} cases for ${user.email}`);
-        
         const isAdmin = user.role === 'admin' || user.is_admin || user.job_title === 'Fraud Specialist';
+        
+        let cases;
+        if (isAdmin) {
+            // Admin sees ALL cases
+            cases = await base44.entities.MyCase.list('-created_date', 50000);
+        } else {
+            // 🔥 CRITICAL: Regular users see ONLY their cases
+            // Filter explicitly by user_id - this is the gold standard
+            cases = await base44.entities.MyCase.filter(
+                { user_id: user.id },
+                '-created_date',
+                50000
+            );
+        }
+        
+        console.log(`✅ FETCHED: ${cases.length} cases (admin: ${isAdmin}, user_id: ${user.id})`);
         
         return Response.json({ 
             success: true, 
