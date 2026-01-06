@@ -113,14 +113,12 @@ export default function MyCases() {
       const cases = response.data.cases || [];
       console.log(`✅ FETCHED: ${cases.length} cases (role: ${response.data.user_role})`);
 
-      // REMOVED: P0 verification to prevent query loops
-      // Zero-case is expected for new users
-
       return cases;
     },
     enabled: !!user,
-    refetchInterval: 5000, // FIXED: Increased to 5 seconds
-    staleTime: 2000 // FIXED: Added stale time to reduce re-fetches
+    staleTime: 300000, // 5 minutes - data rarely changes
+    refetchInterval: false, // NO AUTO-REFRESH
+    refetchOnWindowFocus: false // Don't refetch on tab focus
   });
 
   // Fetch My Reported Scams (keep as-is for now, focus on MyCase entity)
