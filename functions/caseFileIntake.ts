@@ -225,11 +225,18 @@ Rules:
                 }
             }
             
+            // CRITICAL: Validate scammer wallet (required by caseManagement)
+            const scammerWallet = extractedData.financial_details?.scammer_wallet;
+            if (!scammerWallet || scammerWallet === 'Not Provided') {
+                return Response.json({
+                    success: false,
+                    error: 'Scammer wallet address is required to create a case. Please add it in the form before submitting.',
+                    missingField: 'scammer_wallet'
+                });
+            }
+            
             // Build case data with ALL required fields
             const caseData = {
-                // CRITICAL: Primary ownership field for RLS
-                user_id: targetUser?.id,
-                
                 // Client info
                 client_name: extractedData.contact_info?.victim_name || 'Unknown Victim',
                 client_email: resolvedEmail || user.email,
@@ -241,11 +248,11 @@ Rules:
                 urgency: (extractedData.urgency || 'medium').toLowerCase(),
                 description: extractedData.description || extractedData.summary_notes || 'Case submitted via AI extraction',
                 
-                // Financial
+                // Financial - CRITICAL: scammer_wallet and victim_wallet for caseManagement
                 amount_lost: parseFloat(extractedData.financial_details?.amount_lost) || 0,
                 cryptocurrency: extractedData.financial_details?.currency || '',
                 blockchain: extractedData.financial_details?.blockchain || '',
-                scammer_wallet: extractedData.financial_details?.scammer_wallet || '',
+                scammer_wallet: scammerWallet,
                 victim_wallet: extractedData.financial_details?.victim_wallet || '',
                 
                 // Scammer info

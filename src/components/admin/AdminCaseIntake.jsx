@@ -377,20 +377,39 @@ export default function AdminCaseIntake({ onCaseCreated }) {
               </div>
             </div>
 
-            {/* Scammer Wallet */}
-            {editedData.financial_details?.scammer_wallet && (
-              <div>
-                <Label className="text-white">Scammer Wallet</Label>
-                <Input
-                  value={editedData.financial_details.scammer_wallet}
-                  onChange={(e) => setEditedData({
-                    ...editedData,
-                    financial_details: {...editedData.financial_details, scammer_wallet: e.target.value}
-                  })}
-                  className="bg-[#0f1419] border-gray-700 text-white font-mono mt-1"
-                />
-              </div>
-            )}
+            {/* Scammer Wallet - REQUIRED */}
+            <div>
+              <Label className="text-white">
+                Scammer Wallet <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                value={editedData.financial_details?.scammer_wallet || ''}
+                onChange={(e) => setEditedData({
+                  ...editedData,
+                  financial_details: {...(editedData.financial_details || {}), scammer_wallet: e.target.value}
+                })}
+                placeholder="Required: 0x... or BTC address"
+                className="bg-[#0f1419] border-gray-700 text-white font-mono mt-1"
+                required
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Required for case tracking and blockchain analysis
+              </p>
+            </div>
+            
+            {/* Victim Wallet - Optional */}
+            <div>
+              <Label className="text-white">Victim Wallet (Optional)</Label>
+              <Input
+                value={editedData.financial_details?.victim_wallet || ''}
+                onChange={(e) => setEditedData({
+                  ...editedData,
+                  financial_details: {...(editedData.financial_details || {}), victim_wallet: e.target.value}
+                })}
+                placeholder="0x... or BTC address"
+                className="bg-[#0f1419] border-gray-700 text-white font-mono mt-1"
+              />
+            </div>
 
             {/* Target User (Optional) */}
             <div>
@@ -446,10 +465,15 @@ export default function AdminCaseIntake({ onCaseCreated }) {
               </Button>
             </div>
             
-            {/* Debug Info (Admin Only) */}
+            {/* Validation Warnings */}
             {!editedData && (
               <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
                 ⚠️ Extract case information first before creating
+              </div>
+            )}
+            {editedData && (!editedData.financial_details?.scammer_wallet || editedData.financial_details?.scammer_wallet === 'Not Provided') && (
+              <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                ⚠️ Scammer wallet is required - please add it above before creating case
               </div>
             )}
           </CardContent>
