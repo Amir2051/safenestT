@@ -90,7 +90,7 @@ export default function MyCases() {
     setIsSearching(false);
   };
 
-  // Fetch MyCase - SINGLE SOURCE OF TRUTH
+  // Fetch MyCase - DIRECT ENTITY QUERY (RLS handles permissions)
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases', user?.id],
     queryFn: async () => {
@@ -102,16 +102,9 @@ export default function MyCases() {
         job_title: user?.job_title
       });
 
-      // 🚨 CRITICAL: Use backend function for ALL case fetching (admin + user)
-      const response = await base44.functions.invoke('getAllCases');
-
-      if (!response.data.success) {
-          console.error('❌ GET ALL CASES FAILED:', response.data.error);
-          throw new Error(response.data.error || 'Failed to fetch cases');
-      }
-
-      const cases = response.data.cases || [];
-      console.log(`✅ FETCHED: ${cases.length} cases (role: ${response.data.user_role})`);
+      // DIRECT QUERY - RLS automatically filters based on user permissions
+      const cases = await base44.entities.MyCase.list('-created_date', 50000);
+      console.log(`✅ FETCHED: ${cases.length} cases directly from entity`);
 
       return cases;
     },
