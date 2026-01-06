@@ -124,6 +124,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
+      console.log('🔄 Updating case:', caseData.id, updates);
+      
       const response = await base44.functions.invoke('caseManagement', {
         action: 'update',
         data: {
@@ -133,23 +135,35 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         }
       });
       
+      console.log('✅ Update response:', response.data);
+      
       if (response.data.error) {
         throw new Error(response.data.error);
       }
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Update failed');
+      }
+      
       return response.data.case;
     },
-    onSuccess: () => {
-      if (onUpdate) onUpdate();
+    onSuccess: (data) => {
+      console.log('✅ Case updated successfully:', data);
       toast.success("Case Updated Successfully");
       setEditing(false);
+      
+      // Force parent refresh
+      if (onUpdate) {
+        onUpdate();
+      }
     },
     onError: (err) => {
-      console.error("Update failed", err);
+      console.error("❌ Update failed:", err);
       if (err.message.includes("not found") || err.message.includes("Case with ID")) {
           toast.error("This case no longer exists. It may have been deleted.");
           if (onClose) onClose();
       } else {
-          toast.error("Update Failed: " + err.message);
+          toast.error("Update Failed: " + err.message, { duration: 5000 });
       }
     }
   });

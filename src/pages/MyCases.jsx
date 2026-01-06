@@ -128,8 +128,14 @@ export default function MyCases() {
   });
 
   const handleCaseUpdate = () => {
+      console.log('🔄 Refreshing cases after update...');
       queryClient.invalidateQueries({ queryKey: ['my-cases'] });
       queryClient.invalidateQueries({ queryKey: ['my-scams'] });
+      
+      // Force immediate refetch
+      refetchCases();
+      
+      toast.success('Case data refreshed');
   };
 
   const confirmDelete = async () => {
