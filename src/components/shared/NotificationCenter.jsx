@@ -20,15 +20,12 @@ export default function NotificationCenter() {
     
     loadNotifications();
     
-    // Poll for new notifications every 10 seconds
-    const interval = setInterval(loadNotifications, 10000);
-
-    // Listen for local events
+    // DISABLED: No auto-polling
+    // Listen for local events only
     const handleNewNotification = () => loadNotifications();
     window.addEventListener('notificationAdded', handleNewNotification);
     
     return () => {
-        clearInterval(interval);
         window.removeEventListener('notificationAdded', handleNewNotification);
     };
   }, []);

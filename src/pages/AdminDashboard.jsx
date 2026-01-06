@@ -37,16 +37,24 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+    
     base44.auth.me().then(userData => {
+      if (!isMounted) return;
       setUser(userData);
       if (userData.role !== 'admin' && !userData.is_admin) {
         navigate(createPageUrl('Dashboard'));
         toast.error('Admin access required');
       }
     }).catch(() => {
+      if (!isMounted) return;
       navigate(createPageUrl('Dashboard'));
     });
-  }, [navigate]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-dashboard-stats'],
@@ -57,7 +65,9 @@ export default function AdminDashboard() {
       return response.data;
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
-    refetchInterval: 10000
+    staleTime: 300000, // 5 minutes
+    refetchInterval: false, // NO AUTO-REFRESH
+    refetchOnWindowFocus: false
   });
 
   if (!user || isLoading) {

@@ -67,7 +67,9 @@ export default function AdminUserApprovals() {
       return response.data.users || [];
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
-    refetchInterval: 5000
+    staleTime: 300000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false
   });
 
   // Fetch cases for each user
