@@ -18,9 +18,14 @@ export default function ReferralCodeHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // CRITICAL: Run once only to prevent infinite loops
+    let isMounted = true;
+    
     const checkReferral = async () => {
       try {
         const userData = await base44.auth.me();
+        if (!isMounted) return;
+        
         setUser(userData);
 
         // Don't show if user already has referral
@@ -34,18 +39,11 @@ export default function ReferralCodeHandler() {
           setReferralCode(pendingCode);
           sessionStorage.removeItem('pending_referral_code');
           
-          // If user just completed onboarding, don't show the prompt - they already saw it
+          // FIXED: Only show prompt if onboarding is completed
+          // Do NOT navigate - this causes redirect loops
           if (userData.onboarding_completed) {
-            return;
+            setShowPrompt(true);
           }
-          
-          // If onboarding not completed, redirect to onboarding with code
-          if (!userData.onboarding_completed) {
-            navigate(`/onboarding?ref=${pendingCode}`);
-            return;
-          }
-          
-          setShowPrompt(true);
           return;
         }
 
@@ -56,22 +54,23 @@ export default function ReferralCodeHandler() {
         if (refCode) {
           setReferralCode(refCode.toUpperCase());
           
-          // If onboarding not completed, this is handled by Onboarding page
-          if (!userData.onboarding_completed) {
-            return;
+          // FIXED: Only show prompt if onboarding completed
+          // Onboarding page handles its own referral logic
+          if (userData.onboarding_completed) {
+            setShowPrompt(true);
           }
-          
-          // If completed onboarding but no referral, show prompt
-          setShowPrompt(true);
         }
       } catch (error) {
-        // User not authenticated
-        console.log('User not authenticated');
+        // User not authenticated - silently ignore
       }
     };
 
     checkReferral();
-  }, [navigate]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // CRITICAL: Empty array - run once only
 
   const handleApply = async () => {
     if (!referralCode) {
