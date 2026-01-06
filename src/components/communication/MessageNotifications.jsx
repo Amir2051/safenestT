@@ -37,15 +37,13 @@ export default function MessageNotifications({ user }) {
     refetchInterval: 10000 // Check every 10 seconds
   });
 
-  const { data: prevCount } = useQuery({
-    queryKey: ['prev-unread-count'],
-    queryFn: () => unreadCount,
-    enabled: false
-  });
+  // FIXED: Use ref instead of query to track previous count
+  const prevCountRef = React.useRef(unreadCount);
 
   useEffect(() => {
-    if (unreadCount > (prevCount || 0)) {
-      const newMessages = unreadCount - (prevCount || 0);
+    // FIXED: Only show notification if count actually increased AND we have a valid previous value
+    if (unreadCount > 0 && prevCountRef.current !== undefined && unreadCount > prevCountRef.current) {
+      const newMessages = unreadCount - prevCountRef.current;
       
       // Show toast notification
       toast.info(`${newMessages} new message${newMessages > 1 ? 's' : ''} from investigator`, {
@@ -62,7 +60,10 @@ export default function MessageNotifications({ user }) {
         });
       }
     }
-  }, [unreadCount, prevCount]);
+    
+    // Update ref
+    prevCountRef.current = unreadCount;
+  }, [unreadCount]); // FIXED: Only depend on unreadCount
 
   return null; // This is a notification-only component
 }
