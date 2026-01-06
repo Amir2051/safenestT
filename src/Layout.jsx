@@ -59,34 +59,45 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // Load Apollo tracker
+  // Load Apollo tracker - ONCE ONLY
   React.useEffect(() => {
-    // Prevent duplicate loading
-    if (window.apolloTrackerInitialized) {
+    // CRITICAL: Check if already loaded OR loading
+    if (window.apolloTrackerInitialized || document.querySelector('script[data-apollo-tracker="true"]')) {
       return;
     }
 
-    function initApollo() {
-      const n = Math.random().toString(36).substring(7);
-      const o = document.createElement('script');
-      o.src = "https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=" + n;
-      o.async = true;
-      o.defer = true;
-      o.setAttribute('data-apollo-tracker', 'true');
-      o.onload = function() {
-        if (window.trackingFunctions && window.trackingFunctions.onLoad) {
-          window.trackingFunctions.onLoad({ appId: "694c5977dbc21700115a85f0" });
-          window.apolloTrackerInitialized = true;
-          console.log('Apollo tracker initialized successfully');
-        }
-      };
-      o.onerror = () => {
-        console.error('Failed to load Apollo tracker script');
-      };
-      document.head.appendChild(o);
-    }
+    // Mark as loading immediately to prevent race conditions
+    window.apolloTrackerInitialized = true;
+
+    const script = document.createElement('script');
+    // FIXED: Use static URL without random parameter
+    script.src = "https://assets.apollo.io/micro/website-tracker/tracker.iife.js";
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-apollo-tracker', 'true');
     
-    initApollo();
+    script.onload = () => {
+      if (window.trackingFunctions && window.trackingFunctions.onLoad) {
+        window.trackingFunctions.onLoad({ appId: "694c5977dbc21700115a85f0" });
+        console.log('Apollo tracker initialized successfully');
+      }
+    };
+    
+    script.onerror = () => {
+      console.error('Failed to load Apollo tracker');
+      window.apolloTrackerInitialized = false; // Allow retry on error
+    };
+    
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      const existingScript = document.querySelector('script[data-apollo-tracker="true"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+      window.apolloTrackerInitialized = false;
+    };
   }, []);
 
   // Track route changes for Apollo (SPA support)
