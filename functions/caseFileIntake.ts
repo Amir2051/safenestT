@@ -15,54 +15,102 @@ Deno.serve(async (req) => {
         console.log('📥 CASE FILE INTAKE:', { action, filesCount: files?.length, hasExtractedData: !!extractedData });
         
         if (action === 'extract') {
-            // Extract text from uploaded files
+            // Extract text from uploaded files (PDF, TXT, Images with OCR)
             const extractedFiles = [];
-            
+
             for (const file of files) {
                 try {
-                    // Fetch file content
-                    const response = await fetch(file.url);
-                    const blob = await response.blob();
-                    const text = await blob.text();
-                    
+                    console.log(`📄 Processing file: ${file.name} (type: ${file.type})`);
+
+                    let extractedText = '';
+
+                    // Image files - use OCR via InvokeLLM with vision
+                    if (file.type === 'image') {
+                        console.log('🖼️ Processing image with OCR');
+                        try {
+                            const ocrResult = await base44.integrations.Core.InvokeLLM({
+                                prompt: `Extract ALL readable text from this image. Return ONLY the extracted text with no additional commentary. If the image contains:
+        - A document/form: Extract all fields, labels, and values
+        - A screenshot: Extract all visible text
+        - A photo: Extract any visible text, signs, or written content
+        - Multiple text areas: Extract all text preserving structure
+
+        IMPORTANT: Return the raw extracted text only, no explanations.`,
+                                file_urls: [file.url]
+                            });
+
+                            extractedText = ocrResult || '';
+                            console.log(`✅ OCR extracted ${extractedText.length} characters from ${file.name}`);
+                        } catch (ocrError) {
+                            console.error('❌ OCR failed:', ocrError);
+                            extractedFiles.push({
+                                filename: file.name,
+                                url: file.url,
+                                type: file.type,
+                                text: '',
+                                error: `OCR failed: ${ocrError.message}`,
+                                uploadedAt: file.uploadedAt
+                            });
+                            continue;
+                        }
+                    } 
+                    // PDF or TXT files - fetch raw text
+                    else {
+                        const response = await fetch(file.url);
+                        const blob = await response.blob();
+                        extractedText = await blob.text();
+                    }
+
                     extractedFiles.push({
                         filename: file.name,
                         url: file.url,
-                        text: text.slice(0, 50000), // Limit to 50k chars per file
-                        uploadedAt: new Date().toISOString()
+                        type: file.type,
+                        text: extractedText.slice(0, 50000), // Limit to 50k chars per file
+                        uploadedAt: file.uploadedAt
                     });
                 } catch (error) {
+                    console.error(`❌ Failed to process ${file.name}:`, error);
                     extractedFiles.push({
                         filename: file.name,
                         url: file.url,
+                        type: file.type,
                         text: '',
                         error: `Failed to extract: ${error.message}`,
-                        uploadedAt: new Date().toISOString()
+                        uploadedAt: file.uploadedAt
                     });
                 }
             }
-            
+
             // Combine all text
             const combinedText = extractedFiles
                 .filter(f => !f.error && f.text)
-                .map(f => `=== ${f.filename} ===\n${f.text}`)
+                .map(f => `=== ${f.filename} (${f.type.toUpperCase()}) ===\n${f.text}`)
                 .join('\n\n');
-            
+
+            console.log(`📊 Extraction summary: ${extractedFiles.length} files processed, ${combinedText.length} total characters`);
+
             if (!combinedText) {
                 return Response.json({ 
                     success: false,
-                    error: 'No readable text found in uploaded files',
+                    error: 'No readable text found in uploaded files. Please check that images contain visible text and PDFs are not encrypted.',
                     files: extractedFiles
                 });
             }
             
             // Use AI to extract structured case information
-            const prompt = `You are a case intake assistant. Extract structured case information from the provided documents.
+            const prompt = `You are a case intake assistant. Extract structured case information from the provided documents (PDF, TXT, and OCR from images).
 
-DOCUMENTS:
-${combinedText}
+            DOCUMENTS:
+            ${combinedText}
 
-Extract the following information in JSON format:
+            CRITICAL INSTRUCTIONS:
+            - Extract ALL available information
+            - If a field is not found, use "Not Provided" (NEVER null or empty)
+            - Preserve exact names, emails, wallet addresses
+            - Extract dates in YYYY-MM-DD format
+            - Be thorough and accurate
+
+            Extract the following information in JSON format:
 {
   "case_title": "Brief descriptive title",
   "issue_type": "crypto_theft|phishing|investment_scam|romance_scam|rug_pull|fake_exchange|other",

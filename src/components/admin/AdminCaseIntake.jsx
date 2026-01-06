@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import {
   Upload, FileText, Loader2, CheckCircle, AlertCircle, 
-  Send, Copy, RefreshCw, X, FileCheck, Sparkles
+  Send, Copy, RefreshCw, X, FileCheck, Sparkles, Image as ImageIcon
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,10 +29,18 @@ export default function AdminCaseIntake({ onCaseCreated }) {
     const uploadPromises = selectedFiles.map(async (file) => {
       try {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        
+        // Detect file type
+        let fileType = 'unknown';
+        if (file.type.includes('pdf')) fileType = 'pdf';
+        else if (file.type.includes('text')) fileType = 'txt';
+        else if (file.type.includes('image')) fileType = 'image';
+        
         return {
           name: file.name,
           url: file_url,
-          type: file.type.includes('pdf') ? 'pdf' : 'txt',
+          type: fileType,
+          mimeType: file.type,
           uploadedAt: new Date().toISOString()
         };
       } catch (error) {
@@ -162,7 +170,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
               type="file"
               id="case-file-upload"
               multiple
-              accept=".pdf,.txt"
+              accept=".pdf,.txt,image/*,.jpg,.jpeg,.png,.webp"
               className="hidden"
               onChange={handleFileSelect}
               disabled={processing}
@@ -177,7 +185,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                 <div className="flex flex-col items-center">
                   <Upload className="w-12 h-12 text-gray-400 mb-3" />
                   <p className="text-white font-medium">Click to upload case files</p>
-                  <p className="text-gray-500 text-sm mt-1">PDF or TXT files • Multiple files supported</p>
+                  <p className="text-gray-500 text-sm mt-1">PDF, TXT, or Images (JPG, PNG, WEBP) • Multiple files supported</p>
                 </div>
               )}
             </label>
@@ -185,17 +193,28 @@ export default function AdminCaseIntake({ onCaseCreated }) {
 
           {/* Uploaded Files Chat Bubbles */}
           {uploadedFiles.length > 0 && (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {uploadedFiles.map((file, idx) => (
                 <div key={idx} className="flex items-start gap-3 p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20">
-                  <FileText className="w-5 h-5 text-cyan-400 mt-0.5" />
+                  {file.type === 'image' ? (
+                    <div className="relative w-16 h-16 flex-shrink-0">
+                      <img 
+                        src={file.url} 
+                        alt={file.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                      <ImageIcon className="absolute top-0 right-0 w-4 h-4 text-cyan-400 bg-black/50 rounded-full p-0.5" />
+                    </div>
+                  ) : (
+                    <FileText className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{file.name}</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(file.uploadedAt).toLocaleTimeString()}
+                      {file.type.toUpperCase()} • {new Date(file.uploadedAt).toLocaleTimeString()}
                     </p>
                   </div>
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50 flex-shrink-0">
                     <FileCheck className="w-3 h-3 mr-1" />
                     Uploaded
                   </Badge>
@@ -203,7 +222,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                     variant="ghost"
                     size="sm"
                     onClick={() => removeFile(idx)}
-                    className="text-gray-400 hover:text-red-400"
+                    className="text-gray-400 hover:text-red-400 flex-shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </Button>
