@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield, Users, Clock, CheckCircle, XCircle, AlertTriangle,
   Activity, TrendingUp, Settings, FileText, Loader2, Key, 
-  UserCheck, Lock, Zap, Brain, BarChart3
+  UserCheck, Lock, Zap, Brain, BarChart3, Upload
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -29,6 +29,7 @@ import CaseVisibilityDiagnostic from "../components/admin/CaseVisibilityDiagnost
 import ProactiveAlertsWidget from "../components/admin/ProactiveAlertsWidget.jsx";
 import EmergencyRecoveryPanel from "../components/admin/EmergencyRecoveryPanel.jsx";
 import P0IncidentPanel from "../components/admin/P0IncidentPanel.jsx";
+import AdminCaseIntake from "../components/admin/AdminCaseIntake.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -230,6 +231,10 @@ export default function AdminDashboard() {
             <Brain className="w-4 h-4 mr-2" />
             Diagnostics
           </TabsTrigger>
+          <TabsTrigger value="case-intake">
+            <Upload className="w-4 h-4 mr-2" />
+            Case Intake
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6">
@@ -280,6 +285,27 @@ export default function AdminDashboard() {
               <ProactiveAlertsWidget />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="case-intake" className="mt-6">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Upload className="w-5 h-5 text-cyan-400" />
+                Admin Case Intake Chat
+              </CardTitle>
+              <p className="text-gray-400 text-sm">
+                Upload case files (PDF/TXT) and let AI extract structured information
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AdminCaseIntake 
+                onCaseCreated={(newCase) => {
+                  toast.success(`Case ${newCase.case_number} created successfully`);
+                }}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
