@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 async function getNextSequence(base44, year) {
     const configKey = `case_seq_${year}`;
@@ -421,8 +421,10 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'update') {
-            const { id, updates } = data;
+            const { id, updates, entityName } = data;
             if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
+
+            console.log('🔄 UPDATE ACTION:', { id, entityName, updates: Object.keys(updates) });
 
             // Ensure numeric fields are numbers
             if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
@@ -442,116 +444,92 @@ Deno.serve(async (req) => {
             const isSpecialist = user.job_title === 'Fraud Specialist';
 
             try {
-                // Try MyCase first
-                let existing = await base44.entities.MyCase.get(id).catch(() => null);
-                let entityType = 'MyCase';
+                // Determine entity type from parameter or fallback
+                let entityType = entityName || 'MyCase';
+                let existing;
 
+                if (entityType === 'MyCase') {
+                    existing = await base44.entities.MyCase.get(id).catch(() => null);
+                }
+                
+                if (!existing && entityType === 'InvestigationCase') {
+                    existing = await base44.entities.InvestigationCase.get(id).catch(() => null);
+                }
+                
+                // Fallback to trying both if not found
                 if (!existing) {
-                    // Fallback to InvestigationCase
+                    existing = await base44.entities.MyCase.get(id).catch(() => null);
+                    entityType = 'MyCase';
+                }
+                
+                if (!existing) {
                     existing = await base44.entities.InvestigationCase.get(id).catch(() => null);
                     entityType = 'InvestigationCase';
                 }
 
                 if (!existing) {
+                    console.error('❌ Case not found:', id);
                     return Response.json({ error: `Case ${id} not found` }, { status: 404 });
                 }
 
-                // ADMIN OVERRIDE: If admin, skip ownership check entirely
-                if (!isAdmin && !isSpecialist) {
+                console.log('✅ Found case in entity:', entityType);
+
+                // ADMIN OVERRIDE: Admins can update ANY case using service role
+                if (isAdmin || isSpecialist) {
+                    console.log('🔓 Admin/Specialist update - using service role');
+                    
+                    // Log status changes
+                    if (updates.status && existing.status !== updates.status) {
+                        await base44.entities.CaseTimelineEvent.create({
+                            case_id: id,
+                            event_type: 'status_change',
+                            event_title: 'Status Updated',
+                            event_description: `Status changed from "${existing.status}" to "${updates.status}"`,
+                            severity: 'info',
+                            created_by_user: user.email,
+                            created_by_name: user.full_name,
+                            automated: false,
+                            visible_to_client: true
+                        }).catch(e => console.error("Timeline log failed:", e));
+
+                        // WORKFLOW TRIGGER: Law Enforcement Status
+                        if (updates.status === 'law_enforcement') {
+                            base44.functions.invoke('workflowAutomation', {
+                                trigger_type: 'case_status_law_enforcement',
+                                trigger_data: { case_id: id }
+                            }).catch(e => console.error("Workflow trigger failed:", e));
+                        }
+                    }
+
+                    // PERFORM UPDATE - Use service role for admin/specialist
+                    console.log('💾 Updating case with service role...');
+                    const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
+                    console.log('✅ Case updated successfully:', updatedCase.id);
+
+                    // WORKFLOW TRIGGER: Priority Escalation
+                    if (updates.priority && (updates.priority === 'high' || updates.priority === 'critical')) {
+                        if (existing.priority !== updates.priority) {
+                            base44.functions.invoke('workflowAutomation', {
+                                trigger_type: 'priority_escalation',
+                                trigger_data: { case_id: id, priority: updates.priority }
+                            }).catch(e => console.error("Priority workflow failed:", e));
+                        }
+                    }
+
+                    return Response.json({ success: true, case: updatedCase });
+
+                } else {
                     // Regular users can only update their own cases
-                    if (existing.created_by !== user.email) {
+                    if (existing.created_by !== user.email && existing.client_email !== user.email) {
                         return Response.json({ error: "Unauthorized" }, { status: 403 });
                     }
+                    
+                    const updatedCase = await base44.entities[entityType].update(id, updates);
+                    return Response.json({ success: true, case: updatedCase });
                 }
-
-                // Log status changes
-                if (updates.status && existing.status !== updates.status) {
-                    await base44.entities.CaseTimelineEvent.create({
-                        case_id: id,
-                        event_type: 'status_change',
-                        description: `Status updated to ${updates.status}`,
-                        performed_by: user.email,
-                        previous_status: existing.status,
-                        new_status: updates.status,
-                        metadata: JSON.stringify({ timestamp: new Date().toISOString() })
-                    }).catch(e => console.error("Log failed:", e));
-
-                    // WORKFLOW TRIGGER: Law Enforcement Status
-                    if (updates.status === 'law_enforcement') {
-                        base44.functions.invoke('workflowAutomation', {
-                            trigger_type: 'case_status_law_enforcement',
-                            trigger_data: { case_id: id }
-                        }).catch(e => console.error("Workflow trigger failed:", e));
-                    }
-
-                    // AUTOMATION 1: Trigger Workflow Tasks for 'Investigating'
-                    if (updates.status.toLowerCase() === 'investigating' && existing.status.toLowerCase() !== 'investigating') {
-                        const tasks = [
-                            { title: "Initial Victim Contact", description: "Reach out to the victim to confirm details and gather additional evidence.", priority: "high" },
-                            { title: "Trace Funds on Blockchain", description: "Use tracking tools to follow the stolen funds to a centralized exchange.", priority: "critical" },
-                            { title: "Check for Linked Cases", description: "Search database for similar wallet addresses or scammer profiles.", priority: "medium" },
-                            { title: "File Preliminary Report", description: "Draft the initial investigation findings.", priority: "medium" }
-                        ];
-
-                        for (const task of tasks) {
-                            await base44.entities.CaseTask.create({
-                                case_id: id,
-                                title: task.title,
-                                description: task.description,
-                                assigned_to: existing.assigned_to || user.email,
-                                assigned_by: 'system_automation',
-                                status: 'todo',
-                                priority: task.priority,
-                                due_date: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-                            });
-                        }
-                    }
-
-                    // AUTOMATION 2: Email Notification on Status Change
-                    const recipientEmail = existing.client_email || existing.created_by_email;
-                    if (recipientEmail) {
-                        try {
-                            await base44.integrations.Core.SendEmail({
-                                to: recipientEmail,
-                                subject: `Case Status Update: ${existing.case_number || 'Your Case'}`,
-                                body: `Hello ${existing.client_name || 'User'},\n\nYour case status has been updated from "${existing.status}" to "${updates.status}".\n\nPlease log in to your SafeNest dashboard to view the latest details and any required actions.\n\nBest regards,\nSafeNest Security Team`
-                            });
-                        } catch (emailError) {
-                            console.error("Failed to send status email:", emailError);
-                        }
-                    }
-                }
-
-                // PERFORM UPDATE
-                const updatedCase = await base44.entities[entityType].update(id, updates);
-
-                // WORKFLOW TRIGGER: Priority Escalation
-                if (updates.priority && (updates.priority === 'high' || updates.priority === 'critical')) {
-                    if (existing.priority !== updates.priority) {
-                        base44.functions.invoke('workflowAutomation', {
-                            trigger_type: 'priority_escalation',
-                            trigger_data: { case_id: id, priority: updates.priority }
-                        }).catch(e => console.error("Priority workflow failed:", e));
-                    }
-                }
-
-                // WORKFLOW TRIGGER: Recovery Amount Updated
-                if (updates.recovery_amount !== undefined && oldRecoveryAmount !== undefined) {
-                    if (updates.recovery_amount > (existing.recovery_amount || 0)) {
-                        base44.functions.invoke('workflowAutomation', {
-                            trigger_type: 'recovery_amount_updated',
-                            trigger_data: {
-                                case_id: id,
-                                old_amount: existing.recovery_amount || 0,
-                                new_amount: updates.recovery_amount
-                            }
-                        }).catch(e => console.error("Recovery workflow failed:", e));
-                    }
-                }
-
-                return Response.json({ success: true, case: updatedCase });
 
             } catch (err) {
+                console.error('❌ Update error:', err);
                 return Response.json({ error: err.message }, { status: 500 });
             }
         }
