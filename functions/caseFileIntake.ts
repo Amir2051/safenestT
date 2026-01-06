@@ -304,11 +304,21 @@ Rules:
             // Use caseManagement function to create case
             const action = targetUser ? 'create_for_user' : 'create';
             console.log('🚀 Calling caseManagement with action:', action);
+            console.log('📦 Payload structure:', {
+                action,
+                has_scammer_wallet: !!caseData.scammer_wallet,
+                has_victim_wallet: !!caseData.victim_wallet,
+                target_user: targetUser?.email
+            });
             
-            const response = await base44.functions.invoke('caseManagement', {
+            // CRITICAL: caseManagement expects scammer_wallet and victim_wallet at TOP LEVEL
+            const response = await base44.asServiceRole.functions.invoke('caseManagement', {
                 action: action,
                 data: {
                     ...caseData,
+                    // REQUIRED: Top-level wallet fields for validation
+                    scammer_wallet: caseData.scammer_wallet,
+                    victim_wallet: caseData.victim_wallet,
                     target_user_email: targetUser?.email,
                     target_user_name: targetUser?.full_name || extractedData.contact_info?.victim_name
                 }
