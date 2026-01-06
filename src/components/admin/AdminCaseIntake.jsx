@@ -82,29 +82,56 @@ export default function AdminCaseIntake({ onCaseCreated }) {
 
   const createCaseMutation = useMutation({
     mutationFn: async () => {
+      if (!editedData) {
+        throw new Error('No case data available. Please extract information first.');
+      }
+      
+      console.log('🚀 Creating case with data:', {
+        hasExtractedData: !!editedData,
+        targetUserEmail: targetUserEmail,
+        filesCount: uploadedFiles.length
+      });
+      
       const response = await base44.functions.invoke('caseFileIntake', {
         action: 'create-case',
         files: uploadedFiles,
         extractedData: editedData,
-        targetUserEmail: targetUserEmail || null
+        targetUserEmail: targetUserEmail?.trim() || null
       });
+      
+      console.log('✅ Case creation response:', response.data);
       return response.data;
     },
     onSuccess: (data) => {
+      console.log('📦 Case creation success handler:', data);
+      
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message, { duration: 5000 });
         if (onCaseCreated) onCaseCreated(data.case);
-        // Reset
+        
+        // Reset form
         setUploadedFiles([]);
         setExtractedData(null);
         setEditedData(null);
         setTargetUserEmail('');
+        
+        console.log('✅ Form reset complete');
+      } else if (data.needsUserInvite) {
+        toast.error(
+          `User "${data.email}" not found. Please invite them first or leave email blank to create as admin case.`,
+          { duration: 10000 }
+        );
       } else {
-        toast.error(data.error || 'Case creation failed');
+        console.error('❌ Case creation returned failure:', data.error);
+        toast.error(data.error || 'Case creation failed', { duration: 10000 });
       }
     },
     onError: (error) => {
-      toast.error('Case creation failed: ' + error.message);
+      console.error('❌ Case creation error:', error);
+      toast.error('Case creation failed: ' + error.message, { 
+        duration: 10000,
+        description: 'Check console for details'
+      });
     }
   });
 
@@ -393,9 +420,17 @@ export default function AdminCaseIntake({ onCaseCreated }) {
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t border-gray-700">
               <Button
-                onClick={() => createCaseMutation.mutate()}
-                disabled={createCaseMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                onClick={() => {
+                  console.log('🔵 Create Case button clicked');
+                  console.log('Current state:', {
+                    hasEditedData: !!editedData,
+                    targetUserEmail: targetUserEmail,
+                    filesCount: uploadedFiles.length
+                  });
+                  createCaseMutation.mutate();
+                }}
+                disabled={createCaseMutation.isPending || !editedData}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createCaseMutation.isPending ? (
                   <>
@@ -410,6 +445,13 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                 )}
               </Button>
             </div>
+            
+            {/* Debug Info (Admin Only) */}
+            {!editedData && (
+              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
+                ⚠️ Extract case information first before creating
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

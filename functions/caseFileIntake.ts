@@ -187,61 +187,157 @@ Rules:
             });
             
         } else if (action === 'create-case') {
-            // Create case from extracted data
+            console.log('📝 CREATE-CASE ACTION STARTED');
+            console.log('Target Email:', targetUserEmail);
+            console.log('Extracted Data:', JSON.stringify(extractedData, null, 2));
+            
+            // Validate required fields
+            if (!extractedData) {
+                return Response.json({
+                    success: false,
+                    error: 'No extracted data provided. Please run AI extraction first.'
+                });
+            }
+            
+            // Determine target user
+            let targetUser = null;
+            let resolvedEmail = targetUserEmail || extractedData.contact_info?.victim_email;
+            
+            if (resolvedEmail) {
+                // Look up user by email
+                try {
+                    const users = await base44.entities.User.list(null, 5000);
+                    targetUser = users.find(u => u.email?.toLowerCase() === resolvedEmail.toLowerCase());
+                    
+                    if (targetUser) {
+                        console.log('✅ Target user found:', targetUser.id, targetUser.email);
+                    } else {
+                        console.log('⚠️ User not found for email:', resolvedEmail);
+                        return Response.json({
+                            success: false,
+                            error: `User with email "${resolvedEmail}" not found. Please invite them first or create case as admin.`,
+                            needsUserInvite: true,
+                            email: resolvedEmail
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to lookup user:', error);
+                }
+            }
+            
+            // Build case data with ALL required fields
             const caseData = {
-                client_name: extractedData.contact_info?.victim_name || 'Unknown',
-                client_email: targetUserEmail || extractedData.contact_info?.victim_email || 'admin-created@safenest.com',
-                phone_number: extractedData.contact_info?.victim_phone,
+                // CRITICAL: Primary ownership field for RLS
+                user_id: targetUser?.id,
+                
+                // Client info
+                client_name: extractedData.contact_info?.victim_name || 'Unknown Victim',
+                client_email: resolvedEmail || user.email,
+                phone_number: extractedData.contact_info?.victim_phone || 'Not Provided',
+                
+                // Case details
                 issue_type: extractedData.issue_type || 'other',
                 status: 'Pending',
-                urgency: extractedData.urgency || 'Medium',
-                description: extractedData.description || extractedData.summary_notes || '',
-                amount_lost: extractedData.financial_details?.amount_lost || 0,
-                cryptocurrency: extractedData.financial_details?.currency,
-                blockchain: extractedData.financial_details?.blockchain,
-                scammer_wallet: extractedData.financial_details?.scammer_wallet,
-                victim_wallet: extractedData.financial_details?.victim_wallet,
-                scammer_info: extractedData.scammer_info,
+                urgency: (extractedData.urgency || 'medium').toLowerCase(),
+                description: extractedData.description || extractedData.summary_notes || 'Case submitted via AI extraction',
+                
+                // Financial
+                amount_lost: parseFloat(extractedData.financial_details?.amount_lost) || 0,
+                cryptocurrency: extractedData.financial_details?.currency || '',
+                blockchain: extractedData.financial_details?.blockchain || '',
+                scammer_wallet: extractedData.financial_details?.scammer_wallet || '',
+                victim_wallet: extractedData.financial_details?.victim_wallet || '',
+                
+                // Scammer info
+                scammer_info: extractedData.scammer_info || {},
+                
+                // Evidence
                 evidence_files: files.map(f => ({
                     name: f.name,
                     url: f.url,
                     type: f.type || 'document',
                     uploaded_date: new Date().toISOString(),
-                    description: 'Admin uploaded case intake file'
+                    description: 'Admin uploaded - AI extraction source'
                 })),
+                
+                // Timeline
                 timeline: extractedData.dates?.map(d => ({
-                    event: d.event,
-                    date: d.date,
+                    event: d.event || 'Event',
+                    date: d.date || new Date().toISOString(),
                     details: ''
                 })) || [],
-                created_by_admin: true,
+                
+                // Admin metadata
+                created_by_admin: !targetUser, // true if admin created without user
                 admin_creator_email: user.email,
+                
+                // CRITICAL: Ownership fields for visibility
+                created_by: targetUser?.email || user.email,
+                created_by_email: targetUser?.email || user.email,
+                created_by_name: targetUser?.full_name || user.full_name,
+                
+                // Source tracking
                 metadata: JSON.stringify({
-                    source: 'admin_file_intake',
+                    source: 'admin_ai_extraction',
+                    extraction_method: 'file_intake',
                     extracted_at: new Date().toISOString(),
                     files_processed: files.length,
+                    extracted_by: user.email,
                     ai_extraction: true
                 })
             };
             
+            console.log('📦 Case data prepared:', {
+                user_id: caseData.user_id,
+                client_email: caseData.client_email,
+                issue_type: caseData.issue_type,
+                has_scammer_wallet: !!caseData.scammer_wallet
+            });
+            
             // Use caseManagement function to create case
+            const action = targetUser ? 'create_for_user' : 'create';
+            console.log('🚀 Calling caseManagement with action:', action);
+            
             const response = await base44.functions.invoke('caseManagement', {
-                action: targetUserEmail ? 'create_for_user' : 'create',
+                action: action,
                 data: {
                     ...caseData,
-                    target_user_email: targetUserEmail,
-                    target_user_name: extractedData.contact_info?.victim_name
+                    target_user_email: targetUser?.email,
+                    target_user_name: targetUser?.full_name || extractedData.contact_info?.victim_name
                 }
             });
             
+            console.log('📥 caseManagement response:', response.data);
+            
             if (!response.data.success) {
+                console.error('❌ Case creation failed:', response.data.error);
                 throw new Error(response.data.error || 'Failed to create case');
+            }
+            
+            const createdCase = response.data.case;
+            console.log('✅ Case created successfully:', createdCase.id, createdCase.case_number);
+            
+            // Create timeline event for AI extraction
+            try {
+                await base44.entities.CaseTimelineEvent.create({
+                    case_id: createdCase.id,
+                    event_type: 'system_action',
+                    event_title: 'Case Created via AI Extraction',
+                    event_description: `Case automatically created from ${files.length} uploaded file(s) using AI extraction. Created by ${user.email}.`,
+                    severity: 'info',
+                    created_by_user: user.email,
+                    created_by_name: user.full_name,
+                    automated: true,
+                    visible_to_client: true
+                });
+            } catch (e) {
+                console.error('Failed to create timeline event:', e);
             }
             
             return Response.json({
                 success: true,
-                case: response.data.case,
-                message: `Case ${response.data.case.case_number} created successfully`
+                case: createdCase,
+                message: `✅ Case ${createdCase.case_number} created successfully${targetUser ? ` and assigned to ${targetUser.email}` : ' as admin case'}`
             });
             
         } else if (action === 're-analyze') {
