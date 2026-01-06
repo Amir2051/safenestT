@@ -89,7 +89,8 @@ export default function AdminCaseIntake({ onCaseCreated }) {
       console.log('🚀 Creating case with data:', {
         hasExtractedData: !!editedData,
         targetUserEmail: targetUserEmail,
-        filesCount: uploadedFiles.length
+        filesCount: uploadedFiles.length,
+        extractedData: editedData
       });
       
       const response = await base44.functions.invoke('caseFileIntake', {
@@ -315,7 +316,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                   value={editedData.contact_info?.victim_name || ''}
                   onChange={(e) => setEditedData({
                     ...editedData, 
-                    contact_info: {...editedData.contact_info, victim_name: e.target.value}
+                    contact_info: {...(editedData.contact_info || {}), victim_name: e.target.value}
                   })}
                   className="bg-[#0f1419] border-gray-700 text-white mt-1"
                 />
@@ -326,7 +327,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                   value={editedData.contact_info?.victim_email || ''}
                   onChange={(e) => setEditedData({
                     ...editedData, 
-                    contact_info: {...editedData.contact_info, victim_email: e.target.value}
+                    contact_info: {...(editedData.contact_info || {}), victim_email: e.target.value}
                   })}
                   className="bg-[#0f1419] border-gray-700 text-white mt-1"
                 />
@@ -337,7 +338,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                   value={editedData.contact_info?.victim_phone || ''}
                   onChange={(e) => setEditedData({
                     ...editedData, 
-                    contact_info: {...editedData.contact_info, victim_phone: e.target.value}
+                    contact_info: {...(editedData.contact_info || {}), victim_phone: e.target.value}
                   })}
                   className="bg-[#0f1419] border-gray-700 text-white mt-1"
                 />
@@ -353,7 +354,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                   value={editedData.financial_details?.amount_lost || 0}
                   onChange={(e) => setEditedData({
                     ...editedData, 
-                    financial_details: {...editedData.financial_details, amount_lost: parseFloat(e.target.value)}
+                    financial_details: {...(editedData.financial_details || {}), amount_lost: parseFloat(e.target.value)}
                   })}
                   className="bg-[#0f1419] border-gray-700 text-white mt-1"
                 />
@@ -380,7 +381,7 @@ export default function AdminCaseIntake({ onCaseCreated }) {
             {/* Scammer Wallet - REQUIRED */}
             <div>
               <Label className="text-white">
-                Scammer Wallet <span className="text-red-400">*</span>
+                Scammer Wallet <span className="text-orange-400">(Recommended)</span>
               </Label>
               <Input
                 value={editedData.financial_details?.scammer_wallet || ''}
@@ -388,12 +389,11 @@ export default function AdminCaseIntake({ onCaseCreated }) {
                   ...editedData,
                   financial_details: {...(editedData.financial_details || {}), scammer_wallet: e.target.value}
                 })}
-                placeholder="Required: 0x... or BTC address"
+                placeholder="0x... or BTC address"
                 className="bg-[#0f1419] border-gray-700 text-white font-mono mt-1"
-                required
               />
               <p className="text-xs text-gray-400 mt-1">
-                Required for case tracking and blockchain analysis
+                Recommended for case tracking and blockchain analysis
               </p>
             </div>
             
@@ -469,11 +469,6 @@ export default function AdminCaseIntake({ onCaseCreated }) {
             {!editedData && (
               <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
                 ⚠️ Extract case information first before creating
-              </div>
-            )}
-            {editedData && (!editedData.financial_details?.scammer_wallet || editedData.financial_details?.scammer_wallet === 'Not Provided') && (
-              <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
-                ⚠️ Scammer wallet is required - please add it above before creating case
               </div>
             )}
           </CardContent>

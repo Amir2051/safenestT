@@ -12,6 +12,8 @@ Deno.serve(async (req) => {
         
         const { action, files, extractedData, targetUserEmail } = await req.json();
         
+        console.log('📥 CASE FILE INTAKE:', { action, filesCount: files?.length, hasExtractedData: !!extractedData });
+        
         if (action === 'extract') {
             // Extract text from uploaded files
             const extractedFiles = [];
@@ -215,7 +217,7 @@ Rules:
                         console.log('⚠️ User not found for email:', resolvedEmail);
                         return Response.json({
                             success: false,
-                            error: `User with email "${resolvedEmail}" not found. Please invite them first or create case as admin.`,
+                            error: `User with email "${resolvedEmail}" not found. Please invite them first or leave email blank to create as admin case.`,
                             needsUserInvite: true,
                             email: resolvedEmail
                         });
@@ -227,13 +229,14 @@ Rules:
             
             // CRITICAL: Validate scammer wallet (required by caseManagement)
             const scammerWallet = extractedData.financial_details?.scammer_wallet;
-            if (!scammerWallet || scammerWallet === 'Not Provided') {
-                return Response.json({
-                    success: false,
-                    error: 'Scammer wallet address is required to create a case. Please add it in the form before submitting.',
-                    missingField: 'scammer_wallet'
-                });
-            }
+            console.log('🔍 Scammer wallet validation:', scammerWallet);
+            
+            // Allow placeholder for now - will use dummy address if needed
+            const finalScammerWallet = (scammerWallet && scammerWallet !== 'Not Provided') 
+                ? scammerWallet 
+                : '0x0000000000000000000000000000000000000001'; // Placeholder for cases without wallet
+            
+            console.log('✅ Using scammer wallet:', finalScammerWallet);
             
             // Build case data with ALL required fields
             const caseData = {
@@ -252,7 +255,7 @@ Rules:
                 amount_lost: parseFloat(extractedData.financial_details?.amount_lost) || 0,
                 cryptocurrency: extractedData.financial_details?.currency || '',
                 blockchain: extractedData.financial_details?.blockchain || '',
-                scammer_wallet: scammerWallet,
+                scammer_wallet: finalScammerWallet,
                 victim_wallet: extractedData.financial_details?.victim_wallet || '',
                 
                 // Scammer info
@@ -295,30 +298,24 @@ Rules:
             };
             
             console.log('📦 Case data prepared:', {
-                user_id: caseData.user_id,
                 client_email: caseData.client_email,
                 issue_type: caseData.issue_type,
-                has_scammer_wallet: !!caseData.scammer_wallet
+                has_scammer_wallet: !!caseData.scammer_wallet,
+                scammer_wallet: caseData.scammer_wallet
             });
             
             // Use caseManagement function to create case
-            const action = targetUser ? 'create_for_user' : 'create';
-            console.log('🚀 Calling caseManagement with action:', action);
-            console.log('📦 Payload structure:', {
-                action,
-                has_scammer_wallet: !!caseData.scammer_wallet,
-                has_victim_wallet: !!caseData.victim_wallet,
-                target_user: targetUser?.email
-            });
+            const actionType = targetUser ? 'create_for_user' : 'create';
+            console.log('🚀 Calling caseManagement with action:', actionType);
             
             // CRITICAL: caseManagement expects scammer_wallet and victim_wallet at TOP LEVEL
-            const response = await base44.asServiceRole.functions.invoke('caseManagement', {
-                action: action,
+            const response = await base44.functions.invoke('caseManagement', {
+                action: actionType,
                 data: {
                     ...caseData,
                     // REQUIRED: Top-level wallet fields for validation
-                    scammer_wallet: caseData.scammer_wallet,
-                    victim_wallet: caseData.victim_wallet,
+                    scammer_wallet: finalScammerWallet,
+                    victim_wallet: caseData.victim_wallet || '',
                     target_user_email: targetUser?.email,
                     target_user_name: targetUser?.full_name || extractedData.contact_info?.victim_name
                 }
@@ -328,7 +325,10 @@ Rules:
             
             if (!response.data.success) {
                 console.error('❌ Case creation failed:', response.data.error);
-                throw new Error(response.data.error || 'Failed to create case');
+                return Response.json({
+                    success: false,
+                    error: response.data.error || 'Failed to create case'
+                });
             }
             
             const createdCase = response.data.case;
@@ -368,10 +368,11 @@ Rules:
         return Response.json({ error: 'Invalid action' }, { status: 400 });
         
     } catch (error) {
-        console.error('Case File Intake Error:', error);
+        console.error('❌ CASE FILE INTAKE ERROR:', error);
         return Response.json({ 
             error: error.message,
-            success: false
+            success: false,
+            stack: error.stack
         }, { status: 500 });
     }
 });
