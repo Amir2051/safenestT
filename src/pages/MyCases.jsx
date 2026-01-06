@@ -79,7 +79,7 @@ export default function MyCases() {
         else if (searchQuery.trim().length === 0) setSearchResults(null);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, user]);
+  }, [searchQuery]); // FIXED: Remove user dependency to prevent loops
 
   const performSearch = async () => {
     setIsSearching(true);
@@ -92,7 +92,7 @@ export default function MyCases() {
 
   // Fetch MyCase - SINGLE SOURCE OF TRUTH
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
-    queryKey: ['my-cases', user?.email, user?.id],
+    queryKey: ['my-cases', user?.id],
     queryFn: async () => {
       console.log('🔍 FETCHING CASES:', { 
         user_email: user?.email, 
@@ -113,29 +113,14 @@ export default function MyCases() {
       const cases = response.data.cases || [];
       console.log(`✅ FETCHED: ${cases.length} cases (role: ${response.data.user_role})`);
 
-      // Zero-case verification for users only
-      if (cases.length === 0 && response.data.user_role === 'user') {
-          console.warn('⚠️ ZERO CASES - Running P0 verification...');
-
-          const verifyResponse = await base44.functions.invoke('p0IncidentResponse', {
-              action: 'verify_user_visibility',
-              user_email: user?.email
-          });
-
-          if (verifyResponse.data.total_cases_for_user > 0) {
-              console.error(`❌ P0 INCIDENT: ${verifyResponse.data.total_cases_for_user} cases exist but not visible`);
-              toast.error(`${verifyResponse.data.total_cases_for_user} cases found but not visible. Contact support.`, {
-                  duration: 10000
-              });
-              return verifyResponse.data.cases || [];
-          }
-      }
+      // REMOVED: P0 verification to prevent query loops
+      // Zero-case is expected for new users
 
       return cases;
     },
     enabled: !!user,
-    refetchInterval: 3000,
-    staleTime: 0
+    refetchInterval: 5000, // FIXED: Increased to 5 seconds
+    staleTime: 2000 // FIXED: Added stale time to reduce re-fetches
   });
 
   // Fetch My Reported Scams (keep as-is for now, focus on MyCase entity)
