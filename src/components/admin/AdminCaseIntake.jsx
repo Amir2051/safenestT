@@ -49,23 +49,34 @@ export default function AdminCaseIntake({ onCaseCreated }) {
 
   const extractMutation = useMutation({
     mutationFn: async () => {
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        throw new Error('No files uploaded');
+      }
+      
+      console.log('🚀 Extracting from files:', uploadedFiles);
+      
       const response = await base44.functions.invoke('caseFileIntake', {
         action: 'extract',
         files: uploadedFiles
       });
+      
+      console.log('✅ Extraction response:', response.data);
       return response.data;
     },
     onSuccess: (data) => {
+      console.log('📦 Extraction success:', data);
       if (data.success) {
         setExtractedData(data.extractedData);
         setEditedData({ ...data.extractedData });
-        toast.success('Case information extracted successfully');
+        toast.success('✅ Case information extracted successfully');
       } else {
+        console.error('❌ Extraction failed:', data.error);
         toast.error(data.error || 'Extraction failed');
       }
     },
     onError: (error) => {
-      toast.error('Extraction failed: ' + error.message);
+      console.error('❌ Extraction error:', error);
+      toast.error('Extraction failed: ' + error.message, { duration: 10000 });
     }
   });
 

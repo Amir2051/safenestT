@@ -110,14 +110,70 @@ Rules:
                         case_title: { type: "string" },
                         issue_type: { type: "string" },
                         description: { type: "string" },
-                        people_involved: { type: "array" },
-                        dates: { type: "array" },
-                        locations: { type: "array" },
-                        contact_info: { type: "object" },
-                        financial_details: { type: "object" },
-                        evidence_references: { type: "array" },
+                        people_involved: { 
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    name: { type: "string" },
+                                    role: { type: "string" },
+                                    contact: { type: "string" }
+                                }
+                            }
+                        },
+                        dates: { 
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    event: { type: "string" },
+                                    date: { type: "string" }
+                                }
+                            }
+                        },
+                        locations: { 
+                            type: "array",
+                            items: { type: "string" }
+                        },
+                        contact_info: { 
+                            type: "object",
+                            properties: {
+                                victim_name: { type: "string" },
+                                victim_email: { type: "string" },
+                                victim_phone: { type: "string" }
+                            }
+                        },
+                        financial_details: { 
+                            type: "object",
+                            properties: {
+                                amount_lost: { type: "number" },
+                                currency: { type: "string" },
+                                scammer_wallet: { type: "string" },
+                                victim_wallet: { type: "string" },
+                                blockchain: { type: "string" }
+                            }
+                        },
+                        evidence_references: { 
+                            type: "array",
+                            items: { type: "string" }
+                        },
                         urgency: { type: "string" },
-                        scammer_info: { type: "object" },
+                        scammer_info: { 
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                email: { type: "string" },
+                                phone: { type: "string" },
+                                social_media: { 
+                                    type: "array",
+                                    items: { type: "string" }
+                                },
+                                wallet_addresses: { 
+                                    type: "array",
+                                    items: { type: "string" }
+                                }
+                            }
+                        },
                         summary_notes: { type: "string" }
                     }
                 }
