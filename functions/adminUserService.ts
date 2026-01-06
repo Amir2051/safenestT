@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
 
     // List all users
     if (endpoint === 'list-users') {
-      const users = await base44.asServiceRole.entities.User.list('-created_date');
+      const users = await base44.asServiceRole.entities.User.list('-created_date', 10000);
+      console.log(`✅ Admin fetched ${users.length} users`);
       return Response.json({ 
         success: true, 
         users: users 
