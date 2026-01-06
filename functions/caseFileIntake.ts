@@ -203,9 +203,9 @@ Rules:
             
             // Determine target user
             let targetUser = null;
-            let resolvedEmail = targetUserEmail || extractedData.contact_info?.victim_email;
+            let resolvedEmail = targetUserEmail; // ONLY use manually entered email, NOT auto-extracted
             
-            if (resolvedEmail) {
+            if (resolvedEmail && resolvedEmail.trim()) {
                 // Look up user by email
                 try {
                     const users = await base44.entities.User.list(null, 5000);
@@ -225,6 +225,8 @@ Rules:
                 } catch (error) {
                     console.error('Failed to lookup user:', error);
                 }
+            } else {
+                console.log('ℹ️ No target email provided - creating as admin case');
             }
             
             // CRITICAL: Validate scammer wallet (required by caseManagement)
@@ -241,8 +243,8 @@ Rules:
             // Build case data with ALL required fields
             const caseData = {
                 // Client info
-                client_name: extractedData.contact_info?.victim_name || 'Unknown Victim',
-                client_email: resolvedEmail || user.email,
+                client_name: extractedData.contact_info?.victim_name || targetUser?.full_name || 'Unknown Victim',
+                client_email: targetUser?.email || user.email,
                 phone_number: extractedData.contact_info?.victim_phone || 'Not Provided',
                 
                 // Case details
