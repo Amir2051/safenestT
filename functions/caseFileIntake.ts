@@ -389,6 +389,9 @@ Rules:
                 // Case identifier
                 case_number: caseNumber,
                 
+                // Source tracking - NEW
+                source_type: 'admin_intake',
+                
                 // All case data
                 ...caseData,
                 

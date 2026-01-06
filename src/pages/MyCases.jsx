@@ -106,12 +106,19 @@ export default function MyCases() {
       const cases = await base44.entities.MyCase.list('-created_date', 50000);
       console.log(`✅ FETCHED: ${cases.length} cases directly from entity`);
 
+      // Log source type distribution
+      const sourceTypes = cases.reduce((acc, c) => {
+        acc[c.source_type || 'unknown'] = (acc[c.source_type || 'unknown'] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📊 Cases by source:', sourceTypes);
+
       return cases;
     },
     enabled: !!user,
-    staleTime: 300000, // 5 minutes - data rarely changes
-    refetchInterval: false, // NO AUTO-REFRESH
-    refetchOnWindowFocus: false // Don't refetch on tab focus
+    staleTime: 10000, // 10 seconds - lower to catch new cases faster
+    refetchInterval: false,
+    refetchOnWindowFocus: false
   });
 
   // Fetch My Reported Scams (keep as-is for now, focus on MyCase entity)
@@ -773,6 +780,14 @@ export default function MyCases() {
                             <p className="text-gray-500 text-xs font-mono truncate">
                               Scammer: {caseItem.scammer_wallet}
                             </p>
+                          )}
+                          {caseItem.source_type && (
+                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50 text-xs">
+                              {caseItem.source_type === 'admin_intake' ? '📁 Admin Intake' :
+                               caseItem.source_type === 'image_extraction' ? '🖼️ Image' :
+                               caseItem.source_type === 'chat_extraction' ? '💬 Chat' : 
+                               '✍️ Manual'}
+                            </Badge>
                           )}
                           {user.role === 'admin' && (
                             <p className="text-purple-400 text-xs truncate flex items-center gap-1">
