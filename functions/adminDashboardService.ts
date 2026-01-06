@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
         pending_approvals: users.filter(u => u.account_status === 'pending_approval').length,
         active_users: users.filter(u => u.account_status === 'active').length,
         active_invites: invites.data?.invitations?.filter(i => i.status === 'active').length || 0,
-        critical_alerts: alerts.length
+        critical_alerts: alerts.length,
+        specialists: [],
+        kpis: {}
       });
     }
 
