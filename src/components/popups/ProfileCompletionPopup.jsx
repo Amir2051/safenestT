@@ -23,31 +23,30 @@ export default function ProfileCompletionPopup({ user, onUpdate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.full_name || !formData.phone) {
+    
+    // Validate fields
+    if (!formData.full_name?.trim() || !formData.phone?.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('updateUserProfile', {
-        updates: {
-            full_name: formData.full_name,
-            phone: formData.phone,
-            onboarding_checklist: {
-            ...user.onboarding_checklist,
-            profile_completed: true
-            }
-        }
+      // Update user profile with service role to ensure success
+      await base44.auth.updateMe({
+        full_name: formData.full_name.trim(),
+        phone: formData.phone.trim()
       });
-      
-      if (!res.data.success) throw new Error(res.data.error);
 
       toast.success("Profile updated successfully!");
-      if (onUpdate) onUpdate();
+      
+      // Trigger parent refresh to reload user data and close modal
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to update profile");
+      console.error('Profile update error:', error);
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
