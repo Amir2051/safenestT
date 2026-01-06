@@ -131,7 +131,9 @@ export default function MyCases() {
         // USER ONLY: ScamDatabase reports (admins don't need these mixed in)
         return base44.entities.ScamDatabase.filter({ created_by: user.email }, '-created_date', 1000);
     },
-    enabled: !!user && user?.role !== 'admin' && !user?.is_admin
+    enabled: !!user && user?.role !== 'admin' && !user?.is_admin,
+    staleTime: 60000, // 1 minute
+    refetchInterval: false // Disable polling
   });
 
   const handleCaseUpdate = () => {

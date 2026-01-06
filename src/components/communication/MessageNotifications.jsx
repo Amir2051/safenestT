@@ -34,7 +34,8 @@ export default function MessageNotifications({ user }) {
       return count;
     },
     enabled: !!user,
-    refetchInterval: 10000 // Check every 10 seconds
+    staleTime: 30000, // 30 seconds
+    refetchInterval: false // DISABLED: No auto-polling
   });
 
   // FIXED: Use ref instead of query to track previous count

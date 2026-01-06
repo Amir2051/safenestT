@@ -37,6 +37,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Alert.filter({ status: 'active' }, '-created_date', 5),
     enabled: !!user,
     initialData: [],
+    staleTime: 60000, // 1 minute
+    refetchInterval: false // Disable auto-refetch
   });
 
   const { data: passwords = [] } = useQuery({
@@ -44,6 +46,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Password.list('-created_date'),
     enabled: !!user,
     initialData: [],
+    staleTime: 60000,
+    refetchInterval: false
   });
 
   const { data: referrals = [] } = useQuery({
@@ -51,6 +55,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Referral.list('-created_date'),
     enabled: !!user,
     initialData: [],
+    staleTime: 60000,
+    refetchInterval: false
   });
 
   const { data: properties = [] } = useQuery({
@@ -58,6 +64,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Property.list('-created_date'),
     enabled: !!user,
     initialData: [],
+    staleTime: 60000,
+    refetchInterval: false
   });
 
   const { data: titleAlerts = [] } = useQuery({
@@ -65,6 +73,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.TitleAlert.list('-alert_date', 10),
     enabled: !!user,
     initialData: [],
+    staleTime: 60000,
+    refetchInterval: false
   });
 
   const { data: subscriptionInfo } = useQuery({
@@ -76,20 +86,25 @@ export default function Dashboard() {
       return response.data;
     },
     enabled: !!user,
-    refetchInterval: 30000
+    staleTime: 120000, // 2 minutes
+    refetchInterval: false // Disable polling
   });
 
   useEffect(() => {
+    let isMounted = true;
+    
     base44.auth.me().then(async (userData) => {
+      if (!isMounted) return;
       setUser(userData);
       
-      // Initialize trial if needed
+      // Initialize trial if needed - ONCE ONLY
       if (!userData.trial_started && userData.subscription_plan !== 'basic' && userData.subscription_plan !== 'elite') {
         try {
           await base44.functions.invoke('subscriptionService', {
             endpoint: 'init-trial'
           });
           
+          if (!isMounted) return;
           const updatedUser = await base44.auth.me();
           setUser(updatedUser);
         } catch (error) {
@@ -97,7 +112,7 @@ export default function Dashboard() {
         }
       }
       
-      // Check in streak
+      // Check in streak - ONCE PER DAY
       const today = new Date().toISOString().split('T')[0];
       const lastCheckIn = userData.last_check_in?.split('T')[0];
       
@@ -116,6 +131,7 @@ export default function Dashboard() {
           check_in_streak: newStreak
         });
         
+        if (!isMounted) return;
         setUser(prev => ({ 
           ...prev, 
           last_check_in: new Date().toISOString(),
@@ -127,6 +143,10 @@ export default function Dashboard() {
         }
       }
     }).catch(() => {});
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const runSecurityScan = async () => {
