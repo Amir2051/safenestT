@@ -306,34 +306,74 @@ Rules:
                 scammer_wallet: caseData.scammer_wallet
             });
             
-            // Use caseManagement function to create case
-            const actionType = targetUser ? 'create_for_user' : 'create';
-            console.log('🚀 Calling caseManagement with action:', actionType);
+            // BYPASS caseManagement - create directly in MyCase with service role
+            console.log('🚀 Creating case directly in MyCase entity');
             
-            // CRITICAL: caseManagement expects scammer_wallet and victim_wallet at TOP LEVEL
-            const response = await base44.functions.invoke('caseManagement', {
-                action: actionType,
-                data: {
-                    ...caseData,
-                    // REQUIRED: Top-level wallet fields for validation
-                    scammer_wallet: finalScammerWallet,
-                    victim_wallet: caseData.victim_wallet || '',
-                    target_user_email: targetUser?.email,
-                    target_user_name: targetUser?.full_name || extractedData.contact_info?.victim_name
+            // Generate case number
+            const year = new Date().getFullYear();
+            const configKey = `case_seq_${year}`;
+            let seq = 1;
+            
+            try {
+                const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
+                if (configs && configs.length > 0) {
+                    seq = parseInt(configs[0].value) + 1;
+                    await base44.asServiceRole.entities.SystemConfig.update(configs[0].id, { value: seq.toString() });
+                } else {
+                    await base44.asServiceRole.entities.SystemConfig.create({ 
+                        key_name: configKey, 
+                        value: "1", 
+                        description: `Case sequence counter for year ${year}` 
+                    });
                 }
+            } catch (e) {
+                console.error('Failed to get sequence:', e);
+            }
+            
+            const caseNumber = `SN-${year}-${seq.toString().padStart(5, '0')}`;
+            console.log('📋 Generated case number:', caseNumber);
+            
+            // CRITICAL: Create case with ALL ownership fields
+            const finalCaseData = {
+                // CRITICAL: Primary ownership field
+                user_id: targetUser?.id || user.id,
+                
+                // Case identifier
+                case_number: caseNumber,
+                
+                // All case data
+                ...caseData,
+                
+                // Wallets
+                scammer_wallet: finalScammerWallet,
+                victim_wallet: caseData.victim_wallet || '',
+                
+                // CRITICAL: ALL ownership fields for RLS visibility
+                created_by: targetUser?.email || user.email,
+                created_by_email: targetUser?.email || user.email,
+                created_by_name: targetUser?.full_name || user.full_name,
+                client_email: targetUser?.email || user.email,
+                
+                // Activity tracking
+                last_activity: new Date().toISOString()
+            };
+            
+            console.log('💾 Writing to database:', {
+                user_id: finalCaseData.user_id,
+                case_number: caseNumber,
+                client_email: finalCaseData.client_email
             });
             
-            console.log('📥 caseManagement response:', response.data);
+            const createdCase = await base44.asServiceRole.entities.MyCase.create(finalCaseData);
             
-            if (!response.data.success) {
-                console.error('❌ Case creation failed:', response.data.error);
+            if (!createdCase || !createdCase.id) {
+                console.error('❌ Case creation failed - no ID returned');
                 return Response.json({
                     success: false,
-                    error: response.data.error || 'Failed to create case'
+                    error: 'Case creation failed - database returned invalid response'
                 });
             }
             
-            const createdCase = response.data.case;
             console.log('✅ Case created successfully:', createdCase.id, createdCase.case_number);
             
             // Create timeline event for AI extraction
