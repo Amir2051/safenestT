@@ -20,6 +20,7 @@ import TimelineFeed from "../investigation/TimelineFeed.jsx";
 import SensitiveField from "../investigation/SensitiveField.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
+import PaymentTransactionsView from "./PaymentTransactionsView";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -221,6 +222,16 @@ export default function UserCaseDetail({ caseData, onClose }) {
                             </p>
                         </div>
                     </div>
+
+                    {/* Payment Transactions */}
+                    {caseData.payment_transactions && caseData.payment_transactions.length > 0 && (
+                        <div className="mt-6">
+                            <PaymentTransactionsView 
+                                transactions={caseData.payment_transactions}
+                                totalAmount={caseData.amount_lost}
+                            />
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="my-info" className="space-y-4 mt-4">

@@ -45,6 +45,8 @@ import AIFraudInsights from "../ai/AIFraudInsights";
 import AIPriorityBadge from "../ai/AIPriorityBadge";
 import WalletRiskChecker from "../ai/WalletRiskChecker";
 import AutomatedReportGenerator from "../reports/AutomatedReportGenerator";
+import PaymentTransactionsView from "../cases/PaymentTransactionsView";
+import TransactionsList from "../cases/TransactionsList";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -1004,9 +1006,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <DollarSign className="w-4 h-4 text-cyan-400" />
                   Financial Information
                 </h4>
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div>
-                    <Label className="text-gray-300 mb-2 block">Amount Stolen (USD)</Label>
+                    <Label className="text-gray-300 mb-2 block">Total Amount Stolen (USD)</Label>
                     <Input
                       type="number"
                       value={editedCase.amount_lost}
@@ -1034,6 +1036,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       placeholder="BTC, ETH, USDT..."
                     />
                   </div>
+                </div>
+
+                {/* Payment Transactions Editor */}
+                <div className="pt-6 border-t border-cyan-500/10">
+                  <TransactionsList 
+                    transactions={editedCase.payment_transactions || caseData.payment_transactions || []}
+                    onChange={(txs) => setEditedCase({...editedCase, payment_transactions: txs})}
+                  />
                 </div>
               </div>
 
@@ -1358,8 +1368,21 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     </div>
                   </div>
                 )}
-              </div>
-            </TabsContent>
+
+                {/* Payment Transactions Display */}
+                {caseData.payment_transactions && caseData.payment_transactions.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-cyan-400" />
+                    Payment History
+                  </h4>
+                  <PaymentTransactionsView 
+                    transactions={caseData.payment_transactions}
+                    totalAmount={caseData.amount_lost}
+                  />
+                </div>
+                )}
+                </TabsContent>
 
             <TabsContent value="suspect" className="space-y-4">
               <div className="flex items-center justify-between">
