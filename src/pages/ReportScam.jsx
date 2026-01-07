@@ -92,25 +92,31 @@ export default function ReportScam() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('🚀 SUBMIT CLICKED - Starting validation');
 
     // Validation
     if (!user || !user.email) {
         toast.error('You must be logged in to submit a case');
+        console.error('❌ Not logged in');
         return;
     }
 
     if (!formData.victim_name?.trim()) {
         toast.error('Please enter your full name');
+        console.error('❌ Missing victim name');
         return;
     }
 
     if (!formData.scammer_wallet?.trim()) {
         toast.error('Scammer wallet address is required');
+        console.error('❌ Missing scammer wallet');
         return;
     }
 
     if (!formData.description?.trim()) {
         toast.error('Please provide a description of what happened');
+        console.error('❌ Missing description');
         return;
     }
 
@@ -120,25 +126,24 @@ export default function ReportScam() {
 
     if (finalAmount <= 0) {
         toast.error('Please enter the amount lost or add payment transactions');
+        console.error('❌ Missing amount');
         return;
     }
 
+    console.log('✅ Validation passed - Starting submission');
     setLoading(true);
 
     try {
-      console.log('📤 DIRECT SUBMISSION:', {
+      console.log('📤 SUBMITTING TO BACKEND:', {
           timestamp: new Date().toISOString(),
           user: user?.email,
           user_id: user?.id,
           amount: finalAmount,
-          transactions: paymentTransactions.length
+          transactions: paymentTransactions.length,
+          scammer_wallet: formData.scammer_wallet
       });
 
-      // Calculate total from transactions
-      const totalFromTransactions = paymentTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-      const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(formData.amount_lost) || 0;
-
-      // 🔥 SIMPLIFIED SUBMISSION - Direct to new backend
+      // 🔥 DIRECT SUBMISSION - Call backend function
       const response = await base44.functions.invoke('submitCase', {
           victim_name: formData.victim_name,
           victim_phone: formData.victim_phone,
@@ -169,11 +174,19 @@ export default function ReportScam() {
           }))
       });
 
-      console.log('📨 RESPONSE:', response.data);
+      console.log('📨 BACKEND RESPONSE:', response);
+      console.log('📨 RESPONSE DATA:', response.data);
 
+      // Check if response exists
+      if (!response) {
+          console.error('❌ NO RESPONSE FROM SERVER');
+          throw new Error('No response from server - please try again');
+      }
+
+      // Check for success flag
       if (!response.data?.success) {
           const errorMsg = response.data?.error || 'Submission failed - no response from server';
-          console.error('❌ SUBMISSION FAILED:', errorMsg);
+          console.error('❌ SUBMISSION FAILED:', errorMsg, response.data);
           throw new Error(errorMsg);
       }
 
