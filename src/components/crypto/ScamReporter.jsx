@@ -87,81 +87,87 @@ export default function ScamReporter() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.scammer_wallet.trim()) {
+    console.log('🚀 ScamReporter: Submit clicked');
+
+    // Validation
+    if (!user || !user.email) {
+        toast.error('You must be logged in to submit a case');
+        console.error('❌ Not logged in');
+        return;
+    }
+
+    if (!formData.victim_name?.trim()) {
+        toast.error('Please enter your full name');
+        console.error('❌ Missing victim name');
+        return;
+    }
+    
+    if (!formData.scammer_wallet?.trim()) {
       toast.error('Please enter the scammer wallet address');
+      console.error('❌ Missing scammer wallet');
       return;
     }
     
-    if (!formData.description.trim()) {
+    if (!formData.description?.trim()) {
       toast.error('Please provide a description of the scam');
+      console.error('❌ Missing description');
       return;
     }
+
+    const finalAmount = parseFloat(formData.amount_lost) || 0;
+    if (finalAmount <= 0) {
+        toast.error('Please enter the amount lost');
+        console.error('❌ Missing amount');
+        return;
+    }
     
+    console.log('✅ Validation passed, submitting to submitCase function');
     setLoading(true);
 
     try {
-      const caseData = {
-        // Victim
-        client_name: formData.victim_name,
-        client_email: formData.victim_email,
-        phone_number: formData.victim_phone,
-        
-        // Scammer
-        scammer_info: {
-          name: formData.scammer_name,
-          phone: formData.scammer_phone,
-          email: formData.scammer_email,
-          social_media: formData.scammer_social_media.split('\n').filter(s => s.trim()),
-          wallet_addresses: [formData.scammer_wallet]
-        },
-        scammer_wallet: formData.scammer_wallet,
-        
-        // Financial
-        amount_lost: parseFloat(formData.amount_lost) || 0,
-        amount_stolen_usd: formData.currency_type === 'USD' ? parseFloat(formData.amount_lost) : 0,
-        currency_type: formData.currency_type,
-        blockchain: formData.blockchain,
-        cryptocurrency: formData.currency_type,
-        
-        // Case
-        case_title: `Report: ${formData.fraud_type} - ${formData.amount_lost} ${formData.currency_type}`,
-        fraud_type: formData.fraud_type.toLowerCase().replace(/ /g, '_'),
-        issue_type: formData.fraud_type.toLowerCase().replace(/ /g, '_'),
-        description: formData.description,
-        incident_date: formData.incident_date,
-        transaction_date: formData.incident_date,
-        
-        // Evidence
-        evidence_files: evidenceFiles.map(f => ({
-          name: f.name,
-          url: f.url,
-          type: f.type,
-          uploaded_date: new Date().toISOString()
-        })),
-        
-        // Meta
-        status: 'Pending',
-        case_priority: 'Medium',
-        created_by_name: user?.full_name || 'Anonymous',
-        created_by_email: user?.email || 'anonymous',
-        
-        // Legal
-        law_enforcement_authorization: {
-          authorized: formData.law_enforcement_authorized,
-          authorized_date: formData.law_enforcement_authorized ? new Date().toISOString() : null,
-          agencies: ['FBI', 'IC3', 'FTC']
-        }
-      };
-
-      // Create MyCase via unified backend function
-      const response = await base44.functions.invoke('caseManagement', {
-          action: 'create',
-          data: caseData
+      // Use submitCase function (same as ReportScam page)
+      const response = await base44.functions.invoke('submitCase', {
+          victim_name: formData.victim_name,
+          victim_phone: formData.victim_phone,
+          victim_wallet: '', // Not collected in this form
+          scammer_name: formData.scammer_name,
+          scammer_phone: formData.scammer_phone,
+          scammer_email: formData.scammer_email,
+          scammer_social_media: formData.scammer_social_media,
+          scammer_wallet: formData.scammer_wallet,
+          amount_lost: finalAmount,
+          payment_transactions: [],
+          currency_type: formData.currency_type,
+          blockchain: formData.blockchain,
+          fraud_type: formData.fraud_type,
+          incident_date: formData.incident_date,
+          description: formData.description,
+          law_enforcement_authorization: {
+              authorized: formData.law_enforcement_authorized,
+              authorized_date: formData.law_enforcement_authorized ? new Date().toISOString() : null,
+              full_name: formData.law_enforcement_authorized ? formData.victim_name : null,
+              agencies: ['FBI', 'IC3', 'FTC']
+          },
+          evidence_files: evidenceFiles.map(f => ({
+              name: f.name,
+              url: f.url,
+              type: f.type,
+              uploaded_date: new Date().toISOString()
+          }))
       });
-      
-      if (response.data.error) throw new Error(response.data.error);
 
-      toast.success('Case submitted successfully! Our team will review it shortly.');
+      console.log('📨 Response:', response.data);
+      
+      if (!response.data?.success) {
+          const errorMsg = response.data?.error || 'Submission failed';
+          console.error('❌ Submission failed:', errorMsg);
+          throw new Error(errorMsg);
+      }
+
+      const createdCase = response.data.case;
+      console.log('✅ Case created:', createdCase.case_number);
+
+      toast.success(`Case ${createdCase.case_number} submitted successfully!`);
       setSubmitted(true);
       
       setTimeout(() => {
@@ -187,6 +193,7 @@ export default function ScamReporter() {
         setEvidenceFiles([]);
       }, 3000);
     } catch (error) {
+      console.error('❌ Submission error:', error);
       toast.error('Failed to submit: ' + error.message);
     }
 
