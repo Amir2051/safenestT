@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, AlertCircle, ChevronLeft, Shield, Wallet, FileText, Upload, X, Scale } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import TransactionsList from "@/components/cases/TransactionsList";
 
 export default function ReportScam() {
   const navigate = useNavigate();
@@ -19,6 +20,8 @@ export default function ReportScam() {
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [user, setUser] = useState(null);
 
+  const [paymentTransactions, setPaymentTransactions] = useState([]);
+  
   const [formData, setFormData] = useState({
     // Victim
     victim_name: '',
@@ -104,6 +107,10 @@ export default function ReportScam() {
           user_id: user?.id
       });
 
+      // Calculate total from transactions
+      const totalFromTransactions = paymentTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+      const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(formData.amount_lost) || 0;
+
       // 🔥 SIMPLIFIED SUBMISSION - Direct to new backend
       const response = await base44.functions.invoke('submitCase', {
           victim_name: formData.victim_name,
@@ -114,7 +121,8 @@ export default function ReportScam() {
           scammer_email: formData.scammer_email,
           scammer_social_media: formData.scammer_social_media,
           scammer_wallet: formData.scammer_wallet,
-          amount_lost: formData.amount_lost,
+          amount_lost: finalAmount,
+          payment_transactions: paymentTransactions,
           currency_type: formData.currency_type,
           blockchain: formData.blockchain,
           fraud_type: formData.fraud_type,
@@ -290,50 +298,63 @@ export default function ReportScam() {
               {/* Financial Details */}
               <div className="space-y-4 pt-4 border-t border-gray-800">
                 <h3 className="text-lg font-semibold text-cyan-400">Financial Details</h3>
-                <div className="grid gap-4">
-                  <div>
-                    <Label className="text-white">Amount Lost *</Label>
-                    <Input
-                      type="number"
-                      value={formData.amount_lost}
-                      onChange={(e) => setFormData({...formData, amount_lost: e.target.value})}
-                      placeholder="0"
-                      className="bg-[#1a2332] border-gray-700 text-white mt-2"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <TransactionsList 
+                  transactions={paymentTransactions}
+                  onChange={setPaymentTransactions}
+                />
+
+                <div className="pt-4 border-t border-gray-700">
+                  <p className="text-gray-400 text-sm mb-3">Or enter a single total amount:</p>
+                  <div className="grid gap-4">
                     <div>
-                        <Label className="text-white">Currency Type *</Label>
-                        <Select value={formData.currency_type} onValueChange={(v) => setFormData({...formData, currency_type: v})}>
-                            <SelectTrigger className="bg-[#1a2332] border-gray-700 text-white mt-2">
-                            <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#1a2332] border-gray-700 text-white">
-                            <SelectItem value="USD">USD ($)</SelectItem>
-                            <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
-                            <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
-                            <SelectItem value="USDT">Tether (USDT)</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
+                      <Label className="text-white">Total Amount Lost</Label>
+                      <Input
+                        type="number"
+                        value={formData.amount_lost}
+                        onChange={(e) => setFormData({...formData, amount_lost: e.target.value})}
+                        placeholder="0"
+                        className="bg-[#1a2332] border-gray-700 text-white mt-2"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {paymentTransactions.length > 0 
+                          ? '(Will be overridden by transaction total above)' 
+                          : 'Use this if you don\'t want to add individual transactions'}
+                      </p>
                     </div>
-                    <div>
-                        <Label className="text-white">Blockchain Network</Label>
-                        <Select value={formData.blockchain} onValueChange={(v) => setFormData({...formData, blockchain: v})}>
-                            <SelectTrigger className="bg-[#1a2332] border-gray-700 text-white mt-2">
-                            <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#1a2332] border-gray-700 text-white">
-                            <SelectItem value="Ethereum">Ethereum</SelectItem>
-                            <SelectItem value="Bitcoin">Bitcoin</SelectItem>
-                            <SelectItem value="BSC">BSC</SelectItem>
-                            <SelectItem value="Polygon">Polygon</SelectItem>
-                            <SelectItem value="Solana">Solana</SelectItem>
-                            <SelectItem value="Tron">Tron</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <Label className="text-white">Currency Type *</Label>
+                          <Select value={formData.currency_type} onValueChange={(v) => setFormData({...formData, currency_type: v})}>
+                              <SelectTrigger className="bg-[#1a2332] border-gray-700 text-white mt-2">
+                              <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a2332] border-gray-700 text-white">
+                              <SelectItem value="USD">USD ($)</SelectItem>
+                              <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
+                              <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
+                              <SelectItem value="USDT">Tether (USDT)</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div>
+                          <Label className="text-white">Blockchain Network</Label>
+                          <Select value={formData.blockchain} onValueChange={(v) => setFormData({...formData, blockchain: v})}>
+                              <SelectTrigger className="bg-[#1a2332] border-gray-700 text-white mt-2">
+                              <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a2332] border-gray-700 text-white">
+                              <SelectItem value="Ethereum">Ethereum</SelectItem>
+                              <SelectItem value="Bitcoin">Bitcoin</SelectItem>
+                              <SelectItem value="BSC">BSC</SelectItem>
+                              <SelectItem value="Polygon">Polygon</SelectItem>
+                              <SelectItem value="Solana">Solana</SelectItem>
+                              <SelectItem value="Tron">Tron</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
                     </div>
                   </div>
                 </div>
