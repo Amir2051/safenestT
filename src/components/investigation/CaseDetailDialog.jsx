@@ -1369,9 +1369,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   </div>
                 )}
 
-                {/* Payment Transactions Display */}
-                {caseData.payment_transactions && caseData.payment_transactions.length > 0 && (
-                <div className="mt-6">
+              </div>
+
+              {/* Payment Transactions Display */}
+              {caseData.payment_transactions && caseData.payment_transactions.length > 0 && (
+                <div className="md:col-span-2">
                   <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-cyan-400" />
                     Payment History
@@ -1381,8 +1383,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     totalAmount={caseData.amount_lost}
                   />
                 </div>
-                )}
-                </TabsContent>
+              )}
+            </TabsContent>
 
             <TabsContent value="suspect" className="space-y-4">
               <div className="flex items-center justify-between">
