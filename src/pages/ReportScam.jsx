@@ -93,8 +93,33 @@ export default function ReportScam() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validation
     if (!user || !user.email) {
         toast.error('You must be logged in to submit a case');
+        return;
+    }
+
+    if (!formData.victim_name?.trim()) {
+        toast.error('Please enter your full name');
+        return;
+    }
+
+    if (!formData.scammer_wallet?.trim()) {
+        toast.error('Scammer wallet address is required');
+        return;
+    }
+
+    if (!formData.description?.trim()) {
+        toast.error('Please provide a description of what happened');
+        return;
+    }
+
+    // Check amount
+    const totalFromTransactions = paymentTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(formData.amount_lost) || 0;
+
+    if (finalAmount <= 0) {
+        toast.error('Please enter the amount lost or add payment transactions');
         return;
     }
 
@@ -104,7 +129,9 @@ export default function ReportScam() {
       console.log('📤 DIRECT SUBMISSION:', {
           timestamp: new Date().toISOString(),
           user: user?.email,
-          user_id: user?.id
+          user_id: user?.id,
+          amount: finalAmount,
+          transactions: paymentTransactions.length
       });
 
       // Calculate total from transactions
@@ -144,29 +171,47 @@ export default function ReportScam() {
 
       console.log('📨 RESPONSE:', response.data);
 
-      if (!response.data.success) {
-          throw new Error(response.data.error || 'Submission failed');
+      if (!response.data?.success) {
+          const errorMsg = response.data?.error || 'Submission failed - no response from server';
+          console.error('❌ SUBMISSION FAILED:', errorMsg);
+          throw new Error(errorMsg);
       }
 
       const createdCase = response.data.case;
 
+      if (!createdCase || !createdCase.id) {
+          console.error('❌ NO CASE ID RETURNED:', response.data);
+          throw new Error('Case creation returned invalid data');
+      }
+
       console.log('✅ CASE CREATED:', {
           id: createdCase.id,
-          case_number: createdCase.case_number
+          case_number: createdCase.case_number,
+          user_id: createdCase.user_id,
+          amount: createdCase.amount_lost
       });
 
       toast.success(
-        `✅ Case ${createdCase.case_number || createdCase.id} submitted successfully!`, 
-        { duration: 5000 }
+        `✅ Case ${createdCase.case_number || createdCase.id} submitted successfully! Redirecting...`, 
+        { duration: 3000 }
       );
 
+      // Immediate redirect
       setTimeout(() => {
           navigate(createPageUrl('MyCases'));
-      }, 1000);
+      }, 500);
 
     } catch (error) {
-      console.error('❌ SUBMISSION ERROR:', error);
-      toast.error('Submission failed: ' + error.message, { duration: 6000 });
+      console.error('❌ SUBMISSION ERROR:', {
+          message: error.message,
+          stack: error.stack,
+          response: error.response
+      });
+      
+      toast.error(
+          `Submission failed: ${error.message}. Please check the form and try again.`, 
+          { duration: 8000 }
+      );
     }
 
     setLoading(false);
