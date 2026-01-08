@@ -359,7 +359,8 @@ export default function AdminUserApprovals() {
     total: allUsers.length,
     pending: allUsers.filter(u => u.account_status === 'pending_approval').length,
     approved: allUsers.filter(u => u.account_status === 'active').length,
-    rejected: allUsers.filter(u => u.account_status === 'rejected').length
+    rejected: allUsers.filter(u => u.account_status === 'rejected').length,
+    suspended: allUsers.filter(u => u.account_status === 'suspended').length
   };
 
   const pendingAndRejectedCount = stats.pending + stats.rejected;
