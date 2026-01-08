@@ -13,8 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
   UserCheck, UserX, Shield, Mail, Calendar, Loader2, Eye, 
-  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck, Settings, Zap, ToggleLeft
+  AlertTriangle, Info, CheckSquare, Briefcase, BadgeCheck, Settings, Zap, ToggleLeft,
+  MoreVertical, Ban, RefreshCw, Trash2, UserPlus
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
