@@ -636,21 +636,13 @@ export default function AdminUserApprovals() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       {u.account_status === 'pending_approval' ? (
                         <>
-                           <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleVerify(u, 'view')}
-                            className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleVerify(u, 'approve')}
+                            onClick={() => handleQuickApprove(u)}
+                            disabled={approveMutation.isPending}
                             className="bg-green-500 hover:bg-green-600"
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
@@ -659,24 +651,123 @@ export default function AdminUserApprovals() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleVerify(u, 'reject')}
+                            onClick={() => handleQuickReject(u)}
+                            disabled={rejectMutation.isPending}
                             className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                           >
                             <UserX className="w-4 h-4 mr-1" />
-                            Deny
+                            Reject
                           </Button>
                         </>
-                      ) : (
+                      ) : u.account_status === 'active' ? (
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                      ) : u.account_status === 'suspended' ? (
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                          <Ban className="w-3 h-3 mr-1" />
+                          Suspended
+                        </Badge>
+                      ) : u.account_status === 'rejected' ? (
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => handleVerify(u, 'view')} // View serves as Edit for active users
-                          className="border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/10"
+                          onClick={() => handleQuickApprove(u)}
+                          disabled={approveMutation.isPending}
+                          className="bg-green-500/80 hover:bg-green-600"
                         >
-                          <Settings className="w-4 h-4 mr-1" />
-                          Manage
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Re-approve
                         </Button>
-                      )}
+                      ) : null}
+
+                      {/* Dropdown Menu for More Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="border-gray-600 text-gray-400 hover:bg-gray-700 px-2">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-[#1a2332] border-cyan-500/20 text-white">
+                          <DropdownMenuLabel className="text-gray-400">User Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-gray-700" />
+                          
+                          <DropdownMenuItem 
+                            onClick={() => handleVerify(u, 'view')}
+                            className="hover:bg-cyan-500/10 cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4 mr-2 text-cyan-400" />
+                            View Details
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem 
+                            onClick={() => handleVerify(u, 'view')}
+                            className="hover:bg-purple-500/10 cursor-pointer"
+                          >
+                            <Settings className="w-4 h-4 mr-2 text-purple-400" />
+                            Manage Profile
+                          </DropdownMenuItem>
+                          
+                          {u.account_status === 'pending_approval' && (
+                            <>
+                              <DropdownMenuSeparator className="bg-gray-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleVerify(u, 'approve')}
+                                className="hover:bg-green-500/10 cursor-pointer"
+                              >
+                                <UserCheck className="w-4 h-4 mr-2 text-green-400" />
+                                Approve with Notes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleVerify(u, 'reject')}
+                                className="hover:bg-red-500/10 cursor-pointer"
+                              >
+                                <UserX className="w-4 h-4 mr-2 text-red-400" />
+                                Reject with Reason
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {u.account_status === 'active' && (
+                            <>
+                              <DropdownMenuSeparator className="bg-gray-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleSuspend(u)}
+                                className="hover:bg-orange-500/10 cursor-pointer text-orange-400"
+                              >
+                                <Ban className="w-4 h-4 mr-2" />
+                                Suspend User
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {u.account_status === 'suspended' && (
+                            <>
+                              <DropdownMenuSeparator className="bg-gray-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleReactivate(u)}
+                                className="hover:bg-green-500/10 cursor-pointer text-green-400"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Reactivate User
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {u.account_status === 'rejected' && (
+                            <>
+                              <DropdownMenuSeparator className="bg-gray-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleQuickApprove(u)}
+                                className="hover:bg-green-500/10 cursor-pointer text-green-400"
+                              >
+                                <UserCheck className="w-4 h-4 mr-2" />
+                                Approve User
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
