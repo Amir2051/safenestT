@@ -229,6 +229,119 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Suspend user
+    if (endpoint === 'suspend-user') {
+      if (!user_id) {
+        return Response.json({ error: 'user_id is required' }, { status: 400 });
+      }
+
+      const users = await base44.asServiceRole.entities.User.filter({ id: user_id });
+      if (!users || users.length === 0) {
+        return Response.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const targetUser = users[0];
+
+      await base44.asServiceRole.entities.User.update(user_id, {
+        account_status: 'suspended',
+        suspended_by: adminUser.email,
+        suspended_at: new Date().toISOString()
+      });
+
+      await base44.asServiceRole.entities.AdminAction.create({
+        action_type: 'user_suspended',
+        admin_email: adminUser.email,
+        target_user: targetUser.email,
+        target_resource: user_id,
+        details: {
+          reason: reason || 'Suspended by admin',
+          previous_status: targetUser.account_status,
+          new_status: 'suspended'
+        }
+      });
+
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: targetUser.email,
+          subject: 'SafeNestt Account Suspended',
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f97316;">Account Suspended</h1>
+              <p>Hi ${targetUser.full_name || 'there'},</p>
+              <p>Your SafeNestt account has been temporarily suspended.</p>
+              ${reason ? `<p style="background: #fff7ed; padding: 15px; border-left: 4px solid #f97316; margin: 20px 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+              <p>If you believe this is a mistake, please contact our support team.</p>
+              <p><strong>The SafeNestt Team</strong></p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error('Email notification failed:', emailError);
+      }
+
+      return Response.json({ 
+        success: true, 
+        message: 'User suspended',
+        user_email: targetUser.email 
+      });
+    }
+
+    // Reactivate user
+    if (endpoint === 'reactivate-user') {
+      if (!user_id) {
+        return Response.json({ error: 'user_id is required' }, { status: 400 });
+      }
+
+      const users = await base44.asServiceRole.entities.User.filter({ id: user_id });
+      if (!users || users.length === 0) {
+        return Response.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const targetUser = users[0];
+
+      await base44.asServiceRole.entities.User.update(user_id, {
+        account_status: 'active',
+        reactivated_by: adminUser.email,
+        reactivated_at: new Date().toISOString()
+      });
+
+      await base44.asServiceRole.entities.AdminAction.create({
+        action_type: 'user_reactivated',
+        admin_email: adminUser.email,
+        target_user: targetUser.email,
+        target_resource: user_id,
+        details: {
+          previous_status: targetUser.account_status,
+          new_status: 'active'
+        }
+      });
+
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: targetUser.email,
+          subject: '🎉 SafeNestt Account Reactivated',
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #22c55e;">Account Reactivated!</h1>
+              <p>Hi ${targetUser.full_name || 'there'},</p>
+              <p>Great news! Your SafeNestt account has been reactivated.</p>
+              <p>You can now log in and access all features again.</p>
+              <p>Stay safe!</p>
+              <p><strong>The SafeNestt Team</strong></p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error('Email notification failed:', emailError);
+      }
+
+      return Response.json({ 
+        success: true, 
+        message: 'User reactivated',
+        user_email: targetUser.email 
+      });
+    }
+
     // Add User (Create/Invite)
     if (endpoint === 'add-user') {
       const { email, password, full_name, role } = body;
