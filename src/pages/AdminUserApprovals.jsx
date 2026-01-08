@@ -259,22 +259,83 @@ export default function AdminUserApprovals() {
     }
   };
 
-  const handleBulkApprove = () => {
-    const pendingAndRejectedUsers = allUsers.filter(u => 
+  const handleBulkApprove = (targetUsers = null) => {
+    const usersToApprove = targetUsers || allUsers.filter(u => 
       u.account_status === 'pending_approval' || u.account_status === 'rejected'
     );
     
-    if (pendingAndRejectedUsers.length === 0) {
+    if (usersToApprove.length === 0) {
       toast.info('No users to approve');
       return;
     }
 
-    if (!confirm(`Approve ${pendingAndRejectedUsers.length} user${pendingAndRejectedUsers.length > 1 ? 's' : ''}? They will all gain access to SafeNestt.`)) {
+    if (!confirm(`Approve ${usersToApprove.length} user${usersToApprove.length > 1 ? 's' : ''}? They will all gain access to SafeNestt.`)) {
       return;
     }
 
-    const userIds = pendingAndRejectedUsers.map(u => u.id);
+    const userIds = usersToApprove.map(u => u.id);
     bulkApproveMutation.mutate({ userIds });
+  };
+
+  // Suspend user mutation
+  const suspendMutation = useMutation({
+    mutationFn: async ({ userId }) => {
+      const response = await base44.functions.invoke('adminUserService', {
+        endpoint: 'suspend-user',
+        user_id: userId
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      toast.success(`⚠️ User suspended: ${data.user_email}`);
+    },
+    onError: (error) => {
+      toast.error('Failed to suspend user: ' + error.message);
+    }
+  });
+
+  // Reactivate user mutation
+  const reactivateMutation = useMutation({
+    mutationFn: async ({ userId }) => {
+      const response = await base44.functions.invoke('adminUserService', {
+        endpoint: 'reactivate-user',
+        user_id: userId
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      toast.success(`✅ User reactivated: ${data.user_email}`);
+    },
+    onError: (error) => {
+      toast.error('Failed to reactivate user: ' + error.message);
+    }
+  });
+
+  const handleQuickApprove = (u) => {
+    if (confirm(`Approve ${u.full_name || u.email}?`)) {
+      approveMutation.mutate({ userId: u.id, reason: 'Quick approval by admin' });
+    }
+  };
+
+  const handleQuickReject = (u) => {
+    const reason = prompt(`Rejection reason for ${u.full_name || u.email}:`);
+    if (reason !== null) {
+      rejectMutation.mutate({ userId: u.id, reason: reason || 'Rejected by admin' });
+    }
+  };
+
+  const handleSuspend = (u) => {
+    if (confirm(`Suspend ${u.full_name || u.email}? They will lose access until reactivated.`)) {
+      suspendMutation.mutate({ userId: u.id });
+    }
+  };
+
+  const handleReactivate = (u) => {
+    if (confirm(`Reactivate ${u.full_name || u.email}?`)) {
+      reactivateMutation.mutate({ userId: u.id });
+    }
   };
 
   const allChecksComplete = Object.values(verificationChecks).every(check => check === true);
