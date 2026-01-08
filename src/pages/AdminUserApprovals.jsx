@@ -44,6 +44,10 @@ export default function AdminUserApprovals() {
     reviewed_profile: false
   });
   
+  // AI Analysis State
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [analyzingUser, setAnalyzingUser] = useState(false);
+  
   // Employment Details State
   const [employeeId, setEmployeeId] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -228,7 +232,7 @@ export default function AdminUserApprovals() {
     }
   });
 
-  const handleVerify = (u, action) => {
+  const handleVerify = async (u, action) => {
     setVerifyingUser(u);
     setActionType(action);
     setReason('');
@@ -238,9 +242,50 @@ export default function AdminUserApprovals() {
       legitimate_request: false,
       reviewed_profile: false
     });
+    setAiAnalysis(null);
+    
     // Pre-fill employment details
     setEmployeeId(u.employee_id || '');
     setJobTitle(u.job_title || 'None');
+    
+    // Auto-trigger AI analysis for pending users
+    if (u.account_status === 'pending_approval' || action === 'approve' || action === 'reject') {
+      await runAIAnalysis(u);
+    }
+  };
+
+  const runAIAnalysis = async (userData) => {
+    setAnalyzingUser(true);
+    try {
+      const response = await base44.functions.invoke('userVerificationAI', {
+        action: 'analyze_user',
+        user_data: userData,
+        user_id: userData.id
+      });
+      
+      if (response.data.success) {
+        const analysis = response.data.analysis;
+        setAiAnalysis(analysis);
+        
+        // Auto-fill verification checks based on AI analysis
+        setVerificationChecks(analysis.auto_checks);
+        
+        // Auto-suggest reason based on AI summary
+        if (analysis.recommendation === 'REJECT' && analysis.summary) {
+          setReason(analysis.summary);
+        }
+        
+        toast.success('AI analysis complete', {
+          description: `Risk Score: ${analysis.risk_score}/100 - ${analysis.recommendation}`
+        });
+      } else {
+        toast.error('AI analysis failed');
+      }
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      toast.error('Failed to run AI analysis');
+    }
+    setAnalyzingUser(false);
   };
 
   const handleSubmitAction = () => {
@@ -396,23 +441,25 @@ export default function AdminUserApprovals() {
             </Button>
 
             {pendingAndRejectedCount > 0 && (
-            <Button
-                onClick={handleBulkApprove}
-                disabled={bulkApproveMutation.isPending}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-            >
-                {bulkApproveMutation.isPending ? (
-                <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Approving...
-                </>
-                ) : (
-                <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Approve All ({pendingAndRejectedCount})
-                </>
-                )}
-            </Button>
+            <>
+              <Button
+                  onClick={handleBulkApprove}
+                  disabled={bulkApproveMutation.isPending}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+              >
+                  {bulkApproveMutation.isPending ? (
+                  <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Approving...
+                  </>
+                  ) : (
+                  <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Approve All ({pendingAndRejectedCount})
+                  </>
+                  )}
+              </Button>
+            </>
             )}
         </div>
       </div>
@@ -792,9 +839,158 @@ export default function AdminUserApprovals() {
 
           {verifyingUser && (
             <div className="space-y-4">
+              {/* AI Risk Assessment */}
+              {analyzingUser && (
+                <div className="p-4 bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-500/30">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                    <div>
+                      <p className="text-white font-semibold">AI Verification in Progress...</p>
+                      <p className="text-xs text-gray-400">Analyzing user profile, patterns, and risk indicators</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {aiAnalysis && !analyzingUser && (
+                <div className={`p-4 rounded-lg border ${
+                  aiAnalysis.risk_score >= 86 ? 'bg-green-900/20 border-green-500/30' :
+                  aiAnalysis.risk_score >= 61 ? 'bg-blue-900/20 border-blue-500/30' :
+                  aiAnalysis.risk_score >= 31 ? 'bg-yellow-900/20 border-yellow-500/30' :
+                  'bg-red-900/20 border-red-500/30'
+                }`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Shield className={`w-4 h-4 ${
+                        aiAnalysis.risk_score >= 61 ? 'text-green-400' :
+                        aiAnalysis.risk_score >= 31 ? 'text-yellow-400' : 'text-red-400'
+                      }`} />
+                      <span className="text-white">AI Verification Analysis</span>
+                      <Badge className={
+                        aiAnalysis.risk_score >= 86 ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+                        aiAnalysis.risk_score >= 61 ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' :
+                        aiAnalysis.risk_score >= 31 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' :
+                        'bg-red-500/20 text-red-400 border-red-500/50'
+                      }>
+                        {aiAnalysis.risk_level.toUpperCase()} RISK
+                      </Badge>
+                    </h3>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => runAIAnalysis(verifyingUser)}
+                      disabled={analyzingUser}
+                      className="text-purple-400 hover:text-purple-300"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" />
+                      Re-analyze
+                    </Button>
+                  </div>
+
+                  {/* Risk Score Display */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-400">Risk Score</span>
+                      <span className={`font-bold ${
+                        aiAnalysis.risk_score >= 61 ? 'text-green-400' :
+                        aiAnalysis.risk_score >= 31 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {aiAnalysis.risk_score}/100
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          aiAnalysis.risk_score >= 61 ? 'bg-green-500' :
+                          aiAnalysis.risk_score >= 31 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${aiAnalysis.risk_score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* AI Recommendation */}
+                  <div className="mb-4 p-3 bg-black/30 rounded border border-gray-700">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">AI Recommendation</p>
+                        <Badge className={
+                          aiAnalysis.recommendation === 'APPROVE' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+                          aiAnalysis.recommendation === 'REJECT' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+                          aiAnalysis.recommendation === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' :
+                          'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                        }>
+                          {aiAnalysis.recommendation}
+                        </Badge>
+                        <p className="text-white text-sm mt-2">{aiAnalysis.summary}</p>
+                        <p className="text-cyan-400 text-xs mt-1 italic">{aiAnalysis.suggested_action}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Red Flags */}
+                  {aiAnalysis.red_flags.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-red-400 font-semibold mb-2 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Red Flags ({aiAnalysis.red_flags.length})
+                      </p>
+                      <div className="space-y-1">
+                        {aiAnalysis.red_flags.map((flag, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs">
+                            <span className="text-red-400">•</span>
+                            <span className="text-gray-300">{flag}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Green Flags */}
+                  {aiAnalysis.green_flags.length > 0 && (
+                    <div>
+                      <p className="text-xs text-green-400 font-semibold mb-2 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Green Flags ({aiAnalysis.green_flags.length})
+                      </p>
+                      <div className="space-y-1">
+                        {aiAnalysis.green_flags.map((flag, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs">
+                            <span className="text-green-400">•</span>
+                            <span className="text-gray-300">{flag}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confidence Score */}
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">AI Confidence:</span>
+                      <span className="text-purple-400 font-semibold">{aiAnalysis.confidence}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* User Info */}
               <div className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                <h3 className="text-sm font-semibold text-cyan-400 mb-3">User Information</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-cyan-400">User Information</h3>
+                  {!aiAnalysis && !analyzingUser && verifyingUser.account_status === 'pending_approval' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => runAIAnalysis(verifyingUser)}
+                      className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                    >
+                      <Shield className="w-3 h-3 mr-1" />
+                      Run AI Check
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-gray-400">Full Name:</p>
@@ -820,6 +1016,17 @@ export default function AdminUserApprovals() {
                     <p className="text-gray-400">Registered:</p>
                     <p className="text-white">{new Date(verifyingUser.created_date).toLocaleDateString()}</p>
                   </div>
+                  {verifyingUser.ai_verification_score !== undefined && (
+                    <div>
+                      <p className="text-gray-400">Previous AI Score:</p>
+                      <p className={`font-semibold ${
+                        verifyingUser.ai_verification_score >= 61 ? 'text-green-400' :
+                        verifyingUser.ai_verification_score >= 31 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {verifyingUser.ai_verification_score}/100
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -851,20 +1058,76 @@ export default function AdminUserApprovals() {
               {/* Verification Checklist - Only for Approve */}
               {actionType === 'approve' && (
                 <div className="p-4 bg-[#0f1419] rounded-lg border border-green-500/20">
-                  <h3 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4" />
-                    Verification Checklist
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-green-400 flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4" />
+                      Verification Checklist
+                      {aiAnalysis && (
+                        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 text-[10px]">
+                          AI Auto-filled
+                        </Badge>
+                      )}
+                    </h3>
+                  </div>
                   <div className="space-y-3">
                      <div className="flex items-start gap-3">
-                        <Checkbox id="email_valid" checked={verificationChecks.email_valid} onCheckedChange={(c) => setVerificationChecks(p => ({...p, email_valid: c}))} className="mt-1" />
-                        <div><Label htmlFor="email_valid" className="text-white">Valid Email Domain</Label></div>
+                        <Checkbox 
+                          id="email_valid" 
+                          checked={verificationChecks.email_valid} 
+                          onCheckedChange={(c) => setVerificationChecks(p => ({...p, email_valid: c}))} 
+                          className="mt-1" 
+                        />
+                        <div>
+                          <Label htmlFor="email_valid" className="text-white">Valid Email Domain</Label>
+                          <p className="text-xs text-gray-500">Email is from legitimate provider, not disposable</p>
+                        </div>
                      </div>
                      <div className="flex items-start gap-3">
-                        <Checkbox id="legitimate" checked={verificationChecks.legitimate_request} onCheckedChange={(c) => setVerificationChecks(p => ({...p, legitimate_request: c}))} className="mt-1" />
-                        <div><Label htmlFor="legitimate" className="text-white">Legitimate Request</Label></div>
+                        <Checkbox 
+                          id="no_spam" 
+                          checked={verificationChecks.no_spam_indicators} 
+                          onCheckedChange={(c) => setVerificationChecks(p => ({...p, no_spam_indicators: c}))} 
+                          className="mt-1" 
+                        />
+                        <div>
+                          <Label htmlFor="no_spam" className="text-white">No Spam Indicators</Label>
+                          <p className="text-xs text-gray-500">No suspicious patterns in name or email</p>
+                        </div>
+                     </div>
+                     <div className="flex items-start gap-3">
+                        <Checkbox 
+                          id="legitimate" 
+                          checked={verificationChecks.legitimate_request} 
+                          onCheckedChange={(c) => setVerificationChecks(p => ({...p, legitimate_request: c}))} 
+                          className="mt-1" 
+                        />
+                        <div>
+                          <Label htmlFor="legitimate" className="text-white">Legitimate Request</Label>
+                          <p className="text-xs text-gray-500">User appears genuine with valid use case</p>
+                        </div>
+                     </div>
+                     <div className="flex items-start gap-3">
+                        <Checkbox 
+                          id="reviewed" 
+                          checked={verificationChecks.reviewed_profile} 
+                          onCheckedChange={(c) => setVerificationChecks(p => ({...p, reviewed_profile: c}))} 
+                          className="mt-1" 
+                        />
+                        <div>
+                          <Label htmlFor="reviewed" className="text-white">Profile Reviewed</Label>
+                          <p className="text-xs text-gray-500">Complete information provided</p>
+                        </div>
                      </div>
                   </div>
+                  
+                  {aiAnalysis && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <p className="text-xs text-purple-400 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        AI filled {Object.values(aiAnalysis.auto_checks).filter(v => v).length}/4 checks automatically
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
