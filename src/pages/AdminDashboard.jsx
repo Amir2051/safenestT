@@ -31,6 +31,7 @@ import EmergencyRecoveryPanel from "../components/admin/EmergencyRecoveryPanel.j
 import P0IncidentPanel from "../components/admin/P0IncidentPanel.jsx";
 import AdminCaseIntake from "../components/admin/AdminCaseIntake.jsx";
 import CaseVisibilityFixer from "../components/admin/CaseVisibilityFixer.jsx";
+import MaintenanceModeToggle from "../components/admin/MaintenanceModeToggle.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
