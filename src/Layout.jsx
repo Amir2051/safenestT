@@ -19,8 +19,16 @@ export default function Layout({ children, currentPageName }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
+  const [maintenanceMode, setMaintenanceMode] = React.useState(false);
+
   React.useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
+    
+    // Check maintenance mode
+    base44.entities.SystemConfig.list().then(configs => {
+      const config = configs[0];
+      setMaintenanceMode(config?.under_construction || false);
+    }).catch(() => {});
   }, []);
 
   // Load external chat widget
@@ -303,7 +311,34 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Page Content */}
           <div className="relative z-10 flex-1 overflow-auto h-full">
-            {children}
+            {maintenanceMode && user?.role !== 'admin' && !user?.is_admin ? (
+              <div className="flex items-center justify-center min-h-[80vh] p-6">
+                <div className="max-w-2xl w-full text-center space-y-6">
+                  <div className="w-24 h-24 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-12 h-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <h1 className="text-4xl font-bold text-white mb-4">
+                    🚧 Under Construction
+                  </h1>
+                  <p className="text-xl text-gray-300 mb-6">
+                    SafeNestT is currently undergoing maintenance and improvements.
+                  </p>
+                  <p className="text-gray-400">
+                    We're working hard to bring you an even better experience. 
+                    All your data is safe and will be available when we're back online.
+                  </p>
+                  <div className="pt-6">
+                    <p className="text-sm text-gray-500">
+                      Thank you for your patience. We'll be back soon!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              children
+            )}
           </div>
         </main>
       </div>

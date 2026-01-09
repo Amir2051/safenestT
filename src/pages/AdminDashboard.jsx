@@ -95,6 +95,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Maintenance Mode Toggle */}
+      <MaintenanceModeToggle />
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
