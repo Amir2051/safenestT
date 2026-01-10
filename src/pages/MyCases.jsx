@@ -419,7 +419,7 @@ export default function MyCases() {
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <FileText className="w-8 h-8 text-cyan-400" />
-            My Cases
+            My Incident Reports
             <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 font-mono">
               {allCases.length} Total
             </Badge>
@@ -431,8 +431,8 @@ export default function MyCases() {
           </h1>
           <p className="text-gray-400 mt-1 mb-2">
             {user?.role === 'admin' || user?.is_admin 
-              ? `Viewing ALL ${allCases.length} cases globally` 
-              : `Showing all cases you've submitted`}
+              ? `Viewing ALL ${allCases.length} incident reports globally` 
+              : `Showing all incident reports you've submitted`}
           </p>
           {(user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') && (
             <div className="flex gap-2 items-center mt-2">
@@ -694,7 +694,7 @@ export default function MyCases() {
       {/* Cases List */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardHeader>
-          <CardTitle className="text-white">Your Submitted Cases</CardTitle>
+          <CardTitle className="text-white">Your Submitted Incident Reports</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -708,8 +708,8 @@ export default function MyCases() {
               <p className="text-white font-semibold text-lg">No cases found</p>
               <p className="text-gray-400 text-sm mt-1 mb-4">
                 {user?.role === 'admin' || user?.is_admin
-                  ? 'No cases in the database yet'
-                  : 'You haven\'t submitted any cases yet'}
+                  ? 'No incident reports in the database yet'
+                  : 'You haven\'t submitted any incident reports yet'}
               </p>
               {!(user?.role === 'admin' || user?.is_admin) && (
                 <Button
