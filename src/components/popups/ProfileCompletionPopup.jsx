@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
-import { UserCircle } from "lucide-react";
+import { UserCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ProfileCompletionPopup({ user, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: user?.full_name || "",
-    phone: user?.phone || ""
+    phone: user?.phone || "",
+    profile_image: user?.profile_image || ""
   });
 
   if (!user) return null;
@@ -35,7 +36,8 @@ export default function ProfileCompletionPopup({ user, onUpdate }) {
       // Update user profile with service role to ensure success
       await base44.auth.updateMe({
         full_name: formData.full_name.trim(),
-        phone: formData.phone.trim()
+        phone: formData.phone.trim(),
+        profile_image: formData.profile_image
       });
 
       toast.success("Profile updated successfully!");
@@ -86,6 +88,52 @@ export default function ProfileCompletionPopup({ user, onUpdate }) {
               placeholder="+1 (555) 000-0000"
               className="bg-[#0f1419] border-gray-700 text-white focus:border-cyan-500"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-gray-200">Profile Photo (Optional)</Label>
+            <div className="flex items-center gap-3">
+              {formData.profile_image && (
+                <img 
+                  src={formData.profile_image} 
+                  alt="Profile" 
+                  className="w-12 h-12 rounded-full object-cover border-2 border-cyan-500/30"
+                />
+              )}
+              <input
+                type="file"
+                id="popup-photo-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  
+                  const uploadToast = toast.loading('Uploading...');
+                  try {
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    setFormData(prev => ({ ...prev, profile_image: file_url }));
+                    toast.success('Photo uploaded', { id: uploadToast });
+                  } catch (error) {
+                    toast.error('Upload failed', { id: uploadToast });
+                  }
+                }}
+              />
+              <label htmlFor="popup-photo-upload" className="flex-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('popup-photo-upload').click();
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {formData.profile_image ? 'Change Photo' : 'Upload Photo'}
+                </Button>
+              </label>
+            </div>
           </div>
 
           <Button 

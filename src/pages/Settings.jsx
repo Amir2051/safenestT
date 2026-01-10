@@ -331,13 +331,47 @@ export default function Settings() {
               </div>
 
               <div>
-                <Label className="text-white font-semibold mb-2 block">Profile Image URL</Label>
-                <Input
-                  value={formData.profile_image}
-                  onChange={(e) => setFormData(prev => ({ ...prev, profile_image: e.target.value }))}
-                  className="bg-[#0f1419] border-cyan-500/30 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="https://..."
-                />
+                <Label className="text-white font-semibold mb-2 block">Profile Photo</Label>
+                <div className="flex items-center gap-4">
+                  {formData.profile_image && (
+                    <img 
+                      src={formData.profile_image} 
+                      alt="Profile" 
+                      className="w-16 h-16 rounded-full object-cover border-2 border-cyan-500/30"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      id="profile-photo-upload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        const uploadToast = toast.loading('Uploading photo...');
+                        try {
+                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                          setFormData(prev => ({ ...prev, profile_image: file_url }));
+                          toast.success('Photo uploaded', { id: uploadToast });
+                        } catch (error) {
+                          toast.error('Upload failed', { id: uploadToast });
+                        }
+                      }}
+                    />
+                    <label htmlFor="profile-photo-upload">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 cursor-pointer"
+                        onClick={() => document.getElementById('profile-photo-upload').click()}
+                      >
+                        {formData.profile_image ? 'Change Photo' : 'Upload Photo'}
+                      </Button>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div>
