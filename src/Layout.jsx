@@ -10,6 +10,7 @@ import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
+import LegalFooter from "./components/shared/LegalFooter.js";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -310,7 +311,8 @@ export default function Layout({ children, currentPageName }) {
           </header>
 
           {/* Page Content */}
-          <div className="relative z-10 flex-1 overflow-auto h-full">
+          <div className="relative z-10 flex-1 overflow-auto h-full flex flex-col">
+            <div className="flex-1">
             {maintenanceMode && user?.role !== 'admin' && !user?.is_admin ? (
               <div className="flex items-center justify-center min-h-[80vh] p-6">
                 <div className="max-w-2xl w-full text-center space-y-6">
@@ -339,7 +341,11 @@ export default function Layout({ children, currentPageName }) {
             ) : (
               children
             )}
-          </div>
+            </div>
+
+            {/* Legal Footer */}
+            <LegalFooter />
+            </div>
         </main>
       </div>
 

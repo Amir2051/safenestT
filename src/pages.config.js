@@ -42,6 +42,7 @@ import FamilyInvite from './pages/FamilyInvite';
 import FamilyProtection from './pages/FamilyProtection';
 import FraudRecovery from './pages/FraudRecovery';
 import FraudTracking from './pages/FraudTracking';
+import HelpCenter from './pages/HelpCenter';
 import Home from './pages/Home';
 import IdentityMonitor from './pages/IdentityMonitor';
 import IntelligenceCenter from './pages/IntelligenceCenter';
@@ -89,7 +90,9 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import HelpCenter from './pages/HelpCenter';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
 import __Layout from './Layout.jsx';
 
 
@@ -138,6 +141,7 @@ export const PAGES = {
     "FamilyProtection": FamilyProtection,
     "FraudRecovery": FraudRecovery,
     "FraudTracking": FraudTracking,
+    "HelpCenter": HelpCenter,
     "Home": Home,
     "IdentityMonitor": IdentityMonitor,
     "IntelligenceCenter": IntelligenceCenter,
@@ -185,7 +189,9 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
-    "HelpCenter": HelpCenter,
+    "PrivacyPolicy": PrivacyPolicy,
+    "TermsAndConditions": TermsAndConditions,
+    "AcceptableUsePolicy": AcceptableUsePolicy,
 }
 
 export const pagesConfig = {
