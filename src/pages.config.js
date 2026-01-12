@@ -89,6 +89,7 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
+import HelpCenter from './pages/HelpCenter';
 import __Layout from './Layout.jsx';
 
 
@@ -184,6 +185,7 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
+    "HelpCenter": HelpCenter,
 }
 
 export const pagesConfig = {
