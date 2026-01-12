@@ -10,7 +10,7 @@ import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
-import LegalFooter from "./components/shared/LegalFooter.js";
+import LegalFooter from "./components/shared/LegalFooter";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
