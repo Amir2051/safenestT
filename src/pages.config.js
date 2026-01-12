@@ -1,3 +1,4 @@
+import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
 import AccessDenied from './pages/AccessDenied';
 import Achievements from './pages/Achievements';
 import Activity from './pages/Activity';
@@ -65,8 +66,10 @@ import PaymentOnboarding from './pages/PaymentOnboarding';
 import PaymentRequired from './pages/PaymentRequired';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PendingApproval from './pages/PendingApproval';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import ReferralLanding from './pages/ReferralLanding';
 import Referrals from './pages/Referrals';
+import RefundPolicy from './pages/RefundPolicy';
 import RefundRequest from './pages/RefundRequest';
 import ReportScam from './pages/ReportScam';
 import ReportedScams from './pages/ReportedScams';
@@ -78,6 +81,7 @@ import StorageOptimizer from './pages/StorageOptimizer';
 import Subscription from './pages/Subscription';
 import SubscriptionRequired from './pages/SubscriptionRequired';
 import Support from './pages/Support';
+import TermsAndConditions from './pages/TermsAndConditions';
 import ThreatIntelligence from './pages/ThreatIntelligence';
 import TitleProtection from './pages/TitleProtection';
 import TrackingPage from './pages/TrackingPage';
@@ -90,14 +94,12 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
-import RefundPolicy from './pages/RefundPolicy';
+import SafetyResources from './pages/SafetyResources';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AcceptableUsePolicy": AcceptableUsePolicy,
     "AccessDenied": AccessDenied,
     "Achievements": Achievements,
     "Activity": Activity,
@@ -165,8 +167,10 @@ export const PAGES = {
     "PaymentRequired": PaymentRequired,
     "PaymentSuccess": PaymentSuccess,
     "PendingApproval": PendingApproval,
+    "PrivacyPolicy": PrivacyPolicy,
     "ReferralLanding": ReferralLanding,
     "Referrals": Referrals,
+    "RefundPolicy": RefundPolicy,
     "RefundRequest": RefundRequest,
     "ReportScam": ReportScam,
     "ReportedScams": ReportedScams,
@@ -178,6 +182,7 @@ export const PAGES = {
     "Subscription": Subscription,
     "SubscriptionRequired": SubscriptionRequired,
     "Support": Support,
+    "TermsAndConditions": TermsAndConditions,
     "ThreatIntelligence": ThreatIntelligence,
     "TitleProtection": TitleProtection,
     "TrackingPage": TrackingPage,
@@ -190,10 +195,7 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
-    "PrivacyPolicy": PrivacyPolicy,
-    "TermsAndConditions": TermsAndConditions,
-    "AcceptableUsePolicy": AcceptableUsePolicy,
-    "RefundPolicy": RefundPolicy,
+    "SafetyResources": SafetyResources,
 }
 
 export const pagesConfig = {
