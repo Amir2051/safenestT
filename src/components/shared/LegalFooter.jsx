@@ -14,11 +14,8 @@ export default function LegalFooter() {
               <Shield className="w-6 h-6 text-cyan-400" />
               <h3 className="text-white font-bold text-lg">SafeNestT Inc.</h3>
             </div>
-            <p className="text-gray-400 text-sm mb-3">
-              Case preparation, reporting assistance, and cybersecurity support platform.
-            </p>
-            <p className="text-gray-500 text-xs italic">
-              Not affiliated with law enforcement. Users file official reports independently.
+            <p className="text-gray-400 text-sm">
+              SafeNestt Inc. is a case preparation, reporting assistance, and cybersecurity support platform. With user authorization, SafeNestt can file official reports on behalf of users to the appropriate authorities, making the reporting process faster and easier. SafeNestt is not a law enforcement agency, but acts as a trusted intermediary to help users protect themselves and submit reports securely.
             </p>
           </div>
 
