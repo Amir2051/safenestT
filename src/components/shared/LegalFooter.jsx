@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Shield, FileText, Scale } from "lucide-react";
+import { Shield, FileText, Scale, BookOpen } from "lucide-react";
 
 export default function LegalFooter() {
   return (
@@ -66,6 +66,12 @@ export default function LegalFooter() {
                 className="block text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 Help Center
+              </Link>
+              <Link
+                to={createPageUrl('SafetyResources')}
+                className="block text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                Safety Resources
               </Link>
               <a
                 href="https://www.ic3.gov"
