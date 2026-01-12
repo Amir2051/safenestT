@@ -8,7 +8,7 @@ import {
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain,
-  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3
+  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +144,14 @@ const navigationItems = [
     icon: MessageSquare,
     url: createPageUrl('Support'),
     glow: 'blue'
+  },
+  {
+    id: 'help-center',
+    title: 'Help Center',
+    icon: HelpCircle,
+    url: createPageUrl('HelpCenter'),
+    glow: 'cyan',
+    badge: 'FAQ'
   },
   {
     id: 'settings',
