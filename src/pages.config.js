@@ -93,6 +93,7 @@ import WelcomeOnboarding from './pages/WelcomeOnboarding';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
+import RefundPolicy from './pages/RefundPolicy';
 import __Layout from './Layout.jsx';
 
 
@@ -192,6 +193,7 @@ export const PAGES = {
     "PrivacyPolicy": PrivacyPolicy,
     "TermsAndConditions": TermsAndConditions,
     "AcceptableUsePolicy": AcceptableUsePolicy,
+    "RefundPolicy": RefundPolicy,
 }
 
 export const pagesConfig = {

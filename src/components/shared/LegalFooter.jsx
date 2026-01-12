@@ -47,6 +47,13 @@ export default function LegalFooter() {
                 <Shield className="w-4 h-4" />
                 Acceptable Use Policy
               </Link>
+              <Link
+                to={createPageUrl('RefundPolicy')}
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <FileText className="w-4 h-4" />
+                Refund Policy
+              </Link>
             </div>
           </div>
 
