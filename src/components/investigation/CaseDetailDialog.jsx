@@ -102,6 +102,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     amount_lost: caseData.amount_lost || caseData.amount_stolen_usd || 0,
     address_information: caseData.address_information || {},
 
+    // CRITICAL: Required field for MyCase schema
+    incident_classification: caseData.incident_classification || caseData.issue_type || 'other_cyber_fraud',
+    issue_type: caseData.issue_type || 'other',
+
     // Common Fields
     victim_wallet: caseData.victim_wallet || '',
     cryptocurrency: caseData.cryptocurrency || '',
@@ -117,6 +121,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     scammer_info: caseData.scammer_info || {},
     scammer_wallet: caseData.scammer_wallet || '',
     law_enforcement_authorization: caseData.law_enforcement_authorization || { authorized: false, agencies: [], full_name: '' },
+    payment_transactions: caseData.payment_transactions || [],
     
     // Preserve ID and other metadata
     id: caseData.id,
@@ -238,6 +243,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     
     try {
       const updates = {
+        // CRITICAL: Include required fields from MyCase schema
+        incident_classification: editedCase.incident_classification || caseData.incident_classification || 'other_cyber_fraud',
+        
         // Direct bindings to MyCase schema
         client_name: editedCase.client_name,
         client_email: editedCase.client_email,
@@ -251,6 +259,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         description: editedCase.description,
         status: editedCase.status,
         urgency: editedCase.urgency,
+        issue_type: editedCase.issue_type || caseData.issue_type,
         
         // Crypto/Scam details
         victim_wallet: editedCase.victim_wallet,
