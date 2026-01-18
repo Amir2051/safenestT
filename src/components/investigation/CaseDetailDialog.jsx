@@ -126,7 +126,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      console.log('🔄 Updating case:', caseData.id, updates);
+      console.log('🔄 FRONTEND: Initiating case update', {
+        caseId: caseData.id,
+        entityName: caseData._entityName || 'MyCase',
+        fieldsToUpdate: Object.keys(updates),
+        updateValues: updates
+      });
       
       const response = await base44.functions.invoke('caseManagement', {
         action: 'update',
@@ -137,36 +142,54 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         }
       });
       
-      console.log('✅ Update response:', response.data);
+      console.log('✅ FRONTEND: Backend response received', {
+        success: response.data.success,
+        hasError: !!response.data.error,
+        responseData: response.data
+      });
       
       if (response.data.error) {
+        console.error('❌ FRONTEND: Backend returned error:', response.data.error);
         throw new Error(response.data.error);
       }
       
       if (!response.data.success) {
+        console.error('❌ FRONTEND: Update unsuccessful:', response.data.message);
         throw new Error(response.data.message || 'Update failed');
       }
       
+      console.log('✅ FRONTEND: Update successful, returning updated case');
       return response.data.case;
     },
     onSuccess: (data) => {
-      console.log('✅ Case updated successfully:', data);
-      toast.success("Case Updated Successfully");
+      console.log('✅ FRONTEND: Mutation success handler triggered', {
+        updatedCase: data,
+        caseId: data?.id,
+        caseNumber: data?.case_number
+      });
+      toast.success("✅ Case Updated Successfully - Changes Saved", { duration: 3000 });
       setEditing(false);
+      setSaving(false);
       
-      // Force parent refresh
+      // Force parent refresh to show updated data
       if (onUpdate) {
+        console.log('🔄 FRONTEND: Triggering parent refresh');
         onUpdate();
       }
     },
     onError: (err) => {
-      console.error("❌ Update failed:", err);
+      console.error("❌ FRONTEND: Mutation error handler triggered", {
+        error: err.message,
+        fullError: err
+      });
+      
       if (err.message.includes("not found") || err.message.includes("Case with ID")) {
-          toast.error("This case no longer exists. It may have been deleted.");
+          toast.error("❌ Case not found - it may have been deleted", { duration: 5000 });
           if (onClose) onClose();
       } else {
-          toast.error("Update Failed: " + err.message, { duration: 5000 });
+          toast.error("❌ Update Failed: " + err.message, { duration: 6000 });
       }
+      setSaving(false);
     }
   });
 
@@ -205,6 +228,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   };
 
   const saveEdits = async () => {
+    console.log('💾 FRONTEND: saveEdits called', {
+      caseId: caseData.id,
+      entityName: caseData._entityName || 'MyCase'
+    });
+    
     setSaving(true);
     try {
       const updates = {
@@ -239,13 +267,19 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         federal_case_number: editedCase.federal_case_number,
         law_enforcement_authorization: editedCase.law_enforcement_authorization,
         
+        // Payment transactions if edited
+        payment_transactions: editedCase.payment_transactions,
+        
         // Metadata
         last_activity: new Date().toISOString()
       };
 
+      console.log('📤 FRONTEND: Sending update request with data:', updates);
       await updateCaseMutation.mutateAsync(updates);
+      console.log('✅ FRONTEND: Update mutation completed successfully');
       
     } catch (error) {
+      console.error('❌ FRONTEND: saveEdits caught error:', error);
       // Error handled in mutation onError
     }
     setSaving(false);

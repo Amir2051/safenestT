@@ -424,7 +424,13 @@ Deno.serve(async (req) => {
             const { id, updates, entityName } = data;
             if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
 
-            console.log('🔄 UPDATE ACTION:', { id, entityName, updates: Object.keys(updates) });
+            console.log('🔄 UPDATE ACTION STARTED:', { 
+                id, 
+                entityName, 
+                updateFields: Object.keys(updates),
+                user: user.email,
+                isAdmin: user.role === 'admin' || user.is_admin
+            });
 
             // Ensure numeric fields are numbers
             if (updates.amount_lost !== undefined) updates.amount_lost = parseFloat(updates.amount_lost) || 0;
@@ -502,9 +508,18 @@ Deno.serve(async (req) => {
                     }
 
                     // PERFORM UPDATE - Use service role for admin/specialist
-                    console.log('💾 Updating case with service role...');
+                    console.log('💾 Updating case with service role...', {
+                        entityType,
+                        id,
+                        fieldsBeingUpdated: Object.keys(updates)
+                    });
                     const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
-                    console.log('✅ Case updated successfully:', updatedCase.id);
+                    console.log('✅ CASE UPDATE SUCCESS:', {
+                        id: updatedCase.id,
+                        case_number: updatedCase.case_number,
+                        status: updatedCase.status,
+                        fieldsUpdated: Object.keys(updates)
+                    });
 
                     // WORKFLOW TRIGGER: Priority Escalation
                     if (updates.priority && (updates.priority === 'high' || updates.priority === 'critical')) {
@@ -529,8 +544,18 @@ Deno.serve(async (req) => {
                 }
 
             } catch (err) {
-                console.error('❌ Update error:', err);
-                return Response.json({ error: err.message }, { status: 500 });
+                console.error('❌ UPDATE FAILED:', {
+                    error: err.message,
+                    stack: err.stack,
+                    caseId: id,
+                    entityName,
+                    attemptedUpdates: Object.keys(updates)
+                });
+                return Response.json({ 
+                    error: err.message,
+                    details: 'Check function logs for more information',
+                    caseId: id
+                }, { status: 500 });
             }
         }
 
