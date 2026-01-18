@@ -236,49 +236,57 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     
     setSaving(true);
     
-    const updates = {
-      // Direct bindings to MyCase schema
-      client_name: editedCase.client_name,
-      client_email: editedCase.client_email,
-      phone_number: editedCase.phone_number,
-      amount_lost: parseFloat(editedCase.amount_lost) || 0,
-      address_information: editedCase.address_information,
-      
-      // Additional fields
-      case_number: editedCase.case_number,
-      case_title: editedCase.case_title,
-      description: editedCase.description,
-      status: editedCase.status,
-      urgency: editedCase.urgency,
-      
-      // Crypto/Scam details
-      victim_wallet: editedCase.victim_wallet,
-      cryptocurrency: editedCase.cryptocurrency,
-      blockchain: editedCase.blockchain,
-      scammer_wallet: editedCase.scammer_wallet,
-      monitored_wallets: editedCase.monitored_wallets,
-      scammer_info: editedCase.scammer_info,
-      
-      // Progress & Meta
-      investigation_progress: parseInt(editedCase.investigation_progress) || 0,
-      recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
-      
-      // Legal
-      ic3_complaint_number: editedCase.ic3_complaint_number,
-      federal_case_number: editedCase.federal_case_number,
-      law_enforcement_authorization: editedCase.law_enforcement_authorization,
-      
-      // Payment transactions if edited
-      payment_transactions: editedCase.payment_transactions,
-      
-      // Metadata
-      last_activity: new Date().toISOString()
-    };
+    try {
+      const updates = {
+        // Direct bindings to MyCase schema
+        client_name: editedCase.client_name,
+        client_email: editedCase.client_email,
+        phone_number: editedCase.phone_number,
+        amount_lost: parseFloat(editedCase.amount_lost) || 0,
+        address_information: editedCase.address_information,
+        
+        // Additional fields
+        case_number: editedCase.case_number,
+        case_title: editedCase.case_title,
+        description: editedCase.description,
+        status: editedCase.status,
+        urgency: editedCase.urgency,
+        
+        // Crypto/Scam details
+        victim_wallet: editedCase.victim_wallet,
+        cryptocurrency: editedCase.cryptocurrency,
+        blockchain: editedCase.blockchain,
+        scammer_wallet: editedCase.scammer_wallet,
+        monitored_wallets: editedCase.monitored_wallets,
+        scammer_info: editedCase.scammer_info,
+        
+        // Progress & Meta
+        investigation_progress: parseInt(editedCase.investigation_progress) || 0,
+        recovery_amount: parseFloat(editedCase.recovery_amount) || 0,
+        
+        // Legal
+        ic3_complaint_number: editedCase.ic3_complaint_number,
+        federal_case_number: editedCase.federal_case_number,
+        law_enforcement_authorization: editedCase.law_enforcement_authorization,
+        
+        // Payment transactions if edited
+        payment_transactions: editedCase.payment_transactions,
+        
+        // Metadata
+        last_activity: new Date().toISOString()
+      };
 
-    console.log('📤 FRONTEND: Calling mutation with updates:', updates);
-    
-    // Use mutate instead of mutateAsync to let the mutation callbacks handle state
-    updateCaseMutation.mutate(updates);
+      console.log('📤 FRONTEND: Calling mutation with updates:', updates);
+      
+      // Use mutateAsync and await it to ensure completion before state changes
+      await updateCaseMutation.mutateAsync(updates);
+      console.log('✅ FRONTEND: Update mutation completed successfully');
+      
+    } catch (error) {
+      console.error('❌ FRONTEND: saveEdits caught error:', error);
+      // Error handled in mutation onError, but also set saving to false here
+      setSaving(false);
+    }
   };
 
   const handleFileUpload = async (e) => {
