@@ -45,6 +45,8 @@ export default function MyCases() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [caseToDelete, setCaseToDelete] = useState(null);
+  const [selectedCasesForMerge, setSelectedCasesForMerge] = useState([]);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
   const queryClient = useQueryClient();
   
   // Advanced Filters
@@ -482,6 +484,15 @@ export default function MyCases() {
             <Activity className="w-4 h-4 mr-2" />
             Refresh Now
           </Button>
+          {(user?.role === 'admin' || user?.is_admin) && selectedCasesForMerge.length >= 2 && (
+            <Button
+              onClick={() => setShowMergeDialog(true)}
+              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+            >
+              <FileStack className="w-5 h-5 mr-2" />
+              Merge {selectedCasesForMerge.length} Cases
+            </Button>
+          )}
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
@@ -736,9 +747,23 @@ export default function MyCases() {
                 return (
                   <div
                     key={caseItem.id}
-                    className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-colors cursor-pointer"
+                    className="p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10 hover:border-cyan-500/30 transition-colors cursor-pointer relative"
                     onClick={() => setSelectedCase(caseItem)}
                   >
+                    {(user?.role === 'admin' || user?.is_admin) && (
+                      <Checkbox
+                        checked={selectedCasesForMerge.includes(caseItem.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedCasesForMerge([...selectedCasesForMerge, caseItem.id]);
+                          } else {
+                            setSelectedCasesForMerge(selectedCasesForMerge.filter(id => id !== caseItem.id));
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-4 right-4 z-10"
+                      />
+                    )}
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
