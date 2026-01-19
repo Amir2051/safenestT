@@ -74,6 +74,7 @@ import RefundRequest from './pages/RefundRequest';
 import ReportScam from './pages/ReportScam';
 import ReportedScams from './pages/ReportedScams';
 import Reports from './pages/Reports';
+import SafetyResources from './pages/SafetyResources';
 import SecurityDashboard from './pages/SecurityDashboard';
 import Settings from './pages/Settings';
 import SignalWatch from './pages/SignalWatch';
@@ -94,7 +95,6 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import SafetyResources from './pages/SafetyResources';
 import __Layout from './Layout.jsx';
 
 
@@ -175,6 +175,7 @@ export const PAGES = {
     "ReportScam": ReportScam,
     "ReportedScams": ReportedScams,
     "Reports": Reports,
+    "SafetyResources": SafetyResources,
     "SecurityDashboard": SecurityDashboard,
     "Settings": Settings,
     "SignalWatch": SignalWatch,
@@ -195,7 +196,6 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
-    "SafetyResources": SafetyResources,
 }
 
 export const pagesConfig = {

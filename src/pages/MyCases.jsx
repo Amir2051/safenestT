@@ -103,7 +103,7 @@ export default function MyCases() {
       });
 
       // DIRECT QUERY - RLS automatically filters based on user permissions
-      const cases = await base44.entities.MyCase.list('-created_date', 50000);
+      const cases = await base44.entities.MyCase.list('-created_date', 10000);
       console.log(`✅ FETCHED: ${cases.length} cases directly from entity`);
 
       // Log source type distribution
