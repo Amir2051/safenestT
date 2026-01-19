@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import UserCaseDetail from "@/components/cases/UserCaseDetail.jsx";
 import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator";
+import MergeCasesDialog from "@/components/investigation/MergeCasesDialog";
 import AIPriorityBadge from "@/components/ai/AIPriorityBadge";
 import { DialogTrigger } from "@/components/ui/dialog";
 
@@ -903,6 +904,16 @@ export default function MyCases() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MergeCasesDialog
+        open={showMergeDialog}
+        onClose={() => {
+          setShowMergeDialog(false);
+          setSelectedCasesForMerge([]);
+        }}
+        selectedCaseIds={selectedCasesForMerge}
+        allCases={allCases}
+      />
     </div>
   );
 }
