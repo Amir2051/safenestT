@@ -1067,107 +1067,130 @@ Deno.serve(async (req) => {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
-                const { caseIds } = data;
-                if (!caseIds || !Array.isArray(caseIds) || caseIds.length < 2) {
+                const { case_ids, master_case_title, aggregated_data } = data;
+                if (!case_ids || !Array.isArray(case_ids) || case_ids.length < 2) {
                     return Response.json({ error: "Please select at least 2 cases to merge." }, { status: 400 });
                 }
 
+                console.log('🔗 MERGE CASES - ENHANCED:', { 
+                    case_count: case_ids.length,
+                    title: master_case_title 
+                });
+
                 // Fetch all cases to be merged
-                // We fetch one by one or filter if supported. 
-                // Given the API limitations, parallel fetch is safer.
-                const cases = await Promise.all(caseIds.map(id => base44.entities.MyCase.get(id)));
+                const cases = await Promise.all(case_ids.map(id => base44.asServiceRole.entities.MyCase.get(id)));
                 
                 if (cases.some(c => !c)) {
                     return Response.json({ error: "One or more cases not found." }, { status: 404 });
                 }
 
-                // 1. Verify Same User
-                // We use 'client_email' as primary, fallback to 'created_by'. 
-                // This ensures admin-created cases (where created_by=admin) match user-created cases (where created_by=user)
-                // provided the client_email is consistent.
-                const getOwner = (c) => (c.client_email || c.created_by || '').toLowerCase().trim();
-                const primaryOwner = getOwner(cases[0]);
-                
-                // Allow merge if ANY of the identifiers match (client_email OR created_by)
-                // This is a more permissive check to handle cases where email might be in one field but not the other
-                const isSameUser = cases.every(c => {
-                    const cClient = (c.client_email || '').toLowerCase().trim();
-                    const cCreated = (c.created_by || '').toLowerCase().trim();
-                    return cClient === primaryOwner || cCreated === primaryOwner;
+                // 1. Aggregate Financial Data
+                const totalLoss = cases.reduce((sum, c) => sum + (c.amount_lost || c.amount || 0), 0);
+                const totalRecovered = cases.reduce((sum, c) => sum + (c.recovery_amount || 0), 0);
+
+                // 2. Consolidate Scammer Information
+                const scammerWallets = new Set();
+                const scammerNames = new Set();
+                const scammerEmails = new Set();
+                const scammerPhones = new Set();
+
+                cases.forEach(c => {
+                    if (c.scammer_wallet) scammerWallets.add(c.scammer_wallet);
+                    if (c.monitored_wallets) c.monitored_wallets.forEach(w => scammerWallets.add(w));
+                    if (c.scammer_info?.name) scammerNames.add(c.scammer_info.name);
+                    if (c.scammer_info?.email) scammerEmails.add(c.scammer_info.email);
+                    if (c.scammer_info?.phone) scammerPhones.add(c.scammer_info.phone);
+                    if (c.scammer_info?.wallet_addresses) {
+                        c.scammer_info.wallet_addresses.forEach(w => scammerWallets.add(w));
+                    }
+                    if (c.scammer_info?.known_emails) {
+                        c.scammer_info.known_emails.forEach(e => scammerEmails.add(e));
+                    }
                 });
 
-                if (!isSameUser) {
-                    return Response.json({ error: "All selected cases must belong to the same user." }, { status: 400 });
-                }
+                // 3. Build Timeline
+                const scamList = cases.map(c => ({
+                    date: c.incident_date || c.created_date,
+                    platform: c.blockchain || c.issue_type || 'Unknown',
+                    method: c.incident_classification || c.issue_type || 'Unknown',
+                    amount: c.amount_lost || c.amount || 0,
+                    case_id: c.case_number || c.id
+                })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                // 2. Aggregate Data
-                let totalLoss = 0;
-                let walletAddresses = new Set();
-                let transactionRecords = [];
-                let evidenceIndex = [];
-                let scamList = []; // Timeline
+                // 4. Collect Evidence
+                const evidenceIndex = cases.flatMap(c => 
+                    (c.evidence_files || []).map(e => ({
+                        url: e.url,
+                        name: e.name || 'Evidence File',
+                        source_case: c.case_number || c.id,
+                        type: e.type || 'document'
+                    }))
+                );
 
-                for (const c of cases) {
-                    totalLoss += (c.amount_lost || c.amount_stolen_usd || 0);
-                    
-                    if (c.scammer_wallet) walletAddresses.add(c.scammer_wallet);
-                    if (c.monitored_wallets) c.monitored_wallets.forEach(w => walletAddresses.add(w));
-                    
-                    // Transactions
-                    if (c.transactions) {
-                        transactionRecords = [...transactionRecords, ...c.transactions];
-                    }
+                // 5. Generate AI Pattern Analysis
+                let pattern_analysis = '';
+                try {
+                    const analysisRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                        prompt: `Analyze ${cases.length} linked fraud cases for patterns and connections:
+                        
+Cases: ${cases.map(c => `- ${c.incident_classification || c.issue_type}: $${c.amount_lost || 0} on ${new Date(c.created_date).toLocaleDateString()}`).join('\n')}
 
-                    // Evidence
-                    if (c.evidence_files) {
-                        c.evidence_files.forEach(e => {
-                            evidenceIndex.push({
-                                url: e.url,
-                                name: e.name,
-                                source_case: c.case_number || c.id,
-                                type: e.type || 'file'
-                            });
-                        });
-                    }
+Identified wallets: ${Array.from(scammerWallets).join(', ')}
+Total loss: $${totalLoss.toLocaleString()}
+Recovered: $${totalRecovered.toLocaleString()}
 
-                    // Timeline / Scam List
-                    scamList.push({
-                        date: c.incident_date || c.created_date,
-                        platform: c.platform || 'Unknown', // Assuming platform field might exist or default
-                        method: c.issue_type,
-                        amount: c.amount_lost || 0,
-                        case_id: c.case_number || c.id
+Provide a concise investigative pattern analysis identifying common tactics, similarities, and strategic recommendations for law enforcement.`,
+                        add_context_from_internet: false
                     });
+                    pattern_analysis = analysisRes.text || 'Pattern analysis pending.';
+                } catch (e) {
+                    console.error('AI analysis failed:', e);
+                    pattern_analysis = 'AI analysis unavailable - manual review required.';
                 }
 
-                // Sort timeline
-                scamList.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                // 3. Create MasterCase (Profile Case)
-                const profileCase = await base44.entities.MasterCase.create({
-                    user_id: primaryOwner,
-                    linked_case_ids: caseIds,
-                    merged_summary: `Profile Case consolidated from ${cases.length} incidents. Total loss: $${totalLoss.toLocaleString()}.`,
+                // 6. Create MasterCase
+                const primaryVictim = cases[0];
+                const masterCase = await base44.asServiceRole.entities.MasterCase.create({
+                    user_id: primaryVictim.user_id || primaryVictim.created_by_id,
+                    linked_case_ids: case_ids,
+                    merged_summary: `<h1>${master_case_title}</h1>
+<p><strong>Consolidated Report:</strong> ${cases.length} linked cases</p>
+<p><strong>Total Financial Impact:</strong> $${totalLoss.toLocaleString()} (Recovered: $${totalRecovered.toLocaleString()})</p>
+<p><strong>Unique Scammer Wallets:</strong> ${scammerWallets.size}</p>
+<p><strong>Timeline:</strong> ${new Date(scamList[0]?.date).toLocaleDateString()} - ${new Date(scamList[scamList.length - 1]?.date).toLocaleDateString()}</p>`,
                     scam_list: scamList,
-                    wallet_addresses: Array.from(walletAddresses),
-                    transaction_records: transactionRecords,
+                    wallet_addresses: Array.from(scammerWallets),
+                    transaction_records: cases.flatMap(c => c.payment_transactions || []),
                     evidence_index: evidenceIndex,
+                    pattern_analysis,
                     total_loss: totalLoss,
                     status: 'draft',
                     generated_date: new Date().toISOString()
                 });
 
-                // 4. Log Action
-                await base44.entities.AuditLog.create({
-                    action_type: 'settings_updated',
-                    action_category: 'security',
-                    description: `Admin ${user.email} merged ${cases.length} cases into Profile Case ${profileCase.id}`,
-                    severity: 'high',
-                    created_by: user.email,
-                    metadata: { merged_cases: caseIds, profile_case_id: profileCase.id }
+                // 7. Update original cases with master case link
+                await Promise.all(
+                    case_ids.map(id => 
+                        base44.asServiceRole.entities.MyCase.update(id, {
+                            linked_case_ids: [masterCase.id],
+                            notes: (cases.find(c => c.id === id)?.notes || '') + `\n[Merged into Master Case: ${masterCase.id}]`
+                        })
+                    )
+                );
+
+                // 8. Generate Case Number
+                const caseNumber = await generateCaseId(base44);
+                await base44.asServiceRole.entities.MasterCase.update(masterCase.id, {
+                    case_number: `MASTER-${caseNumber}`
                 });
 
-                return Response.json({ success: true, profileCase });
+                console.log('✅ Master Case created:', masterCase.id);
+
+                return Response.json({ 
+                    success: true, 
+                    master_case: { ...masterCase, case_number: `MASTER-${caseNumber}` },
+                    message: `Successfully merged ${cases.length} cases into Master Case ${caseNumber}`
+                });
             }
 
             return Response.json({ error: 'Invalid action' }, { status: 400 });
