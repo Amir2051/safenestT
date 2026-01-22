@@ -124,10 +124,10 @@ Deno.serve(async (req) => {
         if (action === 'import_legacy') {
             console.log('📥 IMPORTING ALL LEGACY CASES TO MyCase');
             
-            const clientCases = await base44.entities.ClientCase.list(null, 10000).catch(() => []);
-            const fraudCases = await base44.entities.FraudCase.list(null, 10000).catch(() => []);
-            const investigationCases = await base44.entities.InvestigationCase.list(null, 10000).catch(() => []);
-            const allUsers = await base44.entities.User.list(null, 10000);
+            const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 10000).catch(() => []);
+            const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 10000).catch(() => []);
+            const investigationCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 10000).catch(() => []);
+            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
             
             let imported = 0;
             
