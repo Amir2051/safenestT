@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
                     );
                     
                     if (matchUser) {
-                        await base44.entities.MyCase.update(c.id, {
+                        await base44.asServiceRole.entities.MyCase.update(c.id, {
                             user_id: matchUser.id,
                             client_email: matchUser.email,
                             created_by: matchUser.email,
