@@ -211,8 +211,8 @@ Deno.serve(async (req) => {
         if (action === 'fix_orphaned') {
             console.log('🔧 FIXING ORPHANED CASES');
             
-            const myCases = await base44.entities.MyCase.list(null, 50000);
-            const allUsers = await base44.entities.User.list(null, 10000);
+            const myCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
+            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
             
             let fixed = 0;
             
