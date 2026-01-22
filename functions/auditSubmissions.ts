@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
             console.log(`📊 Legacy entities: ClientCase=${clientCases.length}, FraudCase=${fraudCases.length}, Investigation=${investigationCases.length}`);
             
             // 3. Get all users for ownership mapping
-            const allUsers = await base44.entities.User.list(null, 10000);
+            const allUsers = await base44.asServiceRole.entities.User.list(null, 10000);
             console.log(`👥 Total users: ${allUsers.length}`);
             
             // 4. Check for ownership issues
