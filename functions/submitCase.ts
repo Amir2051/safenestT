@@ -48,11 +48,13 @@ Deno.serve(async (req) => {
             created_by: user.email,
             created_by_email: user.email,
             created_by_name: user.full_name || payload.victim_name || 'User',
-            client_email: user.email,
+            client_email: payload.victim_email || user.email,
             client_name: payload.victim_name || user.full_name || 'User',
+            phone_number: payload.victim_phone || null,
             
             // REQUIRED FIELDS (per schema)
-            issue_type: payload.fraud_type?.toLowerCase().replace(/ /g, '_') || 'other',
+            incident_classification: payload.incident_classification || payload.issue_type || 'other_cyber_fraud',
+            issue_type: payload.issue_type || payload.incident_classification || 'other',
             
             // BASIC DATA
             description: payload.description || 'Case submitted via form',
@@ -60,33 +62,40 @@ Deno.serve(async (req) => {
             urgency: 'Medium',
             amount_lost: finalAmount,
             
-            // PAYMENT TRANSACTIONS
-            payment_transactions: payload.payment_transactions || [],
+            // INCIDENT TIMELINE
+            incident_timeline: payload.incident_timeline || {},
             
-            // SCAMMER INFO
-            scammer_wallet: payload.scammer_wallet || null,
-            victim_wallet: payload.victim_wallet || null,
-            blockchain: payload.blockchain?.toLowerCase() || 'ethereum',
-            cryptocurrency: payload.currency_type || 'USD',
-            phone_number: payload.victim_phone || null,
-            transaction_date: payload.incident_date || null,
+            // ALLEGED ACTOR INFORMATION
+            alleged_actor_information: payload.alleged_actor_information || {},
+            
+            // FINANCIAL LOSS
+            financial_loss: financialLoss,
+            
+            // SCAMMER INFO (legacy fields for compatibility)
+            scammer_wallet: primaryScammerWallet,
+            blockchain: primaryScammerWallet ? 'ethereum' : null,
+            cryptocurrency: financialLoss.payment_method === 'cryptocurrency' ? 'Unknown' : null,
             
             // EVIDENCE
-            evidence_files: payload.evidence_files || [],
+            supporting_documentation: payload.supporting_documentation || [],
+            evidence_files: payload.supporting_documentation || [],
             
-            // SCAMMER DETAILS
+            // SCAMMER DETAILS (legacy structure for compatibility)
             scammer_info: {
-                name: payload.scammer_name || null,
-                email: payload.scammer_email || null,
-                phone: payload.scammer_phone || null,
-                social_media: payload.scammer_social_media?.split('\n').filter(s => s.trim()) || [],
-                wallet_addresses: [payload.scammer_wallet].filter(Boolean)
+                email_addresses: payload.alleged_actor_information?.email_addresses || [],
+                phone_numbers: payload.alleged_actor_information?.phone_numbers || [],
+                wallet_addresses: scammerWallets,
+                social_media: payload.alleged_actor_information?.social_media_accounts || '',
+                websites: payload.alleged_actor_information?.websites_platforms || []
             },
             
             // LAW ENFORCEMENT
             law_enforcement_authorization: payload.law_enforcement_authorization || {
                 authorized: false
             },
+            
+            // IC3 ACKNOWLEDGMENT
+            ic3_referral_acknowledged: payload.ic3_referral_acknowledged || false,
             
             // SOURCE TRACKING
             source_type: 'manual',
