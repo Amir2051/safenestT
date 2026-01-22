@@ -18,7 +18,7 @@ export default function MergeCasesDialog({ open, onClose, selectedCaseIds, allCa
     const [masterCaseTitle, setMasterCaseTitle] = useState("");
     const queryClient = useQueryClient();
 
-    const selectedCases = allCases.filter(c => selectedCaseIds.includes(c.id));
+    const selectedCases = (allCases || []).filter(c => selectedCaseIds.includes(c.id));
 
     // Auto-aggregate data
     const aggregatedData = {
