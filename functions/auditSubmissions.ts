@@ -27,9 +27,9 @@ Deno.serve(async (req) => {
             console.log(`📊 MyCase entity: ${myCases.length} records`);
             
             // 2. Check other legacy entities for orphaned submissions
-            const clientCases = await base44.entities.ClientCase.list(null, 10000).catch(() => []);
-            const fraudCases = await base44.entities.FraudCase.list(null, 10000).catch(() => []);
-            const investigationCases = await base44.entities.InvestigationCase.list(null, 10000).catch(() => []);
+            const clientCases = await base44.asServiceRole.entities.ClientCase.list(null, 10000).catch(() => []);
+            const fraudCases = await base44.asServiceRole.entities.FraudCase.list(null, 10000).catch(() => []);
+            const investigationCases = await base44.asServiceRole.entities.InvestigationCase.list(null, 10000).catch(() => []);
             
             console.log(`📊 Legacy entities: ClientCase=${clientCases.length}, FraudCase=${fraudCases.length}, Investigation=${investigationCases.length}`);
             
