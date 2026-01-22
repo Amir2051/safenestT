@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
             console.log('🚨 STARTING FULL SUBMISSION AUDIT');
             
             // 1. Get ALL cases from MyCase entity (admin can see all via RLS)
-            const myCases = await base44.entities.MyCase.list(null, 50000);
+            const myCases = await base44.asServiceRole.entities.MyCase.list(null, 50000);
             console.log(`📊 MyCase entity: ${myCases.length} records`);
             
             // 2. Check other legacy entities for orphaned submissions
