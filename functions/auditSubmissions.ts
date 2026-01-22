@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
                     u.email?.toLowerCase() === c.created_by?.toLowerCase()
                 );
                 
-                await base44.entities.MyCase.create({
+                await base44.asServiceRole.entities.MyCase.create({
                     ...c,
                     id: undefined,
                     user_id: matchUser?.id || null,
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
                     metadata: JSON.stringify({ legacy_source: 'InvestigationCase', legacy_id: c.id })
                 });
                 
-                await base44.entities.InvestigationCase.delete(c.id);
+                await base44.asServiceRole.entities.InvestigationCase.delete(c.id);
                 imported++;
             }
             
