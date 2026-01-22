@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
                     u.email?.toLowerCase() === c.created_by?.toLowerCase()
                 );
                 
-                await base44.entities.MyCase.create({
+                await base44.asServiceRole.entities.MyCase.create({
                     client_name: c.victim_contact_info?.name || 'Unknown',
                     client_email: matchUser?.email || c.victim_contact_info?.email,
                     phone_number: c.victim_contact_info?.phone,
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
                     metadata: JSON.stringify({ legacy_source: 'FraudCase', legacy_id: c.id })
                 });
                 
-                await base44.entities.FraudCase.delete(c.id);
+                await base44.asServiceRole.entities.FraudCase.delete(c.id);
                 imported++;
             }
             
