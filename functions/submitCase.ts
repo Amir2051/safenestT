@@ -12,11 +12,10 @@ Deno.serve(async (req) => {
         const payload = await req.json();
         
         console.log('📥 PAYLOAD RECEIVED:', {
-            fraud_type: payload.fraud_type,
-            scammer_wallet: payload.scammer_wallet,
-            amount_lost: payload.amount_lost,
-            has_transactions: !!payload.payment_transactions,
-            transactions_count: payload.payment_transactions?.length
+            incident_classification: payload.incident_classification,
+            issue_type: payload.issue_type,
+            has_financial_loss: payload.financial_loss?.has_financial_loss,
+            amount: payload.amount_lost || payload.financial_loss?.total_amount_usd
         });
 
         // VALIDATION: Check required fields
@@ -27,13 +26,6 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        if (!payload.scammer_wallet?.trim()) {
-            return Response.json({ 
-                success: false, 
-                error: 'Scammer wallet address is required' 
-            }, { status: 400 });
-        }
-
         if (!payload.description?.trim()) {
             return Response.json({ 
                 success: false, 
@@ -41,19 +33,13 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        // Calculate final amount (prioritize transactions)
-        const totalFromTransactions = (payload.payment_transactions || []).reduce(
-            (sum, t) => sum + (parseFloat(t.amount) || 0), 
-            0
-        );
-        const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(payload.amount_lost) || 0;
+        // Extract scammer wallets from alleged_actor_information
+        const scammerWallets = payload.alleged_actor_information?.crypto_wallet_addresses || [];
+        const primaryScammerWallet = scammerWallets[0] || null;
 
-        if (finalAmount <= 0) {
-            return Response.json({ 
-                success: false, 
-                error: 'Amount lost must be greater than 0. Please add payment transactions or enter a total amount.' 
-            }, { status: 400 });
-        }
+        // Calculate final amount
+        const financialLoss = payload.financial_loss || {};
+        const finalAmount = parseFloat(payload.amount_lost) || parseFloat(financialLoss.total_amount_usd) || 0;
         
         // 🔥 CRITICAL: user_id is the PRIMARY key for My Cases visibility
         const caseData = {
