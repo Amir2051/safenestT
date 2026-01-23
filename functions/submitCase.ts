@@ -12,24 +12,36 @@ Deno.serve(async (req) => {
         const payload = await req.json();
         
         console.log('📥 PAYLOAD RECEIVED:', {
-            incident_classification: payload.incident_classification,
+            incident_classification: payload.incident_classification || payload.incidentClassification,
             issue_type: payload.issue_type,
             has_financial_loss: payload.financial_loss?.has_financial_loss,
-            amount: payload.amount_lost || payload.financial_loss?.total_amount_usd
+            amount: payload.amount_lost || payload.financial_loss?.total_amount_usd,
+            victim_name: payload.victim_name || payload.victimName || payload.client_name
         });
 
-        // VALIDATION: Check required fields
-        if (!payload.victim_name?.trim()) {
+        // VALIDATION: Check required fields with flexible field names
+        const victimName = payload.victim_name || payload.victimName || payload.client_name;
+        if (!victimName?.trim()) {
             return Response.json({ 
                 success: false, 
                 error: 'Victim name is required' 
             }, { status: 400 });
         }
 
-        if (!payload.description?.trim()) {
+        const description = payload.description || payload.incidentDescription || payload.incident_description;
+        if (!description?.trim()) {
             return Response.json({ 
                 success: false, 
                 error: 'Case description is required' 
+            }, { status: 400 });
+        }
+        
+        // CRITICAL: Validate incident_classification (REQUIRED by MyCase entity)
+        const incidentClassification = payload.incident_classification || payload.incidentClassification || payload.issue_type;
+        if (!incidentClassification) {
+            return Response.json({ 
+                success: false, 
+                error: 'Incident classification is required' 
             }, { status: 400 });
         }
 
@@ -47,17 +59,18 @@ Deno.serve(async (req) => {
             user_id: user.id,  // ← THIS IS THE KEY FIELD
             created_by: user.email,
             created_by_email: user.email,
-            created_by_name: user.full_name || payload.victim_name || 'User',
-            client_email: payload.victim_email || user.email,
-            client_name: payload.victim_name || user.full_name || 'User',
-            phone_number: payload.victim_phone || null,
+            created_by_name: user.full_name || victimName || 'User',
+            client_email: payload.victim_email || payload.victimEmail || payload.client_email || user.email,
+            client_name: victimName,
+            phone_number: payload.victim_phone || payload.phoneNumber || payload.phone_number || null,
             
             // REQUIRED FIELDS (per schema)
-            incident_classification: payload.incident_classification || payload.issue_type || 'other_cyber_fraud',
-            issue_type: payload.issue_type || payload.incident_classification || 'other',
+            // CRITICAL FIX: Map old field names to new required field
+            incident_classification: incidentClassification,
+            issue_type: payload.issue_type || incidentClassification || 'other',
             
             // BASIC DATA
-            description: payload.description || 'Case submitted via form',
+            description: description,
             status: 'Pending',
             urgency: 'Medium',
             amount_lost: finalAmount,
@@ -143,9 +156,17 @@ Deno.serve(async (req) => {
         caseData.case_number = caseNumber;
 
         console.log('📝 CREATING CASE WITH NUMBER:', caseNumber);
+        console.log('📦 FINAL CASE DATA:', JSON.stringify({
+            user_id: caseData.user_id,
+            client_name: caseData.client_name,
+            incident_classification: caseData.incident_classification,
+            issue_type: caseData.issue_type,
+            description: caseData.description?.substring(0, 50) + '...',
+            amount_lost: caseData.amount_lost
+        }, null, 2));
 
-        // DIRECT DATABASE WRITE - NO COMPLEX LOGIC
-        const newCase = await base44.entities.MyCase.create(caseData);
+        // DIRECT DATABASE WRITE - Use asServiceRole to ensure proper creation
+        const newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
         
         console.log('✅ CASE CREATED:', {
             id: newCase.id,
