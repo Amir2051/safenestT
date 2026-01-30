@@ -147,16 +147,17 @@ Deno.serve(async (req) => {
           forensic_notes: 'Analysis based on publicly available open-source intelligence (OSINT). No private databases or personal records were accessed.'
         };
 
-        // Step 4: Query Public OSINT Sources
-        // Note: In production, integrate with actual OSINT APIs
+        // Step 4: Query Public OSINT Sources using AI with internet search
         
-        // 4a. Check community spam reports (simulated - integrate real APIs)
-        const spamReports = await checkSpamReports(normalizedNumber);
+        // 4a. Check community spam reports
+        const spamReports = await checkSpamReports(normalizedNumber, base44);
         analysis.scam_reports = spamReports;
-        analysis.sources_consulted.push('Community Spam Reports');
+        if (spamReports.count > 0) {
+          analysis.sources_consulted.push('Community Spam Reports');
+        }
         
         // 4b. Check business/service listings
-        const businessInfo = await checkBusinessListings(normalizedNumber);
+        const businessInfo = await checkBusinessListings(normalizedNumber, base44);
         analysis.business_associations = businessInfo;
         if (businessInfo.detected) {
           analysis.sources_consulted.push('Business Directories');
@@ -301,37 +302,93 @@ Deno.serve(async (req) => {
 // ============================================
 
 /**
- * Check spam reports from community and public databases
- * In production: integrate with APIs like:
- * - Twilio Lookup API
- * - NumVerify API
- * - Abstract API Phone Validation
- * - Community databases
+ * Check spam reports using AI-powered OSINT with internet search
  */
-async function checkSpamReports(phoneNumber) {
-  // Simulated spam check - replace with real API calls
-  const mockSpamScore = Math.random();
-  
-  return {
-    count: mockSpamScore > 0.7 ? Math.floor(Math.random() * 50) + 10 : 0,
-    sources: mockSpamScore > 0.7 ? ['Community Reports', 'Public Scam Database'] : [],
-    report_types: mockSpamScore > 0.7 ? ['SCAM', 'ROBOCALL'] : []
-  };
+async function checkSpamReports(phoneNumber, base44) {
+  try {
+    // Use AI with internet context to search for spam reports
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Search for spam/scam reports about phone number ${phoneNumber}. Look for:
+- Complaints on spam reporting websites (800notes, whocallsme, callercenter, etc.)
+- Scam databases and community reports
+- BBB complaints or consumer protection reports
+- Reddit, Twitter, or forum discussions about this number
+- Any abuse or fraud reports
+
+Provide factual findings only. If no reports found, say so clearly.`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          reports_found: { type: "boolean" },
+          total_reports: { type: "number" },
+          sources: { type: "array", items: { type: "string" } },
+          report_types: { type: "array", items: { type: "string" } },
+          summary: { type: "string" }
+        }
+      }
+    });
+
+    console.log('Spam reports result:', result);
+
+    return {
+      count: result.total_reports || 0,
+      sources: result.sources || [],
+      report_types: result.report_types || []
+    };
+  } catch (error) {
+    console.error('Spam check error:', error);
+    return {
+      count: 0,
+      sources: [],
+      report_types: []
+    };
+  }
 }
 
 /**
- * Check business listings and directories
+ * Check business listings using AI-powered OSINT
  */
-async function checkBusinessListings(phoneNumber) {
-  // Simulated business check - replace with real API
-  const isBusiness = Math.random() > 0.8;
-  
-  return {
-    detected: isBusiness,
-    business_name: isBusiness ? 'Sample Business Inc.' : null,
-    business_type: isBusiness ? 'REGISTERED' : null,
-    verification_status: isBusiness ? 'verified' : 'unverified'
-  };
+async function checkBusinessListings(phoneNumber, base44) {
+  try {
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Search for business associations for phone number ${phoneNumber}. Look for:
+- Business directory listings (Yellow Pages, Google Business, Yelp, etc.)
+- Company websites displaying this phone number
+- Professional service listings
+- Registered business information
+
+Provide factual findings only.`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          business_detected: { type: "boolean" },
+          business_name: { type: "string" },
+          business_type: { type: "string" },
+          verification_status: { type: "string" },
+          summary: { type: "string" }
+        }
+      }
+    });
+
+    console.log('Business listing result:', result);
+
+    return {
+      detected: result.business_detected || false,
+      business_name: result.business_name || null,
+      business_type: result.business_type || null,
+      verification_status: result.verification_status || 'unverified'
+    };
+  } catch (error) {
+    console.error('Business check error:', error);
+    return {
+      detected: false,
+      business_name: null,
+      business_type: null,
+      verification_status: 'unverified'
+    };
+  }
 }
 
 /**
