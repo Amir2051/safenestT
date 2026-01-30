@@ -226,6 +226,50 @@ Deno.serve(async (req) => {
     }
 
     // ============================================
+    // ACTION: screen-call
+    // Real-time call screening with three-layer logic
+    // ============================================
+    if (action === 'screen-call') {
+      if (!phone_number) {
+        return Response.json({ error: 'Phone number required' }, { status: 400 });
+      }
+
+      const screening = await performThreeLayerScreening(phone_number, user.email, base44);
+      
+      // Log the screening decision
+      await base44.entities.CallScreeningLog.create({
+        phone_number,
+        screening_decision: screening.decision,
+        block_layers_triggered: screening.layers_triggered,
+        explanation: screening.explanation,
+        user_block_level: screening.user_block_level,
+        call_metadata: {
+          call_time: new Date().toISOString()
+        }
+      });
+
+      return Response.json({
+        success: true,
+        ...screening
+      });
+    }
+
+    // ============================================
+    // ACTION: track-call-behavior
+    // Track call for behavioral pattern detection
+    // ============================================
+    if (action === 'track-call-behavior') {
+      const { call_duration, call_result } = await req.json();
+      
+      await trackCallBehavior(phone_number, call_duration, call_result, base44);
+      
+      return Response.json({
+        success: true,
+        message: 'Call behavior tracked'
+      });
+    }
+
+    // ============================================
     // ACTION: check-block-list
     // Check if number should be blocked
     // ============================================
@@ -358,6 +402,279 @@ function calculateConfidenceScore(analysis) {
   }
   
   return factorsCount > 0 ? Math.floor(confidence / factorsCount) : 20;
+}
+
+/**
+ * THREE-LAYER CALL SCREENING ENGINE
+ * Forensic-grade spam detection with explainability
+ */
+async function performThreeLayerScreening(phoneNumber, userEmail, base44) {
+  const layersTriggered = [];
+  let finalDecision = 'ALLOWED';
+  const explanationParts = [];
+  
+  // Get user's block sensitivity level
+  const userSettings = await base44.entities.PhoneBlockList.filter({
+    phone_number: '__SETTINGS__',
+    created_by: userEmail
+  });
+  const blockLevel = userSettings[0]?.block_level || 'MEDIUM';
+  
+  // ====================================
+  // LAYER 1: REPUTATION DATABASE
+  // ====================================
+  
+  // Check user's personal whitelist first
+  const whitelistEntries = await base44.entities.PhoneBlockList.filter({
+    phone_number: phoneNumber,
+    created_by: userEmail,
+    is_whitelisted: true
+  });
+  
+  if (whitelistEntries.length > 0) {
+    return {
+      decision: 'ALLOWED',
+      user_block_level: blockLevel,
+      layers_triggered: [{
+        layer: 'WHITELIST',
+        reason: 'Number is in user whitelist',
+        confidence: 100
+      }],
+      explanation: '✓ Allowed: Number is in your trusted whitelist',
+      should_warn: false,
+      should_block: false
+    };
+  }
+  
+  // Check user's personal block list
+  const userBlocks = await base44.entities.PhoneBlockList.filter({
+    phone_number: phoneNumber,
+    created_by: userEmail,
+    is_whitelisted: false
+  });
+  
+  if (userBlocks.length > 0) {
+    layersTriggered.push({
+      layer: 'LAYER_1_REPUTATION',
+      reason: 'User manually blocked this number',
+      confidence: 100
+    });
+    explanationParts.push('You previously blocked this number');
+    finalDecision = 'BLOCKED';
+  }
+  
+  // Check community spam reports
+  const spamReports = await base44.entities.SpamCallReport.filter({
+    phone_number: phoneNumber
+  });
+  
+  if (spamReports.length >= 5) {
+    layersTriggered.push({
+      layer: 'LAYER_1_REPUTATION',
+      reason: `Number reported ${spamReports.length} times by community`,
+      confidence: Math.min(95, spamReports.length * 15)
+    });
+    
+    const reportTypes = [...new Set(spamReports.map(r => r.report_type))];
+    explanationParts.push(`Reported ${spamReports.length} times as ${reportTypes.join(', ')}`);
+    
+    if (blockLevel === 'AGGRESSIVE' || spamReports.length >= 10) {
+      finalDecision = 'BLOCKED';
+    } else {
+      finalDecision = 'WARNED';
+    }
+  } else if (spamReports.length > 0 && blockLevel === 'AGGRESSIVE') {
+    layersTriggered.push({
+      layer: 'LAYER_1_REPUTATION',
+      reason: `${spamReports.length} community reports detected`,
+      confidence: 60
+    });
+    explanationParts.push(`${spamReports.length} user reports found`);
+    finalDecision = 'WARNED';
+  }
+  
+  // ====================================
+  // LAYER 2: BEHAVIORAL DETECTION
+  // ====================================
+  
+  const behaviorPattern = await base44.entities.CallBehaviorPattern.filter({
+    phone_number: phoneNumber
+  });
+  
+  if (behaviorPattern.length > 0) {
+    const pattern = behaviorPattern[0];
+    
+    // High-frequency calls (red flag)
+    if (pattern.calls_last_24h >= 10) {
+      layersTriggered.push({
+        layer: 'LAYER_2_BEHAVIORAL',
+        reason: 'High-frequency call pattern detected',
+        confidence: 85
+      });
+      explanationParts.push(`${pattern.calls_last_24h} calls in last 24 hours (unusual volume)`);
+      
+      if (blockLevel === 'AGGRESSIVE' || pattern.calls_last_24h >= 20) {
+        finalDecision = 'BLOCKED';
+      } else if (finalDecision === 'ALLOWED') {
+        finalDecision = 'WARNED';
+      }
+    }
+    
+    // Short call duration pattern (robocall indicator)
+    if (pattern.short_calls_count >= 5 && pattern.average_call_duration < 10) {
+      layersTriggered.push({
+        layer: 'LAYER_2_BEHAVIORAL',
+        reason: 'Short call duration loop detected',
+        confidence: 75
+      });
+      explanationParts.push(`Multiple calls under 10 seconds (robocall pattern)`);
+      
+      if (blockLevel !== 'LOW' && finalDecision === 'ALLOWED') {
+        finalDecision = 'WARNED';
+      }
+    }
+    
+    // Sequential pattern detection
+    if (pattern.sequential_pattern_detected) {
+      layersTriggered.push({
+        layer: 'LAYER_2_BEHAVIORAL',
+        reason: 'Number is part of sequential/rotating pattern',
+        confidence: 70
+      });
+      explanationParts.push('Part of sequential number pattern (common in spam campaigns)');
+      
+      if (blockLevel === 'AGGRESSIVE' && finalDecision === 'ALLOWED') {
+        finalDecision = 'WARNED';
+      }
+    }
+    
+    // Time-based scam activity
+    if (pattern.time_based_pattern === 'NIGHT') {
+      layersTriggered.push({
+        layer: 'LAYER_2_BEHAVIORAL',
+        reason: 'Unusual calling hours detected',
+        confidence: 65
+      });
+      explanationParts.push('Calls frequently occur during unusual hours');
+      
+      if (blockLevel === 'AGGRESSIVE' && finalDecision === 'ALLOWED') {
+        finalDecision = 'WARNED';
+      }
+    }
+  }
+  
+  // ====================================
+  // LAYER 3: USER CONTROL
+  // ====================================
+  
+  // Apply user block level thresholds
+  if (blockLevel === 'AGGRESSIVE' && layersTriggered.length > 0 && finalDecision === 'ALLOWED') {
+    finalDecision = 'WARNED';
+    explanationParts.push('Flagged due to aggressive filtering setting');
+  }
+  
+  // Build final explanation
+  let explanation = '';
+  if (finalDecision === 'BLOCKED') {
+    explanation = `🚫 BLOCKED: ${explanationParts.join(' • ')}`;
+  } else if (finalDecision === 'WARNED') {
+    explanation = `⚠️ WARNING: ${explanationParts.join(' • ')}`;
+  } else {
+    explanation = '✓ ALLOWED: No risk indicators detected';
+  }
+  
+  return {
+    decision: finalDecision,
+    user_block_level: blockLevel,
+    layers_triggered: layersTriggered,
+    explanation,
+    should_warn: finalDecision === 'WARNED',
+    should_block: finalDecision === 'BLOCKED',
+    risk_score: layersTriggered.reduce((sum, l) => sum + l.confidence, 0) / (layersTriggered.length || 1)
+  };
+}
+
+/**
+ * Track call behavior for pattern detection
+ */
+async function trackCallBehavior(phoneNumber, callDuration, callResult, base44) {
+  const existing = await base44.entities.CallBehaviorPattern.filter({
+    phone_number: phoneNumber
+  });
+  
+  const now = new Date();
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  if (existing.length > 0) {
+    const pattern = existing[0];
+    const timestamps = pattern.call_timestamps || [];
+    timestamps.push(now.toISOString());
+    
+    // Keep only last 100 calls
+    const recentTimestamps = timestamps.slice(-100);
+    
+    // Calculate metrics
+    const calls24h = recentTimestamps.filter(t => new Date(t) > last24h).length;
+    const calls7d = recentTimestamps.filter(t => new Date(t) > last7d).length;
+    const shortCalls = callDuration < 10 ? (pattern.short_calls_count || 0) + 1 : pattern.short_calls_count;
+    
+    // Calculate average duration
+    const totalCalls = pattern.total_calls + 1;
+    const avgDuration = ((pattern.average_call_duration || 0) * pattern.total_calls + callDuration) / totalCalls;
+    
+    // Detect time-based pattern
+    const hour = now.getHours();
+    const timePattern = hour >= 22 || hour < 7 ? 'NIGHT' :
+                       hour >= 9 && hour < 17 ? 'BUSINESS_HOURS' :
+                       hour >= 17 && hour < 22 ? 'EVENING' : 'RANDOM';
+    
+    await base44.entities.CallBehaviorPattern.update(pattern.id, {
+      total_calls: totalCalls,
+      calls_last_24h: calls24h,
+      calls_last_7d: calls7d,
+      average_call_duration: avgDuration,
+      short_calls_count: shortCalls,
+      call_timestamps: recentTimestamps,
+      time_based_pattern: timePattern,
+      behavior_score: calculateBehaviorScore(calls24h, shortCalls, avgDuration),
+      last_call: now.toISOString()
+    });
+  } else {
+    await base44.entities.CallBehaviorPattern.create({
+      phone_number: phoneNumber,
+      total_calls: 1,
+      calls_last_24h: 1,
+      calls_last_7d: 1,
+      average_call_duration: callDuration,
+      short_calls_count: callDuration < 10 ? 1 : 0,
+      call_timestamps: [now.toISOString()],
+      behavior_score: 0,
+      last_call: now.toISOString()
+    });
+  }
+}
+
+/**
+ * Calculate behavioral risk score
+ */
+function calculateBehaviorScore(calls24h, shortCalls, avgDuration) {
+  let score = 0;
+  
+  // High volume indicator
+  if (calls24h >= 20) score += 40;
+  else if (calls24h >= 10) score += 25;
+  else if (calls24h >= 5) score += 10;
+  
+  // Short duration indicator
+  if (shortCalls >= 10) score += 30;
+  else if (shortCalls >= 5) score += 15;
+  
+  // Average duration indicator
+  if (avgDuration < 5) score += 30;
+  else if (avgDuration < 10) score += 15;
+  
+  return Math.min(100, score);
 }
 
 /**

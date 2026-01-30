@@ -14,6 +14,7 @@ import PhoneAnalysisResult from "../components/phone/PhoneAnalysisResult";
 import SpamBlockingControl from "../components/phone/SpamBlockingControl";
 import ReportSpamDialog from "../components/phone/ReportSpamDialog";
 import BlockListManager from "../components/phone/BlockListManager";
+import CallScreeningPanel from "../components/phone/CallScreeningPanel";
 
 export default function PhoneIntelligence() {
   const [user, setUser] = useState(null);
@@ -21,7 +22,7 @@ export default function PhoneIntelligence() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState('lookup'); // lookup, blocking, blocklist
+  const [activeTab, setActiveTab] = useState('lookup'); // lookup, screening, blocking, blocklist
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -108,7 +109,7 @@ export default function PhoneIntelligence() {
       </Card>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-gray-800 pb-2">
+      <div className="flex gap-2 border-b border-gray-800 pb-2 overflow-x-auto">
         <Button
           variant={activeTab === 'lookup' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('lookup')}
@@ -118,12 +119,20 @@ export default function PhoneIntelligence() {
           Number Lookup
         </Button>
         <Button
+          variant={activeTab === 'screening' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('screening')}
+          className={activeTab === 'screening' ? 'bg-cyan-600' : ''}
+        >
+          <Phone className="w-4 h-4 mr-2" />
+          Call Screening
+        </Button>
+        <Button
           variant={activeTab === 'blocking' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('blocking')}
           className={activeTab === 'blocking' ? 'bg-cyan-600' : ''}
         >
           <Shield className="w-4 h-4 mr-2" />
-          Spam Blocking
+          Protection Layers
         </Button>
         <Button
           variant={activeTab === 'blocklist' ? 'default' : 'ghost'}
@@ -221,6 +230,11 @@ export default function PhoneIntelligence() {
             </Card>
           )}
         </div>
+      )}
+
+      {/* Call Screening Tab */}
+      {activeTab === 'screening' && (
+        <CallScreeningPanel user={user} />
       )}
 
       {/* Spam Blocking Tab */}
