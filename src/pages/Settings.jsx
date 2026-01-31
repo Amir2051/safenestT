@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 import AlertPreferences from "../components/alerts/AlertPreferences.jsx";
+import SafeNesttDisclaimer from "../components/shared/SafeNesttDisclaimer";
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -647,6 +648,11 @@ export default function Settings() {
         {/* Alert Settings Tab */}
         <TabsContent value="alerts" className="mt-6">
           <AlertPreferences />
+          
+          {/* Disclaimer Section */}
+          <div className="mt-6">
+            <SafeNesttDisclaimer />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

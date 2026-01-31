@@ -115,6 +115,7 @@ import PaymentOnboarding from './pages/PaymentOnboarding';
 import PaymentRequired from './pages/PaymentRequired';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PendingApproval from './pages/PendingApproval';
+import PhoneIntelligence from './pages/PhoneIntelligence';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import ReferralLanding from './pages/ReferralLanding';
 import Referrals from './pages/Referrals';
@@ -144,7 +145,6 @@ import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
 import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
-import PhoneIntelligence from './pages/PhoneIntelligence';
 import __Layout from './Layout.jsx';
 
 
@@ -217,6 +217,7 @@ export const PAGES = {
     "PaymentRequired": PaymentRequired,
     "PaymentSuccess": PaymentSuccess,
     "PendingApproval": PendingApproval,
+    "PhoneIntelligence": PhoneIntelligence,
     "PrivacyPolicy": PrivacyPolicy,
     "ReferralLanding": ReferralLanding,
     "Referrals": Referrals,
@@ -246,7 +247,6 @@ export const PAGES = {
     "ViewAlerts": ViewAlerts,
     "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
-    "PhoneIntelligence": PhoneIntelligence,
 }
 
 export const pagesConfig = {

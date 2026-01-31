@@ -2,11 +2,18 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Shield, FileText, Scale, BookOpen } from "lucide-react";
+import SafeNesttDisclaimer from "./SafeNesttDisclaimer";
 
 export default function LegalFooter() {
   return (
     <footer className="mt-auto border-t border-cyan-500/20 bg-black/40 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Disclaimer */}
+        <div className="mb-6">
+          <SafeNesttDisclaimer variant="short" />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Company Info */}
           <div>
