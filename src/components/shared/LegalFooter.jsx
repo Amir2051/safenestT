@@ -12,8 +12,6 @@ export default function LegalFooter() {
         <div className="mb-6">
           <SafeNesttDisclaimer variant="short" />
         </div>
-        
-        <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Company Info */}
           <div>
