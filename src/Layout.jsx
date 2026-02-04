@@ -7,10 +7,12 @@ import NotificationCenter from "./components/shared/NotificationCenter.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
+import MobileBottomNav from "./components/navigation/MobileBottomNav.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
 import LegalFooter from "./components/shared/LegalFooter";
+import { ArrowLeft } from "lucide-react";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -263,15 +265,32 @@ export default function Layout({ children, currentPageName }) {
           </div>
 
           {/* Header */}
-          <header className="relative z-10 bg-black/40 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between">
+          <header 
+            className="relative z-10 bg-black/40 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between"
+            style={{
+              paddingTop: 'calc(1rem + env(safe-area-inset-top))',
+              userSelect: 'none'
+            }}
+          >
             <div className="flex items-center gap-4">
-              {/* Mobile: Show menu trigger area */}
-              <button
-                onClick={() => setShowMenuButton(true)}
-                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
-              >
-                <Menu className="w-5 h-5 text-cyan-400" />
-              </button>
+              {/* Desktop & Mobile: Conditional back button or menu */}
+              {currentPageName !== 'Dashboard' ? (
+                <button
+                  onClick={() => window.history.back()}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
+                  style={{ userSelect: 'none' }}
+                >
+                  <ArrowLeft className="w-5 h-5 text-cyan-400" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowMenuButton(true)}
+                  className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
+                  style={{ userSelect: 'none' }}
+                >
+                  <Menu className="w-5 h-5 text-cyan-400" />
+                </button>
+              )}
 
               <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/30">
                     <img 
@@ -311,7 +330,10 @@ export default function Layout({ children, currentPageName }) {
           </header>
 
           {/* Page Content */}
-          <div className="relative z-10 flex-1 overflow-auto h-full flex flex-col">
+          <div 
+            className="relative z-10 flex-1 overflow-auto h-full flex flex-col pb-20 lg:pb-0"
+            style={{ overscrollBehaviorY: 'none' }}
+          >
             <div className="flex-1">
             {maintenanceMode && user?.role !== 'admin' && !user?.is_admin ? (
               <div className="flex items-center justify-center min-h-[80vh] p-6">
@@ -347,10 +369,18 @@ export default function Layout({ children, currentPageName }) {
             <LegalFooter />
             </div>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
 
-      {/* Custom Animations */}
+      {/* Custom Animations & Global Styles */}
       <style>{`
+        button, .sidebar {
+          user-select: none;
+          -webkit-user-select: none;
+        }
+
         @keyframes neon-pulse {
           0%, 100% {
             box-shadow: 0 0 20px rgba(6, 182, 212, 0.5),

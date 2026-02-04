@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import MaintenanceBanner from "@/components/shared/MaintenanceBanner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home, Sparkles, Clock
+  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home, Sparkles, Clock, RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
 import LiveClock from "@/components/shared/LiveClock";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 
 import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
@@ -29,8 +30,14 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
+  const pullY = useMotionValue(0);
+  const pullProgress = useTransform(pullY, [0, 100], [0, 1]);
+  const containerRef = useRef(null);
+  const startY = useRef(0);
+  const isPulling = useRef(false);
 
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts'],
@@ -149,6 +156,47 @@ export default function Dashboard() {
     };
   }, []);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries();
+      await new Promise(resolve => setTimeout(resolve, 800));
+      toast.success('Dashboard refreshed!');
+    } catch (error) {
+      toast.error('Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
+      pullY.set(0);
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    if (containerRef.current?.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isPulling.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY.current;
+    
+    if (diff > 0 && diff < 120) {
+      pullY.set(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullY.get() > 80 && !isRefreshing) {
+      handleRefresh();
+    } else {
+      animate(pullY, 0, { type: 'spring', stiffness: 300, damping: 30 });
+    }
+    isPulling.current = false;
+  };
+
   const runSecurityScan = async () => {
     setScanning(true);
     try {
@@ -204,7 +252,27 @@ export default function Dashboard() {
   const atRiskProperties = properties.filter(p => (p.title_security_score || 100) < 70).length;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div 
+      ref={containerRef}
+      className="p-6 lg:p-8 space-y-6"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-Refresh Indicator */}
+      <motion.div
+        style={{ y: pullY, opacity: pullProgress }}
+        className="fixed top-20 left-1/2 -translate-x-1/2 z-50 lg:hidden"
+      >
+        <motion.div
+          animate={{ rotate: isRefreshing ? 360 : 0 }}
+          transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: "linear" }}
+          className="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center border-2 border-cyan-500"
+        >
+          <RefreshCw className="w-5 h-5 text-cyan-400" />
+        </motion.div>
+      </motion.div>
+
       {/* Real-time message notifications */}
       <MessageNotifications user={user} />
       

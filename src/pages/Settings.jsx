@@ -9,10 +9,18 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Settings as SettingsIcon, Shield, User, Bell, Lock, 
-  Wifi, Mail, Phone, Calendar, CreditCard, Save, Loader2
+  Wifi, Mail, Phone, Calendar, CreditCard, Save, Loader2, AlertTriangle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import AlertPreferences from "../components/alerts/AlertPreferences.jsx";
 import SafeNesttDisclaimer from "../components/shared/SafeNesttDisclaimer";
@@ -20,6 +28,8 @@ import SafeNesttDisclaimer from "../components/shared/SafeNesttDisclaimer";
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [formData, setFormData] = useState({
     full_name: '',
     username: '',
@@ -653,8 +663,83 @@ export default function Settings() {
           <div className="mt-6">
             <SafeNesttDisclaimer />
           </div>
+
+          {/* Danger Zone */}
+          <Card className="mt-6 bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/30">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+                Danger Zone
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-300 text-sm mb-4">
+                Once you delete your account, there is no going back. This action is permanent and cannot be undone.
+              </p>
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Account
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="bg-[#1a2332] border-red-500/30">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              This action is permanent and cannot be undone. All your data, cases, and settings will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-white font-semibold mb-2 block">
+              Type "DELETE" to confirm:
+            </Label>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="bg-[#0f1419] border-red-500/30 text-white"
+              placeholder="DELETE"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteConfirmText('');
+              }}
+              className="border-gray-600"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== 'DELETE'}
+              onClick={async () => {
+                try {
+                  await base44.auth.logout();
+                  toast.success('Account deleted successfully');
+                } catch (error) {
+                  toast.error('Failed to delete account');
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete My Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
