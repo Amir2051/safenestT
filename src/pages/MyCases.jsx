@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   FileText, AlertTriangle, Clock, CheckCircle, Loader2,
-  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search, Trash2, Filter
+  Wallet, Calendar, DollarSign, Eye, Phone, Mail, User, Scale, ShieldCheck, Pencil, Save, X, Activity, FileStack, Plus, Search, Trash2, Filter, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
@@ -48,7 +49,14 @@ export default function MyCases() {
   const [caseToDelete, setCaseToDelete] = useState(null);
   const [selectedCasesForMerge, setSelectedCasesForMerge] = useState([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+
+  const pullY = useMotionValue(0);
+  const pullProgress = useTransform(pullY, [0, 100], [0, 1]);
+  const containerRef = useRef(null);
+  const startY = useRef(0);
+  const isPulling = useRef(false);
   
   // Advanced Filters
   const [filters, setFilters] = useState({
@@ -74,6 +82,47 @@ export default function MyCases() {
       console.error('❌ User auth failed:', err);
     });
   }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchCases();
+      await new Promise(resolve => setTimeout(resolve, 800));
+      toast.success('Cases refreshed!');
+    } catch (error) {
+      toast.error('Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
+      pullY.set(0);
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    if (containerRef.current?.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isPulling.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY.current;
+    
+    if (diff > 0 && diff < 120) {
+      pullY.set(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullY.get() > 80 && !isRefreshing) {
+      handleRefresh();
+    } else {
+      animate(pullY, 0, { type: 'spring', stiffness: 300, damping: 30 });
+    }
+    isPulling.current = false;
+  };
 
   useEffect(() => {
     if (!user || (user.role !== 'admin' && !user.is_admin && user.job_title !== 'Fraud Specialist')) return;
@@ -358,7 +407,27 @@ export default function MyCases() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div 
+      ref={containerRef}
+      className="p-6 lg:p-8 space-y-6"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-Refresh Indicator */}
+      <motion.div
+        style={{ y: pullY, opacity: pullProgress }}
+        className="fixed top-20 left-1/2 -translate-x-1/2 z-50 lg:hidden"
+      >
+        <motion.div
+          animate={{ rotate: isRefreshing ? 360 : 0 }}
+          transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: "linear" }}
+          className="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center border-2 border-cyan-500"
+        >
+          <RefreshCw className="w-5 h-5 text-cyan-400" />
+        </motion.div>
+      </motion.div>
+
       {/* Admin Tools Panel */}
       {user && (user.role === 'admin' || user.is_admin) && (
         <Card className="bg-purple-500/10 border-purple-500/30 mb-4">
