@@ -279,6 +279,14 @@ ${linkedCasesList.map(c => `- ${c.case_number} (${c.match_type})`).join('\n') ||
                 timeline_summary: aiData.mo_timeline || ""
             },
             linked_intelligence: linkedIntelligence, // New Section
+            transaction_analysis: {
+                flow_summary: caseData.description?.includes('transaction') ? caseData.description : "",
+                risk_score: caseData.amount_lost > 10000 ? 75 : caseData.amount_lost > 5000 ? 50 : 25,
+                risk_level: caseData.amount_lost > 10000 ? "High" : caseData.amount_lost > 5000 ? "Medium" : "Low",
+                total_hops: (caseData.transaction_hashes || []).length,
+                exchanges: [],
+                mixers_detected: false
+            },
             evidence_summary: evidenceSummary,
             investigator_analysis: {
                 pattern_assessment: aiData.analysis_pattern || "",
