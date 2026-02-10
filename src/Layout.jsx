@@ -34,35 +34,52 @@ export default function Layout({ children, currentPageName }) {
     }).catch(() => {});
   }, []);
 
-  // Load external chat widget
+  // Load external chat widget with error suppression
   React.useEffect(() => {
     // Prevent duplicate loading
     if (document.querySelector('script[name="web-chat"]')) {
       return;
     }
 
-    // Create and configure script element
-    const script = document.createElement('script');
-    script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
-    script.setAttribute('name', 'web-chat');
-    script.setAttribute('data-client-secret', '68d63f1d-d9ca-47be-b15c-f71cff5d3da3');
-    script.async = true;
-    script.defer = true;
-    
-    // Add load event listener for debugging
-    script.onload = () => {
-      console.log('Chat widget script loaded successfully');
+    // Suppress cross-origin errors from third-party chat widget
+    const originalError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      // Suppress NEWO_CHAT cross-origin errors
+      if (message && message.toString().includes('NEWO_CHAT')) {
+        return true; // Prevents error from propagating
+      }
+      if (originalError) {
+        return originalError(message, source, lineno, colno, error);
+      }
+      return false;
     };
-    
-    script.onerror = () => {
-      console.error('Failed to load chat widget script');
-    };
-    
-    // Append to head instead of body for better reliability
-    document.head.appendChild(script);
 
-    // Cleanup function
+    try {
+      const script = document.createElement('script');
+      script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
+      script.setAttribute('name', 'web-chat');
+      script.setAttribute('data-client-secret', '68d63f1d-d9ca-47be-b15c-f71cff5d3da3');
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      
+      script.onload = () => {
+        console.log('Chat widget loaded');
+      };
+      
+      script.onerror = () => {
+        // Silent fail for chat widget
+        console.warn('Chat widget failed to load');
+      };
+      
+      document.head.appendChild(script);
+    } catch (e) {
+      // Silent catch for any errors during script injection
+      console.warn('Chat widget initialization error:', e.message);
+    }
+
     return () => {
+      window.onerror = originalError;
       const existingScript = document.querySelector('script[name="web-chat"]');
       if (existingScript) {
         existingScript.remove();
