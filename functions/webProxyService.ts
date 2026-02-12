@@ -16,18 +16,19 @@ Deno.serve(async (req) => {
       case 'start-session': {
         // Create a proxy session
         const sessionId = crypto.randomUUID();
-        const session = await base44.entities.VPNConnection.create({
+        const session = await base44.asServiceRole.entities.VPNConnection.create({
           user_email: user.email,
           device_id: params.device_id || 'web-browser',
           server_id: params.server_id || 'web-proxy-1',
           connection_status: 'connected',
           client_ip: req.headers.get('x-forwarded-for') || 'unknown',
           started_at: new Date().toISOString(),
-          session_id: sessionId
+          session_id: sessionId,
+          created_by: user.email
         });
 
         // Log the connection
-        await base44.entities.AuditLog.create({
+        await base44.asServiceRole.entities.AuditLog.create({
           action_type: 'vpn_connected',
           action_category: 'vpn',
           description: 'Web proxy session started',
@@ -36,13 +37,14 @@ Deno.serve(async (req) => {
             server: params.server_id || 'web-proxy-1'
           },
           severity: 'info',
-          status: 'success'
+          status: 'success',
+          created_by: user.email
         });
 
         return Response.json({
           success: true,
           session_id: sessionId,
-          proxy_endpoint: 'https://proxy.safenest.app', // Placeholder
+          proxy_endpoint: 'https://proxy.safenest.app',
           message: 'Proxy session started'
         });
       }
@@ -51,7 +53,7 @@ Deno.serve(async (req) => {
         const { session_id } = params;
 
         // Find and update the session
-        const connections = await base44.entities.VPNConnection.filter({
+        const connections = await base44.asServiceRole.entities.VPNConnection.filter({
           user_email: user.email,
           session_id,
           connection_status: 'connected'
@@ -61,13 +63,13 @@ Deno.serve(async (req) => {
           const conn = connections[0];
           const duration = (Date.now() - new Date(conn.started_at).getTime()) / 1000;
 
-          await base44.entities.VPNConnection.update(conn.id, {
+          await base44.asServiceRole.entities.VPNConnection.update(conn.id, {
             connection_status: 'disconnected',
             ended_at: new Date().toISOString(),
             duration_seconds: duration
           });
 
-          await base44.entities.AuditLog.create({
+          await base44.asServiceRole.entities.AuditLog.create({
             action_type: 'vpn_disconnected',
             action_category: 'vpn',
             description: 'Web proxy session ended',
@@ -76,7 +78,8 @@ Deno.serve(async (req) => {
               duration_seconds: duration.toFixed(0)
             },
             severity: 'info',
-            status: 'success'
+            status: 'success',
+            created_by: user.email
           });
         }
 
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
 
       case 'get-status': {
         // Check if user has an active session
-        const activeSessions = await base44.entities.VPNConnection.filter({
+        const activeSessions = await base44.asServiceRole.entities.VPNConnection.filter({
           user_email: user.email,
           connection_status: 'connected'
         }, '-created_date', 5);
