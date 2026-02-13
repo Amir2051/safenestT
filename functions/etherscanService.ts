@@ -1,24 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
-export default async function handler(req) {
+Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   
   // Authorization check
   const user = await base44.auth.me();
   if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { address } = await req.json();
 
   if (!address) {
-    return new Response(JSON.stringify({ error: 'Wallet address is required' }), { 
-      status: 400, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    return Response.json({ error: 'Wallet address is required' }, { status: 400 });
   }
 
   // API Key provided by user
@@ -73,7 +67,7 @@ export default async function handler(req) {
     if (transactions.some(tx => tx.isError === '1')) risks.push("Failed transactions detected");
     if (contractInteractions.length > 0) risks.push(`${contractInteractions.length} contract interactions detected`);
     
-    return new Response(JSON.stringify({
+    return Response.json({
       address,
       balance,
       transactions,
@@ -85,15 +79,10 @@ export default async function handler(req) {
         total: transactions.length
       },
       risks
-    }), { 
-      status: 200, 
-      headers: { 'Content-Type': 'application/json' } 
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    console.error('Etherscan Service Error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
-}
+});
