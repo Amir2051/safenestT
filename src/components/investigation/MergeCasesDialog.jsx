@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function MergeCasesDialog({ open, onClose, selectedCaseIds, allCases }) {
+export default function MergeCasesDialog({ open, onClose, selectedCaseIds = [], allCases = [] }) {
     const [merging, setMerging] = useState(false);
     const [masterCaseTitle, setMasterCaseTitle] = useState("");
     const queryClient = useQueryClient();
 
-    const selectedCases = (allCases || []).filter(c => selectedCaseIds.includes(c.id));
+    const selectedCases = allCases.filter(c => selectedCaseIds.includes(c.id));
 
     // Auto-aggregate data
     const aggregatedData = {
