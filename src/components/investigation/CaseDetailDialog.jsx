@@ -47,6 +47,7 @@ import WalletRiskChecker from "../ai/WalletRiskChecker";
 import AutomatedReportGenerator from "../reports/AutomatedReportGenerator";
 import PaymentTransactionsView from "../cases/PaymentTransactionsView";
 import TransactionsList from "../cases/TransactionsList";
+import SharedFilesPanel from "../cases/SharedFilesPanel";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -598,6 +599,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 <Edit className="w-3 h-3 mr-1" />Edit Case
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="shared-files" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                <Upload className="w-3 h-3 mr-1" />Shared Files
+              </TabsTrigger>
               <TabsTrigger value="victim">Client Details</TabsTrigger>
               <TabsTrigger value="suspect">Suspect Details</TabsTrigger>
               <TabsTrigger value="edit-suspect" className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">
@@ -1359,6 +1363,15 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="documents" className="space-y-4">
               <CaseDocuments caseData={caseData} onUpdate={onUpdate} />
+            </TabsContent>
+
+            <TabsContent value="shared-files" className="space-y-4">
+              <SharedFilesPanel 
+                caseId={caseData.id}
+                caseData={caseData}
+                isAdmin={true}
+                currentUser={user}
+              />
             </TabsContent>
 
             <TabsContent value="victim" className="space-y-4">

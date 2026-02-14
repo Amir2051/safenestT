@@ -21,6 +21,7 @@ import SensitiveField from "../investigation/SensitiveField.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
 import PaymentTransactionsView from "./PaymentTransactionsView";
+import SharedFilesPanel from "./SharedFilesPanel";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -187,6 +188,9 @@ export default function UserCaseDetail({ caseData, onClose }) {
                     <TabsTrigger value="my-info">My Information</TabsTrigger>
                     <TabsTrigger value="suspect">Suspect Info</TabsTrigger>
                     <TabsTrigger value="evidence">Evidence</TabsTrigger>
+                    <TabsTrigger value="shared-files" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                      <Upload className="w-3 h-3 mr-1" />Shared Files
+                    </TabsTrigger>
                     <TabsTrigger value="timeline">Timeline</TabsTrigger>
                     <TabsTrigger value="messages">Messages</TabsTrigger>
                 </TabsList>
@@ -456,6 +460,15 @@ export default function UserCaseDetail({ caseData, onClose }) {
                             <p className="text-gray-500 text-center py-8">No evidence files uploaded yet.</p>
                         )}
                     </div>
+                </TabsContent>
+
+                <TabsContent value="shared-files" className="space-y-4 mt-4">
+                    <SharedFilesPanel 
+                      caseId={caseData.id}
+                      caseData={caseData}
+                      isAdmin={false}
+                      currentUser={currentUser}
+                    />
                 </TabsContent>
 
                 <TabsContent value="timeline" className="space-y-4 mt-4">
