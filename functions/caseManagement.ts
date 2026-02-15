@@ -423,12 +423,16 @@ Deno.serve(async (req) => {
         if (action === 'update') {
             const { id, updates, entityName } = data;
             if (!id) return Response.json({ error: "Missing case ID" }, { status: 400 });
+            if (!updates || typeof updates !== 'object') {
+                return Response.json({ error: "Invalid updates payload" }, { status: 400 });
+            }
 
             console.log('🔄 UPDATE ACTION STARTED:', { 
                 id, 
                 entityName, 
                 updateFields: Object.keys(updates),
                 user: user.email,
+                userRole: user.role,
                 isAdmin: user.role === 'admin' || user.is_admin
             });
 
@@ -486,7 +490,7 @@ Deno.serve(async (req) => {
                     
                     // Log status changes
                     if (updates.status && existing.status !== updates.status) {
-                        await base44.entities.CaseTimelineEvent.create({
+                        await base44.asServiceRole.entities.CaseTimelineEvent.create({
                             case_id: id,
                             event_type: 'status_change',
                             event_title: 'Status Updated',
@@ -500,7 +504,7 @@ Deno.serve(async (req) => {
 
                         // WORKFLOW TRIGGER: Law Enforcement Status
                         if (updates.status === 'law_enforcement') {
-                            base44.functions.invoke('workflowAutomation', {
+                            base44.asServiceRole.functions.invoke('workflowAutomation', {
                                 trigger_type: 'case_status_law_enforcement',
                                 trigger_data: { case_id: id }
                             }).catch(e => console.error("Workflow trigger failed:", e));
@@ -513,7 +517,9 @@ Deno.serve(async (req) => {
                         id,
                         fieldsBeingUpdated: Object.keys(updates)
                     });
+                    
                     const updatedCase = await base44.asServiceRole.entities[entityType].update(id, updates);
+                    
                     console.log('✅ CASE UPDATE SUCCESS:', {
                         id: updatedCase.id,
                         case_number: updatedCase.case_number,
