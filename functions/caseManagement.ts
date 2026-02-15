@@ -1067,18 +1067,19 @@ Deno.serve(async (req) => {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
-                const { case_ids, master_case_title, aggregated_data } = data;
-                if (!case_ids || !Array.isArray(case_ids) || case_ids.length < 2) {
+                const { caseIds, case_ids, master_case_title, aggregated_data } = data;
+                const finalCaseIds = caseIds || case_ids;
+                if (!finalCaseIds || !Array.isArray(finalCaseIds) || finalCaseIds.length < 2) {
                     return Response.json({ error: "Please select at least 2 cases to merge." }, { status: 400 });
                 }
 
                 console.log('🔗 MERGE CASES - ENHANCED:', { 
-                    case_count: case_ids.length,
+                    case_count: finalCaseIds.length,
                     title: master_case_title 
                 });
 
                 // Fetch all cases to be merged
-                const cases = await Promise.all(case_ids.map(id => base44.asServiceRole.entities.MyCase.get(id)));
+                const cases = await Promise.all(finalCaseIds.map(id => base44.asServiceRole.entities.MyCase.get(id)));
                 
                 if (cases.some(c => !c)) {
                     return Response.json({ error: "One or more cases not found." }, { status: 404 });
@@ -1170,7 +1171,7 @@ Provide a concise investigative pattern analysis identifying common tactics, sim
 
                 // 7. Update original cases with master case link
                 await Promise.all(
-                    case_ids.map(id => 
+                    finalCaseIds.map(id => 
                         base44.asServiceRole.entities.MyCase.update(id, {
                             linked_case_ids: [masterCase.id],
                             notes: (cases.find(c => c.id === id)?.notes || '') + `\n[Merged into Master Case: ${masterCase.id}]`
