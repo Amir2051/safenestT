@@ -78,8 +78,11 @@ export default function NewCaseModal({ onCaseCreated }) {
       const totalFromTransactions = paymentTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
       const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(data.amount_lost) || 0;
 
-      // Map to schema (Target: MyCase)
+      // Map to MyCase schema with REQUIRED field incident_classification
       const casePayload = {
+        // REQUIRED: incident_classification (IC3-aligned)
+        incident_classification: 'cryptocurrency_fraud',
+        
         // Victim
         client_name: data.victim_name,
         client_email: data.victim_email,
@@ -91,9 +94,9 @@ export default function NewCaseModal({ onCaseCreated }) {
           phone: data.scammer_phone,
           email: data.scammer_email,
           social_media: data.scammer_social_media.split('\n').filter(s => s.trim()),
-          wallet_addresses: [data.scammer_wallet]
+          wallet_addresses: data.scammer_wallet ? [data.scammer_wallet] : []
         },
-        scammer_wallet: data.scammer_wallet,
+        scammer_wallet: data.scammer_wallet || '',
 
         // Financial
         amount_lost: finalAmount,
@@ -130,7 +133,10 @@ export default function NewCaseModal({ onCaseCreated }) {
         action: 'create', 
         data: casePayload 
       });
+      
       if (response.data.error) throw new Error(response.data.error);
+      if (!response.data.success) throw new Error(response.data.message || 'Creation failed');
+      
       return response.data.case;
     },
     onSuccess: (data) => {
