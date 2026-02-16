@@ -226,7 +226,19 @@ Deno.serve(async (req) => {
 
             console.log(`✅ CASE CREATED - SKIPPING VERIFICATION TO AVOID TIMEOUT`);
 
-            // Return immediately to avoid timeout
+            // Trigger async AI analysis (non-blocking)
+            base44.asServiceRole.functions.invoke('aiCaseAnalysis', {
+                action: 'full_analysis',
+                caseId: newCase.id,
+                caseData: {
+                    scammer_wallet,
+                    victim_wallet,
+                    blockchain,
+                    description: caseData.description,
+                    linked_case_ids: linkedCaseIds
+                }
+            }).catch(e => console.error('AI analysis failed:', e));
+            
             return Response.json({ success: true, case: newCase });
         }
 
