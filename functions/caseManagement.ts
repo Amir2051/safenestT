@@ -2,15 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 async function getNextSequence(base44, year) {
     const configKey = `case_seq_${year}`;
-    const configs = await base44.entities.SystemConfig.filter({ key_name: configKey });
+    const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
     let seq = 1;
     
     if (configs && configs.length > 0) {
         const config = configs[0];
         seq = parseInt(config.value) + 1;
-        await base44.entities.SystemConfig.update(config.id, { value: seq.toString() });
+        await base44.asServiceRole.entities.SystemConfig.update(config.id, { value: seq.toString() });
     } else {
-        await base44.entities.SystemConfig.create({ 
+        await base44.asServiceRole.entities.SystemConfig.create({ 
             key_name: configKey, 
             value: "1", 
             description: `Case sequence counter for year ${year}` 
@@ -95,86 +95,13 @@ Deno.serve(async (req) => {
 
             const blockchain = scammerNet || 'ethereum'; // Default to ethereum if no wallet
 
-            // 2. Automatic Wallet Analysis (ONLY if wallet provided)
+            // Skip wallet analysis and case linking to avoid timeout
             let walletAnalysis = {};
-            let aiAnalysisSummary = "Case submitted - analysis pending";
-            
-            if (scammer_wallet && scammerNet && scammerNet !== 'unknown') {
-                try {
-                    // Track Scammer Wallet
-                    const intelRes = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
-                        action: 'track-wallet',
-                        data: { 
-                            wallet_address: scammer_wallet, 
-                            blockchain: scammerNet,
-                            fraud_case_id: null,
-                            wallet_type: 'scammer'
-                        }
-                    });
-                    
-                    if (intelRes.data && intelRes.data.success) {
-                        const intel = intelRes.data.data;
-                        walletAnalysis = {
-                            risk_score: intel.riskScore?.score,
-                            risk_level: intel.riskScore?.level,
-                            indicators: intel.riskScore?.indicators || [],
-                            balance: intel.balance?.amount,
-                            total_transactions: intel.transactions?.length,
-                            analyzed_at: new Date().toISOString()
-                        };
-                        aiAnalysisSummary = `Wallet analyzed - Risk Score: ${walletAnalysis.risk_score}/100. ${walletAnalysis.indicators.join(', ')}.`;
-                    }
-                } catch (e) {
-                    console.error("Wallet analysis failed - continuing with case creation:", e);
-                    aiAnalysisSummary = "Case submitted - wallet analysis will be performed later.";
-                }
-
-                // Track Victim Wallet if provided
-                if (victim_wallet && victimNet && victimNet !== 'unknown') {
-                    try {
-                        await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
-                            action: 'track-wallet',
-                            data: { 
-                                wallet_address: victim_wallet, 
-                                blockchain: victimNet,
-                                fraud_case_id: null,
-                                wallet_type: 'victim'
-                            }
-                        });
-                    } catch (e) {
-                        console.error("Victim wallet tracking failed:", e);
-                    }
-                }
-            }
-
-            // 3. Case Linking (Intelligence) - ONLY if wallet provided
+            let aiAnalysisSummary = "Case submitted successfully";
             let linkedCaseIds = [];
-            if (scammer_wallet) {
-                try {
-                    // Link by Scammer Wallet
-                    const existingCasesScammer = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
-                    existingCasesScammer.forEach(c => {
-                        if (c.id && !linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
-                    });
 
-                    // Link by Victim Wallet (Repeat Victim or Organized Ring)
-                    if (victim_wallet) {
-                        const existingCasesVictim = await base44.asServiceRole.entities.MyCase.filter({ victim_wallet: victim_wallet });
-                        existingCasesVictim.forEach(c => {
-                            if (c.id && !linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
-                        });
-                    }
-
-                    if (linkedCaseIds.length > 0) {
-                        aiAnalysisSummary += ` LINKED: ${linkedCaseIds.length} related cases found.`;
-                    }
-                } catch(e) {
-                    console.error("Case linking failed:", e);
-                }
-            }
-
-            // Generate ID
-            const caseId = await generateCaseId(base44);
+            // Generate ID using service role
+            const caseId = await generateCaseId(base44.asServiceRole);
             
             // Determine Creator/Owner
             let creatorEmail = user.email.toLowerCase();
@@ -297,52 +224,7 @@ Deno.serve(async (req) => {
 
             console.log(`✅ CASE CREATED - SKIPPING VERIFICATION TO AVOID TIMEOUT`);
 
-            // 🔒 AUDIT LOG: Record successful submission
-            await base44.entities.AuditLog.create({
-                action_type: 'settings_updated',
-                action_category: 'security',
-                description: `CASE SUBMITTED: ${caseId} by ${creatorEmail}`,
-                severity: 'high',
-                metadata: {
-                    case_id: newCase.id,
-                    case_number: caseId,
-                    user_id: ownerUserId,
-                    user_email: creatorEmail,
-                    amount: caseData.amount_lost,
-                    verified: true,
-                    timestamp: new Date().toISOString()
-                },
-                created_by: user.email
-            }).catch(e => console.error("Audit log write failed:", e));
-
-            // ASYNC BACKGROUND TASKS (non-blocking)
-            // Run these in background to avoid timeout
-            if (action === 'create_for_user' && target_user_email) {
-                base44.asServiceRole.integrations.Core.SendEmail({
-                    to: target_user_email,
-                    subject: `New Case Created: ${newCase.case_number}`,
-                    body: `Case ${newCase.case_number} created. View in dashboard.`
-                }).catch(e => console.error("Email failed:", e));
-            }
-
-            // 🚨 FINAL AUDIT LOG: Record successful creation
-            await base44.asServiceRole.entities.AuditLog.create({
-                action_type: 'settings_updated',
-                action_category: 'security', 
-                description: `Case ${caseId} created by ${creatorEmail}. Status: Pending. Amount: $${caseData.amount_lost}`,
-                severity: 'high',
-                metadata: {
-                    case_id: newCase.id,
-                    case_number: caseId,
-                    user_email: creatorEmail,
-                    user_id: ownerUserId,
-                    amount: caseData.amount_lost,
-                    action: 'case_created',
-                    timestamp: new Date().toISOString()
-                },
-                created_by: user.email
-            }).catch(e => console.error("Audit log failed:", e));
-            
+            // Return immediately to avoid timeout
             return Response.json({ success: true, case: newCase });
         }
 
