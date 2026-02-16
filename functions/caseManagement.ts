@@ -1,16 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-async function getNextSequence(base44, year) {
+async function getNextSequence(base44ServiceRole, year) {
     const configKey = `case_seq_${year}`;
-    const configs = await base44.asServiceRole.entities.SystemConfig.filter({ key_name: configKey });
+    const configs = await base44ServiceRole.entities.SystemConfig.filter({ key_name: configKey });
     let seq = 1;
     
     if (configs && configs.length > 0) {
         const config = configs[0];
         seq = parseInt(config.value) + 1;
-        await base44.asServiceRole.entities.SystemConfig.update(config.id, { value: seq.toString() });
+        await base44ServiceRole.entities.SystemConfig.update(config.id, { value: seq.toString() });
     } else {
-        await base44.asServiceRole.entities.SystemConfig.create({ 
+        await base44ServiceRole.entities.SystemConfig.create({ 
             key_name: configKey, 
             value: "1", 
             description: `Case sequence counter for year ${year}` 
@@ -19,10 +19,10 @@ async function getNextSequence(base44, year) {
     return seq;
 }
 
-async function generateCaseId(base44, dateStr = null) {
+async function generateCaseId(base44ServiceRole, dateStr = null) {
     const date = dateStr ? new Date(dateStr) : new Date();
     const year = date.getFullYear();
-    const seq = await getNextSequence(base44, year);
+    const seq = await getNextSequence(base44ServiceRole, year);
     const padded = seq.toString().padStart(5, '0');
     return `SN-${year}-${padded}`;
 }
@@ -101,7 +101,9 @@ Deno.serve(async (req) => {
             let linkedCaseIds = [];
 
             // Generate ID using service role
-            const caseId = await generateCaseId(base44.asServiceRole);
+            const year = new Date().getFullYear();
+            const seq = await getNextSequence(base44.asServiceRole, year);
+            const caseId = `SN-${year}-${seq.toString().padStart(5, '0')}`;
             
             // Determine Creator/Owner
             let creatorEmail = user.email.toLowerCase();
