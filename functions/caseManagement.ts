@@ -48,126 +48,130 @@ Deno.serve(async (req) => {
 
             const { victim_wallet, scammer_wallet, target_user_email, target_user_name } = data;
 
-            // 0. DUPLICATE CHECK (Prevent double submissions)
-            // Check for identical case created by same user in last 24h
+            // 0. DUPLICATE CHECK (Prevent double submissions within 5 minutes only)
             try {
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
                 const recentCases = await base44.entities.MyCase.filter({
                     created_by: user.email.toLowerCase(),
-                    issue_type: data.issue_type || 'other',
                     status: 'Pending'
                 });
                 
-                for (const rc of recentCases) {
-                    // Check if critical fields match (Scammer Wallet OR Amount if wallet missing)
+                // Only check cases created in last 5 minutes
+                const veryRecentCases = recentCases.filter(rc => 
+                    rc.created_date && new Date(rc.created_date) > new Date(fiveMinutesAgo)
+                );
+                
+                for (const rc of veryRecentCases) {
+                    // Check if critical fields match (Scammer Wallet AND Amount match)
                     const sameWallet = rc.scammer_wallet && data.scammer_wallet && 
                                       rc.scammer_wallet.toLowerCase() === data.scammer_wallet.toLowerCase();
-                    const sameAmount = Math.abs((rc.amount_lost || 0) - (data.amount_lost || 0)) < 1; // within $1
+                    const sameAmount = Math.abs((rc.amount_lost || 0) - (data.amount_lost || 0)) < 1;
                     
-                    if (sameWallet || (sameAmount && !rc.scammer_wallet && !data.scammer_wallet)) {
+                    if (sameWallet && sameAmount) {
+                        console.log('⚠️ Duplicate detected within 5 minutes:', rc.id);
                         return Response.json({ 
-                            error: "Duplicate Case Detected. You already have a pending case with these details.",
+                            error: "Duplicate submission detected. Please wait before resubmitting.",
                             duplicate: true,
                             case_id: rc.id
                         }, { status: 409 });
                     }
                 }
             } catch (dupErr) {
-                console.error("Duplicate check failed", dupErr);
+                console.error("Duplicate check failed - continuing with creation", dupErr);
             }
 
-            // 1. Mandatory Wallet Validation
+            // 1. Wallet Validation (Optional - only if wallet provided)
             const validateWallet = (addr) => {
-                if (!addr) return null;
+                if (!addr || addr.trim() === '') return null;
                 if (/^0x[a-fA-F0-9]{40}$/.test(addr)) return "ethereum";
                 if (/^(1|3)[a-zA-Z0-9]{25,34}$|^bc1[a-zA-Z0-9]{39,59}$/.test(addr)) return "bitcoin";
                 if (/^T[a-zA-Z0-9]{33}$/.test(addr)) return "tron";
-                return null;
+                return "unknown"; // Allow unknown format
             };
 
-            // Only scammer wallet is strictly required for tracking, victim wallet is optional
-            const scammerNet = validateWallet(scammer_wallet);
+            // Scammer wallet is OPTIONAL - cases can be submitted without wallet info
+            const scammerNet = scammer_wallet ? validateWallet(scammer_wallet) : null;
             const victimNet = victim_wallet ? validateWallet(victim_wallet) : null;
 
-            if (!scammerNet) {
-                return Response.json({ error: "Scammer wallet is required and must be a valid format (ETH, BTC, TRON)." }, { status: 400 });
-            }
-            
-            // If victim wallet is provided but invalid, warn or ignore? 
-            // Better to fail if provided but invalid to avoid data bad entry, but let's be lenient or check if it was intended.
-            if (victim_wallet && !victimNet) {
-                 return Response.json({ error: "Victim wallet provided is invalid. Please check the format or leave it empty." }, { status: 400 });
-            }
+            const blockchain = scammerNet || 'ethereum'; // Default to ethereum if no wallet
 
-            const blockchain = scammerNet; // Prioritize scammer network for investigation
-
-            // 2. Automatic Wallet Analysis (Scammer & Victim)
+            // 2. Automatic Wallet Analysis (ONLY if wallet provided)
             let walletAnalysis = {};
-            let aiAnalysisSummary = "Pending analysis...";
-            try {
-                // Track Scammer Wallet
-                const intelRes = await base44.functions.invoke('blockchainIntelligence', {
-                    action: 'track-wallet',
-                    data: { 
-                        wallet_address: scammer_wallet, 
-                        blockchain,
-                        fraud_case_id: null,
-                        wallet_type: 'scammer'
-                    }
-                });
-                
-                if (intelRes.data && intelRes.data.success) {
-                    const intel = intelRes.data.data;
-                    walletAnalysis = {
-                        risk_score: intel.riskScore?.score,
-                        risk_level: intel.riskScore?.level,
-                        indicators: intel.riskScore?.indicators || [],
-                        balance: intel.balance?.amount,
-                        total_transactions: intel.transactions?.length,
-                        analyzed_at: new Date().toISOString()
-                    };
-                    aiAnalysisSummary = `High Risk Scammer Wallet (Score: ${walletAnalysis.risk_score}/100). Indicators: ${walletAnalysis.indicators.join(', ')}.`;
-                }
-
-                // Track Victim Wallet
-                if (victim_wallet) {
-                    const victimBlockchain = validateWallet(victim_wallet) || 'ethereum';
-                    await base44.functions.invoke('blockchainIntelligence', {
+            let aiAnalysisSummary = "Case submitted - analysis pending";
+            
+            if (scammer_wallet && scammerNet && scammerNet !== 'unknown') {
+                try {
+                    // Track Scammer Wallet
+                    const intelRes = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
                         action: 'track-wallet',
                         data: { 
-                            wallet_address: victim_wallet, 
-                            blockchain: victimBlockchain,
+                            wallet_address: scammer_wallet, 
+                            blockchain: scammerNet,
                             fraud_case_id: null,
-                            wallet_type: 'victim'
+                            wallet_type: 'scammer'
                         }
                     });
+                    
+                    if (intelRes.data && intelRes.data.success) {
+                        const intel = intelRes.data.data;
+                        walletAnalysis = {
+                            risk_score: intel.riskScore?.score,
+                            risk_level: intel.riskScore?.level,
+                            indicators: intel.riskScore?.indicators || [],
+                            balance: intel.balance?.amount,
+                            total_transactions: intel.transactions?.length,
+                            analyzed_at: new Date().toISOString()
+                        };
+                        aiAnalysisSummary = `Wallet analyzed - Risk Score: ${walletAnalysis.risk_score}/100. ${walletAnalysis.indicators.join(', ')}.`;
+                    }
+                } catch (e) {
+                    console.error("Wallet analysis failed - continuing with case creation:", e);
+                    aiAnalysisSummary = "Case submitted - wallet analysis will be performed later.";
                 }
 
-            } catch (e) {
-                console.error("Wallet analysis failed:", e);
-                aiAnalysisSummary = "Automated analysis failed. Manual review required.";
+                // Track Victim Wallet if provided
+                if (victim_wallet && victimNet && victimNet !== 'unknown') {
+                    try {
+                        await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+                            action: 'track-wallet',
+                            data: { 
+                                wallet_address: victim_wallet, 
+                                blockchain: victimNet,
+                                fraud_case_id: null,
+                                wallet_type: 'victim'
+                            }
+                        });
+                    } catch (e) {
+                        console.error("Victim wallet tracking failed:", e);
+                    }
+                }
             }
 
-            // 3. Case Linking (Intelligence)
+            // 3. Case Linking (Intelligence) - ONLY if wallet provided
             let linkedCaseIds = [];
-            try {
-                // Link by Scammer Wallet
-                const existingCasesScammer = await base44.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
-                existingCasesScammer.forEach(c => {
-                    if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
-                });
-
-                // Link by Victim Wallet (Repeat Victim or Organized Ring)
-                if (victim_wallet) {
-                    const existingCasesVictim = await base44.entities.MyCase.filter({ victim_wallet: victim_wallet });
-                    existingCasesVictim.forEach(c => {
-                        if (!linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
+            if (scammer_wallet) {
+                try {
+                    // Link by Scammer Wallet
+                    const existingCasesScammer = await base44.asServiceRole.entities.MyCase.filter({ scammer_wallet: scammer_wallet });
+                    existingCasesScammer.forEach(c => {
+                        if (c.id && !linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
                     });
-                }
 
-                if (linkedCaseIds.length > 0) {
-                    aiAnalysisSummary += ` LINKED: ${linkedCaseIds.length} related cases found via wallet matching.`;
+                    // Link by Victim Wallet (Repeat Victim or Organized Ring)
+                    if (victim_wallet) {
+                        const existingCasesVictim = await base44.asServiceRole.entities.MyCase.filter({ victim_wallet: victim_wallet });
+                        existingCasesVictim.forEach(c => {
+                            if (c.id && !linkedCaseIds.includes(c.id)) linkedCaseIds.push(c.id);
+                        });
+                    }
+
+                    if (linkedCaseIds.length > 0) {
+                        aiAnalysisSummary += ` LINKED: ${linkedCaseIds.length} related cases found.`;
+                    }
+                } catch(e) {
+                    console.error("Case linking failed:", e);
                 }
-            } catch(e) {}
+            }
 
             // Generate ID
             const caseId = await generateCaseId(base44);
@@ -210,7 +214,7 @@ Deno.serve(async (req) => {
                 blockchain,
                 wallet_analysis: walletAnalysis,
                 linked_case_ids: linkedCaseIds,
-                monitored_wallets: [scammer_wallet],
+                monitored_wallets: scammer_wallet ? [scammer_wallet] : [],
                 ai_analysis: aiAnalysisSummary,
                 scammer_info: {
                     wallet_addresses: [scammer_wallet],
@@ -266,13 +270,33 @@ Deno.serve(async (req) => {
                 amount: caseData.amount_lost
             });
 
+            // CRITICAL: Ensure required fields are present
+            if (!caseData.client_name) {
+                return Response.json({ 
+                    success: false,
+                    error: "Client name is required" 
+                }, { status: 400 });
+            }
+            
+            if (!caseData.incident_classification) {
+                return Response.json({ 
+                    success: false,
+                    error: "Incident classification is required" 
+                }, { status: 400 });
+            }
+            
             let newCase;
             try {
-                newCase = await base44.entities.MyCase.create(caseData);
+                // Use asServiceRole for guaranteed creation
+                newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
             } catch (writeError) {
                 console.error('❌ DATABASE WRITE FAILED:', writeError);
                 console.error('💾 Failed data:', JSON.stringify(caseData, null, 2));
-                throw new Error(`Database write failed: ${writeError.message}`);
+                return Response.json({ 
+                    success: false,
+                    error: `Database write failed: ${writeError.message}`,
+                    details: writeError.stack
+                }, { status: 500 });
             }
 
             if (!newCase || !newCase.id) {
@@ -359,17 +383,24 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // Update Wallet Monitors with Case ID
-            try {
-                const monitors = await base44.entities.WalletMonitor.filter({ 
-                    wallet_address: { $in: [scammer_wallet, victim_wallet].filter(Boolean) } 
-                });
-                for (const m of monitors) {
-                    if (!m.fraud_case_id) {
-                        await base44.entities.WalletMonitor.update(m.id, { fraud_case_id: newCase.id });
+            // Update Wallet Monitors with Case ID (only if wallets provided)
+            if (scammer_wallet || victim_wallet) {
+                try {
+                    const wallets = [scammer_wallet, victim_wallet].filter(Boolean);
+                    if (wallets.length > 0) {
+                        const monitors = await base44.asServiceRole.entities.WalletMonitor.filter({ 
+                            wallet_address: { $in: wallets } 
+                        });
+                        for (const m of monitors) {
+                            if (!m.fraud_case_id) {
+                                await base44.asServiceRole.entities.WalletMonitor.update(m.id, { fraud_case_id: newCase.id });
+                            }
+                        }
                     }
+                } catch(e) { 
+                    console.error("Failed to link monitors - continuing:", e); 
                 }
-            } catch(e) { console.error("Failed to link monitors", e); }
+            }
 
             // AUTOMATION: High Priority Notifications
             if (caseData.priority === 'critical' || caseData.priority === 'high' || caseData.amount_lost >= 50000) {
@@ -379,7 +410,7 @@ Deno.serve(async (req) => {
                 if (newCase.assigned_to) {
                     try {
                         // Create in-app notification
-                        await base44.entities.Notification.create({
+                        await base44.asServiceRole.entities.Notification.create({
                             user_id: newCase.assigned_to,
                             type: 'system',
                             title: 'New High Priority Case',
@@ -400,7 +431,7 @@ Deno.serve(async (req) => {
             }
 
             // 🚨 FINAL AUDIT LOG: Record successful creation
-            await base44.entities.AuditLog.create({
+            await base44.asServiceRole.entities.AuditLog.create({
                 action_type: 'settings_updated',
                 action_category: 'security', 
                 description: `Case ${caseId} created by ${creatorEmail}. Status: Pending. Amount: $${caseData.amount_lost}`,

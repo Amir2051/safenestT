@@ -129,10 +129,19 @@ export default function NewCaseModal({ onCaseCreated }) {
         }))
       };
 
+      console.log('📤 Submitting case to backend:', casePayload);
+      
       const response = await base44.functions.invoke('caseManagement', { 
         action: 'create', 
         data: casePayload 
       });
+      
+      console.log('📥 Backend response:', response.data);
+      
+      // Handle duplicate detection
+      if (response.data.duplicate) {
+        throw new Error(response.data.error || 'Duplicate case detected');
+      }
       
       if (response.data.error) throw new Error(response.data.error);
       if (!response.data.success) throw new Error(response.data.message || 'Creation failed');
