@@ -643,6 +643,76 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              {/* Redaction Control Panel (Admin Only) */}
+              {isAdmin && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <EyeOff className="w-5 h-5 text-red-400" />
+                      <h3 className="text-red-400 font-semibold">Redaction Controls</h3>
+                    </div>
+                    <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
+                      Admin Only
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Toggle redaction for sensitive fields. Redacted fields will be hidden from non-admin viewers.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {[
+                      { field: 'client_name', label: 'Client Name' },
+                      { field: 'client_email', label: 'Client Email' },
+                      { field: 'phone_number', label: 'Phone Number' },
+                      { field: 'address', label: 'Address' },
+                      { field: 'victim_wallet', label: 'Victim Wallet' },
+                      { field: 'scammer_wallet', label: 'Scammer Wallet' },
+                      { field: 'cryptocurrency', label: 'Cryptocurrency' },
+                      { field: 'suspect_name', label: 'Suspect Name' },
+                      { field: 'suspect_email', label: 'Suspect Email' },
+                      { field: 'suspect_phone', label: 'Suspect Phone' },
+                    ].map(({ field, label }) => (
+                      <button
+                        key={field}
+                        onClick={async () => {
+                          const currentRedacted = caseData.redacted_fields || [];
+                          const newRedacted = currentRedacted.includes(field)
+                            ? currentRedacted.filter(f => f !== field)
+                            : [...currentRedacted, field];
+                          
+                          await updateCaseMutation.mutateAsync({
+                            redacted_fields: newRedacted,
+                            last_activity: new Date().toISOString()
+                          });
+                        }}
+                        className={`p-2 rounded-lg border text-xs font-medium transition-all ${
+                          (caseData.redacted_fields || []).includes(field)
+                            ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                            : 'bg-gray-900/50 border-gray-700 text-gray-300 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          {(caseData.redacted_fields || []).includes(field) ? (
+                            <EyeOff className="w-3 h-3" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                          <span>{label}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {(caseData.redacted_fields || []).length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-red-500/20">
+                      <p className="text-xs text-gray-400">
+                        {(caseData.redacted_fields || []).length} field(s) currently redacted
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Quick Actions Panel */}
               <QuickActionsPanel 
                   caseData={caseData} 
