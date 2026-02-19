@@ -146,6 +146,14 @@ const navigationItems = [
     glow: 'blue'
   },
   {
+    id: 'us-cybercrime-resources',
+    title: 'U.S. Cybercrime Resources',
+    icon: Shield,
+    url: createPageUrl('USCybercrimeResources'),
+    glow: 'red',
+    badge: 'GOV'
+  },
+  {
     id: 'help-center',
     title: 'Help Center',
     icon: HelpCircle,
