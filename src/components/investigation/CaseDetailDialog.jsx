@@ -72,7 +72,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   }, []);
 
   const isAdmin = user?.role === 'admin' || user?.is_admin;
-  const redactedFields = caseData.redacted_fields || [];
+  // Use liveCase for display so UI reflects updates immediately without closing dialog
+  const redactedFields = liveCase.redacted_fields || caseData.redacted_fields || [];
 
   const isFieldRedacted = (field) => redactedFields.includes(field);
 
