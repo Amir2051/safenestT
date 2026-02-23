@@ -169,16 +169,24 @@ export default function UserCaseDetail({ caseData, onClose }) {
         </DialogHeader>
 
         <div className="mt-4">
-            {/* Status Banner */}
-            <div className="p-4 bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border border-cyan-500/20 rounded-lg mb-6 flex items-center gap-4">
+            {/* Status Banner — uses liveCase for real-time admin updates */}
+            <div className={`p-4 rounded-lg mb-6 flex items-center gap-4 border ${
+              liveCase.status?.toLowerCase().includes('resolv') || liveCase.status?.toLowerCase().includes('recover')
+                ? 'bg-green-900/20 border-green-500/30'
+                : liveCase.status?.toLowerCase().includes('review') || liveCase.status?.toLowerCase().includes('progress') || liveCase.status?.toLowerCase().includes('investigat')
+                ? 'bg-blue-900/20 border-blue-500/30'
+                : 'bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border-cyan-500/20'
+            }`}>
                 <div className="p-2 bg-cyan-500/10 rounded-full">
                     <Clock className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div>
-                    <h4 className="font-semibold text-white">Current Status: {caseData.status}</h4>
+                    <h4 className="font-semibold text-white">Current Status: <span className="text-cyan-300">{liveCase.status}</span></h4>
                     <p className="text-sm text-gray-400">
-                        {caseData.status === 'Pending' ? "Your case has been received and is awaiting investigator assignment." :
-                         caseData.status === 'Investigating' ? "An investigator is actively working on your case." :
+                        {liveCase.status === 'Pending' ? "Your case has been received and is awaiting investigator assignment." :
+                         liveCase.status?.toLowerCase().includes('review') ? "Your case is currently being reviewed by our team." :
+                         liveCase.status?.toLowerCase().includes('investigat') || liveCase.status?.toLowerCase().includes('progress') ? "An investigator is actively working on your case." :
+                         liveCase.status?.toLowerCase().includes('resolv') ? "Your case has been resolved. Please check the timeline for details." :
                          "Please check the timeline for the latest updates."}
                     </p>
                 </div>
