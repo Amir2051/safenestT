@@ -141,9 +141,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     created_date: caseData.created_date
   });
 
-  // Track previous status for notification trigger
-  const prevStatusRef = useRef(caseData.status);
-
   // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
