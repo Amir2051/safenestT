@@ -186,15 +186,27 @@ export default function MyCases() {
     refetchInterval: false // Disable polling
   });
 
-  const handleCaseUpdate = () => {
-      console.log('🔄 Refreshing cases after update...');
-      queryClient.invalidateQueries({ queryKey: ['my-cases'] });
-      queryClient.invalidateQueries({ queryKey: ['my-scams'] });
-      
-      // Force immediate refetch
-      refetchCases();
-      
-      toast.success('Case data refreshed');
+  const handleCaseUpdate = async () => {
+    queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['my-scams'] });
+    // Immediately refetch so the list and any open case view reflect the latest data
+    const { data: fresh } = await refetchCases();
+    // If a case is currently selected, update it to the fresh version so user view stays in sync
+    if (selectedCase && fresh) {
+      const updated = fresh.find(c => c.id === selectedCase.id);
+      if (updated) {
+        setSelectedCase({
+          ...updated,
+          case_title: updated.case_number ? `${updated.case_number} - ${updated.issue_type}` : updated.client_name,
+          amount: updated.amount_lost,
+          currency: updated.cryptocurrency || 'USD',
+          type: 'client',
+          _entityName: 'MyCase',
+          fraud_type: updated.issue_type,
+          admin_status: updated.status
+        });
+      }
+    }
   };
 
   const confirmDelete = async () => {
