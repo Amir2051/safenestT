@@ -59,6 +59,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [saving, setSaving] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [user, setUser] = useState(null);
+  const [liveCase, setLiveCase] = useState(caseData);
+  const prevStatusRef = useRef(caseData.status);
 
   useEffect(() => {
     base44.auth.me().then(u => {
@@ -70,6 +72,16 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
         }
     }).catch(() => {});
   }, []);
+
+  // Real-time sync so dialog reflects external changes immediately
+  useEffect(() => {
+    const unsub = base44.entities.MyCase.subscribe((event) => {
+      if (event.id === caseData.id && event.data) {
+        setLiveCase(prev => ({ ...prev, ...event.data }));
+      }
+    });
+    return unsub;
+  }, [caseData.id]);
 
   const isAdmin = user?.role === 'admin' || user?.is_admin;
   // Use liveCase for display so UI reflects updates immediately without closing dialog
