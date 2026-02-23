@@ -33,37 +33,39 @@ export default function UserCaseDetail({ caseData, onClose }) {
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 
-  // Basic update mutation for user-allowed fields
+  const [liveCase, setLiveCase] = React.useState(caseData);
+
+  // Real-time sync so status updates from admin are immediately visible to user
+  React.useEffect(() => {
+    const unsub = base44.entities.MyCase.subscribe((event) => {
+      if (event.id === caseData.id && event.data) {
+        setLiveCase(prev => ({ ...prev, ...event.data }));
+      }
+    });
+    return unsub;
+  }, [caseData.id]);
+
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      console.log('📝 Updating case:', caseData.id, updates);
-      
+      if (!caseData.id) throw new Error("Missing case ID");
       const response = await base44.functions.invoke('caseManagement', {
         action: 'update',
         data: {
           id: caseData.id,
           entityName: caseData._entityName || 'MyCase',
-          updates: {
-            ...updates,
-            updated_by_user: true // Flag to indicate user update
-          }
+          updates: { ...updates, updated_by_user: true }
         }
       });
-      
-      if (response.data.error) {
-          console.error('❌ Update failed:', response.data.error);
-          throw new Error(response.data.error);
-      }
-      
-      console.log('✅ Case updated successfully');
+      if (response.data.error) throw new Error(response.data.error);
       return response.data.case;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['my-cases']);
-      toast.success("Case Updated Successfully");
+    onSuccess: (updated) => {
+      if (updated) setLiveCase(prev => ({ ...prev, ...updated }));
+      queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+      toast.success("✅ Case successfully updated.");
     },
     onError: (err) => {
-      toast.error("Update Failed: " + err.message);
+      toast.error("❌ Update failed: " + err.message);
     }
   });
 
