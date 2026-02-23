@@ -128,16 +128,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     created_date: caseData.created_date
   });
 
+  // Track previous status for notification trigger
+  const prevStatusRef = useRef(caseData.status);
+
   // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
-      console.log('🔄 FRONTEND: Initiating case update', {
-        caseId: caseData.id,
-        entityName: caseData._entityName || 'MyCase',
-        fieldsToUpdate: Object.keys(updates),
-        updateValues: updates
-      });
-      
+      if (!caseData.id) throw new Error("Missing case ID — cannot update");
+
       const response = await base44.functions.invoke('caseManagement', {
         action: 'update',
         data: {
@@ -146,53 +144,40 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
           updates: updates
         }
       });
-      
-      console.log('✅ FRONTEND: Backend response received', {
-        success: response.data.success,
-        hasError: !!response.data.error,
-        responseData: response.data
-      });
-      
-      if (response.data.error) {
-        console.error('❌ FRONTEND: Backend returned error:', response.data.error);
-        throw new Error(response.data.error);
-      }
-      
-      if (!response.data.success) {
-        console.error('❌ FRONTEND: Update unsuccessful:', response.data.message);
-        throw new Error(response.data.message || 'Update failed');
-      }
-      
-      console.log('✅ FRONTEND: Update successful, returning updated case');
+
+      if (response.data.error) throw new Error(response.data.error);
+      if (!response.data.success) throw new Error(response.data.message || 'Update failed');
+
       return response.data.case;
     },
-    onSuccess: (data) => {
-      console.log('✅ FRONTEND: Mutation success handler triggered', {
-        updatedCase: data,
-        caseId: data?.id,
-        caseNumber: data?.case_number
-      });
-      toast.success("✅ Case Updated Successfully - Changes Saved", { duration: 3000 });
+    onSuccess: async (updatedCase, updates) => {
+      toast.success("✅ Case successfully updated.", { duration: 3000 });
       setEditing(false);
       setSaving(false);
-      
-      // Force parent refresh to show updated data
-      if (onUpdate) {
-        console.log('🔄 FRONTEND: Triggering parent refresh');
-        onUpdate();
+
+      // Send notification to user if status changed
+      const newStatus = updates.status;
+      if (newStatus && newStatus !== prevStatusRef.current) {
+        prevStatusRef.current = newStatus;
+        const recipientEmail = caseData.client_email || caseData.created_by_email || caseData.created_by;
+        if (recipientEmail && !recipientEmail.includes('no-reply') && !recipientEmail.startsWith('service+')) {
+          base44.integrations.Core.SendEmail({
+            to: recipientEmail,
+            subject: `Case Update: ${caseData.case_number || 'Your Case'} — Status Changed`,
+            body: `Hello,\n\nYour case (${caseData.case_number || caseData.case_title}) has been updated.\n\nNew Status: ${newStatus}\n\nPlease log in to SafeNestt to check the latest status and any notes from your investigator.\n\n— SafeNestt Team`
+          }).catch(() => {}); // Fire-and-forget
+        }
       }
+
+      // Invalidate all relevant queries so both admin + user screens refresh
+      if (onUpdate) onUpdate();
     },
     onError: (err) => {
-      console.error("❌ FRONTEND: Mutation error handler triggered", {
-        error: err.message,
-        fullError: err
-      });
-      
       if (err.message.includes("not found") || err.message.includes("Case with ID")) {
-          toast.error("❌ Case not found - it may have been deleted", { duration: 5000 });
-          if (onClose) onClose();
+        toast.error("❌ Case not found — it may have been deleted", { duration: 5000 });
+        if (onClose) onClose();
       } else {
-          toast.error("❌ Update Failed: " + err.message, { duration: 6000 });
+        toast.error("❌ Update failed: " + err.message, { duration: 6000 });
       }
       setSaving(false);
     }
