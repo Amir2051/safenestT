@@ -477,17 +477,25 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <div className="flex items-center gap-2">
               <Label className="text-gray-300 text-sm">Status:</Label>
               <select
-                value={caseData.status}
-                onChange={(e) => updateStatus(e.target.value)}
+                value={liveCase.status || caseData.status}
+                onChange={(e) => {
+                  setLiveCase(prev => ({ ...prev, status: e.target.value }));
+                  updateStatus(e.target.value);
+                }}
                 className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white text-sm font-medium"
               >
+                <option value="Pending">Pending</option>
+                <option value="In Review">In Review</option>
                 <option value="new">New</option>
                 <option value="investigating">Investigating</option>
+                <option value="In Progress">In Progress</option>
                 <option value="documented">Documented</option>
                 <option value="submitted">Submitted</option>
                 <option value="law_enforcement">Law Enforcement</option>
+                <option value="Called">Called</option>
                 <option value="recovering">Recovering</option>
                 <option value="recovered">Recovered</option>
+                <option value="Resolved">Resolved</option>
                 <option value="closed">Closed</option>
               </select>
             </div>
@@ -495,8 +503,11 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <div className="flex items-center gap-2">
               <Label className="text-gray-300 text-sm">Priority:</Label>
               <select
-                value={caseData.priority || caseData.case_priority || 'medium'}
-                onChange={(e) => updatePriority(e.target.value)}
+                value={liveCase.priority || liveCase.case_priority || caseData.priority || caseData.case_priority || 'medium'}
+                onChange={(e) => {
+                  setLiveCase(prev => ({ ...prev, priority: e.target.value }));
+                  updatePriority(e.target.value);
+                }}
                 className="px-4 py-2 bg-[#0f1419] border border-cyan-500/30 rounded-lg text-white text-sm font-medium"
               >
                 <option value="low">Low</option>
