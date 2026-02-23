@@ -1335,68 +1335,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 </div>
               </div>
 
-              {/* Law Enforcement Authorization - Editable */}
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <h4 className="text-purple-400 font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Law Enforcement Authorization
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="le_auth"
-                      checked={editedCase.law_enforcement_authorization?.authorized || false}
-                      onChange={(e) => setEditedCase({
-                        ...editedCase,
-                        law_enforcement_authorization: {
-                          ...editedCase.law_enforcement_authorization,
-                          authorized: e.target.checked,
-                          authorized_date: e.target.checked ? new Date().toISOString() : null
-                        }
-                      })}
-                      className="w-4 h-4 rounded border-purple-500/50 bg-[#1a2332]"
-                    />
-                    <Label htmlFor="le_auth" className="text-white cursor-pointer">Authorized by Client</Label>
-                  </div>
-                  
-                  {editedCase.law_enforcement_authorization?.authorized && (
-                    <>
-                      <div>
-                        <Label className="text-gray-300 mb-2 block">Full Legal Name (Signature)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.full_name || ''}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              full_name: e.target.value
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="Enter full legal name"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-gray-300 mb-2 block">Authorized Agencies (comma separated)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.agencies?.join(', ') || 'FBI, IC3, FTC'}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              agencies: e.target.value.split(',').map(s => s.trim())
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="FBI, IC3, FTC, Local Police"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
               {/* Notes */}
               <div>
                 <Label className="text-gray-300 mb-2 block">Case Notes / Description</Label>
