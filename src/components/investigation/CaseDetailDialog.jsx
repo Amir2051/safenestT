@@ -141,7 +141,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     created_date: caseData.created_date
   });
 
-  // Unified Mutation using Backend Function for reliability
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
       if (!caseData.id) throw new Error("Missing case ID — cannot update");
