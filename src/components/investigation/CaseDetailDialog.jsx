@@ -59,11 +59,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [saving, setSaving] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [user, setUser] = useState(null);
-  
+
   useEffect(() => {
     base44.auth.me().then(u => {
         setUser(u);
-        // Security check: If not admin/specialist, close immediately (defense in depth)
         const isAuthorized = u?.role === 'admin' || u?.is_admin || u?.job_title === 'Fraud Specialist';
         if (u && !isAuthorized) {
             toast.error("Unauthorized access to Investigator View");
