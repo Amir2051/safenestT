@@ -164,6 +164,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
       toast.success("✅ Case successfully updated.", { duration: 3000 });
       setEditing(false);
       setSaving(false);
+      // Keep liveCase in sync immediately
+      if (updatedCase) setLiveCase(prev => ({ ...prev, ...updatedCase }));
 
       // Send notification to user if status changed
       const newStatus = updates.status;
