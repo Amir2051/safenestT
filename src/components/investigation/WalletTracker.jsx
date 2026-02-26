@@ -10,29 +10,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, Loader2, ExternalLink, AlertCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
-// Etherscan API helper
-const ETHERSCAN_API = 'https://api.etherscan.io/api';
-const BSCSCAN_API = 'https://api.bscscan.com/api';
-const POLYGONSCAN_API = 'https://api.polygonscan.com/api';
+// Public APIs — no API key required
+// Blockscout: free, open, CORS-enabled explorer for EVM chains
+const BLOCKSCOUT_ENDPOINTS = {
+  ethereum: 'https://eth.blockscout.com/api',
+  bsc: 'https://bsc.blockscout.com/api',
+  polygon: 'https://polygon.blockscout.com/api',
+};
 
-async function fetchEthBalance(address, apiBase, apiKey) {
-  const url = `${apiBase}?module=account&action=balance&address=${address}&tag=latest&apikey=${apiKey}`;
-  console.log('[WalletTracker] Fetching balance from:', url);
+async function fetchEvmBalance(address, chain) {
+  const apiBase = BLOCKSCOUT_ENDPOINTS[chain];
+  const url = `${apiBase}?module=account&action=balance&address=${address}`;
+  console.log('[WalletTracker] Balance URL:', url);
   const res = await fetch(url);
+  console.log('[WalletTracker] Balance HTTP status:', res.status);
+  if (!res.ok) throw new Error(`HTTP ${res.status} from balance API`);
   const json = await res.json();
-  console.log('[WalletTracker] Balance response:', json);
-  if (json.status !== '1') throw new Error(json.message || 'Balance fetch failed');
+  console.log('[WalletTracker] Balance raw response:', json);
+  if (json.status !== '1') {
+    throw new Error(`API Error: ${json.message || 'Unknown'} — ${json.result || ''}`);
+  }
   return parseFloat(json.result) / 1e18;
 }
 
-async function fetchEthTxns(address, apiBase, apiKey) {
-  const url = `${apiBase}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${apiKey}`;
-  console.log('[WalletTracker] Fetching txns from:', url);
+async function fetchEvmTxns(address, chain) {
+  const apiBase = BLOCKSCOUT_ENDPOINTS[chain];
+  const url = `${apiBase}?module=account&action=txlist&address=${address}&sort=desc&offset=20&page=1`;
+  console.log('[WalletTracker] Txns URL:', url);
   const res = await fetch(url);
+  console.log('[WalletTracker] Txns HTTP status:', res.status);
+  if (!res.ok) throw new Error(`HTTP ${res.status} from txns API`);
   const json = await res.json();
-  console.log('[WalletTracker] Txns response (count):', json.result?.length);
+  console.log('[WalletTracker] Txns raw response status:', json.status, 'count:', json.result?.length);
+  // status "0" with "No transactions found" is valid
   if (json.status !== '1' && json.message !== 'No transactions found') {
-    throw new Error(json.message || 'Transaction fetch failed');
+    throw new Error(`API Error: ${json.message || 'Unknown'} — ${json.result || ''}`);
   }
   return Array.isArray(json.result) ? json.result : [];
 }
