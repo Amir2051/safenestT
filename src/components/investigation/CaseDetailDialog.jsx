@@ -144,20 +144,10 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const updateCaseMutation = useMutation({
     mutationFn: async (updates) => {
       if (!caseData.id) throw new Error("Missing case ID — cannot update");
-
-      const response = await base44.functions.invoke('caseManagement', {
-        action: 'update',
-        data: {
-          id: caseData.id,
-          entityName: caseData._entityName || 'MyCase',
-          updates: updates
-        }
-      });
-
-      if (response.data.error) throw new Error(response.data.error);
-      if (!response.data.success) throw new Error(response.data.message || 'Update failed');
-
-      return response.data.case;
+      console.log('🔄 Updating case directly via entity SDK:', caseData.id, updates);
+      const updated = await base44.entities.MyCase.update(caseData.id, updates);
+      console.log('✅ Entity update result:', updated);
+      return updated;
     },
     onSuccess: async (updatedCase, updates) => {
       toast.success("✅ Case successfully updated.", { duration: 3000 });
