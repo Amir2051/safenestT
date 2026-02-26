@@ -121,18 +121,15 @@ export default function WalletTracker({ cases = [] }) {
         return;
       }
 
-      // EVM chains: use Etherscan-compatible APIs
-      let apiBase = ETHERSCAN_API;
-      if (blockchain === 'bsc') apiBase = BSCSCAN_API;
-      if (blockchain === 'polygon') apiBase = POLYGONSCAN_API;
-
-      // Use AI to get the API key from secrets or use a public limited key
-      const apiKey = 'YourApiKeyToken'; // Public fallback — works with rate limits
+      // EVM chains: use Blockscout (no API key required, CORS-enabled)
+      if (!BLOCKSCOUT_ENDPOINTS[blockchain]) {
+        throw new Error(`Chain "${blockchain}" is not yet supported for EVM tracking. Use Ethereum, BSC, or Polygon.`);
+      }
 
       const addr = walletAddress.trim();
       const [balance, txns] = await Promise.all([
-        fetchEthBalance(addr, apiBase, apiKey),
-        fetchEthTxns(addr, apiBase, apiKey)
+        fetchEvmBalance(addr, blockchain),
+        fetchEvmTxns(addr, blockchain)
       ]);
 
       const uniqueInteractions = new Set([
