@@ -79,8 +79,7 @@ export default function AdminInvestigation() {
     },
     enabled: !!user && (user.role === 'admin' || user.is_admin),
     refetchOnWindowFocus: false,
-    staleTime: Infinity, // Prevent auto-refetching
-    cacheTime: Infinity
+    staleTime: 0
   });
 
   const { data: recoveryFunds = [] } = useQuery({
