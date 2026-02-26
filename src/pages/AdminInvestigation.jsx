@@ -335,7 +335,9 @@ export default function AdminInvestigation() {
             selectedCase={selectedCase}
             recoveryFunds={recoveryFunds}
             user={user}
-            onUpdate={refetchCases}
+            onUpdate={() => {
+              refetchCases();
+            }}
           />
         </TabsContent>
 
