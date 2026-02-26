@@ -8,34 +8,122 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
+// Known exchange wallet addresses (hot wallets / deposit addresses)
+// Case-insensitive matching applied at runtime
+const KNOWN_EXCHANGE_ADDRESSES = {
+  'binance': [
+    '0x28c6c06298d514db089934071355e5743bf21d60',
+    '0xdfd5293d8e347dfe59e90efd55b2956a1343963d',
+    '0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be',
+    '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8',
+  ],
+  'coinbase': [
+    '0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43',
+    '0x71660c4005ba85c37ccec55d0c4493e66fe775d3',
+    '0x503828976d22510aad0201ac7ec88293211d23da',
+  ],
+  'kraken': [
+    '0x2910543af39aba0cd09dbb2d50200b3e800a63d2',
+    '0x0a869d79a7052c7f1b55a8ebabbea3420f0d1e13',
+  ],
+  'kucoin': [
+    '0xd6216fc19db775df9774a6e33526131da7d19a2c',
+    '0xa1d8d972560c2f8144af871db508f0b0b10a3fbf',
+  ],
+  'okx': [
+    '0x6cc5f688a315f3dc28a7781717a9a798a59fda7b',
+    '0x236f9f97e0e62388479bf9e5ba4889e46b0273c3',
+  ],
+  'bybit': [
+    '0xf89d7b9c864f589bbf53a82105107622b35eaa40',
+  ],
+  'huobi': [
+    '0xaB5C66752a9e8167967685F1450532fB96d5d24f',
+    '0x6748f50f686bfbca6fe8ad62b22228b87f31ff2b',
+  ],
+};
+
 export default function ExchangeDetector({ selectedCase }) {
   const [address, setAddress] = useState(selectedCase?.scammer_wallet || "");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [txMatches, setTxMatches] = useState([]);
 
   const detectExchange = async () => {
-    if (!address) {
+    if (!address.trim()) {
       toast.error("Please enter an address");
       return;
     }
 
     setLoading(true);
-    try {
-      const response = await base44.functions.invoke('cryptoInvestigation', {
-        action: 'detect-exchange',
-        data: { address, blockchain: selectedCase?.blockchain || 'ethereum' }
-      });
+    setResult(null);
+    setError(null);
+    setTxMatches([]);
 
-      setResult(response.data.data);
-      
-      if (response.data.data.isExchange) {
-        toast.success(`Exchange detected: ${response.data.data.exchangeName}`);
-      } else {
-        toast.info("No exchange detected");
+    const addr = address.trim().toLowerCase();
+    console.log('[ExchangeDetector] Checking address:', addr);
+
+    try {
+      // Step 1: Direct address match against known exchange wallets
+      let directMatch = null;
+      for (const [exchange, addrs] of Object.entries(KNOWN_EXCHANGE_ADDRESSES)) {
+        if (addrs.map(a => a.toLowerCase()).includes(addr)) {
+          directMatch = exchange;
+          console.log('[ExchangeDetector] Direct match found:', exchange);
+          break;
+        }
       }
-    } catch (error) {
-      toast.error("Detection failed: " + error.message);
+
+      if (directMatch) {
+        setResult({ isExchange: true, exchangeName: directMatch.charAt(0).toUpperCase() + directMatch.slice(1), depositAddress: addr, confidence: 'high', timestamp: new Date().toISOString(), matchType: 'direct' });
+        toast.success(`Exchange wallet detected: ${directMatch}`);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Fetch transactions and check if this wallet sent TO a known exchange
+      console.log('[ExchangeDetector] No direct match — fetching transactions...');
+      const res = await fetch(`https://api.etherscan.io/api?module=account&action=txlist&address=${addr}&startblock=0&endblock=99999999&sort=desc&apikey=YourApiKeyToken`);
+      const json = await res.json();
+      console.log('[ExchangeDetector] Txn response status:', json.status, 'count:', json.result?.length);
+
+      if (json.status !== '1' && json.message !== 'No transactions found') {
+        throw new Error(json.message || 'Transaction fetch failed');
+      }
+
+      const txns = Array.isArray(json.result) ? json.result : [];
+      const matches = [];
+
+      for (const tx of txns) {
+        const toAddr = tx.to?.toLowerCase();
+        const fromAddr = tx.from?.toLowerCase();
+        for (const [exchange, addrs] of Object.entries(KNOWN_EXCHANGE_ADDRESSES)) {
+          const knownAddrs = addrs.map(a => a.toLowerCase());
+          if (knownAddrs.includes(toAddr) || knownAddrs.includes(fromAddr)) {
+            const direction = knownAddrs.includes(toAddr) ? 'sent to' : 'received from';
+            console.log(`[ExchangeDetector] TX match: ${exchange} — ${direction}`);
+            matches.push({ exchange: exchange.charAt(0).toUpperCase() + exchange.slice(1), direction, txHash: tx.hash, value: (parseFloat(tx.value)/1e18).toFixed(6), date: new Date(parseInt(tx.timeStamp)*1000).toLocaleDateString() });
+          }
+        }
+      }
+
+      setTxMatches(matches);
+
+      if (matches.length > 0) {
+        const topExchange = matches[0].exchange;
+        setResult({ isExchange: true, exchangeName: topExchange, depositAddress: addr, confidence: 'medium', timestamp: new Date().toISOString(), matchType: 'transaction', matchCount: matches.length });
+        toast.success(`Exchange interaction detected: ${topExchange} (${matches.length} transactions)`);
+      } else {
+        setResult({ isExchange: false, timestamp: new Date().toISOString() });
+        toast.info("No known exchange activity found for this address");
+      }
+    } catch (err) {
+      console.error('[ExchangeDetector] Error:', err);
+      setError(err.message);
+      toast.error("Detection failed: " + err.message);
     }
+
     setLoading(false);
   };
 
