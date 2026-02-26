@@ -213,6 +213,7 @@ export default function CaseManagement({ cases }) {
             queryClient.invalidateQueries({ queryKey: ['investigation-cases'] });
             queryClient.invalidateQueries({ queryKey: ['client-cases-admin'] });
             queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+            queryClient.invalidateQueries({ queryKey: ['my-cases'] });
           }}
         />
       )}
