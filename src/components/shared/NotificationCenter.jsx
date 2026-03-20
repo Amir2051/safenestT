@@ -16,8 +16,8 @@ export default function NotificationCenter() {
   });
 
   useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then(setPermission);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().then(setPermission).catch(() => {});
     }
     
     loadNotifications();
