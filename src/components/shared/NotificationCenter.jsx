@@ -38,7 +38,7 @@ export default function NotificationCenter() {
         // Check if chat notifications are enabled in settings (default true)
         if (user.chat_notifications_enabled === false && notif.type === 'support_message') return;
         
-        if (Notification.permission === 'granted' && document.hidden) {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
             new Notification(notif.title, {
                 body: notif.message,
                 icon: '/icon.png', // Assuming a default icon exists
