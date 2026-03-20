@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, X, CheckCircle, AlertTriangle, Gift, Flame, Trophy, MessageSquare } from 'lucide-react';
+import { Bell, X, CheckCircle, AlertTriangle, Gift, Flame, Trophy, MessageSquare, Shield } from 'lucide-react';
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
