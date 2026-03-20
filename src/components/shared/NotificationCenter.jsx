@@ -10,8 +10,10 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState('all');
 
-  // Browser Notification Permission State
-  const [permission, setPermission] = useState(Notification.permission);
+  // Browser Notification Permission State (safe — Notification may not exist in all contexts)
+  const [permission, setPermission] = useState(() => {
+    try { return typeof Notification !== 'undefined' ? Notification.permission : 'denied'; } catch { return 'denied'; }
+  });
 
   useEffect(() => {
     if (Notification.permission === 'default') {
