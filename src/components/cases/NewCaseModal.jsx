@@ -74,18 +74,31 @@ export default function NewCaseModal({ onCaseCreated }) {
 
   const createCaseMutation = useMutation({
     mutationFn: async (data) => {
+      // Get current user for ownership fields
+      const user = await base44.auth.me();
+
       // Calculate total from transactions if provided
       const totalFromTransactions = paymentTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
       const finalAmount = totalFromTransactions > 0 ? totalFromTransactions : parseFloat(data.amount_lost) || 0;
+
+      // Generate a simple case number
+      const caseNumber = `CASE-${Date.now().toString().slice(-8)}`;
 
       // Map to MyCase schema with REQUIRED field incident_classification
       const casePayload = {
         // REQUIRED: incident_classification (IC3-aligned)
         incident_classification: 'cryptocurrency_fraud',
-        
+
+        // Ownership (critical for RLS visibility)
+        user_id: user.id,
+        created_by_name: user.full_name || user.email,
+        created_by_email: user.email,
+        case_number: caseNumber,
+        source_type: 'manual',
+
         // Victim
         client_name: data.victim_name,
-        client_email: data.victim_email,
+        client_email: data.victim_email || user.email,
         phone_number: data.victim_phone,
 
         // Scammer
@@ -93,7 +106,7 @@ export default function NewCaseModal({ onCaseCreated }) {
           name: data.scammer_name,
           phone: data.scammer_phone,
           email: data.scammer_email,
-          social_media: data.scammer_social_media.split('\n').filter(s => s.trim()),
+          social_media: data.scammer_social_media ? data.scammer_social_media.split('\n').filter(s => s.trim()) : [],
           wallet_addresses: data.scammer_wallet ? [data.scammer_wallet] : []
         },
         scammer_wallet: data.scammer_wallet || '',
@@ -129,28 +142,22 @@ export default function NewCaseModal({ onCaseCreated }) {
         }))
       };
 
-      console.log('📤 Submitting case to backend:', casePayload);
-      
-      const response = await base44.functions.invoke('caseManagement', { 
-        action: 'create', 
-        data: casePayload 
-      });
-      
-      console.log('📥 Backend response:', response.data);
-      
-      // Handle duplicate detection
-      if (response.data.duplicate) {
-        throw new Error(response.data.error || 'Duplicate case detected');
+      console.log('📤 Submitting case directly to MyCase entity:', casePayload);
+
+      const createdCase = await base44.entities.MyCase.create(casePayload);
+
+      console.log('✅ Case created successfully:', createdCase);
+
+      if (!createdCase || !createdCase.id) {
+        throw new Error('Case was not saved — no ID returned from database');
       }
-      
-      if (response.data.error) throw new Error(response.data.error);
-      if (!response.data.success) throw new Error(response.data.message || 'Creation failed');
-      
-      return response.data.case;
+
+      return createdCase;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['my-cases'] });
-      toast.success(`Case created: ${data.case_number}`);
+      queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] });
+      toast.success(`Case created successfully: ${data.case_number || data.id}`);
       setIsOpen(false);
       // Reset form
       setFormData({
