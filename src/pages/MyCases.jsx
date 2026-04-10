@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
+import NewCaseModal from "@/components/cases/NewCaseModal";
 import UserCaseDetail from "@/components/cases/UserCaseDetail.jsx";
 import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator";
 import MergeCasesDialog from "@/components/investigation/MergeCasesDialog";
@@ -558,6 +559,7 @@ export default function MyCases() {
           )}
         </div>
         <div className="flex gap-2">
+          <NewCaseModal onCaseCreated={handleCaseUpdate} />
           <Button
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ['my-cases'] });

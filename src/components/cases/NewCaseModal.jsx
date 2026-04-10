@@ -89,8 +89,9 @@ export default function NewCaseModal({ onCaseCreated }) {
         // REQUIRED: incident_classification (IC3-aligned)
         incident_classification: 'cryptocurrency_fraud',
 
-        // Ownership (critical for RLS visibility)
+        // Ownership (critical for RLS visibility — all fields must be set)
         user_id: user.id,
+        created_by: user.email,
         created_by_name: user.full_name || user.email,
         created_by_email: user.email,
         case_number: caseNumber,
@@ -156,6 +157,7 @@ export default function NewCaseModal({ onCaseCreated }) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['client-cases'] });
       queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] });
       toast.success(`Case created successfully: ${data.case_number || data.id}`);
       setIsOpen(false);
@@ -189,8 +191,8 @@ export default function NewCaseModal({ onCaseCreated }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.victim_name || !formData.amount_lost) {
-      toast.error("Please fill in required fields");
+    if (!formData.victim_name) {
+      toast.error("Please enter the victim's name");
       return;
     }
     createCaseMutation.mutate(formData);
@@ -238,8 +240,8 @@ export default function NewCaseModal({ onCaseCreated }) {
                     <Input value={formData.scammer_name} onChange={e => setFormData({...formData, scammer_name: e.target.value})} className="bg-[#0f1419] border-gray-600 mt-1" />
                 </div>
                 <div>
-                    <Label>Scammer Wallet *</Label>
-                    <Input value={formData.scammer_wallet} onChange={e => setFormData({...formData, scammer_wallet: e.target.value})} className="bg-[#0f1419] border-gray-600 mt-1" required />
+                     <Label>Scammer Wallet</Label>
+                     <Input value={formData.scammer_wallet} onChange={e => setFormData({...formData, scammer_wallet: e.target.value})} className="bg-[#0f1419] border-gray-600 mt-1" />
                 </div>
                 <div className="md:col-span-2">
                     <Label>Social Media (One per line)</Label>
