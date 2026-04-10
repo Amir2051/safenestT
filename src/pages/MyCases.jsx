@@ -153,22 +153,26 @@ export default function MyCases() {
         is_admin: user?.is_admin,
         job_title: user?.job_title
       });
-
-      // DIRECT QUERY - RLS automatically filters based on user permissions
       const cases = await base44.entities.MyCase.list('-created_date', 10000);
-      console.log(`✅ FETCHED: ${cases.length} cases directly from entity`);
-
-      // Log source type distribution
-      const sourceTypes = cases.reduce((acc, c) => {
-        acc[c.source_type || 'unknown'] = (acc[c.source_type || 'unknown'] || 0) + 1;
-        return acc;
-      }, {});
-      console.log('📊 Cases by source:', sourceTypes);
-
+      console.log(`✅ FETCHED: ${cases.length} cases from MyCase entity`);
       return cases;
     },
     enabled: !!user,
-    staleTime: 10000, // 10 seconds - lower to catch new cases faster
+    staleTime: 10000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false
+  });
+
+  // Also fetch from ClientCase entity (legacy/parallel entity)
+  const { data: clientCases = [], isLoading: loadingClientCases } = useQuery({
+    queryKey: ['client-cases', user?.id],
+    queryFn: async () => {
+      const cases = await base44.entities.ClientCase.list('-created_date', 10000);
+      console.log(`✅ FETCHED: ${cases.length} cases from ClientCase entity`);
+      return cases;
+    },
+    enabled: !!user,
+    staleTime: 10000,
     refetchInterval: false,
     refetchOnWindowFocus: false
   });
@@ -188,10 +192,9 @@ export default function MyCases() {
 
   const handleCaseUpdate = async () => {
     queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['client-cases'] });
     queryClient.invalidateQueries({ queryKey: ['my-scams'] });
-    // Immediately refetch so the list and any open case view reflect the latest data
     const { data: fresh } = await refetchCases();
-    // If a case is currently selected, update it to the fresh version so user view stays in sync
     if (selectedCase && fresh) {
       const updated = fresh.find(c => c.id === selectedCase.id);
       if (updated) {
@@ -217,7 +220,9 @@ export default function MyCases() {
       // Instructions say "Delete Case action... My Case page".
       // Let's stick to MyCase entity.
       
-      const entity = caseToDelete._entityName === 'ScamDatabase' ? base44.entities.ScamDatabase : base44.entities.MyCase;
+      const entity = caseToDelete._entityName === 'ScamDatabase' ? base44.entities.ScamDatabase 
+        : caseToDelete._entityName === 'ClientCase' ? base44.entities.ClientCase
+        : base44.entities.MyCase;
       await entity.delete(caseToDelete.id);
       
       toast.success("Case deleted successfully");
@@ -230,7 +235,15 @@ export default function MyCases() {
   };
 
   // Normalize cases for display
-  const normalizedCases = myCases.map(c => ({
+  // Merge MyCase + ClientCase, deduplicate by case_number or id
+  const seenIds = new Set();
+  const allRawCases = [...myCases, ...clientCases.map(c => ({ ...c, _sourceEntity: 'ClientCase' }))].filter(c => {
+    if (seenIds.has(c.case_number || c.id)) return false;
+    seenIds.add(c.case_number || c.id);
+    return true;
+  });
+
+  const normalizedCases = allRawCases.map(c => ({
       ...c,
       id: c.id,
       case_title: c.case_number ? `${c.case_number} - ${c.issue_type}` : c.client_name,
@@ -239,7 +252,7 @@ export default function MyCases() {
       currency: c.cryptocurrency || 'USD',
       created_date: c.created_date,
       type: 'client',
-      _entityName: 'MyCase',
+      _entityName: c._sourceEntity || 'MyCase',
       fraud_type: c.issue_type,
       description: c.description,
       blockchain: c.blockchain,
@@ -362,7 +375,7 @@ export default function MyCases() {
     filters: filters
   });
 
-  const isLoading = loadingMyCases || loadingMyScams;
+  const isLoading = loadingMyCases || loadingClientCases || loadingMyScams;
 
   // Using CaseDetailDialog instead
 
@@ -444,16 +457,24 @@ export default function MyCases() {
       {user && (user.role === 'admin' || user.is_admin) && (
         <Card className="bg-purple-500/10 border-purple-500/30 mb-4">
           <CardContent className="p-4">
-            <h3 className="text-purple-400 font-bold mb-2">🔧 ADMIN DATA RECOVERY TOOLS</h3>
-            <p className="text-xs text-gray-400 mb-3">Use these tools to audit and recover case data</p>
+            <h3 className="text-purple-400 font-bold mb-2">🔧 ADMIN DATA TOOLS</h3>
+            <p className="text-xs text-gray-400 mb-3">Direct entity audit — no backend required</p>
             <div className="flex gap-2 flex-wrap">
               <Button 
                 onClick={async () => {
-                  console.log('🔍 RUNNING FULL AUDIT');
                   toast.info('Running audit...');
-                  const res = await base44.functions.invoke('auditSubmissions', { action: 'full_audit' });
-                  console.log('📊 AUDIT RESULTS:', res.data);
-                  alert(`AUDIT COMPLETE:\n\nMyCase: ${res.data.summary.total_cases_mycase} cases\nLegacy: ${res.data.summary.total_cases_legacy} cases\nOrphaned: ${res.data.summary.orphaned_cases}\n\nCheck console for details`);
+                  try {
+                    const [myCaseCount, clientCaseCount, investigationCount, fraudCaseCount] = await Promise.all([
+                      base44.entities.MyCase.list('-created_date', 10000).then(r => r.length),
+                      base44.entities.ClientCase.list('-created_date', 10000).then(r => r.length),
+                      base44.entities.InvestigationCase.list('-created_date', 10000).then(r => r.length).catch(() => 0),
+                      base44.entities.FraudCase.list('-created_date', 10000).then(r => r.length).catch(() => 0),
+                    ]);
+                    alert(`AUDIT COMPLETE:\n\nMyCase entity: ${myCaseCount} records\nClientCase entity: ${clientCaseCount} records\nInvestigationCase entity: ${investigationCount} records\nFraudCase entity: ${fraudCaseCount} records\n\nTotal visible: ${myCaseCount + clientCaseCount + investigationCount + fraudCaseCount}`);
+                    toast.success('Audit complete!');
+                  } catch (e) {
+                    toast.error('Audit error: ' + e.message);
+                  }
                 }}
                 className="bg-orange-500 hover:bg-orange-600 text-xs"
                 size="sm"
@@ -462,36 +483,19 @@ export default function MyCases() {
               </Button>
               <Button 
                 onClick={async () => {
-                  if (!confirm('Import ALL legacy cases to MyCase? This will migrate data from old entities.')) return;
-                  toast.info('Importing legacy cases...');
-                  const res = await base44.functions.invoke('auditSubmissions', { action: 'import_legacy' });
-                  if (res.data.success) {
-                    toast.success(res.data.message);
-                    refetchCases();
-                  } else {
-                    toast.error(res.data.error);
-                  }
-                }}
-                className="bg-purple-500 hover:bg-purple-600 text-xs"
-                size="sm"
-              >
-                📥 Import Legacy
-              </Button>
-              <Button 
-                onClick={async () => {
-                  toast.info('Fixing orphaned cases...');
-                  const res = await base44.functions.invoke('auditSubmissions', { action: 'fix_orphaned' });
-                  if (res.data.success) {
-                    toast.success(res.data.message);
-                    refetchCases();
-                  } else {
-                    toast.error(res.data.error);
-                  }
+                  toast.info('Refreshing all case sources...');
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['my-cases'] }),
+                    queryClient.invalidateQueries({ queryKey: ['client-cases'] }),
+                    queryClient.invalidateQueries({ queryKey: ['my-scams'] }),
+                  ]);
+                  await refetchCases();
+                  toast.success('All cases refreshed!');
                 }}
                 className="bg-green-500 hover:bg-green-600 text-xs"
                 size="sm"
               >
-                🔧 Fix Orphaned
+                🔄 Refresh All Sources
               </Button>
             </div>
           </CardContent>
