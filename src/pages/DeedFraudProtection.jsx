@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import {
   Shield, Home, Upload, CheckCircle, FileText, Lock, ChevronRight,
-  ChevronLeft, AlertTriangle, Calendar, User, Mail, Phone, Loader2, Eye, Clock
+  ChevronLeft, AlertTriangle, Calendar, User, Mail, Phone, Loader2, Eye, Clock, Pencil
 } from "lucide-react";
+import EditDeedCaseModal from "@/components/deed/EditDeedCaseModal";
 import { toast } from "sonner";
 
 const NY_BOROUGHS = [
@@ -37,6 +38,7 @@ export default function DeedFraudProtection() {
   const [submitted, setSubmitted] = useState(null);
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [uploadingId, setUploadingId] = useState(false);
+  const [editingCase, setEditingCase] = useState(null);
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
@@ -541,25 +543,40 @@ export default function DeedFraudProtection() {
             ) : (
               myCases.map(c => (
                 <div key={c.id} className="p-4 bg-[#0f1419] rounded-lg border border-gray-700 flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-mono text-cyan-400 text-sm font-bold">{c.case_id}</span>
                       <Badge className={`${statusColors[c.status] || "bg-gray-500/20 text-gray-400"} border text-xs`}>{c.status}</Badge>
+                      {c.documents?.length > 0 && (
+                        <span className="text-xs text-gray-500">{c.documents.length} doc{c.documents.length !== 1 ? 's' : ''}</span>
+                      )}
                     </div>
-                    <p className="text-white text-sm">{c.property_address}</p>
+                    <p className="text-white text-sm truncate">{c.property_address}</p>
                     <p className="text-gray-500 text-xs mt-0.5">{c.borough_county} · Submitted {new Date(c.created_date).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {c.status === "New" && <Clock className="w-4 h-4 text-yellow-400" />}
                     {c.status === "Under Review" && <Eye className="w-4 h-4 text-blue-400" />}
                     {(c.status === "Filed" || c.status === "Filed with NYS") && <CheckCircle className="w-4 h-4 text-green-400" />}
-                    <span className="text-gray-400 text-xs">{ISSUE_TYPES.find(t => t.value === c.issue_type)?.label || c.issue_type}</span>
+                    <Button variant="outline" size="sm" onClick={() => setEditingCase(c)}
+                      className="border-gray-600 text-gray-400 hover:text-cyan-400 hover:border-cyan-500/50 h-8">
+                      <Pencil className="w-3 h-3 mr-1" /> Edit
+                    </Button>
                   </div>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Edit Case Modal */}
+      {editingCase && (
+        <EditDeedCaseModal
+          caseData={editingCase}
+          open={!!editingCase}
+          onClose={() => setEditingCase(null)}
+        />
       )}
     </div>
   );
