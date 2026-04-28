@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Home, Search, Eye, FileText, Download, CheckCircle,
-  Clock, AlertTriangle, Loader2, User, Mail, Phone, MapPin
+  Clock, AlertTriangle, Loader2, User, Mail, Phone, MapPin, RefreshCw
 } from "lucide-react";
 import EvidenceFilesPanel from "@/components/cases/EvidenceFilesPanel";
 import { toast } from "sonner";
@@ -54,9 +54,11 @@ export default function AdminDeedFraud() {
   const [nysRef, setNysRef] = useState("");
   const queryClient = useQueryClient();
 
-  const { data: cases = [], isLoading } = useQuery({
+  const { data: cases = [], isLoading, refetch } = useQuery({
     queryKey: ["admin-deed-fraud"],
-    queryFn: () => base44.entities.DeedFraudCase.list("-created_date", 1000)
+    queryFn: () => base44.entities.DeedFraudCase.list("-created_date", 500),
+    staleTime: 0,
+    refetchOnMount: true
   });
 
   const updateMutation = useMutation({
@@ -128,10 +130,14 @@ export default function AdminDeedFraud() {
         <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-red-500/20 rounded-xl flex items-center justify-center border border-purple-500/30">
           <Home className="w-6 h-6 text-purple-400" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">Deed Fraud Case Management</h1>
           <p className="text-gray-400 text-sm">Admin panel — NY State deed fraud reporting & case management</p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}
+          className="border-gray-600 text-gray-400 hover:text-white">
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+        </Button>
       </div>
 
       {/* Stats */}

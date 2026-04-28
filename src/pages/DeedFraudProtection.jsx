@@ -66,11 +66,13 @@ export default function DeedFraudProtection() {
     }).catch(() => {});
   }, []);
 
-  // Fetch user's own cases
+  // Fetch user's own cases - RLS handles filtering by created_by OR submitter_email
   const { data: myCases = [], isLoading } = useQuery({
     queryKey: ["deed-fraud-cases", user?.email],
-    queryFn: () => base44.entities.DeedFraudCase.list("-created_date", 50),
-    enabled: !!user
+    queryFn: () => base44.entities.DeedFraudCase.list("-created_date", 100),
+    enabled: !!user?.email,
+    refetchOnMount: true,
+    staleTime: 0
   });
 
   const submitMutation = useMutation({
@@ -518,8 +520,8 @@ export default function DeedFraudProtection() {
         </CardContent>
       </Card>
 
-      {/* My Submitted Cases */}
-      {myCases.length > 0 && (
+      {/* My Submitted Cases - always shown when user is loaded */}
+      {user && (
         <Card id="my-cases-section" className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
@@ -528,7 +530,15 @@ export default function DeedFraudProtection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {isLoading ? <div className="text-center py-6"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin mx-auto" /></div> :
+            {isLoading ? (
+              <div className="text-center py-8"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin mx-auto" /><p className="text-gray-500 text-sm mt-2">Loading your cases...</p></div>
+            ) : myCases.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm">No deed fraud reports submitted yet.</p>
+                <p className="text-gray-600 text-xs mt-1">Use the form above to report a case.</p>
+              </div>
+            ) : (
               myCases.map(c => (
                 <div key={c.id} className="p-4 bg-[#0f1419] rounded-lg border border-gray-700 flex items-center justify-between gap-4 flex-wrap">
                   <div>
@@ -547,7 +557,7 @@ export default function DeedFraudProtection() {
                   </div>
                 </div>
               ))
-            }
+            )}
           </CardContent>
         </Card>
       )}
