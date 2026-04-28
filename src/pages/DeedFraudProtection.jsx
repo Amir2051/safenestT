@@ -154,42 +154,106 @@ export default function DeedFraudProtection() {
     Closed: "bg-gray-500/20 text-gray-400 border-gray-500/50"
   };
 
+  const resetForm = () => {
+    setSubmitted(null);
+    setStep(0);
+    setForm({
+      submitter_name: user?.full_name || "",
+      submitter_email: user?.email || "",
+      submitter_phone: "",
+      property_address: "",
+      property_city: "",
+      property_zip: "",
+      borough_county: "",
+      issue_type: "",
+      issue_type_other: "",
+      description: "",
+      date_noticed: "",
+      documents: [],
+      id_document_url: ""
+    });
+  };
+
   if (submitted) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="text-center space-y-6">
-          <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/50">
-            <CheckCircle className="w-12 h-12 text-green-400" />
-          </div>
+      <div className="p-6 max-w-2xl mx-auto min-h-screen flex flex-col items-center justify-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full space-y-6 text-center"
+        >
+          {/* Success icon */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-28 h-28 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/50 shadow-lg shadow-green-500/20"
+          >
+            <CheckCircle className="w-14 h-14 text-green-400" />
+          </motion.div>
+
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Case Submitted</h1>
-            <p className="text-gray-400">Your deed fraud report has been received and is under review.</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Case Filed Successfully!</h1>
+            <p className="text-gray-400 text-lg">Your deed fraud report has been received and is now under review by our team.</p>
           </div>
-          <Card className="bg-[#1a2332] border-cyan-500/30 text-left">
-            <CardContent className="p-6 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Case ID</span>
-                <span className="font-mono text-cyan-400 font-bold">{submitted.case_id}</span>
+
+          {/* Case details card */}
+          <Card className="bg-[#1a2332] border-green-500/30 text-left">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-700">
+                <span className="text-gray-400 text-sm">Case Reference ID</span>
+                <span className="font-mono text-cyan-400 font-bold text-lg">{submitted.case_id}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Status</span>
-                <Badge className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/50">New — Under Review</Badge>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">Status</span>
+                <Badge className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/50">New — Pending Review</Badge>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Property</span>
-                <span className="text-white text-sm">{submitted.property_address}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">Property</span>
+                <span className="text-white text-sm text-right max-w-[60%]">{submitted.property_address}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">Borough / County</span>
+                <span className="text-white text-sm">{submitted.borough_county}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">Documents Submitted</span>
+                <span className="text-white text-sm">{submitted.documents?.length || 0} file(s)</span>
               </div>
             </CardContent>
           </Card>
-          <div className="flex gap-3">
-            <Button onClick={() => { setSubmitted(null); setStep(0); setForm({ submitter_name: user?.full_name || "", submitter_email: user?.email || "", submitter_phone: "", property_address: "", property_city: "", property_zip: "", borough_county: "", issue_type: "", issue_type_other: "", description: "", date_noticed: "", documents: [], id_document_url: "" }); }}
-              variant="outline" className="border-cyan-500/30 text-cyan-400 flex-1">
+
+          {/* What happens next */}
+          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg text-left space-y-2">
+            <p className="text-blue-400 font-semibold text-sm">What happens next?</p>
+            <ul className="text-gray-300 text-sm space-y-1">
+              <li className="flex items-start gap-2"><span className="text-cyan-400 mt-0.5">→</span> Our team will review your report within 24–48 hours</li>
+              <li className="flex items-start gap-2"><span className="text-cyan-400 mt-0.5">→</span> You'll be contacted at <strong>{submitted.submitter_email}</strong></li>
+              <li className="flex items-start gap-2"><span className="text-cyan-400 mt-0.5">→</span> Track your case status below under "My Cases"</li>
+            </ul>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={resetForm}
+              variant="outline"
+              className="border-gray-600 text-gray-300 hover:text-white flex-1"
+            >
               Report Another Case
             </Button>
-            <Button onClick={() => window.scrollTo(0, document.body.scrollHeight)}
-              className="bg-cyan-600 hover:bg-cyan-700 flex-1">
-              View My Cases
+            <Button
+              onClick={() => {
+                resetForm();
+                // Small timeout so the page re-renders before scrolling
+                setTimeout(() => {
+                  document.getElementById("my-cases-section")?.scrollIntoView({ behavior: "smooth" });
+                }, 100);
+              }}
+              className="bg-cyan-600 hover:bg-cyan-700 flex-1 font-semibold"
+            >
+              <Eye className="w-4 h-4 mr-2" /> View My Cases
             </Button>
           </div>
         </motion.div>
@@ -456,7 +520,7 @@ export default function DeedFraudProtection() {
 
       {/* My Submitted Cases */}
       {myCases.length > 0 && (
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+        <Card id="my-cases-section" className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-cyan-400" />
