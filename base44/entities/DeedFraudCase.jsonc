@@ -145,11 +145,7 @@
     "description"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": "authenticated"
-      }
-    },
+    "create": true,
     "read": {
       "$or": [
         {
@@ -162,6 +158,11 @@
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
         }
       ]
     },
@@ -170,6 +171,11 @@
         {
           "user_condition": {
             "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
           }
         },
         {

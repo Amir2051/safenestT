@@ -44,9 +44,53 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Alert.filter({ status: 'active' }, '-created_date', 5),
     enabled: !!user,
     initialData: [],
-    staleTime: 60000, // 1 minute
-    refetchInterval: false // Disable auto-refetch
+    staleTime: 60000,
+    refetchInterval: false
   });
+
+  // Send email notification for new alerts not yet emailed
+  const notifiedAlertIds = React.useRef(new Set(JSON.parse(localStorage.getItem('snt_notified_alerts') || '[]')));
+
+  useEffect(() => {
+    if (!user?.email || alerts.length === 0) return;
+
+    const newAlerts = alerts.filter(a => !notifiedAlertIds.current.has(a.id));
+    if (newAlerts.length === 0) return;
+
+    newAlerts.forEach(async (alert) => {
+      const severityEmoji = { critical: '🚨', high: '⚠️', medium: '🔶', low: 'ℹ️' }[alert.severity] || '🔔';
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: user.email,
+          from_name: "SafeNestT Security",
+          subject: `${severityEmoji} SafeNestT Alert: ${alert.alert_type || 'New Security Threat Detected'}`,
+          body: `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:12px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);padding:24px;text-align:center;">
+    <h1 style="margin:0;font-size:22px;color:white;">🛡️ SafeNestT Security Alert</h1>
+    <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);">A new security threat has been detected on your account</p>
+  </div>
+  <div style="padding:24px;">
+    <div style="background:${alert.severity === 'critical' ? '#7f1d1d' : alert.severity === 'high' ? '#78350f' : '#1e3a5f'};border:1px solid ${alert.severity === 'critical' ? '#dc2626' : alert.severity === 'high' ? '#f59e0b' : '#3b82f6'};border-radius:8px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-size:18px;font-weight:bold;">${severityEmoji} ${(alert.severity || 'unknown').toUpperCase()} Severity</p>
+      <p style="margin:0;font-size:16px;">${alert.alert_type || 'Security Threat'}</p>
+    </div>
+    ${alert.description ? `<p style="color:#e2e8f0;line-height:1.6;">${alert.description}</p>` : ''}
+    <div style="text-align:center;margin-top:24px;">
+      <a href="${window.location.origin}/Alerts" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">View Alert →</a>
+    </div>
+    <p style="margin-top:20px;color:#64748b;font-size:12px;text-align:center;">You're receiving this because you have email notifications enabled on SafeNestT.</p>
+  </div>
+</div>`
+        });
+        notifiedAlertIds.current.add(alert.id);
+      } catch (e) {
+        console.warn('Failed to send alert email:', e);
+      }
+    });
+
+    localStorage.setItem('snt_notified_alerts', JSON.stringify([...notifiedAlertIds.current]));
+  }, [alerts, user]);
 
   const { data: passwords = [] } = useQuery({
     queryKey: ['passwords'],
