@@ -7,7 +7,7 @@ import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings as SettingsIcon, LogOut,
   Users, Wifi, Activity, ShieldCheck, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search, Building2, CreditCard, FileText, Brain,
+  Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
   Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,14 @@ const navigationItems = [
     icon: FileText,
     url: createPageUrl('MyCases'),
     glow: 'cyan'
+  },
+  {
+    id: 'deed-fraud',
+    title: 'Deed Fraud Protection',
+    icon: Home,
+    url: createPageUrl('DeedFraudProtection'),
+    glow: 'orange',
+    badge: 'NYS'
   },
   {
     id: 'invitations',
@@ -335,6 +343,14 @@ const adminItems = [
     icon: MessageSquare,
     url: createPageUrl('AdminSupport'),
     glow: 'blue',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-deed-fraud',
+    title: 'Deed Fraud Cases',
+    icon: Home,
+    url: createPageUrl('AdminDeedFraud'),
+    glow: 'orange',
     badge: 'ADMIN'
   }
 ];

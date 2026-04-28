@@ -48,6 +48,8 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
+import DeedFraudProtection from './pages/DeedFraudProtection';
+import AdminDeedFraud from './pages/AdminDeedFraud';
 import AccessDenied from './pages/AccessDenied';
 import Achievements from './pages/Achievements';
 import Activity from './pages/Activity';
@@ -151,6 +153,8 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "AcceptableUsePolicy": AcceptableUsePolicy,
+    "DeedFraudProtection": DeedFraudProtection,
+    "AdminDeedFraud": AdminDeedFraud,
     "AccessDenied": AccessDenied,
     "Achievements": Achievements,
     "Activity": Activity,

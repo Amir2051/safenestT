@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { 
   TrendingUp, Download, Calendar, Filter, BarChart3, 
   Grid3x3, Lock, AlertTriangle, Loader2

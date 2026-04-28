@@ -1,0 +1,186 @@
+{
+  "name": "DeedFraudCase",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "Auto-generated unique case ID"
+    },
+    "submitter_name": {
+      "type": "string",
+      "description": "Full name of person submitting the report"
+    },
+    "submitter_email": {
+      "type": "string",
+      "description": "Email of submitter"
+    },
+    "submitter_phone": {
+      "type": "string",
+      "description": "Phone number of submitter"
+    },
+    "property_address": {
+      "type": "string",
+      "description": "Full property address"
+    },
+    "property_city": {
+      "type": "string"
+    },
+    "property_state": {
+      "type": "string",
+      "default": "New York"
+    },
+    "property_zip": {
+      "type": "string"
+    },
+    "borough_county": {
+      "type": "string",
+      "enum": [
+        "Bronx",
+        "Brooklyn (Kings County)",
+        "Manhattan (New York County)",
+        "Queens",
+        "Staten Island (Richmond County)",
+        "Albany County",
+        "Erie County",
+        "Nassau County",
+        "Suffolk County",
+        "Westchester County",
+        "Other NY County"
+      ],
+      "description": "NY Borough or County"
+    },
+    "issue_type": {
+      "type": "string",
+      "enum": [
+        "unauthorized_deed_transfer",
+        "suspicious_ownership_change",
+        "forged_documents",
+        "other"
+      ],
+      "description": "Type of deed fraud issue"
+    },
+    "issue_type_other": {
+      "type": "string",
+      "description": "Custom description if issue_type is other"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the issue"
+    },
+    "date_noticed": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the issue was first noticed"
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Uploaded supporting documents"
+    },
+    "id_document_url": {
+      "type": "string",
+      "description": "Identity verification document URL"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Under Review",
+        "Filed",
+        "Filed with NYS",
+        "Closed"
+      ],
+      "default": "New",
+      "description": "Current case status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal admin-only notes"
+    },
+    "nys_filing_reference": {
+      "type": "string",
+      "description": "NYS official filing reference number"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Admin assigned to case"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ],
+      "default": "Medium"
+    },
+    "nys_structured_data": {
+      "type": "object",
+      "description": "Structured data formatted for NYS deed fraud reporting"
+    }
+  },
+  "required": [
+    "submitter_name",
+    "submitter_email",
+    "property_address",
+    "borough_county",
+    "issue_type",
+    "description"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "authenticated"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "submitter_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

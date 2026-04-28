@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function TransactionList({ address, limit = 50, compact = false }) {
   const [selectedTx, setSelectedTx] = useState(null);

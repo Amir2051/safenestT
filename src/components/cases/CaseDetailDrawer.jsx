@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Clock, User, Mail, Phone, Save, Loader2, Trash2, MessageSquare, FileText } from "lucide-react";
+import { X, Clock, User, Mail, Phone, Save, Loader2, Trash2, MessageSquare, FileText, Brain, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

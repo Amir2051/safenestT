@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Loader2, Copy } from "lucide-react";
+import { UserPlus, Loader2, Copy, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function InviteMemberDialog({ open, onClose, groupId, groupName, currentCount, maxMembers, onSuccess }) {

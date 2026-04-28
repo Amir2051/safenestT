@@ -138,7 +138,7 @@ export default function VPNControl({ user }) {
         )}
         
         {/* Debug info (remove in production) */}
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <div className="text-xs text-gray-500 p-2 bg-gray-800 rounded">
             Plan: {user?.subscription_plan || 'none'} | Payment: {user?.payment_status || 'none'}
           </div>
