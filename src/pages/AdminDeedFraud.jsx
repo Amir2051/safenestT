@@ -12,9 +12,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
 import {
-  Home, Search, Filter, Eye, FileText, Download, CheckCircle,
-  Clock, AlertTriangle, Loader2, User, Mail, Phone, Calendar, MapPin, X
+  Home, Search, Eye, FileText, Download, CheckCircle,
+  Clock, AlertTriangle, Loader2, User, Mail, Phone, MapPin
 } from "lucide-react";
+import EvidenceFilesPanel from "@/components/cases/EvidenceFilesPanel";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS = ["New", "Under Review", "Filed", "Filed with NYS", "Closed"];
@@ -278,25 +279,15 @@ export default function AdminDeedFraud() {
                 <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{selectedCase.description}</p>
               </div>
 
-              {/* Documents */}
-              {selectedCase.documents?.length > 0 && (
-                <div className="p-4 bg-[#0f1419] rounded-lg border border-gray-700">
-                  <h3 className="text-cyan-400 font-semibold text-sm uppercase tracking-wide mb-2">Documents ({selectedCase.documents.length})</h3>
-                  <div className="space-y-2">
-                    {selectedCase.documents.map((doc, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 bg-black/30 rounded">
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-white flex-1 truncate">{doc.name}</span>
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" size="sm" className="border-gray-600 text-gray-400 hover:text-white h-7 text-xs">
-                            <Eye className="w-3 h-3 mr-1" /> View
-                          </Button>
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Documents / Evidence */}
+              <div className="p-4 bg-[#0f1419] rounded-lg border border-gray-700">
+                <h3 className="text-cyan-400 font-semibold text-sm uppercase tracking-wide mb-3">Evidence & Documents</h3>
+                <EvidenceFilesPanel
+                  caseId={selectedCase.id}
+                  deedFraudDocuments={selectedCase.documents || []}
+                  allowUpload={true}
+                />
+              </div>
 
               {/* Admin Actions */}
               <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30 space-y-4">

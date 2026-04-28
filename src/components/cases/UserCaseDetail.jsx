@@ -18,10 +18,10 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import TimelineFeed from "../investigation/TimelineFeed.jsx";
 import SensitiveField from "../investigation/SensitiveField.jsx";
-import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
 import PaymentTransactionsView from "./PaymentTransactionsView";
 import SharedFilesPanel from "./SharedFilesPanel";
+import EvidenceFilesPanel from "./EvidenceFilesPanel";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -408,68 +408,13 @@ export default function UserCaseDetail({ caseData, onClose }) {
                 </TabsContent>
 
                 <TabsContent value="evidence" className="space-y-4 mt-4">
-                    <div className="mb-6">
-                        <h3 className="text-white font-semibold mb-4">Upload Evidence Files</h3>
-                        <MultiFileUploader
-                            maxFiles={20}
-                            onFilesUploaded={async (uploadedFiles) => {
-                                try {
-                                    const evidence = caseData.evidence_files || [];
-                                    const newEvidence = uploadedFiles.map(f => ({
-                                        name: f.name,
-                                        url: f.url,
-                                        type: f.type,
-                                        uploaded_date: new Date().toISOString(),
-                                        description: f.name
-                                    }));
-
-                                    // Create evidence file records
-                                    for (const file of uploadedFiles) {
-                                        await base44.entities.CaseEvidenceFile.create({
-                                            case_id: caseData.id,
-                                            file_url: file.url,
-                                            filename: file.name,
-                                            file_size: file.size,
-                                            mime_type: file.type,
-                                            uploaded_at: new Date().toISOString()
-                                        });
-                                    }
-
-                                    await updateCaseMutation.mutateAsync({
-                                        evidence_files: [...evidence, ...newEvidence]
-                                    });
-
-                                    toast.success(`${uploadedFiles.length} file(s) added to your case`);
-                                } catch (error) {
-                                    toast.error('Failed to add files');
-                                }
-                            }}
-                        />
-                    </div>
-
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-white font-semibold">Your Uploaded Evidence</h3>
-                    </div>
-
-                    <div className="grid gap-2">
-                        {(caseData.evidence_files || []).map((file, idx) => (
-                            <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-gray-700 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="w-5 h-5 text-cyan-400" />
-                                    <div>
-                                        <p className="text-white text-sm font-medium">{file.name}</p>
-                                        <p className="text-xs text-gray-400">{new Date(file.uploaded_date).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-                                <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
-                                    <Eye className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        ))}
-                        {(!caseData.evidence_files || caseData.evidence_files.length === 0) && (
-                            <p className="text-gray-500 text-center py-8">No evidence files uploaded yet.</p>
-                        )}
-                    </div>
+                    <h3 className="text-white font-semibold">Evidence Files</h3>
+                    <EvidenceFilesPanel
+                        caseId={caseData.id}
+                        legacyFiles={caseData.evidence_files || []}
+                        allowUpload={true}
+                        onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ['my-cases'] })}
+                    />
                 </TabsContent>
 
                 <TabsContent value="shared-files" className="space-y-4 mt-4">
