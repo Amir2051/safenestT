@@ -21,15 +21,15 @@ const THEME_OPTIONS = [
   {
     id: "light",
     label: "Futuristic Light",
-    subtitle: "Soft white · Cyan glow",
+    subtitle: "Crystal white · Sky blue",
     Icon: Sun,
     preview: {
-      bg: "bg-blue-50",
+      bg: "bg-[#f8faff]",
       card: "bg-white",
-      accent: "bg-cyan-500",
+      accent: "bg-sky-500",
       accent2: "bg-violet-500",
-      text: "bg-slate-800",
-      textMuted: "bg-slate-400",
+      text: "bg-slate-900",
+      textMuted: "bg-slate-500",
     }
   },
   {
@@ -38,12 +38,12 @@ const THEME_OPTIONS = [
     subtitle: "Follows device system theme",
     Icon: Zap,
     preview: {
-      bg: "bg-gradient-to-br from-gray-900 to-blue-50",
-      card: "bg-gradient-to-br from-gray-800 to-white",
-      accent: "bg-cyan-400",
+      bg: "bg-gradient-to-br from-slate-900 to-[#f8faff]",
+      card: "bg-gradient-to-br from-slate-700 to-white",
+      accent: "bg-sky-400",
       accent2: "bg-violet-500",
-      text: "bg-gray-500",
-      textMuted: "bg-gray-400",
+      text: "bg-slate-600",
+      textMuted: "bg-slate-400",
     }
   }
 ];

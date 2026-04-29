@@ -26,48 +26,172 @@
   transition-timing-function: ease;
 }
 
-/* Light theme overrides */
+/* ══════════════════════════════════════════════════════
+   FUTURISTIC LIGHT THEME
+══════════════════════════════════════════════════════ */
+
+/* ── Root / Body backgrounds ── */
 [data-theme="light"] body,
 [data-theme="light"] #root {
   background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
 }
 
+/* ── Dark background classes → light equivalents ── */
 [data-theme="light"] .bg-\[\#000000\],
-[data-theme="light"] .bg-\[\#0a0a0a\] {
+[data-theme="light"] .bg-\[\#0a0a0a\],
+[data-theme="light"] .bg-black,
+[data-theme="light"] .bg-\[#000000\] {
   background-color: var(--theme-bg) !important;
 }
 
 [data-theme="light"] .bg-\[\#0f1419\],
-[data-theme="light"] .bg-\[\#111827\] {
+[data-theme="light"] .bg-\[\#111827\],
+[data-theme="light"] .bg-gray-900,
+[data-theme="light"] .bg-gray-950 {
   background-color: var(--theme-bg-card) !important;
 }
 
-[data-theme="light"] .bg-\[\#1a2332\] {
+[data-theme="light"] .bg-\[\#1a2332\],
+[data-theme="light"] .bg-gray-800 {
   background-color: var(--theme-bg-secondary) !important;
 }
 
+/* ── Gradient backgrounds → light-friendly gradients ── */
+[data-theme="light"] .bg-gradient-to-br,
+[data-theme="light"] .bg-gradient-to-r {
+  --tw-gradient-from: var(--theme-bg);
+  --tw-gradient-to: var(--theme-bg-secondary);
+}
+
+[data-theme="light"] .from-\[\#0a0a0a\],
+[data-theme="light"] .from-\[\#000000\],
+[data-theme="light"] .from-\[\#1a2332\] {
+  --tw-gradient-from: var(--theme-bg-secondary) !important;
+}
+
+[data-theme="light"] .to-\[\#0f1419\],
+[data-theme="light"] .to-\[\#0a0a0a\] {
+  --tw-gradient-to: var(--theme-bg) !important;
+}
+
+/* ── Text overrides — STRONG contrast ── */
 [data-theme="light"] .text-white {
   color: var(--theme-text) !important;
 }
 
-[data-theme="light"] .text-gray-400,
+[data-theme="light"] .text-gray-100,
+[data-theme="light"] .text-gray-200 {
+  color: #1e293b !important;
+}
+
 [data-theme="light"] .text-gray-300 {
-  color: var(--theme-text-muted) !important;
+  color: #334155 !important;
 }
 
+[data-theme="light"] .text-gray-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-gray-500 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+/* ── Borders ── */
 [data-theme="light"] .border-gray-700,
-[data-theme="light"] .border-gray-600 {
-  border-color: var(--theme-border) !important;
+[data-theme="light"] .border-gray-600,
+[data-theme="light"] .border-gray-800 {
+  border-color: rgba(8,145,178,0.25) !important;
 }
 
-/* Light theme card glow effect */
 [data-theme="light"] .border-cyan-500\/20 {
-  box-shadow: 0 0 0 1px var(--theme-accent-glow), 0 2px 12px var(--theme-accent-glow);
+  border-color: rgba(8,145,178,0.3) !important;
+  box-shadow: 0 2px 16px rgba(2,132,199,0.1);
 }
 
-/* Gradient bg override for light */
-[data-theme="light"] .bg-gradient-to-br.from-\[\#0a0a0a\] {
-  background: linear-gradient(135deg, var(--theme-bg), var(--theme-bg-secondary)) !important;
+[data-theme="light"] .border-cyan-500\/10 {
+  border-color: rgba(8,145,178,0.2) !important;
+}
+
+/* ── Input backgrounds ── */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background-color: var(--theme-bg-input) !important;
+  color: var(--theme-text) !important;
+  border-color: rgba(8,145,178,0.3) !important;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* ── Cards with glassmorphism ── */
+[data-theme="light"] .bg-gradient-to-br.from-\[\#1a2332\] {
+  background: linear-gradient(135deg, #ffffff, #eef2fb) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(2,132,199,0.08), 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* ── Sidebar & header ── */
+[data-theme="light"] .bg-black\/40,
+[data-theme="light"] .bg-black\/60,
+[data-theme="light"] .bg-black\/80 {
+  background-color: rgba(248,250,255,0.92) !important;
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(8,145,178,0.2) !important;
+}
+
+/* ── Cyan accent — remains bright for contrast ── */
+[data-theme="light"] .text-cyan-400 {
+  color: #0284c7 !important;
+}
+
+[data-theme="light"] .text-cyan-300 {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .border-cyan-500\/30 {
+  border-color: rgba(2,132,199,0.35) !important;
+}
+
+/* ── Ambient glow blobs → barely visible in light mode ── */
+[data-theme="light"] .bg-cyan-500\/5,
+[data-theme="light"] .bg-purple-500\/5 {
+  opacity: 0.4 !important;
+}
+
+/* ── Badge / pill backgrounds ── */
+[data-theme="light"] .bg-cyan-500\/10 {
+  background-color: rgba(2,132,199,0.1) !important;
+}
+
+[data-theme="light"] .bg-green-500\/10 {
+  background-color: rgba(22,163,74,0.1) !important;
+}
+
+[data-theme="light"] .bg-yellow-500\/10 {
+  background-color: rgba(202,138,4,0.1) !important;
+}
+
+[data-theme="light"] .bg-red-500\/10 {
+  background-color: rgba(220,38,38,0.08) !important;
+}
+
+/* ── Hover states ── */
+[data-theme="light"] .hover\:bg-cyan-500\/10:hover {
+  background-color: rgba(2,132,199,0.12) !important;
+}
+
+/* ── Font rendering — crisp on white ── */
+[data-theme="light"] * {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
