@@ -24,6 +24,8 @@ import {
 
 import AlertPreferences from "../components/alerts/AlertPreferences.jsx";
 import SafeNesttDisclaimer from "../components/shared/SafeNesttDisclaimer";
+import ThemeSwitcher from "../components/settings/ThemeSwitcher";
+import { Palette } from "lucide-react";
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -265,6 +267,10 @@ export default function Settings() {
           <TabsTrigger value="alerts">
             <Bell className="w-4 h-4 mr-2" />
             Alert Settings
+          </TabsTrigger>
+          <TabsTrigger value="appearance">
+            <Palette className="w-4 h-4 mr-2" />
+            Appearance
           </TabsTrigger>
         </TabsList>
 
@@ -653,6 +659,21 @@ export default function Settings() {
               )}
             </Button>
           </div>
+        </TabsContent>
+
+        {/* Appearance Tab */}
+        <TabsContent value="appearance" className="mt-6 space-y-6">
+          <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Palette className="w-5 h-5 text-cyan-400" />
+                Theme & Appearance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ThemeSwitcher />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Alert Settings Tab */}

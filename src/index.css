@@ -2,6 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme System ─────────────────────────────────────────────────────────── */
+:root {
+  --theme-bg:            #000000;
+  --theme-bg-secondary:  #0a0f1a;
+  --theme-bg-card:       #111827;
+  --theme-bg-input:      #0f1419;
+  --theme-border:        rgba(6,182,212,0.2);
+  --theme-text:          #f1f5f9;
+  --theme-text-muted:    #94a3b8;
+  --theme-accent:        #06b6d4;
+  --theme-accent-glow:   rgba(6,182,212,0.35);
+  --theme-accent-2:      #7c3aed;
+  --theme-accent-2-glow: rgba(124,58,237,0.25);
+  --theme-sidebar:       #000000;
+  --theme-header:        rgba(0,0,0,0.6);
+}
+
+/* Smooth transitions for all theme-affected elements */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* Light theme overrides */
+[data-theme="light"] body,
+[data-theme="light"] #root {
+  background-color: var(--theme-bg) !important;
+}
+
+[data-theme="light"] .bg-\[\#000000\],
+[data-theme="light"] .bg-\[\#0a0a0a\] {
+  background-color: var(--theme-bg) !important;
+}
+
+[data-theme="light"] .bg-\[\#0f1419\],
+[data-theme="light"] .bg-\[\#111827\] {
+  background-color: var(--theme-bg-card) !important;
+}
+
+[data-theme="light"] .bg-\[\#1a2332\] {
+  background-color: var(--theme-bg-secondary) !important;
+}
+
+[data-theme="light"] .text-white {
+  color: var(--theme-text) !important;
+}
+
+[data-theme="light"] .text-gray-400,
+[data-theme="light"] .text-gray-300 {
+  color: var(--theme-text-muted) !important;
+}
+
+[data-theme="light"] .border-gray-700,
+[data-theme="light"] .border-gray-600 {
+  border-color: var(--theme-border) !important;
+}
+
+/* Light theme card glow effect */
+[data-theme="light"] .border-cyan-500\/20 {
+  box-shadow: 0 0 0 1px var(--theme-accent-glow), 0 2px 12px var(--theme-accent-glow);
+}
+
+/* Gradient bg override for light */
+[data-theme="light"] .bg-gradient-to-br.from-\[\#0a0a0a\] {
+  background: linear-gradient(135deg, var(--theme-bg), var(--theme-bg-secondary)) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
