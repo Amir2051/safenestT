@@ -260,7 +260,6 @@ export default function Layout({ children, currentPageName }) {
             style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))', userSelect: 'none' }}
           >
             <div className="flex items-center gap-3">
-              {/* Back button on inner pages — plus menu toggle for mobile */}
               {currentPageName !== 'Dashboard' ? (
                 <div className="flex items-center gap-2">
                   <button
@@ -270,7 +269,6 @@ export default function Layout({ children, currentPageName }) {
                   >
                     <ArrowLeft className="w-5 h-5 text-cyan-400" />
                   </button>
-                  {/* Always-visible menu icon on mobile inner pages */}
                   <button
                     onClick={handleMenuOpen}
                     aria-label="Open navigation menu"
@@ -289,7 +287,6 @@ export default function Layout({ children, currentPageName }) {
                 </button>
               )}
 
-              {/* Logo / Brand */}
               {userLoading ? (
                 <HeaderSkeleton />
               ) : (
@@ -308,13 +305,11 @@ export default function Layout({ children, currentPageName }) {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Live indicator */}
               <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-500/50" aria-hidden="true" />
                 <span className="text-xs font-bold text-green-400 tracking-wide">LIVE</span>
               </div>
 
-              {/* Risk score */}
               {!userLoading && user?.risk_score !== undefined && (
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
                   <span className="text-xs text-gray-400">SCORE</span>
@@ -362,11 +357,9 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation */}
         <MobileBottomNav />
       </div>
 
-      {/* Global Styles */}
       <style>{`
         button, .sidebar {
           user-select: none;
