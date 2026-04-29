@@ -95,10 +95,16 @@ export default function Layout({ children, currentPageName }) {
       return originalError ? originalError(message, source, lineno, colno, error) : false;
     };
 
+    const secret = import.meta.env.VITE_CHAT_SECRET;
+    if (!secret) {
+      console.warn('VITE_CHAT_SECRET not set — chat widget skipped');
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
     script.setAttribute('name', 'web-chat');
-    script.setAttribute('data-client-secret', '68d63f1d-d9ca-47be-b15c-f71cff5d3da3');
+    script.setAttribute('data-client-secret', secret);
     script.async = true;
     script.defer = true;
     script.crossOrigin = 'anonymous';

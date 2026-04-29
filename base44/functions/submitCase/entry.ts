@@ -203,6 +203,72 @@ Deno.serve(async (req) => {
             console.error('⚠️ Timeline event creation failed:', e);
         }
 
+        // Auto-generate / refresh MasterCase in the background (non-blocking)
+        (async () => {
+          try {
+            const [allMyCases, allInvCases] = await Promise.all([
+              base44.asServiceRole.entities.MyCase.filter({ created_by: user.email }, '-created_date', 100),
+              base44.asServiceRole.entities.InvestigationCase.filter({ created_by: user.email }, '-created_date', 100).catch(() => [])
+            ]);
+            const allCasesMap = new Map();
+            [...allMyCases, ...allInvCases].forEach(c => allCasesMap.set(c.id, c));
+            const allCases = Array.from(allCasesMap.values());
+
+            const scamList = allCases.map(c => ({
+              date:     c.incident_date || c.created_date,
+              platform: c.issue_type || c.fraud_type || 'Unknown',
+              method:   c.incident_classification || c.fraud_method || 'Unknown',
+              amount:   parseFloat(c.amount_lost || c.amount_stolen_usd || 0),
+              case_id:  c.id
+            }));
+            const walletSet = new Set();
+            allCases.forEach(c => {
+              if (c.scammer_wallet) walletSet.add(c.scammer_wallet);
+              (c.scammer_info?.wallet_addresses || []).forEach(w => walletSet.add(w));
+              (c.monitored_wallets || []).forEach(w => walletSet.add(w));
+            });
+            const totalLoss = allCases.reduce((s, c) => s + parseFloat(c.amount_lost || c.amount_stolen_usd || 0), 0);
+            const evidenceMap = new Map();
+            allCases.forEach(c => {
+              [...(c.evidence_files || []), ...(c.evidence_log || [])].forEach(ev => {
+                const url = ev?.url || ev?.file_url;
+                if (url && !evidenceMap.has(url)) {
+                  evidenceMap.set(url, { url, name: ev.name || 'Evidence file', source_case: c.case_number || c.id, type: ev.type || 'document' });
+                }
+              });
+            });
+
+            const masterPayload = {
+              user_id:          user.email,
+              linked_case_ids:  allCases.map(c => c.id),
+              scam_list:        scamList,
+              wallet_addresses: Array.from(walletSet),
+              transaction_records: allCases.flatMap(c => (c.transactions || []).map(t => ({ ...t, source_case: c.id }))),
+              evidence_index:   Array.from(evidenceMap.values()),
+              total_loss:       totalLoss,
+              status:           'draft',
+              generated_date:   new Date().toISOString()
+            };
+
+            const existing = await base44.entities.MasterCase.filter({ user_id: user.email }, '-generated_date', 1);
+            if (existing.length > 0) {
+              const current = existing[0];
+              await base44.entities.MasterCase.update(current.id, {
+                ...masterPayload,
+                status: current.status === 'submitted' ? 'submitted' : 'draft',
+                merged_summary:   current.merged_summary,
+                pattern_analysis: current.pattern_analysis,
+                pdf_url:          current.pdf_url
+              });
+            } else {
+              await base44.entities.MasterCase.create(masterPayload);
+            }
+            console.log(`✅ MasterCase auto-updated for ${user.email} — ${allCases.length} cases, $${totalLoss} total loss`);
+          } catch (e) {
+            console.error('⚠️ MasterCase auto-update failed (non-critical):', e.message);
+          }
+        })();
+
         return Response.json({
             success: true,
             case: newCase,

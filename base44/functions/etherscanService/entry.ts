@@ -15,8 +15,10 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Wallet address is required' }, { status: 400 });
   }
 
-  // API Key provided by user
-  const API_KEY = Deno.env.get('ETHERSCAN_API_KEY') || 'PHFTKFAYPZ9V99XANRTRNJCP2P6FQH1C6J';
+  const API_KEY = Deno.env.get('ETHERSCAN_API_KEY');
+  if (!API_KEY) {
+    return Response.json({ error: 'Etherscan API key not configured. Set ETHERSCAN_API_KEY environment variable.' }, { status: 503 });
+  }
   const BASE_URL = 'https://api.etherscan.io/api';
 
   try {

@@ -96,7 +96,8 @@ Deno.serve(async (req) => {
       if (ip !== 'Unknown' && ip !== '127.0.0.1') {
         try {
           // Use IPinfo token provided or from env
-          const apiToken = Deno.env.get("IPINFO_TOKEN") || "6b6e93cdaf388d";
+          const apiToken = Deno.env.get("IPINFO_TOKEN");
+          if (!apiToken) throw new Error("IPINFO_TOKEN not configured");
           
           const geoResponse = await fetch(`https://ipinfo.io/${ip}?token=${apiToken}`);
           
