@@ -12,6 +12,8 @@ import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.j
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
 import LegalFooter from "./components/shared/LegalFooter";
+import PrivacyConsentBanner from "./components/shared/PrivacyConsentBanner";
+import { isAnalyticsAllowed, isChatAllowed } from "./lib/PrivacyGuard";
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -85,8 +87,9 @@ export default function Layout({ children, currentPageName }) {
       .catch(() => {});
   }, []);
 
-  // ── Chat widget (IONOS) ────────────────────────────────────────────────────
+  // ── Chat widget (IONOS) — consent-gated ───────────────────────────────────
   useEffect(() => {
+    if (!isChatAllowed()) return; // blocked unless user opted in
     if (document.querySelector('script[name="web-chat"]')) return;
 
     const originalError = window.onerror;
@@ -96,10 +99,7 @@ export default function Layout({ children, currentPageName }) {
     };
 
     const secret = import.meta.env.VITE_CHAT_SECRET;
-    if (!secret) {
-      console.warn('VITE_CHAT_SECRET not set — chat widget skipped');
-      return;
-    }
+    if (!secret) return;
 
     const script = document.createElement('script');
     script.src = 'https://ionos.ai-voice-receptionist.com/chat-scripts-MqGN74WP/web-chat.js';
@@ -117,8 +117,9 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // ── Apollo tracker ─────────────────────────────────────────────────────────
+  // ── Apollo tracker — consent-gated ────────────────────────────────────────
   useEffect(() => {
+    if (!isAnalyticsAllowed()) return; // blocked unless user opted in
     if (window.apolloTrackerInitialized) return;
     window.apolloTrackerInitialized = true;
 
@@ -130,15 +131,13 @@ export default function Layout({ children, currentPageName }) {
     script.onload = () => {
       window.trackingFunctions?.onLoad?.({ appId: '694c5977dbc21700115a85f0' });
     };
-    script.onerror = () => {
-      window.apolloTrackerInitialized = false;
-    };
+    script.onerror = () => { window.apolloTrackerInitialized = false; };
     document.head.appendChild(script);
   }, []);
 
-  // Track SPA page views for Apollo
+  // Track SPA page views for Apollo — only if allowed
   useEffect(() => {
-    window.trackingFunctions?.trackPage?.();
+    if (isAnalyticsAllowed()) window.trackingFunctions?.trackPage?.();
   }, [location.pathname]);
 
   // ── Mobile menu button — show briefly on page load ─────────────────────────
@@ -389,6 +388,7 @@ export default function Layout({ children, currentPageName }) {
       `}</style>
 
       <div id="web-chat-widget-container" style={{ zIndex: 9999, position: 'relative' }} />
+      <PrivacyConsentBanner />
     </>
   );
 }

@@ -3,6 +3,13 @@ import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
 import { ThemeProvider } from '@/lib/ThemeContext'
+import { initPrivacyGuard, isAnalyticsAllowed, isChatAllowed } from '@/lib/PrivacyGuard'
+
+// Initialize privacy protection before anything else loads
+initPrivacyGuard({
+  blockAnalytics: !isAnalyticsAllowed(),
+  blockChat: !isChatAllowed(),
+})
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   // <React.StrictMode>
