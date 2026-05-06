@@ -47,7 +47,17 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import PrivacyGuard from './pages/PrivacyGuard';
+import PrivacyGuard from './pages/PrivacyGuard.jsx';
+import PrivacyHub from './pages/PrivacyHub.jsx';
+import BrokerRemoval from './pages/BrokerRemoval.jsx';
+import ExposureScanner from './pages/ExposureScanner.jsx';
+import DarkWebMonitorHub from './pages/DarkWebMonitorHub.jsx';
+import FootprintMap from './pages/FootprintMap.jsx';
+import CookieIntel from './pages/CookieIntel.jsx';
+import PrivacyScore from './pages/PrivacyScore.jsx';
+import RightsCenter from './pages/RightsCenter.jsx';
+import SecureVault from './pages/SecureVault.jsx';
+import PrivacyComingSoon from './pages/PrivacyComingSoon.jsx';
 import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
 import DeedFraudProtection from './pages/DeedFraudProtection';
 import AdminDeedFraud from './pages/AdminDeedFraud';
@@ -154,6 +164,16 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "PrivacyGuard": PrivacyGuard,
+    "PrivacyHub": PrivacyHub,
+    "BrokerRemoval": BrokerRemoval,
+    "ExposureScanner": ExposureScanner,
+    "DarkWebMonitorHub": DarkWebMonitorHub,
+    "FootprintMap": FootprintMap,
+    "CookieIntel": CookieIntel,
+    "PrivacyScore": PrivacyScore,
+    "RightsCenter": RightsCenter,
+    "SecureVault": SecureVault,
+    "PrivacyComingSoon": PrivacyComingSoon,
     "AcceptableUsePolicy": AcceptableUsePolicy,
     "DeedFraudProtection": DeedFraudProtection,
     "AdminDeedFraud": AdminDeedFraud,

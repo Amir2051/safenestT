@@ -8,7 +8,8 @@ import {
   Users, Wifi, Activity, ShieldCheck, ShieldOff, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
-  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle
+  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle,
+  Star, Radar, Eye, Map, Cookie
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +94,14 @@ const navigationItems = [
     icon: Globe,
     url: createPageUrl('WebVPN'),
     glow: 'cyan'
+  },
+  {
+    id: 'privacy-hub',
+    title: 'Privacy Hub',
+    icon: Home,
+    url: createPageUrl('PrivacyHub'),
+    glow: 'cyan',
+    badge: 'HUB'
   },
   {
     id: 'privacy-guard',
@@ -187,6 +196,18 @@ const navigationItems = [
 ];
 
 
+
+const privacyHubItems = [
+  { id: "privacy-score", title: "Privacy Score", icon: Star, url: createPageUrl("PrivacyScore"), glow: "cyan" },
+  { id: "broker-removal", title: "Broker Removal", icon: ShieldOff, url: createPageUrl("BrokerRemoval"), glow: "red" },
+  { id: "exposure-scanner", title: "Exposure Scanner", icon: Radar, url: createPageUrl("ExposureScanner"), glow: "orange" },
+  { id: "dark-web-monitor-hub", title: "Dark Web Monitor", icon: Eye, url: createPageUrl("DarkWebMonitorHub"), glow: "pink" },
+  { id: "footprint-map", title: "Footprint Map", icon: Map, url: createPageUrl("FootprintMap"), glow: "blue" },
+  { id: "cookie-intel", title: "Cookie Intel", icon: Cookie, url: createPageUrl("CookieIntel"), glow: "orange" },
+  { id: "rights-center", title: "Rights Center", icon: FileText, url: createPageUrl("RightsCenter"), glow: "green" },
+  { id: "secure-vault", title: "Secure Vault", icon: Lock, url: createPageUrl("SecureVault"), glow: "emerald" },
+  { id: "privacy-coming-soon", title: "Coming Soon ▸", icon: Bell, url: createPageUrl("PrivacyComingSoon"), glow: "purple" },
+];
 
 const investigationItems = [
   {
@@ -455,7 +476,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const [lastLogin, setLastLogin] = useState(null);
 
   useEffect(() => {
-    const allItems = [...navigationItems, ...investigationItems, ...mediaNavItems, ...adminItems];
+    const allItems = [...navigationItems, ...privacyHubItems, ...investigationItems, ...mediaNavItems, ...adminItems];
     
     const current = allItems.find(item => location.pathname === item.url);
     if (current) {
@@ -548,6 +569,16 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
               onNavClick={handleNavClick} 
             />
           ))}
+
+          {/* Privacy Hub Suite */}
+          <div className="space-y-2 pt-4 border-t border-gray-800/50">
+            <div className="px-4 mb-2">
+              <span className="text-xs font-bold text-cyan-500 uppercase tracking-widest">Privacy Hub</span>
+            </div>
+            {privacyHubItems.map((item) => (
+              <NavItem key={item.id} item={item} activeItem={activeItem} onNavClick={handleNavClick} />
+            ))}
+          </div>
 
           {/* Investigation Suite */}
           <div className="space-y-2 pt-4 border-t border-gray-800/50">
