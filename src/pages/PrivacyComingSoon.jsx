@@ -1,117 +1,50 @@
-import { usePrivacyHub } from "@/lib/usePrivacyHub";
-import { toast } from "sonner";
-import { Bell, Mail, ShieldCheck, Fingerprint, Key, BarChart2, MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React from "react";
+import { Bell, Rocket, Shield, Eye, Lock, Globe } from "lucide-react";
 
-const COMING_SOON_MODULES = [
-  {
-    id: "email-aliases",
-    icon: Mail,
-    label: "Email Alias Manager",
-    route: "/email-aliases",
-    desc: "Generate disposable email addresses that forward to your real inbox. Protect your real email from spam and breaches.",
-    features: ["Create unlimited aliases", "Forward to any inbox", "'Burn' alias to block all emails", "Per-alias analytics"],
-  },
-  {
-    id: "app-permissions",
-    icon: ShieldCheck,
-    label: "App Permission Auditor",
-    route: "/app-permissions",
-    desc: "Audit your mobile apps' permissions. See what each app can access and rate its risk.",
-    features: ["Add apps manually", "Permission risk ratings", "Excessive permission warnings", "Revoke guidance"],
-  },
-  {
-    id: "fingerprint-guard",
-    icon: Fingerprint,
-    label: "Device Fingerprint Defense",
-    route: "/fingerprint-guard",
-    desc: "Detect and randomize your browser fingerprint — canvas, WebGL, fonts, and screen signals — to prevent cross-site tracking.",
-    features: ["Fingerprint test tool", "Canvas randomization", "WebGL spoofing", "Font list masking"],
-  },
-  {
-    id: "password-health",
-    icon: Key,
-    label: "Password Health Monitor",
-    route: "/password-health",
-    desc: "Check your passwords against breach databases using a k-anonymity model. Score strength. Flag reused passwords.",
-    features: ["HIBP-style breach check", "Strength scoring", "Reuse detection", "Password generator"],
-  },
-  {
-    id: "ad-profiler",
-    icon: BarChart2,
-    label: "Ad Network Profiler",
-    route: "/ad-profiler",
-    desc: "See what ad networks know about you — inferred age, income, interests, and political leanings from transparency portals.",
-    features: ["Interest category viewer", "Ad network list", "Google Ad topics", "Opt-out shortcuts"],
-  },
-  {
-    id: "ai-assistant",
-    icon: MessageSquare,
-    label: "Privacy AI Assistant",
-    route: "/ai-assistant",
-    desc: "Chat with an AI assistant trained on privacy law. Get answers, help drafting requests, and breach guidance.",
-    features: ["Privacy law Q&A", "Request letter drafting", "Breach advice", "GDPR / CCPA guidance"],
-  },
+const UPCOMING = [
+  { icon: Shield, title: "AI Privacy Assistant", desc: "Chat-based advisor that guides you through privacy decisions in real-time", eta: "Q3 2025" },
+  { icon: Eye, title: "Social Media Scrubber", desc: "Automatically scan and flag overshared posts across your social accounts", eta: "Q3 2025" },
+  { icon: Globe, title: "VPN Integration", desc: "One-click VPN activation tied to your Privacy Score for smart protection", eta: "Q4 2025" },
+  { icon: Lock, title: "Password Breach Correlator", desc: "Link breached credentials directly to broker exposure for full risk view", eta: "Q4 2025" },
+  { icon: Rocket, title: "Automated Opt-Out Bot", desc: "Fully automated browser-based opt-out that completes forms on your behalf", eta: "2026" },
 ];
 
 export default function PrivacyComingSoon() {
-  const { hub, updateHub } = usePrivacyHub();
-
-  const joinWaitlist = (moduleId) => {
-    const waitlist = hub?.waitlist || [];
-    if (waitlist.includes(moduleId)) { toast.info("You're already on the waitlist!"); return; }
-    updateHub(prev => ({ ...prev, waitlist: [...(prev.waitlist || []), moduleId] }));
-    toast.success("You're on the waitlist! We'll notify you when it launches.");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] p-4 lg:p-8">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-          <Bell className="w-5 h-5 text-white" />
+    <div className="min-h-screen p-6 space-y-8">
+      <div className="text-center space-y-3 pt-6">
+        <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto">
+          <Rocket className="w-8 h-8 text-purple-400" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Coming Soon</h1>
-          <p className="text-gray-400 text-xs">Next-generation privacy features currently in development</p>
-        </div>
-        {(hub?.waitlist || []).length > 0 && (
-          <Badge className="ml-auto bg-purple-500/20 text-purple-400 border-purple-500/40">{hub.waitlist.length} waitlists joined</Badge>
-        )}
+        <h1 className="text-3xl font-bold text-white">Coming Soon</h1>
+        <p className="text-gray-400 max-w-lg mx-auto">We're building powerful new privacy tools. Here's what's on the roadmap.</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {COMING_SOON_MODULES.map(mod => {
-          const Icon = mod.icon;
-          const onWaitlist = (hub?.waitlist || []).includes(mod.id);
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+        {UPCOMING.map(item => {
+          const Icon = item.icon;
           return (
-            <div key={mod.id} className="p-5 bg-gray-900/60 border border-gray-800/60 rounded-xl space-y-4 relative overflow-hidden">
-              <div className="absolute top-3 right-3">
-                <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 text-[10px]">COMING SOON</Badge>
-              </div>
+            <div key={item.title} className="p-5 rounded-xl border border-purple-500/20 bg-purple-500/5 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500/30 to-pink-600/30 rounded-xl flex items-center justify-center border border-purple-500/20">
-                  <Icon className="w-5 h-5 text-purple-400" />
+                <div className="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-purple-400" />
                 </div>
-                <h3 className="text-white font-semibold text-sm pr-16">{mod.label}</h3>
+                <div>
+                  <h3 className="text-white font-semibold text-sm">{item.title}</h3>
+                  <span className="text-xs text-purple-400">{item.eta}</span>
+                </div>
               </div>
-              <p className="text-gray-400 text-sm">{mod.desc}</p>
-              <ul className="space-y-1">
-                {mod.features.map(f => (
-                  <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
-                    <span className="w-1 h-1 bg-purple-400 rounded-full shrink-0" />{f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                onClick={() => joinWaitlist(mod.id)}
-                className={`w-full text-sm ${onWaitlist ? "bg-green-600/20 text-green-400 border border-green-600/40" : "bg-purple-600/20 text-purple-400 border border-purple-600/40 hover:bg-purple-600/30"}`}
-              >
-                {onWaitlist ? "✓ On Waitlist" : <><Bell className="w-4 h-4 mr-2" />Notify Me</>}
-              </Button>
+              <p className="text-gray-400 text-sm">{item.desc}</p>
             </div>
           );
         })}
+      </div>
+
+      <div className="text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-400 text-sm">
+          <Bell className="w-4 h-4" />
+          You'll be notified when new features launch
+        </div>
       </div>
     </div>
   );
