@@ -22,6 +22,7 @@ import SecureMessenger from "../communication/SecureMessenger";
 import PaymentTransactionsView from "./PaymentTransactionsView";
 import SharedFilesPanel from "./SharedFilesPanel";
 import EvidenceFilesPanel from "./EvidenceFilesPanel";
+import CaseInvestigationTimeline from "./CaseInvestigationTimeline";
 
 export default function UserCaseDetail({ caseData, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -201,6 +202,7 @@ export default function UserCaseDetail({ caseData, onClose }) {
                     <TabsTrigger value="shared-files" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
                       <Upload className="w-3 h-3 mr-1" />Shared Files
                     </TabsTrigger>
+                    <TabsTrigger value="progress">Progress</TabsTrigger>
                     <TabsTrigger value="timeline">Timeline</TabsTrigger>
                     <TabsTrigger value="messages">Messages</TabsTrigger>
                 </TabsList>
@@ -424,6 +426,10 @@ export default function UserCaseDetail({ caseData, onClose }) {
                       isAdmin={false}
                       currentUser={currentUser}
                     />
+                </TabsContent>
+
+                <TabsContent value="progress" className="space-y-4 mt-4">
+                    <CaseInvestigationTimeline caseData={liveCase} />
                 </TabsContent>
 
                 <TabsContent value="timeline" className="space-y-4 mt-4">
