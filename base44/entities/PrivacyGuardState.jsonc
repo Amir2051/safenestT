@@ -1,0 +1,78 @@
+{
+  "name": "PrivacyGuardState",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Owner email"
+    },
+    "blocked_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of blocked domain strings"
+    },
+    "opt_out_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_sent",
+              "sent",
+              "confirmed"
+            ]
+          },
+          "sent_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Opt-out request statuses"
+    },
+    "activity_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "manual_required",
+              "failed"
+            ]
+          }
+        }
+      },
+      "description": "Activity log entries"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "create": true,
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import PrivacyGuard from './pages/PrivacyGuard';
 import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
 import DeedFraudProtection from './pages/DeedFraudProtection';
 import AdminDeedFraud from './pages/AdminDeedFraud';
@@ -152,6 +153,7 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "PrivacyGuard": PrivacyGuard,
     "AcceptableUsePolicy": AcceptableUsePolicy,
     "DeedFraudProtection": DeedFraudProtection,
     "AdminDeedFraud": AdminDeedFraud,

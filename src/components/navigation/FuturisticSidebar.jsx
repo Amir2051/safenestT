@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, LayoutDashboard, Lock, Bell, Bot, Settings as SettingsIcon, LogOut,
-  Users, Wifi, Activity, ShieldCheck, Mail, Server,
+  Users, Wifi, Activity, ShieldCheck, ShieldOff, Mail, Server,
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
   Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle
@@ -93,6 +93,14 @@ const navigationItems = [
     icon: Globe,
     url: createPageUrl('WebVPN'),
     glow: 'cyan'
+  },
+  {
+    id: 'privacy-guard',
+    title: 'Privacy Guard',
+    icon: ShieldOff,
+    url: createPageUrl('PrivacyGuard'),
+    glow: 'purple',
+    badge: 'NEW'
   },
   {
     id: 'alerts',
