@@ -206,6 +206,7 @@ const privacyHubItems = [
   { id: "cookie-intel", title: "Cookie Intel", icon: Cookie, url: createPageUrl("CookieIntel"), glow: "orange" },
   { id: "rights-center", title: "Rights Center", icon: FileText, url: createPageUrl("RightsCenter"), glow: "green" },
   { id: "secure-vault", title: "Secure Vault", icon: Lock, url: createPageUrl("SecureVault"), glow: "emerald" },
+  { id: "privacy-advisor", title: "Privacy Advisor", icon: Bot, url: createPageUrl("PrivacyAdvisor"), glow: "purple", badge: "AI" },
   { id: "privacy-coming-soon", title: "Coming Soon ▸", icon: Bell, url: createPageUrl("PrivacyComingSoon"), glow: "purple" },
 ];
 

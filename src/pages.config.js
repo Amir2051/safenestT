@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import PrivacyGuard from './pages/PrivacyGuard.jsx';
+import PrivacyAdvisor from './pages/PrivacyAdvisor';
 import PrivacyHub from './pages/PrivacyHub.jsx';
 import BrokerRemoval from './pages/BrokerRemoval.jsx';
 import ExposureScanner from './pages/ExposureScanner.jsx';
@@ -163,6 +164,7 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "PrivacyAdvisor": PrivacyAdvisor,
     "PrivacyGuard": PrivacyGuard,
     "PrivacyHub": PrivacyHub,
     "BrokerRemoval": BrokerRemoval,
