@@ -1,119 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Wifi, Shield, Globe, Activity, Zap, AlertTriangle, 
+  Shield, Globe, Activity, AlertTriangle, 
   Lock, CheckCircle, Loader2, Info
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function WebVPN() {
-  const [user, setUser] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [connectionTime, setConnectionTime] = useState(0);
-
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
-
-  // Check connection status
-  const { data: statusData, isLoading } = useQuery({
-    queryKey: ['web-proxy-status'],
-    queryFn: async () => {
-      const response = await base44.functions.invoke('webProxyService', {
-        endpoint: 'get-status'
-      });
-      return response.data;
-    },
-    enabled: !!user,
-    refetchInterval: 3000
-  });
-
-  useEffect(() => {
-    if (statusData) {
-      setIsConnected(statusData.active);
-      if (statusData.sessions && statusData.sessions.length > 0) {
-        setSessionId(statusData.sessions[0].session_id);
-        setConnectionTime(statusData.sessions[0].duration);
-      }
-    }
-  }, [statusData]);
-
-  const startMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('webProxyService', {
-        endpoint: 'start-session',
-        device_id: 'web-browser',
-        server_id: 'web-proxy-1'
-      });
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setIsConnected(true);
-      setSessionId(data.session_id);
-      queryClient.invalidateQueries({ queryKey: ['web-proxy-status'] });
-      queryClient.invalidateQueries({ queryKey: ['vpn-devices'] });
-      toast.success('🔒 Web Proxy Connected', {
-        description: 'Your browser traffic is now routed through SafeNest'
-      });
-    },
-    onError: (error) => {
-      toast.error('Failed to connect: ' + error.message);
-    }
-  });
-
-  const stopMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('webProxyService', {
-        endpoint: 'stop-session',
-        session_id: sessionId
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      setIsConnected(false);
-      setSessionId(null);
-      setConnectionTime(0);
-      queryClient.invalidateQueries({ queryKey: ['web-proxy-status'] });
-      queryClient.invalidateQueries({ queryKey: ['vpn-devices'] });
-      toast.success('Proxy Disconnected');
-    },
-    onError: (error) => {
-      toast.error('Failed to disconnect: ' + error.message);
-    }
-  });
+  const [isConnected] = useState(false);
 
   const handleToggle = () => {
-    if (isConnected) {
-      stopMutation.mutate();
-    } else {
-      startMutation.mutate();
-    }
+    toast.error('Web VPN requires an active subscription. Please upgrade your plan to use this feature.');
   };
-
-  const formatTime = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    if (mins > 0) return `${mins}m ${secs}s`;
-    return `${secs}s`;
-  };
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-4xl mx-auto">
@@ -172,43 +73,22 @@ export default function WebVPN() {
               <Switch
                 checked={isConnected}
                 onCheckedChange={handleToggle}
-                disabled={startMutation.isPending || stopMutation.isPending}
+                disabled={true}
                 className="scale-150"
               />
             </div>
 
-            {(startMutation.isPending || stopMutation.isPending) && (
-              <div className="flex items-center gap-2 text-cyan-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">
-                  {isConnected ? 'Disconnecting...' : 'Connecting...'}
-                </span>
-              </div>
-            )}
+            <p className="text-xs text-yellow-400 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Requires active subscription to activate
+            </p>
           </div>
 
-          {/* Connection Stats */}
-          {isConnected && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 bg-[#0f1419] rounded-lg text-center">
-                <Activity className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-400">
-                  {formatTime(connectionTime)}
-                </p>
-                <p className="text-xs text-gray-400">Connected</p>
-              </div>
-              <div className="p-4 bg-[#0f1419] rounded-lg text-center">
-                <Lock className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-purple-400">AES-256</p>
-                <p className="text-xs text-gray-400">Encryption</p>
-              </div>
-              <div className="p-4 bg-[#0f1419] rounded-lg text-center">
-                <Globe className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-cyan-400">Secure</p>
-                <p className="text-xs text-gray-400">Connection</p>
-              </div>
-            </div>
-          )}
+          {/* Coming Soon Notice */}
+          <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
+            <p className="text-yellow-300 text-sm font-medium">Web VPN Coming Soon</p>
+            <p className="text-gray-400 text-xs mt-1">This feature requires a Builder+ plan and active backend functions.</p>
+          </div>
         </CardContent>
       </Card>
 
