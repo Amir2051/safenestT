@@ -1,0 +1,142 @@
+{
+  "name": "VPNServer",
+  "type": "object",
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Unique server identifier"
+    },
+    "instance_id": {
+      "type": "string",
+      "description": "AWS EC2 instance ID"
+    },
+    "server_name": {
+      "type": "string",
+      "description": "Server display name"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "WireGuard server public key"
+    },
+    "public_ip": {
+      "type": "string",
+      "description": "Server public IP address"
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "Server endpoint (IP:PORT)"
+    },
+    "region": {
+      "type": "string",
+      "description": "AWS region"
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "country": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "flag": {
+          "type": "string"
+        }
+      },
+      "description": "Geographic location"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "online",
+        "offline",
+        "maintenance",
+        "degraded"
+      ],
+      "default": "online",
+      "description": "Server status"
+    },
+    "health_score": {
+      "type": "number",
+      "default": 100,
+      "description": "Health score 0-100"
+    },
+    "capacity": {
+      "type": "object",
+      "properties": {
+        "max_peers": {
+          "type": "number",
+          "default": 1000
+        },
+        "current_peers": {
+          "type": "number",
+          "default": 0
+        },
+        "cpu_usage": {
+          "type": "number",
+          "default": 0
+        },
+        "memory_usage": {
+          "type": "number",
+          "default": 0
+        },
+        "bandwidth_mbps": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "avg_latency_ms": {
+          "type": "number"
+        },
+        "uptime_percentage": {
+          "type": "number"
+        },
+        "packet_loss": {
+          "type": "number"
+        }
+      }
+    },
+    "last_health_check": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registered_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "server_id",
+    "public_key",
+    "public_ip",
+    "region"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

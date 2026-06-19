@@ -1,0 +1,123 @@
+{
+  "name": "FamilyLocation",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User's email identifier"
+    },
+    "member_email": {
+      "type": "string",
+      "description": "Family member's email"
+    },
+    "member_name": {
+      "type": "string",
+      "description": "Family member's name"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Current latitude (encrypted at rest)"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Current longitude (encrypted at rest)"
+    },
+    "accuracy": {
+      "type": "number",
+      "description": "Location accuracy in meters"
+    },
+    "address": {
+      "type": "string",
+      "description": "Reverse-geocoded address"
+    },
+    "share_status": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether user is actively sharing location"
+    },
+    "battery_level": {
+      "type": "number",
+      "description": "Device battery percentage"
+    },
+    "is_charging": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether device is charging"
+    },
+    "is_stationary": {
+      "type": "boolean",
+      "default": false,
+      "description": "Movement detection for battery optimization"
+    },
+    "speed_kmh": {
+      "type": "number",
+      "description": "Current speed in km/h (if available)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When location was captured"
+    },
+    "is_current": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this is the latest location"
+    },
+    "update_interval_seconds": {
+      "type": "number",
+      "default": 120,
+      "description": "Current update interval (dynamic based on movement)"
+    },
+    "last_movement_detected": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time significant movement was detected"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "device_type": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "app_version": {
+          "type": "string"
+        },
+        "permissions_granted": {
+          "type": "boolean"
+        }
+      },
+      "description": "Device details"
+    }
+  },
+  "required": [
+    "group_id",
+    "user_id",
+    "latitude",
+    "longitude",
+    "timestamp"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

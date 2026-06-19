@@ -1,0 +1,144 @@
+{
+  "name": "MediaProject",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Campaign or Project Name (Title)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "campaign_goal": {
+      "type": "string",
+      "description": "Primary goal of the campaign"
+    },
+    "target_audience": {
+      "type": "string",
+      "description": "Target audience analysis"
+    },
+    "key_messages": {
+      "type": "string",
+      "description": "Core messages to convey"
+    },
+    "weekly_breakdown": {
+      "type": "string",
+      "description": "4-week execution plan"
+    },
+    "scripts_content": {
+      "type": "string",
+      "description": "AI generated scripts container"
+    },
+    "media_assets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of file URLs"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "active",
+        "completed",
+        "on_hold"
+      ],
+      "default": "planning"
+    },
+    "assigned_staff": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of User IDs assigned to this campaign"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "media_channels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        },
+        {
+          "assigned_staff": {
+            "$contains": "{{user.id}}"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        },
+        {
+          "assigned_staff": {
+            "$contains": "{{user.id}}"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    }
+  }
+}

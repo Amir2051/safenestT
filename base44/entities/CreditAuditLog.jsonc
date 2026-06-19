@@ -1,0 +1,138 @@
+{
+  "name": "CreditAuditLog",
+  "type": "object",
+  "properties": {
+    "audit_id": {
+      "type": "string",
+      "description": "Unique audit entry ID"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User whose data was accessed"
+    },
+    "actor_email": {
+      "type": "string",
+      "description": "Who performed the action"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "consent_given",
+        "consent_revoked",
+        "report_requested",
+        "report_viewed",
+        "report_downloaded",
+        "pii_accessed",
+        "pii_decrypted",
+        "dispute_filed",
+        "data_deleted",
+        "notification_sent"
+      ],
+      "description": "Action performed"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action occurred"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address of actor"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Browser user agent"
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Unique request identifier"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "Related credit report ID"
+    },
+    "consent_id": {
+      "type": "string",
+      "description": "Related consent ID"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "score_before": {
+          "type": "number"
+        },
+        "score_after": {
+          "type": "number"
+        },
+        "fields_accessed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "description": "Additional context"
+    },
+    "success": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether action succeeded"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details if failed"
+    },
+    "fcra_compliance": {
+      "type": "object",
+      "properties": {
+        "permissible_purpose": {
+          "type": "string"
+        },
+        "consent_verified": {
+          "type": "boolean"
+        },
+        "retention_period": {
+          "type": "string"
+        }
+      },
+      "description": "FCRA compliance tracking"
+    },
+    "entry_signature": {
+      "type": "string",
+      "description": "HMAC signature for tamper detection"
+    }
+  },
+  "required": [
+    "user_email",
+    "actor_email",
+    "action",
+    "timestamp"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "user_email": "{{user.email}}"
+        },
+        {
+          "actor_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": false,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

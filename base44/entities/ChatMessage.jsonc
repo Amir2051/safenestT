@@ -1,0 +1,170 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "Reference to CollaborationWorkspace"
+    },
+    "sender_email": {
+      "type": "string",
+      "description": "Email of message sender"
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "Name of sender"
+    },
+    "sender_role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "attorney",
+        "admin"
+      ],
+      "description": "Role of sender"
+    },
+    "message_content": {
+      "type": "string",
+      "description": "Message text (encrypted)"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "file",
+        "system",
+        "document_share",
+        "edit_notification"
+      ],
+      "default": "text",
+      "description": "Type of message"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When message was sent"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether message has been read"
+    },
+    "read_by": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "read_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Who has read the message"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "file_size": {
+            "type": "number"
+          },
+          "file_type": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Attached files"
+    },
+    "reply_to": {
+      "type": "string",
+      "description": "ID of message being replied to"
+    },
+    "reactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Message reactions"
+    },
+    "is_encrypted": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether message is encrypted"
+    },
+    "edited": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether message was edited"
+    },
+    "edited_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When message was last edited"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "sender_email",
+    "message_content"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "sender_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "sender_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "sender_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

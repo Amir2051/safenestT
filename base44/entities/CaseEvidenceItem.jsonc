@@ -1,0 +1,159 @@
+{
+  "name": "CaseEvidenceItem",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "evidence_file_id": {
+      "type": "string",
+      "description": "ID of the source file if extracted"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "blockchain_transaction",
+        "wallet_address",
+        "contract_interaction",
+        "financial_impact",
+        "scam_indicator",
+        "supporting_document"
+      ],
+      "description": "Category of the evidence"
+    },
+    "data": {
+      "type": "object",
+      "description": "Category-specific data fields (hash, amount, address, flags, etc.)",
+      "properties": {
+        "transaction_hash": {
+          "type": "string"
+        },
+        "blockchain": {
+          "type": "string"
+        },
+        "from_address": {
+          "type": "string"
+        },
+        "to_address": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "token": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "transaction_type": {
+          "type": "string"
+        },
+        "wallet_address": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "loss_amount": {
+          "type": "number"
+        },
+        "usd_value": {
+          "type": "number"
+        },
+        "scam_flags": {
+          "type": "object"
+        }
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "extracted"
+      ],
+      "default": "manual"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "relevance": {
+      "type": "string",
+      "enum": [
+        "primary",
+        "supporting"
+      ],
+      "default": "primary"
+    },
+    "analyst_note": {
+      "type": "string",
+      "description": "Auto-generated or manual note explaining significance"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "confirmed",
+        "rejected"
+      ],
+      "default": "confirmed"
+    }
+  },
+  "required": [
+    "case_id",
+    "category",
+    "data"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "authenticated"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

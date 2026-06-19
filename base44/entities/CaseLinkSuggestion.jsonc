@@ -1,0 +1,69 @@
+{
+  "name": "CaseLinkSuggestion",
+  "type": "object",
+  "properties": {
+    "source_case_id": {
+      "type": "string",
+      "description": "The case ID being analyzed"
+    },
+    "target_case_id": {
+      "type": "string",
+      "description": "The potential matching case ID"
+    },
+    "match_type": {
+      "type": "string",
+      "enum": [
+        "wallet",
+        "text_similarity",
+        "identity",
+        "pattern"
+      ],
+      "description": "Reason for the suggestion"
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "0-100 score of match confidence"
+    },
+    "match_details": {
+      "type": "string",
+      "description": "Explanation of the match (e.g. 'Shared wallet 0x123...')"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "rejected",
+        "merged"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "source_case_id",
+    "target_case_id",
+    "match_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "MediaFile",
+  "type": "object",
+  "properties": {
+    "file_name": {
+      "type": "string",
+      "description": "Name of the file"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the file"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "audio",
+        "document"
+      ],
+      "description": "Type of media"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description or caption"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who uploaded/owns the file"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Associated Case ID"
+    }
+  },
+  "required": [
+    "file_url",
+    "media_type"
+  ],
+  "rls": {
+    "read": true,
+    "create": true,
+    "update": true,
+    "delete": true
+  }
+}

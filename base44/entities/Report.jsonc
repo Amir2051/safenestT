@@ -1,0 +1,120 @@
+{
+  "name": "Report",
+  "type": "object",
+  "properties": {
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "monthly",
+        "on_demand"
+      ],
+      "description": "Type of report"
+    },
+    "score_snapshot": {
+      "type": "number",
+      "description": "Risk score at time of report"
+    },
+    "summary": {
+      "type": "string",
+      "description": "AI-generated summary"
+    },
+    "total_alerts": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of alerts in period"
+    },
+    "resolved_alerts": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of resolved alerts"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of recommendations"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "Generated PDF report URL"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Report period start"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Report period end"
+    }
+  },
+  "required": [
+    "report_type",
+    "score_snapshot"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

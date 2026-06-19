@@ -1,0 +1,80 @@
+{
+  "name": "EmergencyLockdown",
+  "type": "object",
+  "properties": {
+    "lockdown_type": {
+      "type": "string",
+      "enum": [
+        "device",
+        "wallet",
+        "vault",
+        "full"
+      ],
+      "description": "Type of lockdown"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for emergency lockdown"
+    },
+    "triggered_by": {
+      "type": "string",
+      "enum": [
+        "user",
+        "ai",
+        "admin"
+      ],
+      "description": "Who initiated lockdown"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether lockdown is currently active"
+    },
+    "locked_resources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of locked resources"
+    },
+    "unlock_code": {
+      "type": "string",
+      "description": "Emergency unlock code"
+    },
+    "notifications_sent": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email/SMS sent for verification"
+    },
+    "deactivated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When lockdown was lifted"
+    },
+    "threat_details": {
+      "type": "object",
+      "description": "Details about detected threat"
+    }
+  },
+  "required": [
+    "lockdown_type",
+    "reason",
+    "triggered_by"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

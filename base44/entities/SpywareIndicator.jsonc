@@ -1,0 +1,160 @@
+{
+  "name": "SpywareIndicator",
+  "type": "object",
+  "properties": {
+    "indicator_type": {
+      "type": "string",
+      "enum": [
+        "pegasus_signature",
+        "predator_signature",
+        "zero_click_exploit",
+        "suspicious_process",
+        "network_beacon",
+        "kernel_injection",
+        "privilege_escalation",
+        "data_exfiltration",
+        "certificate_pinning_bypass"
+      ],
+      "description": "Type of spyware indicator"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Threat severity"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Detection confidence percentage"
+    },
+    "detected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When indicator was detected"
+    },
+    "indicator_details": {
+      "type": "object",
+      "properties": {
+        "process_name": {
+          "type": "string"
+        },
+        "network_endpoint": {
+          "type": "string"
+        },
+        "file_path": {
+          "type": "string"
+        },
+        "registry_key": {
+          "type": "string"
+        },
+        "system_call": {
+          "type": "string"
+        },
+        "signature_hash": {
+          "type": "string"
+        }
+      },
+      "description": "Detailed indicator information"
+    },
+    "persistence_mechanism": {
+      "type": "string",
+      "description": "How threat maintains persistence"
+    },
+    "c2_servers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Command & control server addresses"
+    },
+    "iocs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Indicators of Compromise"
+    },
+    "mitigation_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recommended mitigation actions"
+    },
+    "forensic_evidence": {
+      "type": "object",
+      "properties": {
+        "memory_dump": {
+          "type": "string"
+        },
+        "network_capture": {
+          "type": "string"
+        },
+        "system_logs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Collected forensic evidence"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "mitigated",
+        "false_positive",
+        "under_investigation"
+      ],
+      "default": "active",
+      "description": "Current status"
+    },
+    "auto_blocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether threat was auto-blocked"
+    },
+    "reported_to_authorities": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether reported to security authorities"
+    }
+  },
+  "required": [
+    "indicator_type",
+    "severity",
+    "confidence"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

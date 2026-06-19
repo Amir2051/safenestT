@@ -1,0 +1,129 @@
+{
+  "name": "ReferralClick",
+  "type": "object",
+  "properties": {
+    "referral_code": {
+      "type": "string",
+      "description": "The referral code clicked"
+    },
+    "referrer_email": {
+      "type": "string",
+      "description": "Email of user who owns the code"
+    },
+    "click_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When link was clicked"
+    },
+    "visitor_ip": {
+      "type": "string",
+      "description": "IP address of visitor"
+    },
+    "visitor_device_id": {
+      "type": "string",
+      "description": "Browser fingerprint"
+    },
+    "visitor_user_agent": {
+      "type": "string",
+      "description": "Browser user agent"
+    },
+    "referral_source": {
+      "type": "string",
+      "enum": [
+        "title_protection",
+        "legal_support",
+        "general",
+        "vpn",
+        "password_vault"
+      ],
+      "description": "Which service page was accessed"
+    },
+    "utm_source": {
+      "type": "string",
+      "description": "UTM source parameter"
+    },
+    "utm_medium": {
+      "type": "string",
+      "description": "UTM medium parameter"
+    },
+    "utm_campaign": {
+      "type": "string",
+      "description": "UTM campaign parameter"
+    },
+    "converted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether click led to signup"
+    },
+    "converted_email": {
+      "type": "string",
+      "description": "Email of user who signed up"
+    },
+    "conversion_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When conversion happened"
+    },
+    "conversion_time_hours": {
+      "type": "number",
+      "description": "Hours from click to signup"
+    },
+    "geolocation": {
+      "type": "object",
+      "properties": {
+        "country": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        }
+      },
+      "description": "Visitor location data"
+    },
+    "fraud_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Fraud detection score (0-100, higher = more suspicious)"
+    },
+    "fraud_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Detected fraud indicators"
+    }
+  },
+  "required": [
+    "referral_code",
+    "referrer_email",
+    "click_timestamp"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "referrer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

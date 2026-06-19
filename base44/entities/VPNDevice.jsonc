@@ -1,0 +1,138 @@
+{
+  "name": "VPNDevice",
+  "type": "object",
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Unique device identifier (UUID)"
+    },
+    "device_name": {
+      "type": "string",
+      "description": "User-friendly device name"
+    },
+    "device_type": {
+      "type": "string",
+      "enum": [
+        "ios",
+        "android",
+        "windows",
+        "macos",
+        "linux",
+        "router"
+      ],
+      "description": "Type of device"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "WireGuard public key"
+    },
+    "private_key_fingerprint": {
+      "type": "string",
+      "description": "SHA256 hash of private key (never store actual private key)"
+    },
+    "assigned_ip": {
+      "type": "string",
+      "description": "Assigned VPN IP address (e.g., 10.8.0.45)"
+    },
+    "allowed_ips": {
+      "type": "string",
+      "default": "0.0.0.0/0, ::/0",
+      "description": "Allowed IPs through VPN"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "revoked",
+        "pending"
+      ],
+      "default": "pending",
+      "description": "Device status"
+    },
+    "last_handshake": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful WireGuard handshake"
+    },
+    "connected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Currently connected"
+    },
+    "current_server_id": {
+      "type": "string",
+      "description": "Currently connected server ID"
+    },
+    "data_transfer": {
+      "type": "object",
+      "properties": {
+        "rx_bytes": {
+          "type": "number",
+          "default": 0
+        },
+        "tx_bytes": {
+          "type": "number",
+          "default": 0
+        },
+        "last_updated": {
+          "type": "string"
+        }
+      },
+      "description": "Data transfer statistics"
+    },
+    "config_version": {
+      "type": "number",
+      "default": 1,
+      "description": "Configuration version number"
+    },
+    "config_last_generated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When config was last generated"
+    },
+    "activation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When device was activated"
+    },
+    "revocation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When device was revoked"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "os_version": {
+          "type": "string"
+        },
+        "app_version": {
+          "type": "string"
+        },
+        "last_ip": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "device_name",
+    "device_type",
+    "public_key"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "name": "BlockedThreat",
+  "type": "object",
+  "properties": {
+    "threat_type": {
+      "type": "string",
+      "enum": [
+        "malicious_ip",
+        "phishing_domain",
+        "malware_url",
+        "suspicious_email"
+      ],
+      "description": "Type of threat blocked"
+    },
+    "threat_value": {
+      "type": "string",
+      "description": "IP address, domain, or email blocked"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Threat severity"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "user_report",
+        "threat_intelligence",
+        "ai_detection",
+        "automated_scan"
+      ],
+      "description": "How threat was identified"
+    },
+    "blocked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When threat was blocked"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "whitelisted",
+        "expired"
+      ],
+      "default": "active",
+      "description": "Block status"
+    },
+    "attempts_blocked": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of connection attempts blocked"
+    }
+  },
+  "required": [
+    "threat_type",
+    "threat_value",
+    "severity",
+    "source"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

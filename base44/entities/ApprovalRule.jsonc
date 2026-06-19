@@ -1,0 +1,97 @@
+{
+  "name": "ApprovalRule",
+  "type": "object",
+  "properties": {
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the approval rule"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": [
+        "auto_approve",
+        "auto_reject",
+        "manual_review",
+        "conditional"
+      ],
+      "description": "Type of approval rule"
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "email_domain": {
+          "type": "string"
+        },
+        "email_pattern": {
+          "type": "string"
+        },
+        "referral_required": {
+          "type": "boolean"
+        },
+        "invite_code_required": {
+          "type": "boolean"
+        },
+        "min_account_age_hours": {
+          "type": "number"
+        }
+      },
+      "description": "Conditions that trigger this rule"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject",
+        "flag_review",
+        "request_info"
+      ],
+      "description": "Action to take when rule matches"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Rule status"
+    },
+    "priority": {
+      "type": "number",
+      "default": 0,
+      "description": "Rule priority (higher = evaluated first)"
+    },
+    "notification_template": {
+      "type": "string",
+      "description": "Notification message template"
+    }
+  },
+  "required": [
+    "rule_name",
+    "rule_type",
+    "conditions",
+    "action"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

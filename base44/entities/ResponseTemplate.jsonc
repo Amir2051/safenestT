@@ -1,0 +1,56 @@
+{
+  "name": "ResponseTemplate",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the template"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "initial_outreach",
+        "update",
+        "recovery_info",
+        "closing",
+        "scam_warning",
+        "other"
+      ],
+      "default": "other"
+    },
+    "content": {
+      "type": "string",
+      "description": "The template content. Can use placeholders like {{client_name}}, {{case_number}}."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "title",
+    "content"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

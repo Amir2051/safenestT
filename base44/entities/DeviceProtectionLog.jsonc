@@ -1,0 +1,106 @@
+{
+  "name": "DeviceProtectionLog",
+  "type": "object",
+  "properties": {
+    "scan_type": {
+      "type": "string",
+      "enum": [
+        "quick",
+        "full",
+        "auto"
+      ],
+      "description": "Type of scan performed"
+    },
+    "threats_found": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of threats detected"
+    },
+    "threats_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "action_taken": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Detailed list of threats"
+    },
+    "junk_cleaned_mb": {
+      "type": "number",
+      "default": 0,
+      "description": "Junk data cleaned in MB"
+    },
+    "memory_released_mb": {
+      "type": "number",
+      "default": 0,
+      "description": "Memory released in MB"
+    },
+    "scan_duration_seconds": {
+      "type": "number",
+      "description": "Duration of scan in seconds"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "threats_found",
+        "cleaned",
+        "in_progress"
+      ],
+      "default": "clean",
+      "description": "Overall scan status"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "browser": {
+          "type": "string"
+        },
+        "apps_scanned": {
+          "type": "number"
+        }
+      },
+      "description": "Device information"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "Mia AI summary of the scan"
+    }
+  },
+  "required": [
+    "scan_type",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

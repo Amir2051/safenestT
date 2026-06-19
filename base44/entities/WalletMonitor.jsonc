@@ -1,0 +1,140 @@
+{
+  "name": "WalletMonitor",
+  "type": "object",
+  "properties": {
+    "wallet_address": {
+      "type": "string",
+      "description": "Wallet address being monitored"
+    },
+    "blockchain": {
+      "type": "string",
+      "enum": [
+        "ethereum",
+        "bitcoin",
+        "bsc",
+        "polygon",
+        "tron",
+        "solana"
+      ],
+      "description": "Blockchain network"
+    },
+    "fraud_case_id": {
+      "type": "string",
+      "description": "Associated fraud case ID"
+    },
+    "wallet_type": {
+      "type": "string",
+      "enum": [
+        "scammer",
+        "victim",
+        "intermediate",
+        "exchange",
+        "mixer",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Type of wallet"
+    },
+    "risk_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Calculated risk score 0-100"
+    },
+    "current_balance": {
+      "type": "number",
+      "description": "Current balance in native token"
+    },
+    "balance_usd": {
+      "type": "number",
+      "description": "Balance in USD"
+    },
+    "total_transactions": {
+      "type": "number",
+      "default": 0,
+      "description": "Total transaction count"
+    },
+    "last_transaction_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last transaction timestamp"
+    },
+    "monitoring_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "completed"
+      ],
+      "default": "active",
+      "description": "Monitoring status"
+    },
+    "alert_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to send alerts"
+    },
+    "connected_wallets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Connected wallet addresses"
+    },
+    "exchange_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether funds touched an exchange"
+    },
+    "exchange_name": {
+      "type": "string",
+      "description": "Name of detected exchange"
+    },
+    "mixer_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether mixer was used"
+    },
+    "risk_indicators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of risk indicators"
+    },
+    "last_check": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last monitoring check"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata"
+    }
+  },
+  "required": [
+    "wallet_address",
+    "blockchain"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

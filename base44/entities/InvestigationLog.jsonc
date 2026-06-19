@@ -1,0 +1,59 @@
+{
+  "name": "InvestigationLog",
+  "type": "object",
+  "properties": {
+    "admin_email": {
+      "type": "string",
+      "description": "Admin who performed action"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "wallet_added",
+        "wallet_removed",
+        "monitoring_started",
+        "monitoring_stopped",
+        "report_generated",
+        "alert_acknowledged",
+        "risk_score_updated",
+        "exchange_contacted"
+      ],
+      "description": "Type of action"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Related wallet address"
+    },
+    "fraud_case_id": {
+      "type": "string",
+      "description": "Related fraud case"
+    },
+    "description": {
+      "type": "string",
+      "description": "Action description"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "Admin IP address"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional log data"
+    }
+  },
+  "required": [
+    "admin_email",
+    "action_type",
+    "description"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": false,
+    "delete": false
+  }
+}

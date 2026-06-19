@@ -1,0 +1,172 @@
+{
+  "name": "SecurityScan",
+  "type": "object",
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "description": "Unique scan identifier"
+    },
+    "tool": {
+      "type": "string",
+      "enum": [
+        "zap_baseline",
+        "zap_full",
+        "zap_api",
+        "semgrep",
+        "npm_audit",
+        "trufflehog",
+        "mobsf"
+      ],
+      "description": "Security scanning tool used"
+    },
+    "scan_type": {
+      "type": "string",
+      "enum": [
+        "baseline",
+        "full",
+        "api",
+        "sast",
+        "dependency",
+        "secret",
+        "mobile"
+      ],
+      "description": "Type of security scan"
+    },
+    "target": {
+      "type": "string",
+      "description": "Target URL or application scanned"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch scanned"
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Git commit SHA"
+    },
+    "scan_status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed"
+      ],
+      "default": "completed",
+      "description": "Status of the scan"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan started"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan completed"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Scan duration in seconds"
+    },
+    "findings_summary": {
+      "type": "object",
+      "properties": {
+        "critical": {
+          "type": "number",
+          "default": 0
+        },
+        "high": {
+          "type": "number",
+          "default": 0
+        },
+        "medium": {
+          "type": "number",
+          "default": 0
+        },
+        "low": {
+          "type": "number",
+          "default": 0
+        },
+        "informational": {
+          "type": "number",
+          "default": 0
+        },
+        "total": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "description": "Count of findings by severity"
+    },
+    "pass_fail_status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "warning"
+      ],
+      "description": "Overall scan result"
+    },
+    "report_urls": {
+      "type": "object",
+      "properties": {
+        "html": {
+          "type": "string"
+        },
+        "json": {
+          "type": "string"
+        },
+        "pdf": {
+          "type": "string"
+        }
+      },
+      "description": "URLs to scan reports"
+    },
+    "ci_build_id": {
+      "type": "string",
+      "description": "CI/CD build identifier"
+    },
+    "ci_build_url": {
+      "type": "string",
+      "description": "Link to CI/CD build"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "triggered_by": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        }
+      },
+      "description": "Additional scan metadata"
+    }
+  },
+  "required": [
+    "tool",
+    "scan_type",
+    "target"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

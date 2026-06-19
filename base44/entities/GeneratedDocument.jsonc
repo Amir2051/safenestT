@@ -1,0 +1,101 @@
+{
+  "name": "GeneratedDocument",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "fraud_recall_request",
+        "account_freeze_request",
+        "suspicious_activity_report",
+        "complaint_fdic",
+        "complaint_occ",
+        "complaint_cfpb",
+        "police_report_template",
+        "ic3_incident_template",
+        "international_recovery_letter",
+        "other"
+      ],
+      "description": "Type of the generated document"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title of the document"
+    },
+    "content": {
+      "type": "string",
+      "description": "The actual content of the document (Markdown/Text)"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to the generated PDF file"
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number of this document"
+    },
+    "generated_by": {
+      "type": "string",
+      "description": "Email of the user who generated this"
+    }
+  },
+  "required": [
+    "case_id",
+    "document_type",
+    "content"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

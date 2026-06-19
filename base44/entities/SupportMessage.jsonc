@@ -1,0 +1,57 @@
+{
+  "name": "SupportMessage",
+  "type": "object",
+  "properties": {
+    "chat_id": {
+      "type": "string"
+    },
+    "sender_id": {
+      "type": "string"
+    },
+    "sender_role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "admin",
+        "system"
+      ]
+    },
+    "content": {
+      "type": "string"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "chat_id",
+    "content",
+    "sender_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": true,
+    "update": true,
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

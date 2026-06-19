@@ -1,0 +1,200 @@
+{
+  "name": "TitleLock",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "property_owner": {
+      "type": "string",
+      "description": "Email of property owner"
+    },
+    "property_address": {
+      "type": "string",
+      "description": "Cached property address"
+    },
+    "lock_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending_unlock",
+        "unlocked",
+        "expired"
+      ],
+      "default": "active",
+      "description": "Current lock status"
+    },
+    "locked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When lock was activated"
+    },
+    "lock_duration": {
+      "type": "string",
+      "description": "Duration type: permanent, 7, 30, 90, 180, 365"
+    },
+    "lock_expiry": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When lock expires (null if permanent)"
+    },
+    "unlock_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unlock was requested"
+    },
+    "unlock_verification_code": {
+      "type": "string",
+      "description": "OTP code for unlock verification"
+    },
+    "unlock_code_expires": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When OTP expires"
+    },
+    "unlock_attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of unlock attempts"
+    },
+    "unlocked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When lock was successfully removed"
+    },
+    "unlock_reason": {
+      "type": "string",
+      "description": "User-provided reason for unlock"
+    },
+    "verification_method": {
+      "type": "string",
+      "enum": [
+        "email",
+        "phone",
+        "both"
+      ],
+      "default": "email",
+      "description": "How unlock was verified"
+    },
+    "lock_bypass_attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "user_agent": {
+            "type": "string"
+          },
+          "blocked": {
+            "type": "boolean"
+          },
+          "acris_activity": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Suspicious unlock attempts"
+    },
+    "auto_relock_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to auto-relock after expiry"
+    },
+    "acris_validation": {
+      "type": "object",
+      "properties": {
+        "validated_at": {
+          "type": "string"
+        },
+        "is_valid": {
+          "type": "boolean"
+        },
+        "owner_match": {
+          "type": "boolean"
+        },
+        "pending_transfers": {
+          "type": "number"
+        },
+        "risk_level": {
+          "type": "string"
+        }
+      },
+      "description": "NYC ACRIS validation results"
+    },
+    "notifications_sent": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "sent_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Lock/unlock notifications history"
+    },
+    "referral_bonus_granted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether referral bonus was given for this lock"
+    }
+  },
+  "required": [
+    "property_id",
+    "property_owner",
+    "lock_status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

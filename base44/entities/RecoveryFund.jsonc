@@ -1,0 +1,97 @@
+{
+  "name": "RecoveryFund",
+  "type": "object",
+  "properties": {
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "contribution",
+        "distribution",
+        "refund"
+      ],
+      "description": "Type of fund transaction"
+    },
+    "fraud_case_id": {
+      "type": "string",
+      "description": "Associated fraud case ID (if applicable)"
+    },
+    "amount_usd": {
+      "type": "number",
+      "description": "Amount in USD"
+    },
+    "amount_crypto": {
+      "type": "number",
+      "description": "Amount in cryptocurrency"
+    },
+    "crypto_type": {
+      "type": "string",
+      "description": "Type of cryptocurrency (BTC, ETH, etc.)"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Wallet address involved"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Blockchain transaction hash"
+    },
+    "contributor_email": {
+      "type": "string",
+      "description": "Email of contributor (if applicable)"
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "Email of recipient (if distribution)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "distributed",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Transaction status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin notes about this transaction"
+    },
+    "processed_by": {
+      "type": "string",
+      "description": "Admin email who processed"
+    },
+    "processed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When transaction was processed"
+    }
+  },
+  "required": [
+    "transaction_type",
+    "amount_usd"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

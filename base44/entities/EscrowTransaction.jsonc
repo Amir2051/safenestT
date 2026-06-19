@@ -1,0 +1,51 @@
+{
+  "name": "EscrowTransaction",
+  "type": "object",
+  "properties": {
+    "investment_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "hold",
+        "release",
+        "refund",
+        "seize"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "processed_by": {
+      "type": "string",
+      "description": "Admin email"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "investment_id",
+    "type",
+    "amount"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": false,
+    "delete": false
+  }
+}

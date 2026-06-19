@@ -1,0 +1,560 @@
+{
+  "name": "MyCase",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who owns this incident report"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "image_extraction",
+        "chat_extraction",
+        "admin_intake"
+      ],
+      "default": "manual",
+      "description": "How the incident report was created"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Name of the reporter"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Contact email"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Contact phone"
+    },
+    "address_information": {
+      "type": "object",
+      "description": "Home address of the reporter",
+      "properties": {
+        "street_address": {
+          "type": "string"
+        },
+        "apartment_unit": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state_province": {
+          "type": "string"
+        },
+        "zip_postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    },
+    "incident_classification": {
+      "type": "string",
+      "enum": [
+        "impersonation_government",
+        "impersonation_business",
+        "impersonation_individual",
+        "investment_fraud",
+        "romance_scam",
+        "business_email_compromise",
+        "tech_support_fraud",
+        "cryptocurrency_fraud",
+        "identity_theft",
+        "other_cyber_fraud"
+      ],
+      "description": "IC3-aligned incident classification"
+    },
+    "issue_type": {
+      "type": "string",
+      "enum": [
+        "crypto_theft",
+        "scam",
+        "hacked_account",
+        "impersonation_scam",
+        "recovery_request",
+        "phishing",
+        "fake_exchange",
+        "rug_pull",
+        "romance_scam",
+        "investment_scam",
+        "pig_butchering",
+        "ransomware",
+        "other"
+      ],
+      "description": "Legacy issue type field (retained for compatibility)"
+    },
+    "incident_timeline": {
+      "type": "object",
+      "properties": {
+        "incident_began_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When incident began"
+        },
+        "last_contact_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of last contact with alleged actor"
+        },
+        "initial_contact_method": {
+          "type": "string",
+          "enum": [
+            "email",
+            "phone",
+            "social_media",
+            "website",
+            "app",
+            "text_message",
+            "other"
+          ],
+          "description": "How the alleged actor first made contact"
+        },
+        "initial_contact_details": {
+          "type": "string",
+          "description": "Additional details about initial contact"
+        }
+      }
+    },
+    "alleged_actor_information": {
+      "type": "object",
+      "description": "Information about the alleged perpetrator (user-reported, unverified)",
+      "properties": {
+        "email_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Email addresses used by alleged actor"
+        },
+        "phone_numbers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Phone numbers used by alleged actor"
+        },
+        "usernames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Usernames or account names"
+        },
+        "websites_platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Websites or platforms involved"
+        },
+        "crypto_wallet_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Cryptocurrency wallet addresses, if applicable"
+        },
+        "social_media_accounts": {
+          "type": "string",
+          "description": "Social media accounts (one per line)"
+        },
+        "additional_notes": {
+          "type": "string",
+          "description": "Additional notes about alleged actor"
+        }
+      }
+    },
+    "financial_loss": {
+      "type": "object",
+      "properties": {
+        "has_financial_loss": {
+          "type": "boolean",
+          "default": false,
+          "description": "Was there a financial loss?"
+        },
+        "total_amount_usd": {
+          "type": "number",
+          "description": "Total amount lost in USD"
+        },
+        "payment_method": {
+          "type": "string",
+          "enum": [
+            "wire_transfer",
+            "ach",
+            "credit_card",
+            "gift_cards",
+            "cryptocurrency",
+            "cash",
+            "check",
+            "other"
+          ],
+          "description": "Primary payment method used"
+        },
+        "payment_transactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "payment_method": {
+                "type": "string"
+              },
+              "transaction_id": {
+                "type": "string",
+                "description": "Transaction or reference number"
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Detailed list of payment transactions"
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "Chronological description of what occurred (facts only)"
+    },
+    "supporting_documentation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "screenshot",
+              "pdf",
+              "receipt",
+              "transaction_record",
+              "communication_log",
+              "other"
+            ]
+          },
+          "uploaded_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "User-submitted supporting documentation (unverified)"
+    },
+    "ic3_referral_acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user was shown IC3 referral message"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "In Review",
+        "In Progress",
+        "Called",
+        "Resolved",
+        "Closed",
+        "new",
+        "reported",
+        "investigating",
+        "documented",
+        "submitted",
+        "law_enforcement",
+        "recovering",
+        "recovered",
+        "open",
+        "pending",
+        "in_review",
+        "Review",
+        "Documenting",
+        "Completed"
+      ],
+      "default": "Pending",
+      "description": "Current incident status"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "Medium"
+    },
+    "amount_lost": {
+      "type": "number",
+      "description": "Legacy field - use financial_loss.total_amount_usd"
+    },
+    "payment_transactions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Legacy field"
+    },
+    "priority_score": {
+      "type": "number"
+    },
+    "ai_analysis": {
+      "type": "string"
+    },
+    "wallet_analysis": {
+      "type": "object"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "scammer_bank_name": {
+      "type": "string"
+    },
+    "scammer_routing_number": {
+      "type": "string"
+    },
+    "scammer_account_number": {
+      "type": "string"
+    },
+    "scammer_wallet": {
+      "type": "string"
+    },
+    "victim_wallet": {
+      "type": "string"
+    },
+    "blockchain": {
+      "type": "string"
+    },
+    "cryptocurrency": {
+      "type": "string"
+    },
+    "transaction_hash": {
+      "type": "string"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "victim_bank_name": {
+      "type": "string"
+    },
+    "victim_account_number": {
+      "type": "string"
+    },
+    "evidence_files": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "case_number": {
+      "type": "string"
+    },
+    "created_by_name": {
+      "type": "string"
+    },
+    "created_by_email": {
+      "type": "string"
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "case_notes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "ic3_complaint_number": {
+      "type": "string"
+    },
+    "federal_case_number": {
+      "type": "string"
+    },
+    "recovery_amount": {
+      "type": "number"
+    },
+    "investigation_progress": {
+      "type": "number"
+    },
+    "law_enforcement_authorization": {
+      "type": "object"
+    },
+    "scammer_info": {
+      "type": "object"
+    },
+    "monitored_wallets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "evidence_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "victim_contact_info": {
+      "type": "object"
+    },
+    "redacted_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "admin_contact_status": {
+      "type": "string"
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "transaction_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linked_case_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_by_admin": {
+      "type": "boolean",
+      "default": false
+    },
+    "admin_creator_email": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_name",
+    "incident_classification"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "user_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "client_email": "{{user.email}}"
+        },
+        {
+          "created_by_email": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "authenticated"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "user_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "client_email": "{{user.email}}"
+        },
+        {
+          "created_by_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

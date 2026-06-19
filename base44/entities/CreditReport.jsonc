@@ -1,0 +1,205 @@
+{
+  "name": "CreditReport",
+  "type": "object",
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "description": "Unique report identifier from iSoftpull"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User who owns this report"
+    },
+    "request_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When report was requested"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When report was completed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Report generation status"
+    },
+    "encrypted_ssn": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted SSN"
+    },
+    "encrypted_first_name": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted first name"
+    },
+    "encrypted_last_name": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted last name"
+    },
+    "encrypted_dob": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted date of birth"
+    },
+    "encrypted_address": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted address"
+    },
+    "encrypted_city": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted city"
+    },
+    "encrypted_state": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted state"
+    },
+    "encrypted_zip": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted ZIP code"
+    },
+    "credit_score": {
+      "type": "number",
+      "description": "Credit score (not encrypted - public info)"
+    },
+    "score_change": {
+      "type": "number",
+      "description": "Change from previous report"
+    },
+    "previous_score": {
+      "type": "number",
+      "description": "Previous credit score"
+    },
+    "score_model": {
+      "type": "string",
+      "description": "FICO, VantageScore, etc."
+    },
+    "report_data": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "inquiries": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "public_records": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "payment_history": {
+          "type": "object"
+        }
+      },
+      "description": "Full credit report data (no PII)"
+    },
+    "risk_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Factors affecting score"
+    },
+    "bureau": {
+      "type": "string",
+      "enum": [
+        "equifax",
+        "experian",
+        "transunion"
+      ],
+      "description": "Credit bureau"
+    },
+    "report_url": {
+      "type": "string",
+      "description": "Secure URL to full report (signed, expires in 24h)"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Report expiration (90 days per FCRA)"
+    },
+    "permissible_purpose": {
+      "type": "string",
+      "enum": [
+        "account_review",
+        "credit_monitoring",
+        "pre_qualification"
+      ],
+      "default": "credit_monitoring",
+      "description": "FCRA permissible purpose"
+    },
+    "consent_id": {
+      "type": "string",
+      "description": "Reference to CreditConsent"
+    },
+    "notification_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user was notified"
+    },
+    "significant_change": {
+      "type": "boolean",
+      "default": false,
+      "description": "Score changed by 20+ points"
+    },
+    "rate_limit_key": {
+      "type": "string",
+      "description": "For enforcing 1 report per 30 days"
+    },
+    "next_allowed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When next report can be requested"
+    }
+  },
+  "required": [
+    "user_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

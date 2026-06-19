@@ -1,0 +1,135 @@
+{
+  "name": "TrackingLink",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "Reference to the FraudCase"
+    },
+    "tracking_code": {
+      "type": "string",
+      "description": "Unique tracking code for the URL"
+    },
+    "clicks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "device_type": {
+            "type": "string"
+          },
+          "browser": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          },
+          "user_agent": {
+            "type": "string"
+          },
+          "referrer": {
+            "type": "string"
+          },
+          "isp": {
+            "type": "string"
+          },
+          "asn": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "privacy": {
+            "type": "object",
+            "properties": {
+              "vpn": {
+                "type": "boolean"
+              },
+              "proxy": {
+                "type": "boolean"
+              },
+              "tor": {
+                "type": "boolean"
+              },
+              "hosting": {
+                "type": "boolean"
+              },
+              "relay": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "description": "Array of click events with captured data"
+    },
+    "total_clicks": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of clicks"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "default": "active"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Admin who created the link"
+    }
+  },
+  "required": [
+    "case_id",
+    "tracking_code"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

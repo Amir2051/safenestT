@@ -1,0 +1,106 @@
+{
+  "name": "CryptoTransaction",
+  "type": "object",
+  "properties": {
+    "wallet_id": {
+      "type": "string",
+      "description": "Reference to CryptoWallet"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Blockchain transaction hash"
+    },
+    "from_address": {
+      "type": "string",
+      "description": "Sender address"
+    },
+    "to_address": {
+      "type": "string",
+      "description": "Recipient address"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount"
+    },
+    "amount_usd": {
+      "type": "number",
+      "description": "Amount in USD"
+    },
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain network"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "send",
+        "receive",
+        "swap",
+        "contract_interaction"
+      ],
+      "description": "Type of transaction"
+    },
+    "risk_score": {
+      "type": "number",
+      "default": 0,
+      "description": "AI-calculated risk score"
+    },
+    "risk_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Detected risk factors"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "blocked",
+        "flagged"
+      ],
+      "default": "pending",
+      "description": "Transaction status"
+    },
+    "blocked_reason": {
+      "type": "string",
+      "description": "Why transaction was blocked"
+    },
+    "scam_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether recipient is known scam"
+    },
+    "user_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "User override for flagged tx"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transaction timestamp"
+    }
+  },
+  "required": [
+    "from_address",
+    "to_address",
+    "amount",
+    "blockchain"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

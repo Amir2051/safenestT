@@ -1,0 +1,272 @@
+{
+  "name": "CyberFraudProfile",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the associated case"
+    },
+    "victim_profile": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "contact_method": {
+          "type": "string"
+        },
+        "platforms": {
+          "type": "string"
+        },
+        "loss_amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "date_range": {
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      }
+    },
+    "suspect_profile": {
+      "type": "object",
+      "properties": {
+        "aliases": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "social_media": {
+          "type": "string"
+        },
+        "communication_methods": {
+          "type": "string"
+        },
+        "behavioral_indicators": {
+          "type": "string"
+        },
+        "scam_type": {
+          "type": "string"
+        },
+        "confidence_level": {
+          "type": "string"
+        },
+        "wallets": {
+          "type": "string"
+        }
+      }
+    },
+    "modus_operandi": {
+      "type": "object",
+      "properties": {
+        "initial_contact": {
+          "type": "string"
+        },
+        "escalation": {
+          "type": "string"
+        },
+        "manipulation": {
+          "type": "string"
+        },
+        "financial_extraction": {
+          "type": "string"
+        },
+        "timeline_summary": {
+          "type": "string"
+        }
+      }
+    },
+    "linked_intelligence": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "total_linked": {
+              "type": "number"
+            },
+            "total_loss": {
+              "type": "number"
+            },
+            "earliest_activity": {
+              "type": "string"
+            },
+            "latest_activity": {
+              "type": "string"
+            },
+            "campaign_assessment": {
+              "type": "string"
+            }
+          }
+        },
+        "linked_cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "case_id": {
+                "type": "string"
+              },
+              "case_number": {
+                "type": "string"
+              },
+              "loss_amount": {
+                "type": "number"
+              },
+              "match_type": {
+                "type": "string"
+              },
+              "match_value": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "transaction_analysis": {
+      "type": "object",
+      "properties": {
+        "flow_summary": {
+          "type": "string",
+          "description": "Narrative summary of the fund flow"
+        },
+        "risk_score": {
+          "type": "number"
+        },
+        "risk_level": {
+          "type": "string"
+        },
+        "total_hops": {
+          "type": "number"
+        },
+        "exchanges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mixers_detected": {
+          "type": "boolean"
+        }
+      }
+    },
+    "evidence_summary": {
+      "type": "string"
+    },
+    "investigator_analysis": {
+      "type": "object",
+      "properties": {
+        "pattern_assessment": {
+          "type": "string"
+        },
+        "organized_fraud_indicators": {
+          "type": "string"
+        },
+        "similarities": {
+          "type": "string"
+        },
+        "repeat_risk": {
+          "type": "string"
+        },
+        "attribution_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "investigator_notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Finalized"
+      ],
+      "default": "Draft"
+    },
+    "pdf_url": {
+      "type": "string"
+    },
+    "edit_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "case_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

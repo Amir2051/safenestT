@@ -1,0 +1,62 @@
+{
+  "name": "MediaMessage",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "The message content"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "assistant",
+        "system"
+      ],
+      "default": "user",
+      "description": "Who sent the message"
+    }
+  },
+  "required": [
+    "content",
+    "role"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "update": false,
+    "delete": false
+  }
+}

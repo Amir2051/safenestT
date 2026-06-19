@@ -1,0 +1,115 @@
+{
+  "name": "SharedVault",
+  "type": "object",
+  "properties": {
+    "vault_id": {
+      "type": "string",
+      "description": "Unique vault identifier"
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "vault_name": {
+      "type": "string",
+      "description": "Name of shared vault (e.g., 'Family Passwords')"
+    },
+    "vault_type": {
+      "type": "string",
+      "enum": [
+        "passwords",
+        "documents",
+        "credit_cards",
+        "notes"
+      ],
+      "default": "passwords",
+      "description": "Type of data stored"
+    },
+    "encrypted_data": {
+      "type": "string",
+      "description": "AES-256-GCM encrypted vault data"
+    },
+    "encryption_key_shares": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "member_email": {
+            "type": "string"
+          },
+          "encrypted_key_share": {
+            "type": "string"
+          },
+          "can_decrypt": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Shamir Secret Sharing key shares per member"
+    },
+    "access_control": {
+      "type": "object",
+      "properties": {
+        "allowed_members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "read_only_members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "admin_members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Member access permissions"
+    },
+    "items_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of items in vault"
+    },
+    "last_accessed_by": {
+      "type": "string",
+      "description": "Email of last person who accessed vault"
+    },
+    "last_accessed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last access timestamp"
+    },
+    "last_modified_by": {
+      "type": "string",
+      "description": "Email of last person who modified vault"
+    },
+    "last_modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last modification timestamp"
+    }
+  },
+  "required": [
+    "group_id",
+    "vault_name",
+    "vault_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": true
+  }
+}

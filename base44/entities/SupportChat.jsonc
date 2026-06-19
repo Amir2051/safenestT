@@ -1,0 +1,104 @@
+{
+  "name": "SupportChat",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User email"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "assigned_admin_id": {
+      "type": "string",
+      "description": "Admin email"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "intake",
+        "waiting",
+        "active",
+        "closed"
+      ],
+      "default": "intake"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "last_message": {
+      "type": "string"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unread_count_user": {
+      "type": "number",
+      "default": 0
+    },
+    "unread_count_admin": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "user_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "authenticated"
+      }
+    },
+    "update": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "name": "BlockchainTrace",
+  "type": "object",
+  "properties": {
+    "fraud_case_id": {
+      "type": "string",
+      "description": "Reference to FraudCase"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Wallet being traced"
+    },
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain network"
+    },
+    "depth_level": {
+      "type": "number",
+      "default": 0,
+      "description": "Hops from original scammer wallet"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Transaction hash connecting to this wallet"
+    },
+    "amount_received": {
+      "type": "number",
+      "description": "Amount this wallet received"
+    },
+    "amount_remaining": {
+      "type": "number",
+      "description": "Current balance in wallet"
+    },
+    "linked_to_exchange": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether wallet is linked to exchange"
+    },
+    "exchange_name": {
+      "type": "string",
+      "description": "Name of exchange if identified"
+    },
+    "exchange_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether exchange was notified"
+    },
+    "wallet_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Known tags for this wallet"
+    },
+    "risk_indicators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Suspicious patterns detected"
+    },
+    "trace_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this trace was performed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "monitored",
+        "frozen",
+        "recovered"
+      ],
+      "default": "active",
+      "description": "Wallet status"
+    }
+  },
+  "required": [
+    "fraud_case_id",
+    "wallet_address",
+    "blockchain"
+  ],
+  "rls": {
+    "create": null,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

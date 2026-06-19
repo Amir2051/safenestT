@@ -1,0 +1,195 @@
+{
+  "name": "Referral",
+  "type": "object",
+  "properties": {
+    "referrer_email": {
+      "type": "string",
+      "description": "Email of user who made the referral"
+    },
+    "referrer_code": {
+      "type": "string",
+      "description": "Referral code used"
+    },
+    "referred_email": {
+      "type": "string",
+      "description": "Email of referred user"
+    },
+    "referred_name": {
+      "type": "string",
+      "description": "Name of referred user"
+    },
+    "referral_source": {
+      "type": "string",
+      "enum": [
+        "title_protection",
+        "legal_support",
+        "general",
+        "vpn",
+        "password_vault"
+      ],
+      "default": "general",
+      "description": "What service the referral was for"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "completed",
+        "rewarded",
+        "invalid"
+      ],
+      "default": "pending",
+      "description": "Referral status"
+    },
+    "signup_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When referred user signed up"
+    },
+    "verified_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When referral was verified"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When referral completed (user activated)"
+    },
+    "rewarded_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When bonus was granted to referrer"
+    },
+    "completion_action": {
+      "type": "string",
+      "enum": [
+        "property_added",
+        "legal_consultation",
+        "vault_created",
+        "subscription_purchased"
+      ],
+      "description": "Action that completed the referral"
+    },
+    "property_id": {
+      "type": "string",
+      "description": "Property ID if referral was for Title Protection"
+    },
+    "consultation_id": {
+      "type": "string",
+      "description": "Consultation ID if referral was for Legal Support"
+    },
+    "bonus_granted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether bonus was granted"
+    },
+    "bonus_type": {
+      "type": "string",
+      "enum": [
+        "premium_days",
+        "credits",
+        "badge",
+        "feature_unlock"
+      ],
+      "description": "Type of bonus awarded"
+    },
+    "bonus_value": {
+      "type": "number",
+      "description": "Value of bonus (days, credits, etc.)"
+    },
+    "bonus_months": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of months granted as bonus"
+    },
+    "signup_ip": {
+      "type": "string",
+      "description": "IP address of referred user signup"
+    },
+    "signup_device_id": {
+      "type": "string",
+      "description": "Device fingerprint of referred user"
+    },
+    "fraud_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fraud detection flags"
+    },
+    "referral_link_clicked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether referral link was clicked"
+    },
+    "link_click_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When referral link was clicked"
+    },
+    "conversion_time_hours": {
+      "type": "number",
+      "description": "Hours from link click to signup"
+    },
+    "referral_message": {
+      "type": "string",
+      "description": "Custom message from referrer"
+    },
+    "referred_user_activity": {
+      "type": "object",
+      "properties": {
+        "properties_added": {
+          "type": "number",
+          "default": 0
+        },
+        "consultations_requested": {
+          "type": "number",
+          "default": 0
+        },
+        "documents_uploaded": {
+          "type": "number",
+          "default": 0
+        },
+        "days_active": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "description": "Activity metrics of referred user"
+    }
+  },
+  "required": [
+    "referrer_email",
+    "referrer_code"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "referrer_email": "{{user.email}}"
+        },
+        {
+          "referred_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

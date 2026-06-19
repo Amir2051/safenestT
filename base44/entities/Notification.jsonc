@@ -1,0 +1,63 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User email or ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "support_message",
+        "security",
+        "system",
+        "breach",
+        "achievement"
+      ],
+      "description": "Type of notification"
+    },
+    "title": {
+      "type": "string",
+      "description": "Notification title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Notification body"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "actionUrl": {
+      "type": "string",
+      "description": "URL to navigate to on click"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional data"
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "title",
+    "message"
+  ],
+  "rls": {
+    "read": {
+      "user_id": "{{user.email}}"
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_id": "{{user.email}}"
+    },
+    "delete": {
+      "user_id": "{{user.email}}"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "SystemConfig",
+  "type": "object",
+  "properties": {
+    "key_name": {
+      "type": "string",
+      "description": "Name of the configuration key"
+    },
+    "value": {
+      "type": "string",
+      "description": "Value of the configuration"
+    },
+    "description": {
+      "type": "string"
+    },
+    "under_construction": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the app is in maintenance mode"
+    }
+  },
+  "required": [
+    "key_name",
+    "value"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

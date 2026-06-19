@@ -1,0 +1,96 @@
+{
+  "name": "MediaPartnership",
+  "type": "object",
+  "properties": {
+    "partner_name": {
+      "type": "string"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "prospect",
+        "contacted",
+        "negotiation",
+        "signed",
+        "rejected"
+      ],
+      "default": "prospect"
+    },
+    "details": {
+      "type": "string",
+      "description": "Notes or partnership details"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked Media Project ID"
+    }
+  },
+  "required": [
+    "partner_name",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    }
+  }
+}

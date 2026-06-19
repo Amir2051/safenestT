@@ -1,0 +1,113 @@
+{
+  "name": "MeetingLog",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "time": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "media_partner",
+        "press",
+        "strategy"
+      ],
+      "default": "internal"
+    },
+    "attendees": {
+      "type": "string",
+      "description": "Comma separated list of attendees"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Raw notes or transcript"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "agenda": {
+      "type": "string"
+    },
+    "actionItems": {
+      "type": "string"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI generated summary and action items"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked Media Project ID"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    }
+  }
+}

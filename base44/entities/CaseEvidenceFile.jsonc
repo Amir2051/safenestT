@@ -1,0 +1,151 @@
+{
+  "name": "CaseEvidenceFile",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the stored file"
+    },
+    "filename": {
+      "type": "string",
+      "description": "Original filename"
+    },
+    "file_size": {
+      "type": "number",
+      "description": "Size in bytes"
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "MIME type"
+    },
+    "uploader_id": {
+      "type": "string",
+      "description": "User ID of uploader"
+    },
+    "uploader_email": {
+      "type": "string",
+      "description": "Email of uploader"
+    },
+    "uploader_name": {
+      "type": "string",
+      "description": "Name of uploader"
+    },
+    "uploaded_by_admin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether uploaded by admin or user"
+    },
+    "case_owner_email": {
+      "type": "string",
+      "description": "Email of the case owner"
+    },
+    "uploaded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "parse_status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "PARSED",
+        "CONFIRMED",
+        "FAILED"
+      ],
+      "default": "PENDING"
+    },
+    "parse_errors": {
+      "type": "string",
+      "description": "Error details if parsing failed"
+    },
+    "summary": {
+      "type": "object",
+      "description": "JSON summary of parsing results (counts, detected addresses)"
+    },
+    "detected_addresses": {
+      "type": "object",
+      "properties": {
+        "victim": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scammer": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "case_id",
+    "file_url",
+    "filename"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "uploader_id": "{{user.id}}"
+        },
+        {
+          "case_owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "authenticated"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "uploader_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "uploader_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "AdminAction",
+  "type": "object",
+  "properties": {
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "user_approved",
+        "user_rejected",
+        "policy_created",
+        "policy_updated",
+        "policy_deleted",
+        "rule_created",
+        "rule_updated",
+        "rule_deleted",
+        "invite_created",
+        "invite_revoked",
+        "group_created",
+        "group_updated",
+        "group_deleted",
+        "user_added_to_group",
+        "user_removed_from_group",
+        "settings_changed"
+      ],
+      "description": "Type of admin action"
+    },
+    "admin_email": {
+      "type": "string",
+      "description": "Email of admin who performed action"
+    },
+    "target_user": {
+      "type": "string",
+      "description": "Target user email (if applicable)"
+    },
+    "target_resource": {
+      "type": "string",
+      "description": "Target resource ID"
+    },
+    "details": {
+      "type": "object",
+      "description": "Detailed information about the action"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address of admin"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Browser user agent"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for action (if provided)"
+    }
+  },
+  "required": [
+    "action_type",
+    "admin_email"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": false,
+    "delete": false
+  }
+}

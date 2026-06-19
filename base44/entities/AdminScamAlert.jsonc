@@ -1,0 +1,93 @@
+{
+  "name": "AdminScamAlert",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Alert headline"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed alert description"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "ID of the related User, Case, or Transaction"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "case",
+        "transaction",
+        "wallet"
+      ],
+      "description": "Type of the related entity"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "ai_engine",
+        "behavior_monitor",
+        "transaction_scanner"
+      ],
+      "description": "System component that triggered the alert"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "acknowledged",
+        "dismissed",
+        "resolved"
+      ],
+      "default": "new"
+    },
+    "acknowledged_by": {
+      "type": "string",
+      "description": "Admin email who acknowledged"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "title",
+    "severity",
+    "target_id",
+    "target_type"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

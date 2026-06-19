@@ -1,0 +1,176 @@
+{
+  "name": "AttorneyConsultation",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "consultation_type": {
+      "type": "string",
+      "enum": [
+        "initial_consultation",
+        "case_review",
+        "document_review",
+        "strategy_session",
+        "follow_up",
+        "urgent_matter"
+      ],
+      "description": "Type of consultation"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "requested",
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "requested",
+      "description": "Consultation status"
+    },
+    "requested_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When consultation was requested"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Scheduled consultation date/time"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "default": 30,
+      "description": "Expected duration in minutes"
+    },
+    "attorney_assigned": {
+      "type": "object",
+      "properties": {
+        "attorney_id": {
+          "type": "string"
+        },
+        "attorney_name": {
+          "type": "string"
+        },
+        "firm_name": {
+          "type": "string"
+        },
+        "specialization": {
+          "type": "string"
+        },
+        "bar_number": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "license_verified": {
+          "type": "boolean"
+        }
+      },
+      "description": "Assigned attorney details"
+    },
+    "consultation_method": {
+      "type": "string",
+      "enum": [
+        "phone",
+        "video",
+        "in_person",
+        "email"
+      ],
+      "default": "phone",
+      "description": "Method of consultation"
+    },
+    "user_message": {
+      "type": "string",
+      "description": "User's message describing their issue"
+    },
+    "attorney_notes": {
+      "type": "string",
+      "description": "Attorney's consultation notes"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Attorney's recommendations"
+    },
+    "follow_up_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether follow-up is needed"
+    },
+    "estimated_cost": {
+      "type": "number",
+      "description": "Estimated cost for full representation"
+    },
+    "consultation_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "Fee for this consultation (often free for SafeNest users)"
+    },
+    "recording_url": {
+      "type": "string",
+      "description": "Encrypted recording URL if applicable"
+    },
+    "documents_shared": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of documents shared with attorney"
+    }
+  },
+  "required": [
+    "property_id",
+    "consultation_type",
+    "user_message"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

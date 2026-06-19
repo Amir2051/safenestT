@@ -1,0 +1,193 @@
+{
+  "name": "FamilyVaultItem",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "document",
+        "password",
+        "note",
+        "photo",
+        "video",
+        "other"
+      ],
+      "description": "Type of vault item"
+    },
+    "title": {
+      "type": "string",
+      "description": "Item title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Item description"
+    },
+    "encrypted_content": {
+      "type": "string",
+      "description": "Encrypted content (for notes/passwords)"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to encrypted file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "file_size": {
+      "type": "number",
+      "description": "File size in bytes"
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "File MIME type"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Email of uploader"
+    },
+    "uploaded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Upload timestamp"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "legal",
+        "medical",
+        "financial",
+        "education",
+        "personal",
+        "emergency",
+        "other"
+      ],
+      "default": "other",
+      "description": "Document category"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Custom tags"
+    },
+    "access_control": {
+      "type": "object",
+      "properties": {
+        "view_permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Emails with view access"
+        },
+        "edit_permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Emails with edit access"
+        },
+        "download_permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Emails with download access"
+        },
+        "inherit_from_group": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use group-level permissions"
+        }
+      },
+      "description": "Granular access controls"
+    },
+    "is_emergency_access": {
+      "type": "boolean",
+      "default": false,
+      "description": "Available in emergency mode"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiry date"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pinned to top of vault"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of views"
+    },
+    "last_viewed_by": {
+      "type": "string",
+      "description": "Last person to view"
+    },
+    "last_viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last view timestamp"
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number"
+    },
+    "version_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Version history"
+    }
+  },
+  "required": [
+    "group_id",
+    "item_type",
+    "title",
+    "uploaded_by"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

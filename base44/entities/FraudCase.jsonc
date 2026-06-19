@@ -1,0 +1,372 @@
+{
+  "name": "FraudCase",
+  "type": "object",
+  "properties": {
+    "case_title": {
+      "type": "string",
+      "description": "Brief title of the fraud case"
+    },
+    "fraud_type": {
+      "type": "string",
+      "enum": [
+        "crypto_theft",
+        "phishing",
+        "fake_exchange",
+        "rug_pull",
+        "romance_scam",
+        "investment_scam",
+        "other"
+      ],
+      "description": "Type of fraud"
+    },
+    "victim_contact_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "preferred_contact": {
+          "type": "string",
+          "enum": [
+            "email",
+            "phone",
+            "text"
+          ]
+        }
+      },
+      "description": "Victim contact details"
+    },
+    "victim_wallet": {
+      "type": "string",
+      "description": "Victim's wallet address"
+    },
+    "scammer_wallet": {
+      "type": "string",
+      "description": "Scammer's wallet address"
+    },
+    "suspect_details": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "websites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "social_media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "string"
+              },
+              "profile": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "wallet_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "known_associates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "ip_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Detailed suspect information"
+    },
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain where fraud occurred"
+    },
+    "amount_stolen": {
+      "type": "number",
+      "description": "Amount stolen in crypto"
+    },
+    "amount_stolen_usd": {
+      "type": "number",
+      "description": "Amount stolen in USD"
+    },
+    "currency_type": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "BTC",
+        "ETH",
+        "USDT",
+        "Other"
+      ],
+      "default": "USD",
+      "description": "Currency type of stolen amount"
+    },
+    "incident_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact timestamp when incident occurred"
+    },
+    "incident_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When fraud occurred"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of incident"
+    },
+    "evidence_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "document",
+              "screenshot",
+              "transaction",
+              "communication",
+              "video",
+              "audio",
+              "other"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "uploaded_by": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "description": "Comprehensive evidence log"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Evidence files and screenshots"
+    },
+    "law_enforcement_authorization": {
+      "type": "object",
+      "properties": {
+        "authorized": {
+          "type": "boolean",
+          "default": false
+        },
+        "authorized_date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "authorized_agencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "signature_confirmation": {
+          "type": "boolean",
+          "default": false
+        },
+        "ip_address": {
+          "type": "string"
+        }
+      },
+      "description": "Authorization for SafeNestT to contact law enforcement on behalf of victim"
+    },
+    "case_priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Case priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "reported",
+        "investigating",
+        "traced",
+        "recovering",
+        "recovered",
+        "closed"
+      ],
+      "default": "reported",
+      "description": "Case status"
+    },
+    "admin_contact_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Contacted",
+        "In Progress",
+        "Resolved"
+      ],
+      "default": "Pending",
+      "description": "Admin contact status for the case"
+    },
+    "recovery_progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentage of funds recovered"
+    },
+    "investigation_progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Overall investigation progress percentage"
+    },
+    "traced_wallets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Wallets traced in the chain"
+    },
+    "exchanges_notified": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exchanges that received alerts"
+    },
+    "law_enforcement_report": {
+      "type": "string",
+      "description": "URL to generated legal report"
+    },
+    "ic3_complaint_number": {
+      "type": "string",
+      "description": "FBI IC3 complaint number"
+    },
+    "case_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Investigation notes"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Admin handling the case"
+    }
+  },
+  "required": [
+    "case_title",
+    "fraud_type",
+    "scammer_wallet",
+    "amount_stolen_usd"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

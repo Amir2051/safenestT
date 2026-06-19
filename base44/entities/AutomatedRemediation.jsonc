@@ -1,0 +1,84 @@
+{
+  "name": "AutomatedRemediation",
+  "type": "object",
+  "properties": {
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "password_update",
+        "vpn_enable",
+        "2fa_enable",
+        "threat_block",
+        "alert_resolve",
+        "setting_change"
+      ],
+      "description": "Type of automated action taken"
+    },
+    "trigger_reason": {
+      "type": "string",
+      "description": "What triggered the automated action"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "user_approved"
+      ],
+      "default": "pending",
+      "description": "Status of the remediation"
+    },
+    "affected_entity": {
+      "type": "string",
+      "description": "What was affected (e.g., password ID, alert ID)"
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        },
+        "score_impact": {
+          "type": "number"
+        }
+      },
+      "description": "Details about the change"
+    },
+    "user_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user was notified"
+    },
+    "auto_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "If action was automatically approved"
+    }
+  },
+  "required": [
+    "action_type",
+    "trigger_reason",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

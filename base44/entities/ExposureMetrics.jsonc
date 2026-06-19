@@ -1,0 +1,117 @@
+{
+  "name": "ExposureMetrics",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Reference to User"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of exposure event"
+    },
+    "source": {
+      "type": "string",
+      "description": "Breach source (domain or breach name)"
+    },
+    "identifier_type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "password",
+        "ssn",
+        "phone",
+        "credit_card",
+        "bank_account",
+        "address",
+        "other"
+      ],
+      "description": "Type of exposed data"
+    },
+    "identifier_value_encrypted": {
+      "type": "string",
+      "description": "Encrypted identifier value (AES-256-GCM)"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Severity level"
+    },
+    "count": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of exposures on this date/source/type"
+    },
+    "breach_metadata": {
+      "type": "object",
+      "properties": {
+        "breach_name": {
+          "type": "string"
+        },
+        "breach_date": {
+          "type": "string"
+        },
+        "data_classes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "affected_accounts": {
+          "type": "number"
+        }
+      },
+      "description": "Additional breach context"
+    },
+    "is_resolved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether exposure has been addressed"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "source",
+    "identifier_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

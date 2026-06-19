@@ -1,0 +1,79 @@
+{
+  "name": "CallScreeningLog",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Incoming caller number"
+    },
+    "screening_decision": {
+      "type": "string",
+      "enum": [
+        "ALLOWED",
+        "WARNED",
+        "BLOCKED"
+      ],
+      "description": "Action taken"
+    },
+    "block_layers_triggered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Which layers triggered the block"
+    },
+    "explanation": {
+      "type": "string",
+      "description": "Human-readable explanation of why action occurred"
+    },
+    "call_metadata": {
+      "type": "object",
+      "properties": {
+        "call_time": {
+          "type": "string"
+        },
+        "user_action": {
+          "type": "string"
+        },
+        "call_duration": {
+          "type": "number"
+        }
+      }
+    },
+    "user_block_level": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "AGGRESSIVE"
+      ]
+    }
+  },
+  "required": [
+    "phone_number",
+    "screening_decision"
+  ],
+  "rls": {
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "create": true,
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "name": "Geofence",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "zone_name": {
+      "type": "string",
+      "description": "Name of the zone (e.g., 'Home', 'School')"
+    },
+    "zone_type": {
+      "type": "string",
+      "enum": [
+        "safe_zone",
+        "restricted_zone",
+        "alert_zone"
+      ],
+      "default": "safe_zone",
+      "description": "Type of geofence"
+    },
+    "center_latitude": {
+      "type": "number",
+      "description": "Center point latitude"
+    },
+    "center_longitude": {
+      "type": "number",
+      "description": "Center point longitude"
+    },
+    "radius_meters": {
+      "type": "number",
+      "default": 500,
+      "description": "Radius in meters"
+    },
+    "address": {
+      "type": "string",
+      "description": "Address of the zone"
+    },
+    "monitored_members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of members to monitor in this zone"
+    },
+    "notify_on_enter": {
+      "type": "boolean",
+      "default": true,
+      "description": "Send notification when member enters"
+    },
+    "notify_on_exit": {
+      "type": "boolean",
+      "default": true,
+      "description": "Send notification when member exits"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether geofence is active"
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Days active (Mon-Sun)"
+        },
+        "start_time": {
+          "type": "string",
+          "description": "Start time (HH:MM)"
+        },
+        "end_time": {
+          "type": "string",
+          "description": "End time (HH:MM)"
+        }
+      },
+      "description": "Optional schedule for geofence"
+    },
+    "last_triggered": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time geofence was triggered"
+    },
+    "trigger_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times triggered"
+    }
+  },
+  "required": [
+    "group_id",
+    "zone_name",
+    "center_latitude",
+    "center_longitude"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "name": "VPNSession",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disconnected",
+        "rotating"
+      ],
+      "default": "active",
+      "description": "Current session status"
+    },
+    "current_server": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        }
+      },
+      "description": "Currently connected server"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Session start time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Session end time"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Total session duration"
+    },
+    "auto_rotation_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether auto-rotation is enabled"
+    },
+    "rotation_interval": {
+      "type": "number",
+      "default": 30,
+      "description": "Rotation interval in seconds"
+    },
+    "total_rotations": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of rotations in this session"
+    },
+    "data_transferred": {
+      "type": "object",
+      "properties": {
+        "download_kb": {
+          "type": "number",
+          "default": 0
+        },
+        "upload_kb": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "description": "Data transfer statistics"
+    },
+    "rotation_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "from_server": {
+            "type": "string"
+          },
+          "to_server": {
+            "type": "string"
+          },
+          "from_load": {
+            "type": "number"
+          },
+          "to_load": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "History of all rotations in this session"
+    },
+    "connection_quality": {
+      "type": "object",
+      "properties": {
+        "avg_ping": {
+          "type": "number"
+        },
+        "min_ping": {
+          "type": "number"
+        },
+        "max_ping": {
+          "type": "number"
+        },
+        "packet_loss": {
+          "type": "number"
+        }
+      },
+      "description": "Connection quality metrics"
+    }
+  },
+  "required": [
+    "session_id",
+    "user_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

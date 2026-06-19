@@ -1,0 +1,107 @@
+{
+  "name": "SecurityPolicy",
+  "type": "object",
+  "properties": {
+    "policy_name": {
+      "type": "string",
+      "description": "Name of the security policy"
+    },
+    "policy_type": {
+      "type": "string",
+      "enum": [
+        "password",
+        "authentication",
+        "access",
+        "data_retention",
+        "session"
+      ],
+      "description": "Type of security policy"
+    },
+    "rules": {
+      "type": "object",
+      "properties": {
+        "min_password_length": {
+          "type": "number"
+        },
+        "require_2fa": {
+          "type": "boolean"
+        },
+        "require_vpn": {
+          "type": "boolean"
+        },
+        "max_login_attempts": {
+          "type": "number"
+        },
+        "session_timeout_minutes": {
+          "type": "number"
+        },
+        "allowed_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Policy rules configuration"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "draft"
+      ],
+      "default": "draft",
+      "description": "Policy status"
+    },
+    "priority": {
+      "type": "number",
+      "default": 0,
+      "description": "Policy priority (higher = more important)"
+    },
+    "applies_to": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User groups this policy applies to"
+    },
+    "enforcement_level": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "moderate",
+        "advisory"
+      ],
+      "default": "moderate",
+      "description": "How strictly to enforce the policy"
+    }
+  },
+  "required": [
+    "policy_name",
+    "policy_type",
+    "rules"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

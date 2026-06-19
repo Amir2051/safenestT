@@ -1,0 +1,86 @@
+{
+  "name": "Alert",
+  "type": "object",
+  "properties": {
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "breach",
+        "wifi",
+        "phishing",
+        "vpn",
+        "permission",
+        "password",
+        "dark_web"
+      ],
+      "description": "Type of security alert"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Alert severity level"
+    },
+    "title": {
+      "type": "string",
+      "description": "Alert title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed alert message"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "resolved",
+        "dismissed"
+      ],
+      "default": "active",
+      "description": "Alert status"
+    },
+    "affected_item": {
+      "type": "string",
+      "description": "Email, URL, or item affected"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "AI-generated recommendation"
+    },
+    "resolved_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was resolved"
+    }
+  },
+  "required": [
+    "alert_type",
+    "title",
+    "message",
+    "severity"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

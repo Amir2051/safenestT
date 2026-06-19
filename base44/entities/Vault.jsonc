@@ -1,0 +1,108 @@
+{
+  "name": "Vault",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User email (primary key)"
+    },
+    "vault_salt": {
+      "type": "string",
+      "description": "Salt for key derivation (base64)"
+    },
+    "vault_key_wrapped": {
+      "type": "string",
+      "description": "Wrapped vault key (encrypted with master key)"
+    },
+    "vault_verifier_hash": {
+      "type": "string",
+      "description": "Argon2 hash for unlock verification"
+    },
+    "is_unlocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Current unlock status"
+    },
+    "last_unlocked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful unlock"
+    },
+    "unlock_token": {
+      "type": "string",
+      "description": "Current vault session token"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Token expiration time"
+    },
+    "failed_attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Failed unlock attempts"
+    },
+    "is_locked_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "Emergency lockout status"
+    },
+    "lockout_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Lockout expiration"
+    },
+    "biometric_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Biometric auth enabled"
+    },
+    "session_timeout_minutes": {
+      "type": "number",
+      "default": 5,
+      "description": "Auto-lock timeout (1-60 minutes)"
+    },
+    "setup_completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When vault was first set up"
+    }
+  },
+  "required": [
+    "user_id",
+    "vault_salt",
+    "vault_verifier_hash"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

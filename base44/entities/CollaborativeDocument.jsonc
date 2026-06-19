@@ -1,0 +1,192 @@
+{
+  "name": "CollaborativeDocument",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "Reference to CollaborationWorkspace"
+    },
+    "document_name": {
+      "type": "string",
+      "description": "Document title"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "strategy_notes",
+        "legal_document",
+        "evidence",
+        "correspondence",
+        "draft",
+        "other"
+      ],
+      "default": "strategy_notes",
+      "description": "Type of document"
+    },
+    "content": {
+      "type": "string",
+      "description": "Document content (markdown/text)"
+    },
+    "content_delta": {
+      "type": "object",
+      "description": "Quill delta for rich text editing"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of creator"
+    },
+    "last_edited_by": {
+      "type": "string",
+      "description": "Email of last editor"
+    },
+    "last_edited_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last edit timestamp"
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Document version number"
+    },
+    "version_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number"
+          },
+          "edited_by": {
+            "type": "string"
+          },
+          "edited_at": {
+            "type": "string"
+          },
+          "content_snapshot": {
+            "type": "string"
+          },
+          "changes_summary": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Version control history"
+    },
+    "currently_editing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cursor_position": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "last_active": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Users currently editing"
+    },
+    "is_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether document is locked for editing"
+    },
+    "locked_by": {
+      "type": "string",
+      "description": "Email of user who locked document"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Document tags"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "in_review",
+        "approved",
+        "final",
+        "archived"
+      ],
+      "default": "draft",
+      "description": "Document status"
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "comment_id": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Inline comments"
+    },
+    "encrypted": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether content is encrypted"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "document_name",
+    "content"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

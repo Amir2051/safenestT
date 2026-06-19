@@ -1,0 +1,52 @@
+{
+  "name": "ElectraWallet",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "User-friendly label for the wallet"
+    },
+    "address": {
+      "type": "string",
+      "description": "Electra wallet address"
+    },
+    "encrypted_private_key": {
+      "type": "string",
+      "description": "AES encrypted private key"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "balance": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "address",
+    "encrypted_private_key"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

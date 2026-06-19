@@ -1,0 +1,97 @@
+{
+  "name": "BreachMonitor",
+  "type": "object",
+  "properties": {
+    "monitor_type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "phone",
+        "password"
+      ],
+      "description": "Type of data being monitored"
+    },
+    "value": {
+      "type": "string",
+      "description": "Email, phone, or password hash"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "safe",
+        "breached",
+        "checking"
+      ],
+      "default": "checking",
+      "description": "Current breach status"
+    },
+    "breaches_found": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "breach_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "data_classes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pwn_count": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "List of breaches found"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last check timestamp"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Overall risk level"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Security recommendations"
+    }
+  },
+  "required": [
+    "monitor_type",
+    "value",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

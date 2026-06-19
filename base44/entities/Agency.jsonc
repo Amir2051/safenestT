@@ -1,0 +1,96 @@
+{
+  "name": "Agency",
+  "type": "object",
+  "properties": {
+    "agency_name": {
+      "type": "string",
+      "description": "Full agency name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "federal",
+        "state",
+        "local",
+        "international"
+      ],
+      "description": "Agency category"
+    },
+    "website": {
+      "type": "string",
+      "description": "Main website URL"
+    },
+    "submission_portal": {
+      "type": "string",
+      "description": "Online submission portal URL"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Main contact phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Contact email address"
+    },
+    "address": {
+      "type": "string",
+      "description": "Physical address"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes and required evidence info"
+    },
+    "related_case_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Case types this agency handles"
+    },
+    "priority": {
+      "type": "number",
+      "default": 0,
+      "description": "Display priority (higher = shown first)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Agency status"
+    }
+  },
+  "required": [
+    "agency_name",
+    "category"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

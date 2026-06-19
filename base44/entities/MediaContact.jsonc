@@ -1,0 +1,81 @@
+{
+  "name": "MediaContact",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "outlet": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "topics": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "default": "Medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Contacted",
+        "Contacted",
+        "Follow-up Needed",
+        "Replied",
+        "Meeting Scheduled",
+        "No Response"
+      ],
+      "default": "Not Contacted"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "lastContact": {
+      "type": "string",
+      "format": "date"
+    },
+    "nextFollowUp": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "name",
+    "outlet",
+    "email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

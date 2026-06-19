@@ -1,0 +1,143 @@
+{
+  "name": "AttorneyTask",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Unique task identifier"
+    },
+    "workspace_id": {
+      "type": "string",
+      "description": "Reference to CollaborationWorkspace"
+    },
+    "document_id": {
+      "type": "string",
+      "description": "Reference to CollaborativeDocument"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Attorney email"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "Who created the task (system or user)"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "document_review",
+        "legal_analysis",
+        "case_preparation",
+        "client_response",
+        "filing",
+        "consultation"
+      ],
+      "description": "Type of task"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Task priority"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Task status"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Task deadline"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When task was created"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When task was completed"
+    },
+    "auto_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task was auto-created by workflow"
+    },
+    "trigger_type": {
+      "type": "string",
+      "description": "What triggered the task creation"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Task notes"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related document IDs"
+    }
+  },
+  "required": [
+    "assigned_to",
+    "task_type",
+    "title"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "assigned_to": "{{user.email}}"
+        },
+        {
+          "assigned_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "assigned_to": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

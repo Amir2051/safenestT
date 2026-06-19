@@ -1,0 +1,94 @@
+{
+  "name": "ExtractedTransaction",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "evidence_file_id": {
+      "type": "string",
+      "description": "ID of the source evidence file"
+    },
+    "tx_hash": {
+      "type": "string",
+      "description": "Transaction hash"
+    },
+    "from_address": {
+      "type": "string",
+      "description": "Sender address"
+    },
+    "to_address": {
+      "type": "string",
+      "description": "Receiver address"
+    },
+    "value_wei": {
+      "type": "string",
+      "description": "Value in Wei"
+    },
+    "value_eth": {
+      "type": "number",
+      "description": "Value in ETH"
+    },
+    "token_symbol": {
+      "type": "string",
+      "description": "Token symbol if ERC20"
+    },
+    "token_amount": {
+      "type": "number",
+      "description": "Token amount"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transaction timestamp"
+    },
+    "block_number": {
+      "type": "number",
+      "description": "Block number"
+    },
+    "input_data": {
+      "type": "string",
+      "description": "Input data hex"
+    },
+    "detected_role": {
+      "type": "string",
+      "enum": [
+        "VICTIM",
+        "SCAMMER",
+        "OTHER"
+      ],
+      "default": "OTHER"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "INCOMING",
+        "OUTGOING",
+        "INTERNAL"
+      ],
+      "description": "Direction relative to victim"
+    }
+  },
+  "required": [
+    "case_id",
+    "tx_hash"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

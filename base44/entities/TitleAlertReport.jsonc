@@ -1,0 +1,164 @@
+{
+  "name": "TitleAlertReport",
+  "type": "object",
+  "properties": {
+    "alert_id": {
+      "type": "string",
+      "description": "Reference to TitleAlert entity"
+    },
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "property_owner": {
+      "type": "string",
+      "description": "Email of property owner"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "title_alert",
+        "fraud_investigation",
+        "legal_summary"
+      ],
+      "default": "title_alert",
+      "description": "Type of report generated"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When report was generated"
+    },
+    "property_address": {
+      "type": "string",
+      "description": "Property address"
+    },
+    "document_id": {
+      "type": "string",
+      "description": "ACRIS document ID"
+    },
+    "filing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of filing"
+    },
+    "suspected_issue": {
+      "type": "string",
+      "description": "AI-detected issue description"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Risk assessment level"
+    },
+    "acris_link": {
+      "type": "string",
+      "description": "Direct link to NYC ACRIS document"
+    },
+    "ai_analysis": {
+      "type": "object",
+      "properties": {
+        "irregularities_found": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence_score": {
+          "type": "number"
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "AI threat detection analysis"
+    },
+    "legal_contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Verified real estate attorneys and legal resources"
+    },
+    "report_pdf_url": {
+      "type": "string",
+      "description": "Generated PDF report URL"
+    },
+    "submitted_to_authorities": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether report was filed with city clerk"
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When report was submitted to authorities"
+    },
+    "case_number": {
+      "type": "string",
+      "description": "Official case number if filed"
+    }
+  },
+  "required": [
+    "property_id",
+    "property_owner",
+    "report_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "name": "MonitoringScan",
+  "type": "object",
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "description": "Unique scan identifier"
+    },
+    "scan_type": {
+      "type": "string",
+      "enum": [
+        "daily_automated",
+        "manual_user",
+        "hourly_premium"
+      ],
+      "default": "daily_automated",
+      "description": "Type of scan performed"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan started"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan completed"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Total scan duration"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "partial_success"
+      ],
+      "default": "running",
+      "description": "Overall scan status"
+    },
+    "properties_scanned": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of properties processed"
+    },
+    "properties_failed": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of properties that failed to scan"
+    },
+    "alerts_created": {
+      "type": "number",
+      "default": 0,
+      "description": "New alerts generated"
+    },
+    "critical_alerts": {
+      "type": "number",
+      "default": 0,
+      "description": "Critical severity alerts"
+    },
+    "documents_analyzed": {
+      "type": "number",
+      "default": 0,
+      "description": "Total ACRIS documents analyzed"
+    },
+    "new_documents_found": {
+      "type": "number",
+      "default": 0,
+      "description": "New documents detected"
+    },
+    "average_security_score": {
+      "type": "number",
+      "description": "Average Title Security Score across all properties"
+    },
+    "api_calls_made": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of ACRIS API calls"
+    },
+    "api_errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "API errors encountered"
+    },
+    "scan_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "property_address_masked": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "documents_checked": {
+            "type": "number"
+          },
+          "new_documents": {
+            "type": "number"
+          },
+          "alerts_triggered": {
+            "type": "number"
+          },
+          "security_score": {
+            "type": "number"
+          },
+          "scan_duration_ms": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Per-property scan results"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error message if scan failed"
+    },
+    "next_scheduled_scan": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When next scan is scheduled"
+    },
+    "triggered_by": {
+      "type": "string",
+      "enum": [
+        "automated",
+        "manual_user",
+        "manual_admin"
+      ],
+      "default": "automated",
+      "description": "What triggered this scan"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User who triggered manual scan (if applicable)"
+    }
+  },
+  "required": [
+    "scan_id",
+    "scan_type",
+    "started_at"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

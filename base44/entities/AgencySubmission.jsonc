@@ -1,0 +1,134 @@
+{
+  "name": "AgencySubmission",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "Related investigation case ID"
+    },
+    "agency": {
+      "type": "string",
+      "enum": [
+        "FBI",
+        "IC3",
+        "FTC",
+        "HSI",
+        "Secret_Service",
+        "State_AG",
+        "Local_PD"
+      ],
+      "description": "Agency submitted to"
+    },
+    "agency_case_number": {
+      "type": "string",
+      "description": "Agency's case/complaint number"
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When submitted"
+    },
+    "submission_method": {
+      "type": "string",
+      "enum": [
+        "online_portal",
+        "email",
+        "in_person",
+        "phone",
+        "fax"
+      ],
+      "description": "How it was submitted"
+    },
+    "documents_submitted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of documents submitted"
+    },
+    "confirmation_number": {
+      "type": "string",
+      "description": "Submission confirmation number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "received",
+        "under_review",
+        "investigating",
+        "closed",
+        "no_action"
+      ],
+      "default": "pending",
+      "description": "Submission status"
+    },
+    "response_received": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether agency responded"
+    },
+    "response_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When agency responded"
+    },
+    "response_details": {
+      "type": "string",
+      "description": "Agency response details"
+    },
+    "contact_person": {
+      "type": "string",
+      "description": "Agency contact person"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Agency contact email"
+    },
+    "contact_phone": {
+      "type": "string",
+      "description": "Agency contact phone"
+    },
+    "follow_up_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether follow-up needed"
+    },
+    "next_follow_up_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Next follow-up date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Submission notes"
+    }
+  },
+  "required": [
+    "case_id",
+    "agency",
+    "submission_date"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

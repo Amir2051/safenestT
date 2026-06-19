@@ -1,0 +1,168 @@
+{
+  "name": "PhoneIntelligence",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Normalized international phone number"
+    },
+    "country_code": {
+      "type": "string",
+      "description": "ISO country code"
+    },
+    "is_valid": {
+      "type": "boolean",
+      "description": "Whether the number format is valid"
+    },
+    "phone_type": {
+      "type": "string",
+      "enum": [
+        "MOBILE",
+        "FIXED_LINE",
+        "VOIP",
+        "UNKNOWN"
+      ],
+      "description": "Type of phone line"
+    },
+    "carrier": {
+      "type": "string",
+      "description": "Detected carrier/provider"
+    },
+    "digital_presence_score": {
+      "type": "number",
+      "description": "Digital presence score (0-100)"
+    },
+    "risk_classification": {
+      "type": "string",
+      "enum": [
+        "LEGITIMATE",
+        "USE_CAUTION",
+        "HIGH_RISK",
+        "UNKNOWN"
+      ],
+      "description": "Risk classification based on OSINT"
+    },
+    "public_mentions": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scam_reports": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "report_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "business_associations": {
+      "type": "object",
+      "properties": {
+        "detected": {
+          "type": "boolean"
+        },
+        "business_name": {
+          "type": "string"
+        },
+        "business_type": {
+          "type": "string"
+        },
+        "verification_status": {
+          "type": "string"
+        }
+      }
+    },
+    "data_exposure": {
+      "type": "object",
+      "properties": {
+        "detected": {
+          "type": "boolean"
+        },
+        "exposure_type": {
+          "type": "string"
+        },
+        "first_seen": {
+          "type": "string"
+        },
+        "last_seen": {
+          "type": "string"
+        }
+      }
+    },
+    "behavioral_indicators": {
+      "type": "object",
+      "properties": {
+        "high_volume_calls": {
+          "type": "boolean"
+        },
+        "short_call_duration": {
+          "type": "boolean"
+        },
+        "sequential_pattern": {
+          "type": "boolean"
+        },
+        "time_based_activity": {
+          "type": "string"
+        }
+      }
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "Confidence in analysis (0-100)"
+    },
+    "analysis_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sources_consulted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of OSINT sources consulted"
+    },
+    "forensic_notes": {
+      "type": "string",
+      "description": "Forensic-grade disclaimer and methodology notes"
+    }
+  },
+  "required": [
+    "phone_number",
+    "risk_classification"
+  ],
+  "rls": {
+    "read": true,
+    "create": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

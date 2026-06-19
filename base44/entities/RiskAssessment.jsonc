@@ -1,0 +1,87 @@
+{
+  "name": "RiskAssessment",
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "description": "ID of the user, case, or admin being assessed"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "case",
+        "admin",
+        "wallet"
+      ],
+      "description": "Type of entity being assessed"
+    },
+    "risk_score": {
+      "type": "number",
+      "description": "0-100 risk score"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Categorized risk level"
+    },
+    "factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of contributing risk factors"
+    },
+    "ai_analysis": {
+      "type": "string",
+      "description": "Detailed AI explanation of the behavior pattern"
+    },
+    "predicted_scam_type": {
+      "type": "string",
+      "description": "AI prediction of scam type (for cases)"
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI suggested next steps"
+    },
+    "last_analyzed": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "target_id",
+    "target_type",
+    "risk_score"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

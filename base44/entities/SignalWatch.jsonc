@@ -1,0 +1,177 @@
+{
+  "name": "SignalWatch",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique monitoring session identifier"
+    },
+    "monitoring_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether monitoring is currently active"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When monitoring session started"
+    },
+    "stopped_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When monitoring session stopped"
+    },
+    "tower_data": {
+      "type": "object",
+      "properties": {
+        "cell_id": {
+          "type": "string"
+        },
+        "mcc": {
+          "type": "string",
+          "description": "Mobile Country Code"
+        },
+        "mnc": {
+          "type": "string",
+          "description": "Mobile Network Code"
+        },
+        "lac": {
+          "type": "string",
+          "description": "Location Area Code"
+        },
+        "rssi": {
+          "type": "number",
+          "description": "Signal strength (dBm)"
+        },
+        "connection_type": {
+          "type": "string",
+          "enum": [
+            "2G",
+            "3G",
+            "4G",
+            "5G"
+          ]
+        },
+        "carrier_name": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        }
+      },
+      "description": "Current tower information"
+    },
+    "signal_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "cell_id": {
+            "type": "string"
+          },
+          "rssi": {
+            "type": "number"
+          },
+          "connection_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "anomaly",
+              "alert"
+            ]
+          }
+        }
+      },
+      "description": "Historical signal data"
+    },
+    "anomalies_detected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "anomaly_type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "cell_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Detected anomalies and alerts"
+    },
+    "signal_health_score": {
+      "type": "number",
+      "default": 100,
+      "description": "Network stability and trust score (0-100)"
+    },
+    "alert_sensitivity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ],
+      "default": "normal",
+      "description": "Alert sensitivity level"
+    },
+    "anonymous_reporting_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to allow anonymous threat reports"
+    },
+    "total_towers_seen": {
+      "type": "number",
+      "default": 0,
+      "description": "Total unique towers encountered"
+    },
+    "suspicious_towers_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of suspicious towers detected"
+    }
+  },
+  "required": [
+    "monitoring_active"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

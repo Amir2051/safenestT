@@ -1,0 +1,458 @@
+{
+  "name": "WebsiteCheck",
+  "type": "object",
+  "properties": {
+    "url": {
+      "type": "string",
+      "description": "Website URL checked"
+    },
+    "canonical_host": {
+      "type": "string",
+      "description": "Normalized hostname"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "safe",
+        "unsafe",
+        "unknown",
+        "error",
+        "blocked_by_robots"
+      ],
+      "description": "Overall safety status"
+    },
+    "http_status": {
+      "type": "number",
+      "description": "HTTP status code"
+    },
+    "is_safe": {
+      "type": "boolean",
+      "description": "Whether website is safe"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Risk level"
+    },
+    "trust_score": {
+      "type": "number",
+      "description": "Trust score (0-100)"
+    },
+    "threats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Detected threats"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "meta_author": {
+          "type": "string"
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "robots": {
+          "type": "string"
+        },
+        "canonical_url": {
+          "type": "string"
+        },
+        "has_sitemap": {
+          "type": "boolean"
+        },
+        "sitemap_url": {
+          "type": "string"
+        },
+        "headings": {
+          "type": "object",
+          "properties": {
+            "h1": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "h2": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "word_count": {
+          "type": "number"
+        },
+        "top_images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "object",
+          "properties": {
+            "internal_count": {
+              "type": "number"
+            },
+            "external_count": {
+              "type": "number"
+            },
+            "internal_sample": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "external_sample": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "description": "Site metadata"
+    },
+    "creator_info": {
+      "type": "object",
+      "properties": {
+        "estimated_creator": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contact_email": {
+          "type": "string"
+        },
+        "organization": {
+          "type": "string"
+        },
+        "social_links": {
+          "type": "object",
+          "properties": {
+            "twitter": {
+              "type": "string"
+            },
+            "linkedin": {
+              "type": "string"
+            },
+            "github": {
+              "type": "string"
+            },
+            "facebook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Creator/owner information"
+    },
+    "whois": {
+      "type": "object",
+      "properties": {
+        "registrar": {
+          "type": "string"
+        },
+        "registrant": {
+          "type": "string"
+        },
+        "created_date": {
+          "type": "string"
+        },
+        "expires_date": {
+          "type": "string"
+        },
+        "updated_date": {
+          "type": "string"
+        },
+        "name_servers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privacy_protected": {
+          "type": "boolean"
+        }
+      },
+      "description": "WHOIS registration data"
+    },
+    "tech_stack": {
+      "type": "object",
+      "properties": {
+        "cms": {
+          "type": "string"
+        },
+        "server": {
+          "type": "string"
+        },
+        "programming_languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "frameworks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "analytics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cdn": {
+          "type": "string"
+        },
+        "hosting_provider": {
+          "type": "string"
+        }
+      },
+      "description": "Technology stack detection"
+    },
+    "ssl_info": {
+      "type": "object",
+      "properties": {
+        "has_ssl": {
+          "type": "boolean"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "valid_from": {
+          "type": "string"
+        },
+        "valid_until": {
+          "type": "string"
+        },
+        "tls_version": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string"
+        },
+        "certificate_transparency": {
+          "type": "boolean"
+        }
+      },
+      "description": "SSL/TLS certificate information"
+    },
+    "security_headers": {
+      "type": "object",
+      "properties": {
+        "csp": {
+          "type": "boolean"
+        },
+        "hsts": {
+          "type": "boolean"
+        },
+        "x_frame_options": {
+          "type": "boolean"
+        },
+        "x_content_type_options": {
+          "type": "boolean"
+        },
+        "referrer_policy": {
+          "type": "boolean"
+        },
+        "permissions_policy": {
+          "type": "boolean"
+        }
+      },
+      "description": "Security headers presence"
+    },
+    "network_info": {
+      "type": "object",
+      "properties": {
+        "ip_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "geolocation": {
+          "type": "object",
+          "properties": {
+            "country": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "isp": {
+              "type": "string"
+            }
+          }
+        },
+        "cloudflare_protected": {
+          "type": "boolean"
+        },
+        "cdn_used": {
+          "type": "boolean"
+        }
+      },
+      "description": "Network and hosting information"
+    },
+    "vulnerability_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Detected vulnerabilities or misconfigurations"
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "load_time_ms": {
+          "type": "number"
+        },
+        "page_size_kb": {
+          "type": "number"
+        },
+        "requests_count": {
+          "type": "number"
+        },
+        "lighthouse_score": {
+          "type": "number"
+        }
+      },
+      "description": "Performance metrics"
+    },
+    "content_analysis": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "readability_score": {
+          "type": "number"
+        },
+        "has_contact_page": {
+          "type": "boolean"
+        },
+        "has_about_page": {
+          "type": "boolean"
+        },
+        "has_privacy_policy": {
+          "type": "boolean"
+        },
+        "has_terms": {
+          "type": "boolean"
+        }
+      },
+      "description": "Content and structure analysis"
+    },
+    "safety_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "malicious": {
+            "type": "number"
+          },
+          "clean": {
+            "type": "number"
+          },
+          "riskScore": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Detailed safety check results"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Safety recommendation"
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When check was performed"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Cache expiration (24-72h)"
+    },
+    "is_phishing": {
+      "type": "boolean",
+      "description": "Suspected phishing site"
+    },
+    "admin_override_used": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether robots.txt was bypassed"
+    },
+    "scan_type": {
+      "type": "string",
+      "enum": [
+        "quick",
+        "full",
+        "admin"
+      ],
+      "default": "quick",
+      "description": "Type of scan performed"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated summary of the website"
+    },
+    "screenshot_url": {
+      "type": "string",
+      "description": "URL to screenshot if captured"
+    }
+  },
+  "required": [
+    "url",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

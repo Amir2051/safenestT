@@ -1,0 +1,144 @@
+{
+  "name": "VerifiedCompany",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "description": "Public display name"
+    },
+    "legal_name": {
+      "type": "string",
+      "description": "Registered legal business name"
+    },
+    "registration_number": {
+      "type": "string",
+      "description": "EIN or Registration ID"
+    },
+    "address": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "industry": {
+      "type": "string",
+      "enum": [
+        "Real Estate",
+        "Crypto",
+        "Tech",
+        "Energy",
+        "Retail",
+        "Other"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "rejected",
+        "suspended"
+      ],
+      "default": "pending",
+      "description": "SafeNestt verification status"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show to users?"
+    },
+    "min_investment": {
+      "type": "number",
+      "default": 0
+    },
+    "expected_returns": {
+      "type": "string",
+      "description": "e.g. '5-7% APY'"
+    },
+    "risk_notes": {
+      "type": "string",
+      "description": "Admin notes on investment risk"
+    },
+    "escrow_requirements": {
+      "type": "string",
+      "description": "Conditions for fund release"
+    },
+    "fraud_check_data": {
+      "type": "object",
+      "properties": {
+        "domain_reputation": {
+          "type": "string"
+        },
+        "phone_reputation": {
+          "type": "string"
+        },
+        "scam_db_scan": {
+          "type": "string"
+        },
+        "wallet_risk_score": {
+          "type": "number"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of document URLs (Corporate, Proof of Funds)"
+    },
+    "owner_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id_url": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "required": [
+    "company_name",
+    "verification_status"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

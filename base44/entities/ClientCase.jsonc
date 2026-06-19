@@ -1,0 +1,408 @@
+{
+  "name": "ClientCase",
+  "type": "object",
+  "properties": {
+    "client_name": {
+      "type": "string",
+      "description": "Name of the client"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Contact email"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Contact phone"
+    },
+    "issue_type": {
+      "type": "string",
+      "enum": [
+        "crypto_theft",
+        "scam",
+        "hacked_account",
+        "impersonation_scam",
+        "recovery_request",
+        "phishing",
+        "fake_exchange",
+        "rug_pull",
+        "romance_scam",
+        "investment_scam",
+        "pig_butchering",
+        "ransomware",
+        "other"
+      ],
+      "description": "Type of issue reported"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "In Review",
+        "In Progress",
+        "Called",
+        "Resolved",
+        "Closed",
+        "new",
+        "reported",
+        "investigating",
+        "documented",
+        "submitted",
+        "law_enforcement",
+        "recovering",
+        "recovered",
+        "open",
+        "pending",
+        "in_review",
+        "Review",
+        "Documenting",
+        "Completed"
+      ],
+      "default": "Pending",
+      "description": "Current case status"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "Medium",
+      "description": "Urgency level"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the case"
+    },
+    "amount_lost": {
+      "type": "number",
+      "description": "Estimated financial loss in USD"
+    },
+    "priority_score": {
+      "type": "number",
+      "description": "AI calculated priority score (0-100)"
+    },
+    "ai_analysis": {
+      "type": "string",
+      "description": "AI analysis summary and reasoning"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of the staff member assigned"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes"
+    },
+    "scammer_bank_name": {
+      "type": "string",
+      "description": "Name of the scammer's bank"
+    },
+    "scammer_routing_number": {
+      "type": "string",
+      "description": "Routing number of the scammer"
+    },
+    "scammer_account_number": {
+      "type": "string",
+      "description": "Account number of the scammer"
+    },
+    "scammer_wallet": {
+      "type": "string",
+      "description": "Scammer wallet address"
+    },
+    "victim_wallet": {
+      "type": "string",
+      "description": "Victim wallet address"
+    },
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain network (e.g. Ethereum, Bitcoin)"
+    },
+    "cryptocurrency": {
+      "type": "string",
+      "description": "Cryptocurrency symbol (e.g. BTC, ETH)"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Transaction hash of the theft"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the fraudulent transaction"
+    },
+    "victim_bank_name": {
+      "type": "string",
+      "description": "Name of the victim's bank"
+    },
+    "victim_account_number": {
+      "type": "string",
+      "description": "Account number of the victim"
+    },
+    "evidence_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "uploaded_date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "List of file URLs for evidence"
+    },
+    "case_number": {
+      "type": "string",
+      "description": "Unique case reference number"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Name of creator"
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "Email of creator"
+    },
+    "updated_by": {
+      "type": "string",
+      "description": "ID/Email of the last updater"
+    },
+    "case_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ic3_complaint_number": {
+      "type": "string",
+      "description": "IC3 Complaint Number"
+    },
+    "federal_case_number": {
+      "type": "string",
+      "description": "Federal Case Number"
+    },
+    "recovery_amount": {
+      "type": "number",
+      "description": "Amount recovered so far"
+    },
+    "investigation_progress": {
+      "type": "number",
+      "description": "Progress percentage (0-100)"
+    },
+    "law_enforcement_authorization": {
+      "type": "object",
+      "properties": {
+        "authorized": {
+          "type": "boolean"
+        },
+        "authorized_date": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "agencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scammer_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "wallet_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "social_media": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "known_emails": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "monitored_wallets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "victim_contact_info": {
+      "type": "object",
+      "properties": {
+        "primary_email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "emergency_contact": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "relationship": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "client_name",
+    "issue_type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "authenticated"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

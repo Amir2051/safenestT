@@ -1,0 +1,130 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "vpn_connected",
+        "vpn_disconnected",
+        "vpn_server_changed",
+        "subscription_upgraded",
+        "subscription_downgraded",
+        "subscription_cancelled",
+        "password_added",
+        "password_updated",
+        "password_deleted",
+        "alert_resolved",
+        "alert_dismissed",
+        "security_scan",
+        "settings_updated",
+        "2fa_enabled",
+        "2fa_disabled",
+        "vpn_enabled",
+        "vpn_disabled",
+        "email_monitoring_added",
+        "email_monitoring_removed",
+        "login",
+        "logout",
+        "profile_updated",
+        "achievement_unlocked",
+        "device_scan_completed"
+      ],
+      "description": "Type of action performed"
+    },
+    "action_category": {
+      "type": "string",
+      "enum": [
+        "security",
+        "vpn",
+        "subscription",
+        "password",
+        "alert",
+        "settings",
+        "authentication",
+        "monitoring"
+      ],
+      "description": "Category of the action"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the action"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "ip_address": {
+          "type": "string"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "server": {
+          "type": "string"
+        },
+        "previous_value": {
+          "type": "string"
+        },
+        "new_value": {
+          "type": "string"
+        },
+        "plan_name": {
+          "type": "string"
+        },
+        "affected_item": {
+          "type": "string"
+        },
+        "device_info": {
+          "type": "string"
+        }
+      },
+      "description": "Additional context and details about the action"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "info",
+      "description": "Severity level of the action"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending"
+      ],
+      "default": "success",
+      "description": "Status of the action"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier for tracking user sessions"
+    }
+  },
+  "required": [
+    "action_type",
+    "action_category",
+    "description"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": false,
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

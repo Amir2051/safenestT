@@ -1,0 +1,64 @@
+{
+  "name": "CaseNote",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the investigation case"
+    },
+    "author_email": {
+      "type": "string",
+      "description": "Email of the note author"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Name of the note author"
+    },
+    "content": {
+      "type": "string",
+      "description": "Note content"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "evidence",
+        "legal",
+        "technical"
+      ],
+      "default": "general"
+    },
+    "is_private": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, only visible to author"
+    }
+  },
+  "required": [
+    "case_id",
+    "content",
+    "author_email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

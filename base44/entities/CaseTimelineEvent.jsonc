@@ -1,0 +1,104 @@
+{
+  "name": "CaseTimelineEvent",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "status_change",
+        "message_sent",
+        "evidence_uploaded",
+        "assignment_changed",
+        "progress_updated",
+        "note_added",
+        "report_generated",
+        "agency_submitted",
+        "wallet_traced",
+        "system_action",
+        "user_action",
+        "admin_action"
+      ],
+      "description": "Type of timeline event"
+    },
+    "event_title": {
+      "type": "string",
+      "description": "Short title of the event"
+    },
+    "event_description": {
+      "type": "string",
+      "description": "Detailed description of what happened"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "success",
+        "critical"
+      ],
+      "default": "info",
+      "description": "Event severity level"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional event data (JSON object)"
+    },
+    "created_by_user": {
+      "type": "string",
+      "description": "Email of user who triggered the event"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Name of user who triggered the event"
+    },
+    "automated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was an automated system event"
+    },
+    "visible_to_client": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the client can see this event"
+    }
+  },
+  "required": [
+    "case_id",
+    "event_type",
+    "event_title"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "create": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

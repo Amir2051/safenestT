@@ -1,0 +1,114 @@
+{
+  "name": "LocationSettings",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "User identifier"
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Family group reference"
+    },
+    "sharing_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Master toggle for location sharing"
+    },
+    "background_updates_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Allow background location updates"
+    },
+    "update_interval_seconds": {
+      "type": "number",
+      "default": 120,
+      "description": "Update frequency (2 minutes default)"
+    },
+    "battery_saver_mode": {
+      "type": "boolean",
+      "default": true,
+      "description": "Reduce updates when stationary"
+    },
+    "high_accuracy_mode": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use GPS for better accuracy (drains battery)"
+    },
+    "share_with_all_members": {
+      "type": "boolean",
+      "default": true,
+      "description": "Share location with all family members"
+    },
+    "specific_members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of specific members to share with"
+    },
+    "auto_pause_when_home": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pause updates when at home geofence"
+    },
+    "notification_preferences": {
+      "type": "object",
+      "properties": {
+        "notify_on_battery_low": {
+          "type": "boolean",
+          "default": true
+        },
+        "notify_on_gps_lost": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "last_successful_update": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful location update"
+    },
+    "consecutive_failures": {
+      "type": "number",
+      "default": 0,
+      "description": "Track failed update attempts"
+    },
+    "permissions_status": {
+      "type": "object",
+      "properties": {
+        "location_granted": {
+          "type": "boolean"
+        },
+        "background_granted": {
+          "type": "boolean"
+        },
+        "last_checked": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "user_email",
+    "group_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

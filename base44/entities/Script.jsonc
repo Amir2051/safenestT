@@ -1,0 +1,104 @@
+{
+  "name": "Script",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string",
+      "description": "The generated script content"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "video",
+        "speech",
+        "press_release",
+        "social_post"
+      ],
+      "default": "press_release"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked Media Project ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "reviewed",
+        "approved",
+        "published"
+      ],
+      "default": "draft"
+    },
+    "generated_by": {
+      "type": "string",
+      "description": "User who requested the script"
+    }
+  },
+  "required": [
+    "title",
+    "content",
+    "type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Media Director"
+          }
+        }
+      ]
+    }
+  }
+}

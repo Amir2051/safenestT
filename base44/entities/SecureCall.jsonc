@@ -1,0 +1,218 @@
+{
+  "name": "SecureCall",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "Unique call identifier"
+    },
+    "caller_email": {
+      "type": "string",
+      "description": "Email of person initiating call"
+    },
+    "callee_email": {
+      "type": "string",
+      "description": "Email of person receiving call"
+    },
+    "call_type": {
+      "type": "string",
+      "enum": [
+        "audio",
+        "video",
+        "screen_share"
+      ],
+      "default": "audio",
+      "description": "Type of secure call"
+    },
+    "encryption_protocol": {
+      "type": "string",
+      "default": "DTLS-SRTP",
+      "description": "Encryption protocol used (WebRTC default)"
+    },
+    "encryption_keys": {
+      "type": "object",
+      "properties": {
+        "cipher_suite": {
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "type": "string"
+        },
+        "dtls_fingerprint": {
+          "type": "string"
+        }
+      },
+      "description": "Encryption key information"
+    },
+    "call_status": {
+      "type": "string",
+      "enum": [
+        "initiating",
+        "ringing",
+        "connected",
+        "ended",
+        "failed",
+        "rejected"
+      ],
+      "default": "initiating",
+      "description": "Current call status"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was initiated"
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was connected"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call ended"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Call duration in seconds"
+    },
+    "security_verification": {
+      "type": "object",
+      "properties": {
+        "end_to_end_encrypted": {
+          "type": "boolean"
+        },
+        "peer_verified": {
+          "type": "boolean"
+        },
+        "dtls_verified": {
+          "type": "boolean"
+        },
+        "srtp_active": {
+          "type": "boolean"
+        },
+        "mitm_detected": {
+          "type": "boolean"
+        },
+        "security_score": {
+          "type": "number"
+        }
+      },
+      "description": "Real-time security status"
+    },
+    "quality_metrics": {
+      "type": "object",
+      "properties": {
+        "audio_bitrate": {
+          "type": "number"
+        },
+        "video_bitrate": {
+          "type": "number"
+        },
+        "packet_loss": {
+          "type": "number"
+        },
+        "jitter": {
+          "type": "number"
+        },
+        "round_trip_time": {
+          "type": "number"
+        }
+      },
+      "description": "Call quality metrics"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "joined_at": {
+            "type": "string"
+          },
+          "left_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Call participants"
+    },
+    "network_info": {
+      "type": "object",
+      "properties": {
+        "ice_candidates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "relay_used": {
+          "type": "boolean"
+        }
+      },
+      "description": "Network connection details"
+    },
+    "security_alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "alert_type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Security alerts during call"
+    }
+  },
+  "required": [
+    "caller_email",
+    "callee_email",
+    "call_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "caller_email": "{{user.email}}"
+        },
+        {
+          "callee_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "caller_email": "{{user.email}}"
+        },
+        {
+          "callee_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

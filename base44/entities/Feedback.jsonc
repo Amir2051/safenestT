@@ -1,0 +1,72 @@
+{
+  "name": "Feedback",
+  "type": "object",
+  "properties": {
+    "feedback_type": {
+      "type": "string",
+      "enum": [
+        "bug",
+        "feature",
+        "general",
+        "review"
+      ],
+      "description": "Type of feedback"
+    },
+    "title": {
+      "type": "string",
+      "description": "Feedback title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed feedback message"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Rating 1-5 stars"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewing",
+        "planned",
+        "in_progress",
+        "completed",
+        "declined"
+      ],
+      "default": "new",
+      "description": "Feedback status"
+    },
+    "votes": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of upvotes"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email for follow-up"
+    }
+  },
+  "required": [
+    "feedback_type",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

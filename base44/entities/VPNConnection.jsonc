@@ -1,0 +1,113 @@
+{
+  "name": "VPNConnection",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Reference to VPNDevice"
+    },
+    "server_id": {
+      "type": "string",
+      "description": "Reference to VPNServer"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email"
+    },
+    "connection_status": {
+      "type": "string",
+      "enum": [
+        "connecting",
+        "connected",
+        "disconnected",
+        "failed"
+      ],
+      "default": "connecting"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "data_usage": {
+      "type": "object",
+      "properties": {
+        "download_mb": {
+          "type": "number",
+          "default": 0
+        },
+        "upload_mb": {
+          "type": "number",
+          "default": 0
+        },
+        "total_mb": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    },
+    "connection_quality": {
+      "type": "object",
+      "properties": {
+        "avg_latency": {
+          "type": "number"
+        },
+        "packet_loss": {
+          "type": "number"
+        },
+        "jitter": {
+          "type": "number"
+        }
+      }
+    },
+    "client_ip": {
+      "type": "string",
+      "description": "Client's public IP before VPN"
+    },
+    "vpn_ip": {
+      "type": "string",
+      "description": "Assigned VPN IP"
+    },
+    "disconnect_reason": {
+      "type": "string",
+      "enum": [
+        "user_initiated",
+        "timeout",
+        "server_error",
+        "network_loss",
+        "key_rotation"
+      ],
+      "description": "Why connection ended"
+    }
+  },
+  "required": [
+    "device_id",
+    "server_id",
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

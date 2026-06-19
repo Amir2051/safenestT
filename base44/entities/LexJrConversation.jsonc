@@ -1,0 +1,156 @@
+{
+  "name": "LexJrConversation",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "child_email": {
+      "type": "string",
+      "description": "Child's email"
+    },
+    "child_name": {
+      "type": "string",
+      "description": "Child's name"
+    },
+    "conversation_title": {
+      "type": "string",
+      "description": "Conversation title"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "flagged": {
+            "type": "boolean",
+            "description": "Content flagged for review"
+          },
+          "flag_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Conversation messages"
+    },
+    "age_group": {
+      "type": "string",
+      "enum": [
+        "5-8",
+        "9-12",
+        "13-17"
+      ],
+      "description": "Child's age group for content filtering"
+    },
+    "topics_discussed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Topics covered in conversation"
+    },
+    "safety_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "flag_type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Safety concerns flagged"
+    },
+    "parent_notifications_sent": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parent_email": {
+            "type": "string"
+          },
+          "notification_type": {
+            "type": "string"
+          },
+          "sent_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Notifications sent to parents"
+    },
+    "parental_monitoring_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Parents can view conversation"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last message timestamp"
+    },
+    "conversation_rating": {
+      "type": "object",
+      "properties": {
+        "helpful": {
+          "type": "boolean"
+        },
+        "appropriate": {
+          "type": "boolean"
+        },
+        "feedback": {
+          "type": "string"
+        }
+      },
+      "description": "Child's rating of conversation"
+    }
+  },
+  "required": [
+    "group_id",
+    "child_email",
+    "child_name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

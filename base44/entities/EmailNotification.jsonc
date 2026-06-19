@@ -1,0 +1,91 @@
+{
+  "name": "EmailNotification",
+  "type": "object",
+  "properties": {
+    "recipient": {
+      "type": "string",
+      "description": "Email recipient"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject"
+    },
+    "template_name": {
+      "type": "string",
+      "enum": [
+        "welcome",
+        "trial_started",
+        "trial_expiring_soon",
+        "trial_expiring_tomorrow",
+        "trial_expired",
+        "subscription_confirmed",
+        "payment_failed",
+        "security_scan",
+        "critical_threat",
+        "data_breach",
+        "password_changed",
+        "password_reset",
+        "weekly_report"
+      ],
+      "description": "Email template used"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "bounced"
+      ],
+      "default": "pending",
+      "description": "Email delivery status"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When email was sent"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error if failed"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        }
+      },
+      "description": "Additional email metadata"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of retry attempts"
+    }
+  },
+  "required": [
+    "recipient",
+    "subject",
+    "template_name"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

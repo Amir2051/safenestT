@@ -1,0 +1,76 @@
+{
+  "name": "ScamPattern",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the pattern or tactic"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the modus operandi"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "wallet_pattern",
+        "email_pattern",
+        "phrase",
+        "behavior",
+        "technical_tactic"
+      ],
+      "description": "Type of pattern"
+    },
+    "indicators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific indicators (regex, keywords, hashes)"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "related_scam_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of ScamDatabase entries matching this pattern"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Admin who created this pattern"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "description"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

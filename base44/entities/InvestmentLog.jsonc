@@ -1,0 +1,53 @@
+{
+  "name": "InvestmentLog",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "actor_email": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "ID of Company or Investment"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "company",
+        "investment"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "alert"
+      ],
+      "default": "info"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "action",
+    "actor_email"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": true,
+    "update": false,
+    "delete": false
+  }
+}

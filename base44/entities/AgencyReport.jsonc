@@ -1,0 +1,111 @@
+{
+  "name": "AgencyReport",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "Reference to the investigation case"
+    },
+    "agency_type": {
+      "type": "string",
+      "enum": [
+        "fbi_ic3",
+        "ftc",
+        "sec",
+        "cftc",
+        "fincen",
+        "local_police",
+        "state_ag",
+        "crypto_exchange",
+        "interpol",
+        "other"
+      ],
+      "description": "Type of agency for the report"
+    },
+    "agency_name": {
+      "type": "string",
+      "description": "Full name of the agency"
+    },
+    "report_title": {
+      "type": "string",
+      "description": "Title of the report"
+    },
+    "report_content": {
+      "type": "string",
+      "description": "Full generated report content"
+    },
+    "report_data": {
+      "type": "object",
+      "description": "Structured report data for API submissions"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready",
+        "submitted",
+        "confirmed",
+        "rejected",
+        "requires_action"
+      ],
+      "default": "draft"
+    },
+    "submission_method": {
+      "type": "string",
+      "enum": [
+        "api",
+        "email",
+        "portal",
+        "manual"
+      ],
+      "description": "How the report was/will be submitted"
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmation_number": {
+      "type": "string",
+      "description": "Agency confirmation/reference number"
+    },
+    "response_notes": {
+      "type": "string",
+      "description": "Notes from agency response"
+    },
+    "generated_by": {
+      "type": "string",
+      "description": "Admin who generated the report"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL to generated PDF report"
+    }
+  },
+  "required": [
+    "case_id",
+    "agency_type",
+    "report_title"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

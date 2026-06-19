@@ -1,0 +1,110 @@
+{
+  "name": "FamilyGroup",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Unique family group identifier"
+    },
+    "group_name": {
+      "type": "string",
+      "description": "Family name (e.g., 'The Smith Family')"
+    },
+    "primary_account_holder": {
+      "type": "string",
+      "description": "Email of primary account holder"
+    },
+    "subscription_plan": {
+      "type": "string",
+      "enum": [
+        "free",
+        "family_basic",
+        "family_premium",
+        "family_elite"
+      ],
+      "default": "free",
+      "description": "Family plan tier"
+    },
+    "max_members": {
+      "type": "number",
+      "default": 5,
+      "description": "Maximum family members allowed"
+    },
+    "current_members_count": {
+      "type": "number",
+      "default": 1,
+      "description": "Current number of members"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "trial",
+        "cancelled"
+      ],
+      "default": "trial",
+      "description": "Payment status"
+    },
+    "trial_ends": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When trial ends"
+    },
+    "shared_vault_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether shared vault is enabled"
+    },
+    "parental_controls_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether parental controls are active"
+    },
+    "require_approval_for_children": {
+      "type": "boolean",
+      "default": true,
+      "description": "Require parent approval for children"
+    },
+    "monitor_child_activity": {
+      "type": "boolean",
+      "default": true,
+      "description": "Monitor child activity"
+    },
+    "shared_breach_alerts": {
+      "type": "boolean",
+      "default": true,
+      "description": "Share breach alerts"
+    },
+    "allow_vault_sharing": {
+      "type": "boolean",
+      "default": true,
+      "description": "Allow vault sharing"
+    },
+    "total_alerts": {
+      "type": "number",
+      "default": 0,
+      "description": "Total alerts count"
+    },
+    "resolved_alerts": {
+      "type": "number",
+      "default": 0,
+      "description": "Resolved alerts count"
+    },
+    "total_threats_blocked": {
+      "type": "number",
+      "default": 0,
+      "description": "Total threats blocked"
+    }
+  },
+  "required": [
+    "group_name",
+    "primary_account_holder"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": true
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "name": "SecurityFinding",
+  "type": "object",
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "description": "Reference to parent SecurityScan"
+    },
+    "finding_id": {
+      "type": "string",
+      "description": "Unique finding identifier (hash)"
+    },
+    "tool_alert_id": {
+      "type": "string",
+      "description": "Tool-specific alert ID (e.g., ZAP alert ID)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Finding title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFORMATIONAL"
+      ],
+      "description": "Severity level"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "CONFIRMED",
+        "FIRM",
+        "TENTATIVE"
+      ],
+      "description": "Confidence level in finding"
+    },
+    "owasp_category": {
+      "type": "string",
+      "description": "OWASP Top 10 category (e.g., A03:2021)"
+    },
+    "cwe_id": {
+      "type": "string",
+      "description": "Common Weakness Enumeration ID"
+    },
+    "url": {
+      "type": "string",
+      "description": "Affected URL or file path"
+    },
+    "method": {
+      "type": "string",
+      "description": "HTTP method (GET, POST, etc.)"
+    },
+    "parameter": {
+      "type": "string",
+      "description": "Affected parameter name"
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Proof of vulnerability"
+    },
+    "attack_payload": {
+      "type": "string",
+      "description": "Attack string used"
+    },
+    "solution": {
+      "type": "string",
+      "description": "Recommended fix"
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "External references and links"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "resolved",
+        "false_positive",
+        "accepted_risk"
+      ],
+      "default": "open",
+      "description": "Remediation status"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User email assigned to fix"
+    },
+    "github_issue_url": {
+      "type": "string",
+      "description": "Link to created GitHub issue"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When finding was resolved"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "User who resolved the finding"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Notes about resolution"
+    },
+    "first_seen": {
+      "type": "string",
+      "format": "date-time",
+      "description": "First time this finding appeared"
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent occurrence"
+    },
+    "occurrence_count": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of times seen"
+    }
+  },
+  "required": [
+    "scan_id",
+    "finding_id",
+    "title",
+    "severity"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": true,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

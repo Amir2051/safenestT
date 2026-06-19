@@ -1,0 +1,98 @@
+{
+  "name": "FamilyAlert",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "member_email": {
+      "type": "string",
+      "description": "Which family member triggered the alert"
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "breach_detected",
+        "inappropriate_content",
+        "location_alert",
+        "excessive_screen_time",
+        "suspicious_activity",
+        "shared_vault_access"
+      ],
+      "description": "Type of alert"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Alert severity"
+    },
+    "title": {
+      "type": "string",
+      "description": "Alert title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "acknowledged",
+        "resolved"
+      ],
+      "default": "active",
+      "description": "Alert status"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional alert context"
+    },
+    "notified_members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Members who were notified"
+    },
+    "acknowledged_by": {
+      "type": "string",
+      "description": "Member who acknowledged alert"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was acknowledged"
+    }
+  },
+  "required": [
+    "group_id",
+    "member_email",
+    "alert_type",
+    "severity",
+    "title"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

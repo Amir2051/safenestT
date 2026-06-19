@@ -1,0 +1,161 @@
+{
+  "name": "TowerReport",
+  "type": "object",
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "description": "Unique report identifier"
+    },
+    "reporter_email": {
+      "type": "string",
+      "description": "Email of user who reported (null if anonymous)"
+    },
+    "is_anonymous": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether report was submitted anonymously"
+    },
+    "reported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When report was submitted"
+    },
+    "tower_info": {
+      "type": "object",
+      "properties": {
+        "cell_id": {
+          "type": "string"
+        },
+        "mcc": {
+          "type": "string"
+        },
+        "mnc": {
+          "type": "string"
+        },
+        "lac": {
+          "type": "string"
+        },
+        "rssi": {
+          "type": "number"
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "carrier_name": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        }
+      },
+      "description": "Reported tower details"
+    },
+    "report_reason": {
+      "type": "string",
+      "enum": [
+        "forced_2g_downgrade",
+        "unknown_tower_id",
+        "signal_interference",
+        "suspicious_behavior",
+        "imsi_catcher_suspected",
+        "other"
+      ],
+      "description": "Reason for reporting"
+    },
+    "user_comments": {
+      "type": "string",
+      "description": "User's additional comments"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "device_model": {
+          "type": "string"
+        },
+        "app_version": {
+          "type": "string"
+        }
+      },
+      "description": "Device information"
+    },
+    "geolocation": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        }
+      },
+      "description": "Approximate location of report"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "reviewing",
+        "confirmed",
+        "false_positive",
+        "resolved"
+      ],
+      "default": "pending",
+      "description": "Report status"
+    },
+    "verification_score": {
+      "type": "number",
+      "default": 0,
+      "description": "AI verification score (0-100)"
+    },
+    "similar_reports_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of similar reports in same area"
+    }
+  },
+  "required": [
+    "report_id",
+    "tower_info",
+    "report_reason"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "reporter_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "name": "WorkflowAutomation",
+  "type": "object",
+  "properties": {
+    "automation_id": {
+      "type": "string",
+      "description": "Unique automation identifier"
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "critical_alert_detected",
+        "document_status_changed",
+        "attorney_message_sent",
+        "attorney_document_updated",
+        "consultation_approved",
+        "property_locked",
+        "alert_resolved"
+      ],
+      "description": "What triggered the automation"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "create_document",
+        "assign_task",
+        "send_email",
+        "send_notification",
+        "create_workspace",
+        "update_status"
+      ],
+      "description": "Action performed"
+    },
+    "trigger_entity_id": {
+      "type": "string",
+      "description": "ID of entity that triggered automation"
+    },
+    "trigger_entity_type": {
+      "type": "string",
+      "description": "Type of entity (TitleAlert, CollaborativeDocument, etc.)"
+    },
+    "result_entity_id": {
+      "type": "string",
+      "description": "ID of entity created by automation"
+    },
+    "result_entity_type": {
+      "type": "string",
+      "description": "Type of entity created"
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When automation executed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending"
+      ],
+      "default": "success",
+      "description": "Automation execution status"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details if failed"
+    },
+    "execution_details": {
+      "type": "object",
+      "properties": {
+        "user_email": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "document_name": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "notification_sent": {
+          "type": "boolean"
+        }
+      },
+      "description": "Details about execution"
+    }
+  },
+  "required": [
+    "trigger_type",
+    "action_type",
+    "executed_at"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

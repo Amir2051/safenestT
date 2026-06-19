@@ -1,0 +1,66 @@
+{
+  "name": "BlockedIP",
+  "type": "object",
+  "properties": {
+    "ip": {
+      "type": "string",
+      "description": "Blocked IP address"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for blocking"
+    },
+    "blocked_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When block expires"
+    },
+    "permanent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether block is permanent"
+    },
+    "threat_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Threat level of IP"
+    },
+    "attempts_count": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of malicious attempts"
+    }
+  },
+  "required": [
+    "ip",
+    "reason"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

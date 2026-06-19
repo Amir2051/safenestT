@@ -1,0 +1,281 @@
+{
+  "name": "SecurityDiagnostic",
+  "type": "object",
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "description": "Unique scan identifier"
+    },
+    "scan_type": {
+      "type": "string",
+      "enum": [
+        "quick_scan",
+        "deep_scan",
+        "scheduled_scan",
+        "triggered_scan"
+      ],
+      "default": "quick_scan",
+      "description": "Type of security scan performed"
+    },
+    "scan_status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "completed",
+      "description": "Scan completion status"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan started"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scan completed"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Total scan duration"
+    },
+    "threat_level": {
+      "type": "string",
+      "enum": [
+        "secure",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "secure",
+      "description": "Overall threat assessment"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "browser": {
+          "type": "string"
+        },
+        "device_type": {
+          "type": "string"
+        },
+        "is_rooted": {
+          "type": "boolean"
+        },
+        "has_developer_mode": {
+          "type": "boolean"
+        }
+      },
+      "description": "Device information at scan time"
+    },
+    "anomalies_detected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "battery_drain",
+              "network_activity",
+              "permission_abuse",
+              "system_tampering",
+              "suspicious_processes",
+              "certificate_issues",
+              "integrity_violation"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "detected_at": {
+            "type": "string"
+          },
+          "indicators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "List of detected security anomalies"
+    },
+    "battery_analysis": {
+      "type": "object",
+      "properties": {
+        "current_level": {
+          "type": "number"
+        },
+        "is_charging": {
+          "type": "boolean"
+        },
+        "drain_rate": {
+          "type": "number",
+          "description": "Percentage per hour"
+        },
+        "unusual_drain": {
+          "type": "boolean"
+        },
+        "background_consumption": {
+          "type": "number"
+        }
+      },
+      "description": "Battery health indicators"
+    },
+    "network_analysis": {
+      "type": "object",
+      "properties": {
+        "active_connections": {
+          "type": "number"
+        },
+        "suspicious_endpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unusual_traffic": {
+          "type": "boolean"
+        },
+        "data_exfiltration_risk": {
+          "type": "boolean"
+        },
+        "untrusted_certificates": {
+          "type": "number"
+        }
+      },
+      "description": "Network activity analysis"
+    },
+    "permission_analysis": {
+      "type": "object",
+      "properties": {
+        "total_permissions": {
+          "type": "number"
+        },
+        "dangerous_permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recently_granted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "suspicious_apps": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "description": "App permission audit"
+    },
+    "integrity_check": {
+      "type": "object",
+      "properties": {
+        "app_signature_valid": {
+          "type": "boolean"
+        },
+        "files_tampered": {
+          "type": "boolean"
+        },
+        "system_modified": {
+          "type": "boolean"
+        },
+        "unknown_binaries": {
+          "type": "number"
+        }
+      },
+      "description": "System integrity validation"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "auto_fixable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Security recommendations"
+    },
+    "forensic_report_uri": {
+      "type": "string",
+      "description": "Encrypted forensic report file URI"
+    },
+    "auto_remediation_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether auto-fix was applied"
+    },
+    "user_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user was alerted"
+    }
+  },
+  "required": [
+    "scan_type",
+    "scan_status",
+    "threat_level"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

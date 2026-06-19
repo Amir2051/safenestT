@@ -1,0 +1,72 @@
+{
+  "name": "Achievement",
+  "type": "object",
+  "properties": {
+    "achievement_id": {
+      "type": "string",
+      "description": "Unique achievement identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Achievement name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Achievement description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ],
+      "description": "Achievement tier"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Achievement icon emoji"
+    },
+    "points": {
+      "type": "number",
+      "description": "Points awarded"
+    },
+    "unlocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user unlocked this"
+    },
+    "unlocked_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When achievement was unlocked"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Progress towards unlocking (0-100)"
+    },
+    "requirement": {
+      "type": "string",
+      "description": "What's needed to unlock"
+    }
+  },
+  "required": [
+    "achievement_id",
+    "name",
+    "description",
+    "category",
+    "points"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

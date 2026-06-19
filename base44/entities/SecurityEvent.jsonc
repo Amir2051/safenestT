@@ -1,0 +1,110 @@
+{
+  "name": "SecurityEvent",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "sql_injection_attempt",
+        "xss_attempt",
+        "command_injection_attempt",
+        "path_traversal_attempt",
+        "ssrf_attempt",
+        "rate_limit_exceeded",
+        "unauthorized_access_attempt",
+        "suspicious_activity",
+        "root_jailbreak_detected",
+        "integrity_check_failed",
+        "overlay_attack_detected",
+        "mobile_security_initialized",
+        "auto_remediation_applied",
+        "vulnerability_blocked",
+        "access_attempt"
+      ],
+      "description": "Type of security event"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Event severity level"
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "status": {
+          "type": "object"
+        }
+      },
+      "description": "Event details and context"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When event occurred"
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether threat was blocked"
+    },
+    "remediation_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether auto-remediation was applied"
+    }
+  },
+  "required": [
+    "event_type",
+    "severity",
+    "timestamp"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "name": "CryptoWallet",
+  "type": "object",
+  "properties": {
+    "wallet_name": {
+      "type": "string",
+      "description": "User-friendly name for the wallet"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Blockchain wallet address"
+    },
+    "blockchain": {
+      "type": "string",
+      "enum": [
+        "bitcoin",
+        "ethereum",
+        "bsc",
+        "polygon",
+        "solana",
+        "tron",
+        "other"
+      ],
+      "description": "Blockchain network"
+    },
+    "wallet_type": {
+      "type": "string",
+      "enum": [
+        "hot",
+        "cold",
+        "exchange",
+        "hardware"
+      ],
+      "default": "hot",
+      "description": "Type of wallet"
+    },
+    "risk_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Current risk score 0-100"
+    },
+    "is_monitored": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to monitor this wallet"
+    },
+    "balance_usd": {
+      "type": "number",
+      "description": "Approximate balance in USD"
+    },
+    "last_transaction_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last transaction timestamp"
+    },
+    "notes": {
+      "type": "string",
+      "description": "User notes"
+    },
+    "encrypted_private_key": {
+      "type": "string",
+      "description": "Encrypted private key (optional)"
+    },
+    "alerts_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Real-time alerts for this wallet"
+    }
+  },
+  "required": [
+    "wallet_name",
+    "wallet_address",
+    "blockchain"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

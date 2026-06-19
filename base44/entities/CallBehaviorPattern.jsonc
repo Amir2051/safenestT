@@ -1,0 +1,76 @@
+{
+  "name": "CallBehaviorPattern",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Phone number being tracked"
+    },
+    "total_calls": {
+      "type": "number",
+      "default": 0
+    },
+    "calls_last_24h": {
+      "type": "number",
+      "default": 0
+    },
+    "calls_last_7d": {
+      "type": "number",
+      "default": 0
+    },
+    "average_call_duration": {
+      "type": "number",
+      "description": "Average duration in seconds"
+    },
+    "short_calls_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Calls under 10 seconds"
+    },
+    "call_timestamps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recent call timestamps"
+    },
+    "sequential_pattern_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Number is part of sequential pattern"
+    },
+    "time_based_pattern": {
+      "type": "string",
+      "enum": [
+        "BUSINESS_HOURS",
+        "EVENING",
+        "NIGHT",
+        "RANDOM",
+        "UNKNOWN"
+      ],
+      "description": "When calls typically occur"
+    },
+    "behavior_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Behavioral risk score (0-100)"
+    },
+    "last_call": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "phone_number"
+  ],
+  "rls": {
+    "read": true,
+    "create": true,
+    "update": true,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

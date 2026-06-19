@@ -1,0 +1,91 @@
+{
+  "name": "SpamCallReport",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Reported phone number"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "SPAM",
+        "SCAM",
+        "ROBOCALL",
+        "TELEMARKETER",
+        "HARASSMENT",
+        "FRAUD",
+        "PHISHING"
+      ],
+      "description": "Type of unwanted call"
+    },
+    "description": {
+      "type": "string",
+      "description": "User description of the call"
+    },
+    "reported_by": {
+      "type": "string",
+      "description": "Email of reporting user"
+    },
+    "call_metadata": {
+      "type": "object",
+      "properties": {
+        "call_duration": {
+          "type": "number"
+        },
+        "call_time": {
+          "type": "string"
+        },
+        "caller_id_spoofed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "report_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "phone_number",
+    "report_type",
+    "reported_by"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

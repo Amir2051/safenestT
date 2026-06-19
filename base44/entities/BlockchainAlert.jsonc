@@ -1,0 +1,113 @@
+{
+  "name": "BlockchainAlert",
+  "type": "object",
+  "properties": {
+    "wallet_monitor_id": {
+      "type": "string",
+      "description": "Associated wallet monitor ID"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Wallet that triggered alert"
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "new_transaction",
+        "exchange_deposit",
+        "mixer_used",
+        "large_transfer",
+        "cold_storage_activation",
+        "high_risk_interaction"
+      ],
+      "description": "Type of alert"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Alert severity"
+    },
+    "title": {
+      "type": "string",
+      "description": "Alert title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Alert message"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Related transaction hash"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount"
+    },
+    "amount_usd": {
+      "type": "number",
+      "description": "Amount in USD"
+    },
+    "from_address": {
+      "type": "string",
+      "description": "Sender address"
+    },
+    "to_address": {
+      "type": "string",
+      "description": "Recipient address"
+    },
+    "detected_entity": {
+      "type": "string",
+      "description": "Detected entity (exchange, mixer, etc.)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "acknowledged",
+        "investigating",
+        "resolved"
+      ],
+      "default": "new",
+      "description": "Alert status"
+    },
+    "notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether notification was sent"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional alert data"
+    }
+  },
+  "required": [
+    "wallet_address",
+    "alert_type",
+    "title",
+    "message"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

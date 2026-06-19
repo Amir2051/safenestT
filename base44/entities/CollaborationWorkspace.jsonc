@@ -1,0 +1,186 @@
+{
+  "name": "CollaborationWorkspace",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "Unique workspace identifier"
+    },
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "consultation_id": {
+      "type": "string",
+      "description": "Reference to AttorneyConsultation"
+    },
+    "workspace_name": {
+      "type": "string",
+      "description": "Name of the workspace"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Property owner's email"
+    },
+    "attorney_email": {
+      "type": "string",
+      "description": "Assigned attorney's email"
+    },
+    "attorney_name": {
+      "type": "string",
+      "description": "Attorney's full name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Workspace status"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When workspace was created"
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "joined_date": {
+            "type": "string"
+          },
+          "last_seen": {
+            "type": "string"
+          },
+          "is_online": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "All workspace participants"
+    },
+    "shared_documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of documents shared in workspace"
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "can_upload": {
+          "type": "boolean",
+          "default": true
+        },
+        "can_edit": {
+          "type": "boolean",
+          "default": true
+        },
+        "can_delete": {
+          "type": "boolean",
+          "default": false
+        },
+        "can_invite": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Workspace permissions"
+    },
+    "encryption_key": {
+      "type": "string",
+      "description": "Workspace encryption key hash"
+    },
+    "activity_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Workspace activity history"
+    }
+  },
+  "required": [
+    "workspace_name",
+    "owner_email"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "attorney_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "attorney_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

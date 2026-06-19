@@ -1,0 +1,140 @@
+{
+  "name": "MasterCase",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID/Email of the victim"
+    },
+    "linked_case_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of all aggregated cases"
+    },
+    "merged_summary": {
+      "type": "string",
+      "description": "Consolidated narrative (HTML/Text)"
+    },
+    "scam_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "case_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "wallet_addresses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "transaction_records": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "evidence_index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source_case": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pattern_analysis": {
+      "type": "string",
+      "description": "AI analysis of commonalities"
+    },
+    "total_loss": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "finalized",
+        "submitted"
+      ],
+      "default": "draft"
+    },
+    "generated_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL of the generated case profile PDF"
+    }
+  },
+  "required": [
+    "user_id",
+    "linked_case_ids"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "authenticated"
+      }
+    },
+    "update": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

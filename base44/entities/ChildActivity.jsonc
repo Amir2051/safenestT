@@ -1,0 +1,120 @@
+{
+  "name": "ChildActivity",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "child_email": {
+      "type": "string",
+      "description": "Child member's email"
+    },
+    "activity_type": {
+      "type": "string",
+      "enum": [
+        "website_visit",
+        "app_usage",
+        "search_query",
+        "blocked_attempt",
+        "screen_time",
+        "social_media"
+      ],
+      "description": "Type of activity"
+    },
+    "activity_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When activity occurred"
+    },
+    "website_url": {
+      "type": "string",
+      "description": "Website visited (if applicable)"
+    },
+    "app_name": {
+      "type": "string",
+      "description": "App used (if applicable)"
+    },
+    "search_query": {
+      "type": "string",
+      "description": "Search query (if applicable)"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Activity duration"
+    },
+    "content_category": {
+      "type": "string",
+      "enum": [
+        "education",
+        "entertainment",
+        "social",
+        "gaming",
+        "news",
+        "shopping",
+        "inappropriate",
+        "unknown"
+      ],
+      "description": "Content category"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "safe",
+        "caution",
+        "warning",
+        "blocked"
+      ],
+      "default": "safe",
+      "description": "Risk assessment"
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether activity was blocked"
+    },
+    "blocked_reason": {
+      "type": "string",
+      "description": "Why activity was blocked"
+    },
+    "parent_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether parent was notified"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "device_name": {
+          "type": "string"
+        },
+        "device_type": {
+          "type": "string"
+        }
+      },
+      "description": "Device used"
+    }
+  },
+  "required": [
+    "group_id",
+    "child_email",
+    "activity_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

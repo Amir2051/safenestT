@@ -1,0 +1,249 @@
+{
+  "name": "Property",
+  "type": "object",
+  "properties": {
+    "property_owner": {
+      "type": "string",
+      "description": "Email of the property owner (user)"
+    },
+    "address": {
+      "type": "string",
+      "description": "Full street address"
+    },
+    "city": {
+      "type": "string",
+      "default": "New York",
+      "description": "City name"
+    },
+    "state": {
+      "type": "string",
+      "default": "NY",
+      "description": "State code"
+    },
+    "zip_code": {
+      "type": "string",
+      "description": "ZIP code"
+    },
+    "borough": {
+      "type": "string",
+      "enum": [
+        "Manhattan",
+        "Brooklyn",
+        "Queens",
+        "Bronx",
+        "Staten Island"
+      ],
+      "description": "NYC Borough"
+    },
+    "borough_block_lot": {
+      "type": "string",
+      "description": "BBL (Borough-Block-Lot) format: B-BLOCK-LOT"
+    },
+    "deed_file_url": {
+      "type": "string",
+      "description": "Encrypted deed file URL"
+    },
+    "verification_status": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether property ownership is verified"
+    },
+    "verification_method": {
+      "type": "string",
+      "enum": [
+        "deed_upload",
+        "manual_review",
+        "pending"
+      ],
+      "default": "pending",
+      "description": "How property was verified"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last ACRIS check timestamp"
+    },
+    "monitoring_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to actively monitor this property"
+    },
+    "owner_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of registered owner names"
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "residential",
+        "commercial",
+        "mixed_use",
+        "land"
+      ],
+      "default": "residential",
+      "description": "Type of property"
+    },
+    "last_known_documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "recorded_date": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Cached ACRIS documents for comparison"
+    },
+    "alert_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of alerts generated for this property"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a paid premium property slot"
+    },
+    "title_security_score": {
+      "type": "number",
+      "default": 100,
+      "description": "AI-calculated security score (0-100)"
+    },
+    "score_last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When security score was last calculated"
+    },
+    "risk_factors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "factor": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "number"
+          },
+          "detected_date": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Detected security risk factors"
+    },
+    "is_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether property is digitally locked"
+    },
+    "lock_enabled_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Title Lock was enabled"
+    },
+    "scan_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly"
+      ],
+      "default": "weekly",
+      "description": "Monitoring frequency (daily for premium)"
+    },
+    "ownership_verified_with_city": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether ownership was cross-verified with city records"
+    },
+    "city_record_owner_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Owner names from city records"
+    },
+    "ownership_match_status": {
+      "type": "string",
+      "enum": [
+        "match",
+        "mismatch",
+        "pending"
+      ],
+      "default": "pending",
+      "description": "Whether user-provided names match city records"
+    }
+  },
+  "required": [
+    "property_owner",
+    "address",
+    "borough",
+    "borough_block_lot"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

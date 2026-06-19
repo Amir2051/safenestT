@@ -1,0 +1,162 @@
+{
+  "name": "LegalAction",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "alert_id": {
+      "type": "string",
+      "description": "Reference to TitleAlert that triggered action"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "dispute_filed",
+        "attorney_consulted",
+        "document_sent",
+        "court_filed",
+        "police_report_filed",
+        "title_lock_enabled",
+        "cease_desist_sent",
+        "settlement_offered",
+        "lawsuit_filed",
+        "investigation_opened",
+        "resolution_achieved"
+      ],
+      "description": "Type of legal action taken"
+    },
+    "action_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action was taken"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of action"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "escalated"
+      ],
+      "default": "pending",
+      "description": "Current status of legal action"
+    },
+    "associated_documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of related LegalDocument entities"
+    },
+    "attorney_info": {
+      "type": "object",
+      "properties": {
+        "attorney_name": {
+          "type": "string"
+        },
+        "firm_name": {
+          "type": "string"
+        },
+        "bar_number": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "description": "Attorney information if involved"
+    },
+    "cost_estimate": {
+      "type": "number",
+      "description": "Estimated cost in USD"
+    },
+    "actual_cost": {
+      "type": "number",
+      "description": "Actual cost incurred"
+    },
+    "outcome": {
+      "type": "string",
+      "description": "Final outcome of the action"
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recommended next steps"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Action deadline if applicable"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Action priority"
+    }
+  },
+  "required": [
+    "property_id",
+    "action_type",
+    "action_date",
+    "description"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

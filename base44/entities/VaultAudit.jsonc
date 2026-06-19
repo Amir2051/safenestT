@@ -1,0 +1,103 @@
+{
+  "name": "VaultAudit",
+  "type": "object",
+  "properties": {
+    "audit_id": {
+      "type": "string",
+      "description": "Unique audit entry ID"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Vault owner"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "vault_setup",
+        "vault_unlock",
+        "vault_lock",
+        "vault_view",
+        "vault_export",
+        "identifier_delete",
+        "emergency_lock",
+        "unlock_failed",
+        "lockout_triggered"
+      ],
+      "description": "Action performed"
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "Who performed the action (user or admin)"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address"
+    },
+    "device_info": {
+      "type": "object",
+      "properties": {
+        "user_agent": {
+          "type": "string"
+        },
+        "device_type": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "browser": {
+          "type": "string"
+        }
+      },
+      "description": "Device details"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action occurred"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Human-readable action summary"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional context (identifiers viewed, export size, etc.)"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether action succeeded"
+    },
+    "entry_signature": {
+      "type": "string",
+      "description": "HMAC signature for tamper detection"
+    }
+  },
+  "required": [
+    "user_id",
+    "action",
+    "actor_id",
+    "timestamp"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "user_id": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": false,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

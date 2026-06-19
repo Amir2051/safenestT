@@ -1,0 +1,166 @@
+{
+  "name": "LegalDocument",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "alert_id": {
+      "type": "string",
+      "description": "Reference to TitleAlert if applicable"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "dispute_notice",
+        "cease_and_desist",
+        "affidavit",
+        "power_of_attorney",
+        "title_insurance_claim",
+        "police_report",
+        "court_filing",
+        "attorney_correspondence",
+        "evidence_document",
+        "deed_copy",
+        "other"
+      ],
+      "description": "Type of legal document"
+    },
+    "document_name": {
+      "type": "string",
+      "description": "User-friendly document name"
+    },
+    "encrypted_file_uri": {
+      "type": "string",
+      "description": "Encrypted file storage URI"
+    },
+    "file_size_bytes": {
+      "type": "number",
+      "description": "File size in bytes"
+    },
+    "file_extension": {
+      "type": "string",
+      "description": "File extension (pdf, docx, jpg, etc.)"
+    },
+    "template_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was auto-generated from template"
+    },
+    "template_type": {
+      "type": "string",
+      "description": "Template used if generated"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "final",
+        "sent",
+        "filed",
+        "archived"
+      ],
+      "default": "draft",
+      "description": "Document status"
+    },
+    "sent_to": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recipient_name": {
+            "type": "string"
+          },
+          "recipient_email": {
+            "type": "string"
+          },
+          "sent_date": {
+            "type": "string"
+          },
+          "delivery_method": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Recipients if document was sent"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "case_number": {
+          "type": "string"
+        },
+        "court_name": {
+          "type": "string"
+        },
+        "filing_date": {
+          "type": "string"
+        },
+        "response_deadline": {
+          "type": "string"
+        },
+        "attorney_name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "description": "Additional document metadata"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Document tags for organization"
+    }
+  },
+  "required": [
+    "document_type",
+    "document_name",
+    "encrypted_file_uri"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

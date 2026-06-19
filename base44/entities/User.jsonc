@@ -1,0 +1,87 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "account_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "rejected",
+        "suspended"
+      ],
+      "default": "active",
+      "description": "Account approval status"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Admin who approved the user"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the user was approved"
+    },
+    "country": {
+      "type": "string",
+      "description": "User's country"
+    },
+    "profile_image": {
+      "type": "string",
+      "description": "URL to profile image"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "User's crypto wallet address"
+    },
+    "username": {
+      "type": "string",
+      "description": "Username"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "vpn_enabled": {
+      "type": "boolean"
+    },
+    "two_factor_enabled": {
+      "type": "boolean"
+    },
+    "risk_score": {
+      "type": "number",
+      "description": "Security risk score"
+    },
+    "last_scan_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subscription_plan": {
+      "type": "string",
+      "enum": [
+        "free",
+        "basic",
+        "elite",
+        "trial"
+      ],
+      "default": "free"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "cancelled",
+        "past_due"
+      ],
+      "default": "inactive"
+    },
+    "monitored_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": []
+}

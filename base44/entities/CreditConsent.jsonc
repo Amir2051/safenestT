@@ -1,0 +1,131 @@
+{
+  "name": "CreditConsent",
+  "type": "object",
+  "properties": {
+    "consent_id": {
+      "type": "string",
+      "description": "Unique consent identifier"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User who gave consent"
+    },
+    "consent_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When consent was given"
+    },
+    "consent_text": {
+      "type": "string",
+      "description": "Full FCRA disclosure text shown to user"
+    },
+    "consent_version": {
+      "type": "string",
+      "default": "v1.0",
+      "description": "Version of consent agreement"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address at time of consent"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Browser user agent"
+    },
+    "permissible_purpose": {
+      "type": "string",
+      "enum": [
+        "account_review",
+        "credit_monitoring",
+        "pre_qualification"
+      ],
+      "default": "credit_monitoring",
+      "description": "FCRA permissible purpose"
+    },
+    "explicit_consent_given": {
+      "type": "boolean",
+      "default": false,
+      "description": "User explicitly checked consent box"
+    },
+    "consent_method": {
+      "type": "string",
+      "enum": [
+        "web",
+        "mobile",
+        "api"
+      ],
+      "default": "web",
+      "description": "How consent was obtained"
+    },
+    "revoked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether consent was revoked"
+    },
+    "revoked_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When consent was revoked"
+    },
+    "auto_renewal": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-renew consent annually"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Consent expiration (1 year)"
+    },
+    "disclosure_acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "User acknowledged pre-consent disclosure"
+    },
+    "adverse_action_notice_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether adverse action notice was sent"
+    }
+  },
+  "required": [
+    "user_email",
+    "consent_date",
+    "consent_text",
+    "explicit_consent_given"
+  ],
+  "rls": {
+    "create": {
+      "user_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "name": "CommunicationLog",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related case"
+    },
+    "logged_by_email": {
+      "type": "string",
+      "description": "Email of the team member who logged the call"
+    },
+    "logged_by_name": {
+      "type": "string",
+      "description": "Name of the team member"
+    },
+    "communication_type": {
+      "type": "string",
+      "enum": [
+        "Intake Call",
+        "Follow-Up",
+        "Evidence Review",
+        "Escalation",
+        "Internal Note",
+        "Email",
+        "Voice Note"
+      ],
+      "default": "Follow-Up"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "Inbound",
+        "Outbound",
+        "Internal"
+      ],
+      "default": "Outbound"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Duration of the call in minutes"
+    },
+    "summary": {
+      "type": "string",
+      "description": "High-level summary of the interaction"
+    },
+    "raw_notes": {
+      "type": "string",
+      "description": "Raw unstructured notes"
+    },
+    "structured_data": {
+      "type": "object",
+      "properties": {
+        "scam_type": {
+          "type": "string"
+        },
+        "amount_lost_fiat": {
+          "type": "number"
+        },
+        "amount_lost_crypto": {
+          "type": "number"
+        },
+        "platforms": {
+          "type": "string"
+        },
+        "wallets_involved": {
+          "type": "string"
+        },
+        "tx_hashes": {
+          "type": "string"
+        },
+        "evidence_checklist": {
+          "type": "object",
+          "properties": {
+            "wallet_provided": {
+              "type": "boolean"
+            },
+            "tx_hashes_provided": {
+              "type": "boolean"
+            },
+            "screenshots_provided": {
+              "type": "boolean"
+            },
+            "chats_provided": {
+              "type": "boolean"
+            },
+            "exchange_involved": {
+              "type": "string"
+            }
+          }
+        },
+        "risk_assessment": {
+          "type": "object",
+          "properties": {
+            "risk_level": {
+              "type": "string",
+              "enum": [
+                "Low",
+                "Medium",
+                "High",
+                "Critical"
+              ]
+            },
+            "ongoing_contact": {
+              "type": "boolean"
+            },
+            "funds_moving": {
+              "type": "boolean"
+            },
+            "client_at_risk": {
+              "type": "boolean"
+            }
+          }
+        },
+        "actions_taken": {
+          "type": "object",
+          "properties": {
+            "actions_explained": {
+              "type": "string"
+            },
+            "disclaimers_acknowledged": {
+              "type": "boolean"
+            },
+            "escalation_status": {
+              "type": "string"
+            }
+          }
+        },
+        "next_steps": {
+          "type": "object",
+          "properties": {
+            "task_description": {
+              "type": "string"
+            },
+            "assigned_to": {
+              "type": "string"
+            },
+            "deadline": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "ai_analysis": {
+      "type": "string",
+      "description": "AI generated insights or missing data flags"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "case_id",
+    "communication_type",
+    "summary"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

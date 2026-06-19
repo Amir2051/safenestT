@@ -1,0 +1,118 @@
+{
+  "name": "ScamDatabase",
+  "type": "object",
+  "properties": {
+    "scam_type": {
+      "type": "string",
+      "enum": [
+        "wallet",
+        "website",
+        "app",
+        "exchange",
+        "contract"
+      ],
+      "description": "Type of scam entity"
+    },
+    "identifier": {
+      "type": "string",
+      "description": "Wallet address, URL, or app identifier"
+    },
+    "blockchain": {
+      "type": "string",
+      "enum": [
+        "bitcoin",
+        "ethereum",
+        "bsc",
+        "polygon",
+        "solana",
+        "tron",
+        "multiple",
+        "n/a"
+      ],
+      "description": "Associated blockchain"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Severity of threat"
+    },
+    "scam_description": {
+      "type": "string",
+      "description": "Details about the scam"
+    },
+    "reported_by": {
+      "type": "string",
+      "enum": [
+        "user",
+        "ai",
+        "admin",
+        "exchange",
+        "law_enforcement"
+      ],
+      "description": "Source of report"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether scam is verified"
+    },
+    "victim_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of reported victims"
+    },
+    "total_stolen_usd": {
+      "type": "number",
+      "default": 0,
+      "description": "Total amount stolen in USD"
+    },
+    "first_reported": {
+      "type": "string",
+      "format": "date-time",
+      "description": "First report timestamp"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "monitoring",
+        "resolved"
+      ],
+      "default": "active",
+      "description": "Current status"
+    },
+    "related_scams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related scam IDs"
+    }
+  },
+  "required": [
+    "scam_type",
+    "identifier",
+    "risk_level"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

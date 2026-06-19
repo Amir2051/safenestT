@@ -1,0 +1,146 @@
+{
+  "name": "SupportTicket",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Ticket subject line"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "report_question",
+        "technical_issue",
+        "account_help",
+        "legal_inquiry",
+        "general_question",
+        "case_update",
+        "other"
+      ],
+      "description": "Type of support request"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed description of the issue or question"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "waiting_for_user",
+        "resolved",
+        "closed"
+      ],
+      "default": "open",
+      "description": "Current ticket status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Ticket priority level"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who submitted the ticket"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the user"
+    },
+    "related_case_id": {
+      "type": "string",
+      "description": "Optional reference to a related case"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Supporting files or screenshots"
+    },
+    "responses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "responder_email": {
+            "type": "string"
+          },
+          "responder_name": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "is_internal": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "description": "Support team responses"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Admin/support team member assigned to this ticket"
+    },
+    "resolved_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the ticket was marked as resolved"
+    }
+  },
+  "required": [
+    "subject",
+    "category",
+    "message",
+    "user_email"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

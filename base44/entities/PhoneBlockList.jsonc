@@ -1,0 +1,64 @@
+{
+  "name": "PhoneBlockList",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Blocked phone number"
+    },
+    "block_type": {
+      "type": "string",
+      "enum": [
+        "MANUAL",
+        "AUTO_SPAM",
+        "AUTO_SCAM",
+        "AUTO_BEHAVIOR"
+      ],
+      "default": "MANUAL",
+      "description": "How the number was blocked"
+    },
+    "block_level": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "AGGRESSIVE"
+      ],
+      "default": "MEDIUM",
+      "description": "User's blocking sensitivity level"
+    },
+    "block_reason": {
+      "type": "string",
+      "description": "Explanation of why blocked"
+    },
+    "blocked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_whitelisted": {
+      "type": "boolean",
+      "default": false,
+      "description": "User explicitly whitelisted this number"
+    },
+    "whitelist_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "phone_number"
+  ],
+  "rls": {
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

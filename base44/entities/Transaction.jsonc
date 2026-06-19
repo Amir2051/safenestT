@@ -1,0 +1,118 @@
+{
+  "name": "Transaction",
+  "type": "object",
+  "properties": {
+    "wallet_monitor_id": {
+      "type": "string",
+      "description": "Related wallet monitor ID"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Related investigation case ID"
+    },
+    "tx_hash": {
+      "type": "string",
+      "description": "Transaction hash"
+    },
+    "from_address": {
+      "type": "string",
+      "description": "Sender address"
+    },
+    "to_address": {
+      "type": "string",
+      "description": "Recipient address"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount"
+    },
+    "amount_usd": {
+      "type": "number",
+      "description": "Amount in USD"
+    },
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain network"
+    },
+    "asset": {
+      "type": "string",
+      "description": "Asset/token type"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transaction timestamp"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "incoming",
+        "outgoing",
+        "internal"
+      ],
+      "description": "Transaction direction"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "pending",
+        "failed"
+      ],
+      "default": "confirmed",
+      "description": "Transaction status"
+    },
+    "block_number": {
+      "type": "number",
+      "description": "Block number"
+    },
+    "gas_used": {
+      "type": "number",
+      "description": "Gas used"
+    },
+    "category": {
+      "type": "string",
+      "description": "Transaction category"
+    },
+    "is_suspicious": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flagged as suspicious"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Risk indicators"
+    }
+  },
+  "required": [
+    "tx_hash",
+    "from_address",
+    "to_address",
+    "blockchain"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

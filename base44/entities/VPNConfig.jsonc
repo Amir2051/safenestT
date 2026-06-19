@@ -1,0 +1,89 @@
+{
+  "name": "VPNConfig",
+  "type": "object",
+  "properties": {
+    "config_id": {
+      "type": "string",
+      "description": "Unique config identifier"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Reference to VPNDevice"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email"
+    },
+    "config_content": {
+      "type": "string",
+      "description": "WireGuard configuration file content"
+    },
+    "config_format": {
+      "type": "string",
+      "enum": [
+        "wireguard",
+        "qr_code",
+        "deep_link"
+      ],
+      "default": "wireguard"
+    },
+    "qr_code_data": {
+      "type": "string",
+      "description": "Base64 QR code image"
+    },
+    "download_token": {
+      "type": "string",
+      "description": "Secure download token (expires in 1 hour)"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "downloaded": {
+      "type": "boolean",
+      "default": false
+    },
+    "downloaded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "server_endpoint": {
+      "type": "string",
+      "description": "Server endpoint used in config"
+    },
+    "dns_servers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "1.1.1.1",
+        "1.0.0.1"
+      ],
+      "description": "DNS servers"
+    }
+  },
+  "required": [
+    "device_id",
+    "user_email",
+    "config_content"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

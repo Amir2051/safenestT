@@ -1,0 +1,68 @@
+{
+  "name": "AdminStatus",
+  "type": "object",
+  "properties": {
+    "admin_id": {
+      "type": "string"
+    },
+    "is_online": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_active": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "admin_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        },
+        {
+          "admin_id": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

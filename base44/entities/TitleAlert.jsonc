@@ -1,0 +1,141 @@
+{
+  "name": "TitleAlert",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string",
+      "description": "Reference to Property entity"
+    },
+    "property_address": {
+      "type": "string",
+      "description": "Cached property address for quick display"
+    },
+    "property_owner": {
+      "type": "string",
+      "description": "Email of property owner"
+    },
+    "filing_type": {
+      "type": "string",
+      "description": "Type of filing (DEED, LIEN, MORTGAGE, etc.)"
+    },
+    "filing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date document was filed/recorded"
+    },
+    "filing_party": {
+      "type": "string",
+      "description": "Name of party who filed the document"
+    },
+    "document_id": {
+      "type": "string",
+      "description": "ACRIS document ID"
+    },
+    "document_amount": {
+      "type": "string",
+      "description": "Dollar amount if applicable"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Alert severity level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewed",
+        "investigating",
+        "resolved",
+        "false_alarm"
+      ],
+      "default": "new",
+      "description": "Alert status"
+    },
+    "alert_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was created (auto-generated)"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When user reviewed the alert"
+    },
+    "acris_url": {
+      "type": "string",
+      "description": "Direct link to ACRIS document"
+    },
+    "full_document_data": {
+      "type": "object",
+      "description": "Complete ACRIS API response data"
+    },
+    "user_notes": {
+      "type": "string",
+      "description": "User's notes about this alert"
+    },
+    "fraud_reported": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user reported this as fraud"
+    },
+    "notification_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether notification was sent to user"
+    }
+  },
+  "required": [
+    "property_id",
+    "property_owner",
+    "filing_type",
+    "filing_date",
+    "document_id"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "property_owner": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

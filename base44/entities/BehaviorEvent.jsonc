@@ -1,0 +1,63 @@
+{
+  "name": "BehaviorEvent",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "type": "string",
+      "description": "ID of the user or admin performing the action"
+    },
+    "actor_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "admin",
+        "system"
+      ],
+      "default": "user"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "e.g., login_failed, location_change, keyword_detected, workflow_step_skipped"
+    },
+    "details": {
+      "type": "object",
+      "description": "JSON metadata about the event (IP, location, inputs)"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "default": "info"
+    },
+    "is_processed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the AI engine has processed this event"
+    }
+  },
+  "required": [
+    "actor_id",
+    "event_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

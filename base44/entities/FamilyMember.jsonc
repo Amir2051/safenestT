@@ -1,0 +1,181 @@
+{
+  "name": "FamilyMember",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string",
+      "description": "Reference to FamilyGroup"
+    },
+    "member_email": {
+      "type": "string",
+      "description": "Member's email"
+    },
+    "member_name": {
+      "type": "string",
+      "description": "Member's full name"
+    },
+    "member_role": {
+      "type": "string",
+      "enum": [
+        "parent",
+        "child",
+        "guardian",
+        "teen"
+      ],
+      "default": "parent",
+      "description": "Role within family"
+    },
+    "age_category": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "teen_13_17",
+        "child_under_13"
+      ],
+      "default": "adult",
+      "description": "Age category for parental controls"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "suspended",
+        "removed"
+      ],
+      "default": "invited",
+      "description": "Member status"
+    },
+    "joined_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When member joined the group"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "Email of who invited this member"
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "can_view_alerts": {
+          "type": "boolean",
+          "default": true
+        },
+        "can_access_shared_vault": {
+          "type": "boolean",
+          "default": false
+        },
+        "can_invite_members": {
+          "type": "boolean",
+          "default": false
+        },
+        "can_modify_settings": {
+          "type": "boolean",
+          "default": false
+        },
+        "requires_parent_approval": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Member-specific permissions"
+    },
+    "monitored_settings": {
+      "type": "object",
+      "properties": {
+        "monitor_web_activity": {
+          "type": "boolean",
+          "default": false
+        },
+        "monitor_app_usage": {
+          "type": "boolean",
+          "default": false
+        },
+        "block_inappropriate_content": {
+          "type": "boolean",
+          "default": false
+        },
+        "screen_time_limit_minutes": {
+          "type": "number",
+          "default": 0
+        },
+        "bedtime_mode_enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "bedtime_start": {
+          "type": "string",
+          "description": "HH:MM format"
+        },
+        "bedtime_end": {
+          "type": "string",
+          "description": "HH:MM format"
+        }
+      },
+      "description": "Monitoring and control settings for this member"
+    },
+    "security_stats": {
+      "type": "object",
+      "properties": {
+        "risk_score": {
+          "type": "number",
+          "default": 100
+        },
+        "alerts_count": {
+          "type": "number",
+          "default": 0
+        },
+        "last_activity": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Individual security metrics"
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "device_name": {
+            "type": "string"
+          },
+          "device_type": {
+            "type": "string"
+          },
+          "last_seen": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Registered devices for this member"
+    }
+  },
+  "required": [
+    "group_id",
+    "member_email",
+    "member_name",
+    "member_role"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

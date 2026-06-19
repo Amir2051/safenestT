@@ -1,0 +1,97 @@
+{
+  "name": "PrivacyHub",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "broker_requests": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "exposure_scans": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "dark_web_emails": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "dark_web_breaches": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "footprint_services": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "cookie_settings": {
+      "type": "object"
+    },
+    "cookie_site_checks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "privacy_score": {
+      "type": "number",
+      "default": 50
+    },
+    "score_history": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "rights_requests": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "vault_documents": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "activity_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "waitlist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "create": true,
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
