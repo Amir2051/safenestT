@@ -9,7 +9,7 @@ import {
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
   Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle,
-  Star, Radar, Eye, Map, Cookie
+  Star, Radar, Eye, Map, Cookie, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -341,6 +341,14 @@ const adminItems = [
     icon: UserCheck,
     url: createPageUrl('AdminUserApprovals'),
     glow: 'purple',
+    badge: 'ADMIN'
+  },
+  {
+    id: 'admin-user-export',
+    title: 'Export Users',
+    icon: Download,
+    url: '/UserExport',
+    glow: 'cyan',
     badge: 'ADMIN'
   },
   {
