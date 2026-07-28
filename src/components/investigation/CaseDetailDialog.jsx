@@ -13,7 +13,7 @@ import {
   X, FileText, Clock, User, DollarSign, Shield, Upload, Plus, 
   MessageSquare, ExternalLink, Calendar, AlertCircle, Database, Building2,
   Edit, Save, Phone, Mail, MapPin, TrendingUp, Network, Sparkles, RefreshCw,
-  Eye, EyeOff, CheckCircle, ShieldAlert, Brain
+  Eye, EyeOff, CheckCircle, ShieldAlert, Brain, Zap
 } from "lucide-react";
 import InvestigationNotes from "./InvestigationNotes.jsx";
 import RecommendedAgencies from "./RecommendedAgencies.jsx";
