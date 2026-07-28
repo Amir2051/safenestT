@@ -58,7 +58,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [user, setUser] = useState(null);
   const [liveCase, setLiveCase] = useState(caseData);
   const prevStatusRef = useRef(caseData.status);
@@ -359,26 +358,6 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     }
     setUploading(false);
   };
-
-  const generateSummary = async () => {
-    setGeneratingSummary(true);
-    try {
-        const res = await base44.functions.invoke('caseSummary', { 
-            caseId: caseData.id,
-            entityName: caseData._entityName || caseData.entity_name 
-        });
-        if (res.data.success) {
-            toast.success("AI Summary Generated");
-            if (onUpdate) onUpdate();
-        } else {
-            toast.error("Failed to generate summary");
-        }
-    } catch (error) {
-        toast.error("Error generating summary");
-    }
-    setGeneratingSummary(false);
-  };
-
   const progress = caseData.investigation_progress || 0;
 
   return (
@@ -569,19 +548,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                         </p>
                     )}
                 </div>
-                <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={generateSummary}
-                    disabled={generatingSummary}
-                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 shrink-0"
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveTab('ai-hub')}
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 shrink-0"
                 >
-                    {generatingSummary ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Sparkles className="w-4 h-4 mr-2" />
-                    )}
-                    {generatingSummary ? 'Analyzing...' : (caseData.ai_analysis ? 'Regenerate' : 'Generate')}
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {caseData.ai_analysis ? 'Re-run in AI Hub' : 'Generate in AI Hub'}
                 </Button>
             </div>
           </div>
