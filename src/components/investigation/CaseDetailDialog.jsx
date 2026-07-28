@@ -39,6 +39,7 @@ import CommunicationLog from "./communication/CommunicationLog.jsx";
 import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
 import CrossCaseCorrelator from "./CrossCaseCorrelator.jsx";
 import PatternLibrary from "./PatternLibrary.jsx";
+import InvestigationAICenter from "./InvestigationAICenter.jsx";
 import MultiFileUploader from "@/components/shared/MultiFileUploader";
 import SecureMessenger from "../communication/SecureMessenger";
 import AIFraudInsights from "../ai/AIFraudInsights";
@@ -591,6 +592,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               <TabsTrigger value="ai-insights" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
                 <Brain className="w-3 h-3 mr-1" />AI Insights
               </TabsTrigger>
+              <TabsTrigger value="ai-hub" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 border border-purple-500/30">
+                <Zap className="w-3 h-3 mr-1" />AI Hub
+              </TabsTrigger>
               <TabsTrigger value="edit" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 <Edit className="w-3 h-3 mr-1" />Edit Case
               </TabsTrigger>
@@ -716,6 +720,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   onOpenResponse={() => setActiveTab('communications')}
                   onOpenTracking={() => setActiveTab('tracking')}
               />
+
+              {/* Consolidated AI Investigation Hub (replaces scattered duplicate AI buttons) */}
+              <InvestigationAICenter caseData={caseData} onUpdate={onUpdate} />
 
               {/* AI Priority Badge */}
               {caseData.priority_score && (
@@ -890,6 +897,12 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 </h3>
                 <AutomatedReportGenerator caseData={caseData} onReportGenerated={onUpdate} />
               </div>
+            </TabsContent>
+
+            {/* AI HUB TAB - Consolidated investigation AI orchestration */}
+            <TabsContent value="ai-hub" className="space-y-4">
+              <InvestigationAICenter caseData={caseData} onUpdate={onUpdate} />
+              <AIFraudInsights caseData={caseData} onUpdate={onUpdate} />
             </TabsContent>
 
             {/* EDIT TAB - Full Admin Case Editing */}

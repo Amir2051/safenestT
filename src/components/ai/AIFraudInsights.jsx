@@ -15,18 +15,20 @@ export default function AIFraudInsights({ caseData, onUpdate }) {
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
-    // Load existing AI analysis
-    if (caseData.ai_analysis) {
+    // Load existing AI analysis — only re-parse when the analysis field itself changes,
+    // not on every live-subscription tick of the parent caseData object.
+    const raw = caseData.ai_analysis;
+    if (raw) {
       try {
-        const parsed = typeof caseData.ai_analysis === 'string' 
-          ? JSON.parse(caseData.ai_analysis) 
-          : caseData.ai_analysis;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
         setAnalysis(parsed);
       } catch (e) {
         console.error('Failed to parse AI analysis:', e);
       }
+    } else {
+      setAnalysis(null);
     }
-  }, [caseData]);
+  }, [caseData.ai_analysis]);
 
   const runAnalysis = async () => {
     setAnalyzing(true);
