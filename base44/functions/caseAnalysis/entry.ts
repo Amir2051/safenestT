@@ -137,11 +137,34 @@ Deno.serve(async (req) => {
              score += 30;
         }
 
-        // Victim Match
-        if (norm(currentCase.client_email) && norm(other.client_email) &&
-            norm(currentCase.client_email) === norm(other.client_email)) {
-             reasons.push({ type: 'victim', value: currentCase.client_email, confidence: 'high', label: 'Repeat Victim' });
-             score += 10;
+        // Scammer IP address match (infrastructure correlation)
+        const ipMatch = (arr1, arr2) => {
+            const s1 = new Set((arr1 || []).map(norm));
+            const s2 = new Set((arr2 || []).map(norm));
+            return [...s1].filter(x => s2.has(x));
+        };
+        const curIps = currentCase.suspect_details?.ip_addresses;
+        const othIps = other.suspect_details?.ip_addresses;
+        const sharedIps = ipMatch(curIps, othIps);
+        if (sharedIps.length > 0) {
+            reasons.push({ type: 'ip', value: sharedIps.join(', '), confidence: 'high', label: 'Shared Infrastructure IP' });
+            score += 45;
+        }
+        // Scammer social profile correlation
+        const curSocial = (currentCase.suspect_details?.social_profiles || []).map(p => norm(p.url || p.platform));
+        const othSocial = (other.suspect_details?.social_profiles || []).map(p => norm(p.url || p.platform));
+        const sharedSocial = curSocial.filter(x => othSocial.includes(x));
+        if (sharedSocial.length > 0) {
+            reasons.push({ type: 'social', value: sharedSocial.join(', '), confidence: 'medium', label: 'Shared Social Profile' });
+            score += 25;
+        }
+        // Known associate overlap
+        const curAssoc = (currentCase.suspect_details?.known_associates || []).map(a => norm(a.name));
+        const othAssoc = (other.suspect_details?.known_associates || []).map(a => norm(a.name));
+        const sharedAssoc = curAssoc.filter(x => othAssoc.includes(x) && x.length > 3);
+        if (sharedAssoc.length > 0) {
+            reasons.push({ type: 'associate', value: sharedAssoc.join(', '), confidence: 'medium', label: 'Shared Known Associate' });
+            score += 30;
         }
         
         if (score > 0) {
@@ -285,6 +308,6 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 });

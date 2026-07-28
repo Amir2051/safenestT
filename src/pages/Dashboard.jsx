@@ -17,7 +17,9 @@ import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import SecurityScoreCard from "../components/dashboard/SecurityScoreCard.jsx";
 import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
-import MiaQuickChat from "../components/dashboard/MiaQuickChat.jsx";
+import MiaQuickChat from "@/components/dashboard/MiaQuickChat.jsx";
+import InvestigatorCommandCenter from "@/components/dashboard/InvestigatorCommandCenter.jsx";
+import { data as safeData } from "@/lib/safenestData";
 import ContactSection from "../components/shared/ContactSection.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
@@ -596,8 +598,12 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* AI Investigator Command Center — populated from local real-shaped data layer */}
+      <InvestigatorCommandCenter />
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <SecurityScoreCard 
