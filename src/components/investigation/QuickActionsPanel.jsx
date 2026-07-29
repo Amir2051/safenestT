@@ -13,6 +13,7 @@ export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, 
   const caseId = activeCase?.id;
   const entityName = activeCase?._entityName || activeCase?.entity_name || 'MyCase';
   const [loading, setLoading] = useState(false);
+  const [lastResults, setLastResults] = useState(null);
   // Race-guard: ignore stale responses if the user clicks again or the case changes.
   const runIdRef = useRef(0);
 
@@ -71,6 +72,7 @@ export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, 
       const failed = results.find((r) => r && r.data && r.data.error);
       if (failed) throw new Error(failed.data.error);
 
+      setLastResults(results);
       toast.success(activeCase?.ai_analysis ? 'Wallet monitoring refreshed' : 'Analysis complete', { id: toastId });
       onUpdate?.();
     } catch (e) {
@@ -91,6 +93,18 @@ export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, 
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3">
+        {lastResults && (
+          <div className="col-span-full p-3 bg-[#0f1419] rounded-lg border border-green-500/20 text-xs text-gray-300 space-y-1">
+            <p className="text-gray-400 font-semibold">Latest analysis output:</p>
+            {lastResults.map((r, idx) => (
+              <div key={idx} className="flex flex-col gap-1">
+                <span className="text-[11px] text-gray-400">Result {idx + 1}: {r?.data?.success ? 'success' : 'no explicit success flag'}</span>
+                <pre className="whitespace-pre-wrap text-[11px] text-gray-200">{JSON.stringify(r?.data || {}, null, 2).slice(0, 1200)}</pre>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Button
             variant="outline"

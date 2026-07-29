@@ -51,6 +51,8 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
   const [statuses, setStatuses] = useState({}); // key -> 'idle'|'running'|'done'|'error'
   const [lastRun, setLastRun] = useState(null);
   const [selected, setSelected] = useState({ fraud: true, summary: true, monitor: true });
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [summaryResult, setSummaryResult] = useState(null);
 
   // Race-guard: bump on every run / case change; stale runs bail out.
   const runIdRef = useRef(0);
@@ -102,6 +104,8 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
               setStatus(t.key, "error");
               return { key: t.key, ok: false, error: res.data.error };
             }
+            if (t.key === 'fraud') setAnalysisResult(res?.data || null);
+            if (t.key === 'summary') setSummaryResult(res?.data || null);
             setStatus(t.key, "done");
             return { key: t.key, ok: true };
           } catch (e) {
@@ -216,6 +220,57 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
             <CheckCircle2 className="w-3 h-3" />
             Last run: {new Date(lastRun).toLocaleTimeString()}
           </p>
+        )}
+
+        {summaryResult && (
+          <Card className="bg-[#0f1419] border-purple-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                Executive Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-300 whitespace-pre-wrap">{summaryResult.summary || summaryResult.text || JSON.stringify(summaryResult, null, 2)}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {analysisResult && (
+          <Card className="bg-[#0a111a] border-cyan-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <Brain className="w-4 h-4 text-cyan-400" />
+                Fraud Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <p className="text-xs text-gray-400 mb-1">Risk Level</p>
+                  <p className="text-sm font-semibold text-white">{analysisResult.analysis?.risk_level || analysisResult.risk_level || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <p className="text-xs text-gray-400 mb-1">Pattern</p>
+                  <p className="text-sm font-semibold text-white">{analysisResult.analysis?.pattern_match || analysisResult.pattern_match || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-[#0f1419] rounded-lg border border-purple-500/20">
+                  <p className="text-xs text-gray-400 mb-1">Confidence</p>
+                  <p className="text-sm font-semibold text-white">{analysisResult.analysis?.confidence_score ?? analysisResult.confidence_score ?? 'N/A'}</p>
+                </div>
+              </div>
+              {Array.isArray(analysisResult.analysis?.recommended_actions) && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-gray-400">Recommended Actions</p>
+                  <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+                    {analysisResult.analysis.recommended_actions.slice(0,8).map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </CardContent>
     </Card>
