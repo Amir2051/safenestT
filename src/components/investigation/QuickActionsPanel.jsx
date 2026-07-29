@@ -9,6 +9,9 @@ import {
 import { toast } from "sonner";
 
 export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, onOpenTracking }) {
+  const activeCase = caseData;
+  const caseId = activeCase?.id;
+  const entityName = activeCase?._entityName || activeCase?.entity_name || 'MyCase';
   const [loading, setLoading] = useState(false);
   // Race-guard: ignore stale responses if the user clicks again or the case changes.
   const runIdRef = useRef(0);
@@ -40,37 +43,39 @@ export default function QuickActionsPanel({ caseData, onUpdate, onOpenResponse, 
   };
 
   const handleRunAnalysis = async () => {
+    if (!caseId) {
+      toast.error('Open a case before running analysis');
+      return;
+    }
     const runId = ++runIdRef.current;
     setLoading(true);
-    const toastId = toast.loading("Running full analysis...");
+    const toastId = toast.loading('Running full analysis...');
     try {
-      // Run the independent analyses in PARALLEL (was sequential await/await).
-      // caseSummary is skipped if ai_analysis already exists to avoid redundant work.
       const tasks = [];
-      if (!caseData.ai_analysis) {
+      if (!activeCase?.ai_analysis) {
         tasks.push(
           base44.functions.invoke('caseSummary', {
-            caseId: caseData.id,
-            entityName: caseData._entityName || 'MyCase'
-          })
+            caseId,
+            entityName
+          }).catch((e) => ({ data: { error: e?.message || 'case_summary_failed' } }))
         );
       }
-      tasks.push(base44.functions.invoke('blockchainMonitor', { caseId: caseData.id }));
+      tasks.push(
+        base44.functions.invoke('blockchainMonitor', { caseId })
+          .catch((e) => ({ data: { error: e?.message || 'blockchain_monitor_failed' } }))
+      );
 
       const results = await Promise.all(tasks);
-
-      // Ignore if a newer run started (race-guard).
       if (runId !== runIdRef.current) return;
 
-      // Surface any functional error from the parallel batch.
-      const failed = results.find(r => r && r.data && r.data.error);
+      const failed = results.find((r) => r && r.data && r.data.error);
       if (failed) throw new Error(failed.data.error);
 
-      toast.success(caseData.ai_analysis ? "Wallet monitoring refreshed" : "Analysis complete", { id: toastId });
-      if (onUpdate) onUpdate();
+      toast.success(activeCase?.ai_analysis ? 'Wallet monitoring refreshed' : 'Analysis complete', { id: toastId });
+      onUpdate?.();
     } catch (e) {
       if (runId === runIdRef.current) {
-        toast.error("Analysis failed: " + (e?.message || "unknown error"), { id: toastId });
+        toast.error('Analysis failed: ' + (e?.message || 'unknown error'), { id: toastId });
       }
     } finally {
       if (runId === runIdRef.current) setLoading(false);

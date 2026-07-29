@@ -69,7 +69,9 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
       toast.warning("Open a case before running AI analysis");
       return;
     }
-    if (caseData.ai_analysis && chosen.every((t) => t.key === "summary" || t.key === "fraud")) {
+    const already = Boolean(caseData.ai_analysis);
+    const onlySummary = chosen.every((t) => t.key === "summary" || t.key === "fraud");
+    if (already && onlySummary && chosen.length > 0) {
       toast.success("AI analysis already available");
       onUpdate?.();
       return;

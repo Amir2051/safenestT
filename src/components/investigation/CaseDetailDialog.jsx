@@ -689,14 +689,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
               {/* Quick Actions Panel */}
               <QuickActionsPanel 
-                  caseData={caseData} 
+                  caseData={liveCase} 
                   onUpdate={onUpdate}
                   onOpenResponse={() => setActiveTab('communications')}
                   onOpenTracking={() => setActiveTab('tracking')}
               />
 
-              {/* Consolidated AI Investigation Hub (replaces scattered duplicate AI buttons) */}
-              <InvestigationAICenter caseData={caseData} onUpdate={onUpdate} />
+              {/* Consolidated AI Investigation Hub */}
+              <InvestigationAICenter caseData={liveCase} onUpdate={onUpdate} />
 
               {/* AI Priority Badge */}
               {caseData.priority_score && (
@@ -877,6 +877,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="ai-hub" className="space-y-4">
               <InvestigationAICenter caseData={liveCase} onUpdate={onUpdate} />
               <AIFraudInsights caseData={liveCase} onUpdate={onUpdate} />
+              <WalletRiskChecker caseData={liveCase} onWalletChecked={() => onUpdate?.()} />
             </TabsContent>
 
             {/* EDIT TAB - Full Admin Case Editing */}
@@ -1838,8 +1839,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="technical-tools" className="space-y-4">
               <TrackingToolsPanel 
-                caseId={liveCase.id || caseData.id} 
-                caseTitle={liveCase.case_title || caseData.case_title || 'Case'} 
+                caseId={liveCase.id} 
+                caseTitle={liveCase.case_title || 'Case'} 
+                caseData={liveCase}
               />
             </TabsContent>
 
@@ -1876,8 +1878,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-6">
                             <AdvancedBlockchainViewer 
-                                walletAddress={caseData.scammer_wallet} 
-                                blockchain={caseData.blockchain || 'ethereum'} 
+                                walletAddress={liveCase.scammer_wallet || caseData.scammer_wallet} 
+                                blockchain={liveCase.blockchain || caseData.blockchain || 'ethereum'} 
+                                caseData={liveCase || caseData}
                             />
                         </div>
                         <div className="space-y-6">

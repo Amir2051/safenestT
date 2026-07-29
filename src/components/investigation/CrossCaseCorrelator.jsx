@@ -8,7 +8,7 @@ import { Loader2, Search, Link2, AlertCircle, FileText, User } from 'lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-export default function CrossCaseCorrelator() {
+export default function CrossCaseCorrelator({ caseData }) {
     const [searchValue, setSearchValue] = useState("");
     const [searchType, setSearchType] = useState("any");
     const [searching, setSearching] = useState(false);
@@ -21,7 +21,7 @@ export default function CrossCaseCorrelator() {
         try {
             const res = await base44.functions.invoke('advancedInvestigation', {
                 action: 'correlate',
-                data: { value: searchValue, type: searchType }
+                data: { value: searchValue, type: searchType, caseId: caseData?.id }
             });
             if (res.data.success) {
                 setResults(res.data.matches);
@@ -85,13 +85,11 @@ export default function CrossCaseCorrelator() {
                                          match.entity === 'ScamDatabase' ? <AlertCircle className="w-4 h-4 text-red-400" /> :
                                          <User className="w-4 h-4 text-purple-400" />}
                                         <div>
-                                            <p className="text-white text-sm font-semibold">{match.title}</p>
+                                            <p className="text-white text-sm font-semibold">{match.title || match.case?.title || match.id}</p>
                                             <p className="text-xs text-gray-500">{match.entity} • ID: {match.id.slice(0,8)}...</p>
                                         </div>
                                     </div>
-                                    <Badge variant="outline" className="text-[10px] border-cyan-500/30 text-cyan-400">
-                                        Matched: {match.match_type}
-                                    </Badge>
+                                    <div className="text-[10px] text-gray-400">{match.match_type || (match.related ? 'Related rule' : 'Match')}</div>
                                 </div>
                                 {/* Context snippet if available */}
                                 {match.data?.description && (
