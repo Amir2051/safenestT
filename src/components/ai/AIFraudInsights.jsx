@@ -11,13 +11,16 @@ import { toast } from "sonner";
 
 export default function AIFraudInsights({ caseData, onUpdate }) {
   const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
-    // Load existing AI analysis — only re-parse when the analysis field itself changes,
-    // not on every live-subscription tick of the parent caseData object.
-    const raw = caseData.ai_analysis;
+    // Reset analysis when the active case changes to avoid leaking
+    // stale insights across cases.
+    setAnalysis(null);
+    setOffline(false);
+
+    const raw = caseData?.ai_analysis;
     if (raw) {
       try {
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -25,13 +28,13 @@ export default function AIFraudInsights({ caseData, onUpdate }) {
       } catch (e) {
         console.error('Failed to parse AI analysis:', e);
       }
-    } else {
-      setAnalysis(null);
     }
-  }, [caseData.ai_analysis]);
+  }, [caseData?.id, caseData?.ai_analysis]);
 
   const runAnalysis = async () => {
+    if (!caseData?.id) return;
     setAnalyzing(true);
+    setOffline(false);
     try {
       const response = await base44.functions.invoke('fraudDetectionAI', {
         action: 'analyze_case',
@@ -45,12 +48,82 @@ export default function AIFraudInsights({ caseData, onUpdate }) {
         setAnalysis(response.data.analysis);
         toast.success('AI analysis completed');
         if (onUpdate) onUpdate();
+        return;
       }
+
+      setAnalysis(fallbackAnalysis(caseData));
+      toast.warning('Showing offline risk assessment');
     } catch (error) {
-      toast.error('Analysis failed: ' + error.message);
+      setAnalysis(fallbackAnalysis(caseData));
+      toast.error('Analysis failed: ' + error.message + ' — showing offline risk assessment');
+    } finally {
+      setAnalyzing(false);
+      setOffline(true);
     }
-    setAnalyzing(false);
   };
+
+  const fallbackAnalysis = (data) => ({
+    risk_level: amountRisk(data),
+    confidence_score: 65,
+    pattern_match: inferPattern(data),
+    recovery_likelihood: amountRecovery(data),
+    timeline_estimate: 14,
+    red_flags: genericFlags(data),
+    fraud_indicators: genericIndicators(data),
+    recommended_actions: genericActions(data),
+    investigation_tips: genericTips(data),
+    similar_patterns: 'Live model unavailable; rerun for pattern analysis.'
+  });
+
+  const amountRisk = (data) => {
+    const amount = Number(data?.amount_lost || data?.amount_stolen_usd || 0);
+    if (amount >= 100000) return 'critical';
+    if (amount >= 50000) return 'high';
+    if (amount >= 10000) return 'medium';
+    return 'low';
+  };
+
+  const amountRecovery = (data) => {
+    const amount = Number(data?.amount_lost || data?.amount_stolen_usd || 0);
+    if (amount >= 100000) return 'low';
+    if (amount >= 10000) return 'medium';
+    return 'medium';
+  };
+
+  const inferPattern = (data) => {
+    const type = (data?.issue_type || data?.fraud_type || '').toLowerCase();
+    if (type.includes('crypto')) return 'crypto_theft';
+    if (type.includes('romance')) return 'romance_scam';
+    if (type.includes('imperson')) return 'impersonation_scam';
+    return 'general_cyber_fraud';
+  };
+
+  const genericFlags = (data) => {
+    const flags = [
+      `Reported loss: $${Number(data?.amount_lost || data?.amount_stolen_usd || 0).toLocaleString()}`
+    ];
+    if (data?.scammer_wallet) flags.push('Scammer wallet recorded on case');
+    if (data?.monitored_wallets?.length) flags.push('Active monitored wallet tracking enabled');
+    return flags;
+  };
+
+  const genericIndicators = (data) => {
+    const indicators = ['Offline indicator profile'];
+    if ((data?.issue_type || data?.fraud_type || '').toLowerCase().includes('crypto')) indicators.push('Cryptocurrency exposure');
+    if (data?.victim_wallet) indicators.push('Victim wallet involved');
+    return indicators;
+  };
+
+  const genericActions = (data) => [
+    'Review case details and save new evidence',
+    'Confirm wallet addresses in monitoring',
+    'Escalate if live AI analysis becomes available'
+  ];
+
+  const genericTips = () => [
+    'Use blockchainMonitor to sweep for new transactions',
+    'Check scam database for known wallet hits'
+  ];
 
   if (!analysis && !analyzing) {
     return (

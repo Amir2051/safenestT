@@ -65,8 +65,12 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
 
   const runAll = async () => {
     const chosen = TASKS.filter((t) => selected[t.key]);
-    if (caseData && caseData.ai_analysis) {
-      toast.success("AI analysis already available", { id: toastId });
+    if (!caseData?.id) {
+      toast.warning("Open a case before running AI analysis");
+      return;
+    }
+    if (caseData.ai_analysis && chosen.every((t) => t.key === "summary" || t.key === "fraud")) {
+      toast.success("AI analysis already available");
       onUpdate?.();
       return;
     }

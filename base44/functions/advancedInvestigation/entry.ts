@@ -12,84 +12,89 @@ Deno.serve(async (req) => {
     const { action, data } = await req.json();
 
     if (action === 'correlate') {
-      const { value, type } = data; // type: 'wallet', 'email', 'phone', 'any'
-      if (!value) return Response.json({ error: 'Value required' }, { status: 400 });
+      const { value, type, caseId } = data;
+      const lowerValue = String(value || '').toLowerCase().trim();
+      const targetFields = type === 'wallet'
+        ? ['scammer_wallet', 'victim_wallet', 'monitored_wallets']
+        : type === 'email'
+          ? ['client_email', 'victim_email', 'scammer_info']
+          : type === 'phone'
+            ? ['phone_number', 'victim_phone', 'scammer_info']
+            : ['scammer_wallet', 'victim_wallet', 'client_email', 'victim_email', 'phone_number', 'victim_phone', 'monitored_wallets', 'description', 'scammer_info'];
 
       const matches = [];
-      const lowerValue = value.toLowerCase().trim();
-
-      // Parallel search across entities
-      const [cases, scams, investigationCases] = await Promise.all([
-        base44.asServiceRole.entities.MyCase.list(null, 1000), // Consider filtering if possible for performance
-        base44.asServiceRole.entities.ScamDatabase.list(null, 1000),
-        base44.asServiceRole.entities.InvestigationCase.list(null, 1000).catch(() => [])
-      ]);
-
-      // Helper to check fields
-      const checkMatch = (record, fields, entityType) => {
-        for (const field of fields) {
-          const val = record[field];
-          if (val) {
-            if (Array.isArray(val)) {
-              if (val.some(v => v && v.toString().toLowerCase().includes(lowerValue))) {
-                return { matched_field: field, value: val };
+      const seen = new Set();
+      const addUnique = async (entityName, options = {}) => {
+        try {
+          const items = options.filter
+            ? await base44.asServiceRole.entities[entityName].filter(options.filter, options.sort || null, options.limit || 300)
+            : await base44.asServiceRole.entities[entityName].list(options.sort || '-created_date', options.limit || 300);
+          for (const item of items) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              const match = checkMatch(item, targetFields, lowerValue);
+              if (match) {
+                matches.push({
+                  id: item.id,
+                  title: item.case_title || item.case_number || item.name || item.identifier,
+                  entity: entityName,
+                  match_type: match.matched_field,
+                  data: item,
+                  case: {
+                    id: item.id,
+                    title: item.case_title || item.case_number,
+                    case_number: item.case_number,
+                    status: item.status,
+                    fraud_type: item.issue_type || item.fraud_type || item.scam_type,
+                    amount_lost: item.amount_lost || item.amount_stolen_usd || 0
+                  }
+                });
               }
-            } else if (val.toString().toLowerCase().includes(lowerValue)) {
-              return { matched_field: field, value: val };
             }
           }
+        } catch (e) {
+          // optional entities may not exist in all deployments
         }
-        return null;
       };
 
-      // Search MyCase
-      cases.forEach(c => {
-        const match = checkMatch(c, ['scammer_wallet', 'victim_wallet', 'client_email', 'scammer_info', 'description'], 'MyCase');
-        // Deep check scammer_info object
-        let deepMatch = false;
-        if (!match && c.scammer_info) {
-             const info = JSON.stringify(c.scammer_info).toLowerCase();
-             if (info.includes(lowerValue)) deepMatch = true;
+      if (lowerValue) {
+        await addUnique('MyCase');
+        await addUnique('InvestigationCase');
+        await addUnique('ClientCase');
+        await addUnique('ScamDatabase');
+      } else if (caseId) {
+        const source = await Promise.all([
+          base44.asServiceRole.entities.MyCase.get(caseId).catch(() => null),
+          base44.asServiceRole.entities.InvestigationCase.get(caseId).catch(() => null),
+          base44.asServiceRole.entities.ClientCase.get(caseId).catch(() => null)
+        ]).then((arr) => arr.find(Boolean));
+        if (!source) {
+          return Response.json({ error: 'Source case not found for correlation' }, { status: 404 });
         }
-
-        if (match || deepMatch) {
-          matches.push({
-            entity: 'MyCase',
-            id: c.id,
-            title: c.case_title || c.case_number,
-            match_type: match ? match.matched_field : 'nested_data',
-            data: c
-          });
+        const relatedValues = new Set();
+        const pushValues = (vals) => {
+          (Array.isArray(vals) ? vals : [vals]).forEach((v) => { if (v && typeof v === 'string') relatedValues.add(v.toLowerCase()); });
+        };
+        pushValues(source.scammer_wallet);
+        pushValues(source.victim_wallet);
+        pushValues(source.monitored_wallets);
+        pushValues(source.client_email);
+        pushValues(source.victim_email);
+        pushValues(source.phone_number);
+        pushValues(source.victim_phone);
+        if (source.scammer_info) {
+          pushValues([source.scammer_info.email, source.scammer_info.phone, source.scammer_info.wallet_address]);
         }
-      });
-
-      // Search ScamDatabase
-      scams.forEach(s => {
-        const match = checkMatch(s, ['identifier', 'scam_description', 'reported_by'], 'ScamDatabase');
-        if (match) {
-          matches.push({
-            entity: 'ScamDatabase',
-            id: s.id,
-            title: `Scam Report: ${s.scam_type}`,
-            match_type: match.matched_field,
-            data: s
-          });
+        pushValues(source.description);
+        for (const term of relatedValues) {
+          await addUnique('MyCase');
+          await addUnique('InvestigationCase');
+          await addUnique('ClientCase');
+          await addUnique('ScamDatabase');
         }
-      });
-
-      // Search InvestigationCase (Legacy)
-      investigationCases.forEach(ic => {
-        const match = checkMatch(ic, ['scammer_wallet', 'victim_email', 'scammer_info'], 'InvestigationCase');
-        if (match) {
-          matches.push({
-            entity: 'InvestigationCase',
-            id: ic.id,
-            title: ic.case_title,
-            match_type: match.matched_field,
-            data: ic
-          });
-        }
-      });
+      } else {
+        return Response.json({ error: 'Value or caseId required' }, { status: 400 });
+      }
 
       return Response.json({ success: true, matches });
     }
@@ -109,8 +114,15 @@ Deno.serve(async (req) => {
 
     if (action === 'search_patterns') {
       const { query } = data;
-      // If query is provided, we could do a simple filter, or just list all for client-side filtering if list is small.
-      // For now list all 100 most recent
+      if (query) {
+        const all = await base44.asServiceRole.entities.ScamPattern.list('-created_date', 100);
+        const lower = String(query).toLowerCase();
+        const filtered = all.filter((p) => {
+          const haystack = [p.name, p.description, p.type, p.risk_level, ...(p.indicators || [])].join(' ').toLowerCase();
+          return haystack.includes(lower);
+        });
+        return Response.json({ success: true, patterns: filtered });
+      }
       const patterns = await base44.asServiceRole.entities.ScamPattern.list('-created_date', 100);
       return Response.json({ success: true, patterns });
     }
@@ -122,3 +134,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+function checkMatch(record, fields, lowerValue) {
+  for (const field of fields) {
+    const val = record[field];
+    if (val !== undefined && val !== null && String(val).toLowerCase().includes(lowerValue)) {
+      return { matched_field: field, value: val };
+    }
+  }
+  return null;
+}

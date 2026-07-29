@@ -861,7 +861,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             {/* AI INSIGHTS TAB */}
             <TabsContent value="ai-insights" className="space-y-4">
-              <AIFraudInsights caseData={caseData} onUpdate={onUpdate} />
+              <AIFraudInsights caseData={liveCase} onUpdate={onUpdate} />
               
               {/* Automated Reports Section */}
               <div className="pt-6 border-t border-purple-500/20">
@@ -869,14 +869,14 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                   <FileText className="w-5 h-5 text-cyan-400" />
                   AI-Generated Reports
                 </h3>
-                <AutomatedReportGenerator caseData={caseData} onReportGenerated={onUpdate} />
+                <AutomatedReportGenerator caseData={liveCase} onReportGenerated={onUpdate} />
               </div>
             </TabsContent>
 
             {/* AI HUB TAB - Consolidated investigation AI orchestration */}
             <TabsContent value="ai-hub" className="space-y-4">
-              <InvestigationAICenter caseData={caseData} onUpdate={onUpdate} />
-              <AIFraudInsights caseData={caseData} onUpdate={onUpdate} />
+              <InvestigationAICenter caseData={liveCase} onUpdate={onUpdate} />
+              <AIFraudInsights caseData={liveCase} onUpdate={onUpdate} />
             </TabsContent>
 
             {/* EDIT TAB - Full Admin Case Editing */}
@@ -1776,20 +1776,20 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             <TabsContent value="tracking" className="space-y-4">
               {/* AI Wallet Risk Checker */}
               <WalletRiskChecker 
+                caseData={liveCase}
                 onWalletChecked={(data) => {
-                  if (data.analysis.is_suspicious) {
+                  if (data.analysis?.is_suspicious) {
                     toast.warning('Suspicious wallet - consider adding to monitoring');
                   }
                 }}
               />
 
               <CaseWalletTracer 
-                  caseId={caseData.id} 
-                  caseData={caseData}
-                  monitoredWallets={caseData.monitored_wallets || []}
+                  caseId={liveCase.id || caseData.id} 
+                  caseData={liveCase}
+                  monitoredWallets={liveCase.monitored_wallets || []}
                   onWalletAdded={async (wallet) => {
-                      // Logic to add wallet to monitored_wallets
-                      const newWallets = [...(caseData.monitored_wallets || []), wallet];
+                      const newWallets = [...(liveCase.monitored_wallets || []), wallet];
                       await updateCaseMutation.mutateAsync({
                           monitored_wallets: newWallets,
                           last_activity: new Date().toISOString()
@@ -1806,7 +1806,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       onClick={async () => {
                           const toastId = toast.loading("Scanning blockchain...");
                           try {
-                              const res = await base44.functions.invoke('blockchainMonitor', { caseId: caseData.id });
+                              const res = await base44.functions.invoke('blockchainMonitor', { caseId: liveCase.id || caseData.id });
                               if (res.data.success) {
                                   toast.success(`Scan complete. Found ${res.data.total_new} new transactions.`, { id: toastId });
                                   if (res.data.total_new > 0 && onUpdate) onUpdate();
@@ -1822,9 +1822,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                       Run Live Monitor
                   </Button>
               </div>
-              {caseData.monitored_wallets?.length > 0 ? (
+              {liveCase.monitored_wallets?.length > 0 ? (
                 <div className="space-y-2">
-                  {caseData.monitored_wallets.map((wallet, idx) => (
+                  {liveCase.monitored_wallets.map((wallet, idx) => (
                     <div key={idx} className="p-3 bg-[#0f1419] rounded-lg border border-cyan-500/20 flex justify-between items-center">
                       <p className="text-white font-mono text-sm">{wallet}</p>
                       <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Active Monitoring</Badge>
@@ -1838,8 +1838,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
 
             <TabsContent value="technical-tools" className="space-y-4">
               <TrackingToolsPanel 
-                caseId={caseData.id} 
-                caseTitle={caseData.case_title || 'Case'} 
+                caseId={liveCase.id || caseData.id} 
+                caseTitle={liveCase.case_title || caseData.case_title || 'Case'} 
               />
             </TabsContent>
 
@@ -1848,7 +1848,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             </TabsContent>
 
             <TabsContent value="summary" className="space-y-4">
-              <CaseSummaryGenerator caseData={caseData} onUpdate={onUpdate} />
+              <CaseSummaryGenerator caseData={liveCase} onUpdate={onUpdate} />
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-4">
