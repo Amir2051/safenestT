@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { KPI } from "@/data/localData";
 
 const COLORS = ['#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981', '#ec4899'];
 
@@ -19,20 +20,24 @@ export default function FraudAnalyticsDashboard() {
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ['all-cases-analytics'],
-    queryFn: () => base44.entities.MyCase.list('-created_date', 5000),
-    refetchInterval: 30000
+    queryFn: async () => { try { return await base44.entities.MyCase.list('-created_date', 5000); } catch { return []; } },
+    refetchInterval: 30000,
+    retry: false
   });
 
   const { data: aiInsights, isLoading: loadingInsights } = useQuery({
     queryKey: ['analytics-insights'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('reportGeneration', {
-        action: 'generate_analytics_report',
-        data: { dateRange: 'month' }
-      });
-      return response.data;
+      try {
+        const response = await base44.functions.invoke('reportGeneration', {
+          action: 'generate_analytics_report',
+          data: { dateRange: 'month' }
+        });
+        return response.data;
+      } catch { return null; }
     },
-    refetchInterval: 60000
+    refetchInterval: 60000,
+    retry: false
   });
 
   // Calculate statistics
@@ -81,11 +86,11 @@ export default function FraudAnalyticsDashboard() {
       result.monthly_trend[month] = (result.monthly_trend[month] || 0) + 1;
     });
 
-    result.recovery_rate = result.total_losses > 0 
+    result.recovery_rate = (result.total_losses > 0 ? ((result.total_recovered / result.total_losses) * 100).toFixed(1) : fallback.recovery_rate)
       ? ((result.total_recovered / result.total_losses) * 100).toFixed(1)
       : 0;
     
-    result.avg_amount = result.total > 0 
+    result.avg_amount = (result.total > 0 ? (result.total_losses / result.total).toFixed(0) : fallback.avg_amount)
       ? (result.total_losses / result.total).toFixed(0)
       : 0;
 

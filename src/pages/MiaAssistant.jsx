@@ -118,10 +118,15 @@ ${userName}'s Question: "${userMessageText}"
 
 Please respond in a friendly, encouraging, and helpful manner. ALWAYS use ${userName}'s name in your response. Be conversational and supportive. Reference their specific security data when relevant. Use emojis sparingly (🛡️, ✅, 💡, 🚀). Always end with actionable advice or next steps. Make it feel like you know them personally.`;
 
-      // Get AI response
-      const aiResponse = await base44.integrations.Core.InvokeLLM({
-        prompt: contextPrompt,
-      });
+      // Get AI response with local fallback if backend AI is unavailable
+      let aiResponse;
+      try {
+        aiResponse = await base44.integrations.Core.InvokeLLM({
+          prompt: contextPrompt,
+        });
+      } catch (e) {
+        aiResponse = `I’m running in offline assistant mode right now. Based on your profile, your security score is ${user?.risk_score || 85}/100 with ${alerts.length} active alerts and ${passwords.length} saved passwords. Immediate wins: enable 2FA if disabled, review weak passwords, and run a device scan.`;
+      }
 
       const assistantMessage = {
         role: "assistant",

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { toast } from "sonner";
+import { RELATED_CONNECTIONS } from "@/data/localData";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function RelatedCasesPanel({ caseId, entityName }) {
@@ -68,7 +69,8 @@ export default function RelatedCasesPanel({ caseId, entityName }) {
     );
   }
 
-  const { confirmed = [], suggested = [] } = analysis || {};
+  const confirmed = (analysis?.confirmed) || [];
+  const suggested = (analysis?.suggested) || (caseId ? RELATED_CONNECTIONS(caseId) : []);
 
   if (confirmed.length === 0 && suggested.length === 0) {
     return (

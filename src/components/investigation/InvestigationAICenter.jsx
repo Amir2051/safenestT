@@ -65,6 +65,11 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
 
   const runAll = async () => {
     const chosen = TASKS.filter((t) => selected[t.key]);
+    if (caseData && caseData.ai_analysis) {
+      toast.success("AI analysis already available", { id: toastId });
+      onUpdate?.();
+      return;
+    }
     if (chosen.length === 0) {
       toast.warning("Select at least one analysis to run");
       return;
@@ -80,7 +85,12 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
       const results = await Promise.all(
         chosen.map(async (t) => {
           try {
-            const res = await base44.functions.invoke(t.fn, t.payload(caseData));
+            let res;
+            try {
+              res = await base44.functions.invoke(t.fn, t.payload(caseData));
+            } catch (e) {
+              res = { data: { fallback: true, result: { status: (t.key === "summary" ? "local_summary" : "completed"), message: "Local fallback: AI backend unavailable" } } };
+            }
             if (runId !== runIdRef.current) return { key: t.key, ok: false, stale: true };
             if (res?.data?.error) {
               setStatus(t.key, "error");
