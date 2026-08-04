@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import NewCaseModal from "@/components/cases/NewCaseModal";
+import CaseImportExport from "@/components/cases/CaseImportExport";
 import UserCaseDetail from "@/components/cases/UserCaseDetail.jsx";
 import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator";
 import MergeCasesDialog from "@/components/investigation/MergeCasesDialog";
@@ -213,6 +214,14 @@ export default function MyCases() {
       scammer_wallet: c.scammer_wallet,
   }));
 
+  const isAdmin = user?.role === 'admin' || user?.is_admin;
+
+  const handleImported = () => {
+    queryClient.invalidateQueries({ queryKey: ['my-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+    refetchCases();
+  };
+
   const shownCases = searchResults || displayCases;
   const activeCount = displayCases.filter(c => !['resolved','closed','recovered'].includes((c.status||'').toLowerCase())).length;
 
@@ -224,7 +233,12 @@ export default function MyCases() {
             <h1 className="text-3xl font-bold text-white">My Cases</h1>
             <p className="text-gray-400">Manage your incidents, submissions, and investigations.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <CaseImportExport
+              cases={displayCases}
+              isAdmin={isAdmin}
+              onImported={handleImported}
+            />
             <Button onClick={() => setShowMergeDialog(true)} variant="outline" className="border-white/20 text-white">Merge Cases</Button>
             <NewCaseModal />
           </div>

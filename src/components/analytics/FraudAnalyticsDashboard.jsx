@@ -86,12 +86,12 @@ export default function FraudAnalyticsDashboard() {
       result.monthly_trend[month] = (result.monthly_trend[month] || 0) + 1;
     });
 
-    result.recovery_rate = (result.total_losses > 0 ? ((result.total_recovered / result.total_losses) * 100).toFixed(1) : fallback.recovery_rate)
-      ? ((result.total_recovered / result.total_losses) * 100).toFixed(1)
+    result.recovery_rate = result.total_losses > 0
+      ? Number(((result.total_recovered / result.total_losses) * 100).toFixed(1))
       : 0;
-    
-    result.avg_amount = (result.total > 0 ? (result.total_losses / result.total).toFixed(0) : fallback.avg_amount)
-      ? (result.total_losses / result.total).toFixed(0)
+
+    result.avg_amount = result.total > 0
+      ? Number((result.total_losses / result.total).toFixed(0))
       : 0;
 
     return result;
