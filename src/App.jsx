@@ -9,6 +9,10 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import PrivacyAdvisor from './pages/PrivacyAdvisor';
 import UserExport from './pages/UserExport';
+import OperationsDashboard from './pages/platform/OperationsDashboard';
+import CasesManagement from './pages/platform/CasesManagement';
+import CaseImport from './pages/platform/CaseImport';
+import InvestigationWorkspace from './pages/platform/InvestigationWorkspace';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -53,6 +57,10 @@ const AuthenticatedApp = () => {
         ))}
         <Route path="/PrivacyAdvisor" element={<LayoutWrapper currentPageName="PrivacyAdvisor"><PrivacyAdvisor /></LayoutWrapper>} />
         <Route path="/UserExport" element={<LayoutWrapper currentPageName="UserExport"><UserExport /></LayoutWrapper>} />
+        <Route path="/OperationsDashboard" element={<LayoutWrapper currentPageName="OperationsDashboard"><OperationsDashboard /></LayoutWrapper>} />
+        <Route path="/CasesManagement" element={<LayoutWrapper currentPageName="CasesManagement"><CasesManagement /></LayoutWrapper>} />
+        <Route path="/CaseImport" element={<LayoutWrapper currentPageName="CaseImport"><CaseImport /></LayoutWrapper>} />
+        <Route path="/InvestigationWorkspace" element={<LayoutWrapper currentPageName="InvestigationWorkspace"><InvestigationWorkspace /></LayoutWrapper>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>

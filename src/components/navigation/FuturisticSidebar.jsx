@@ -9,14 +9,47 @@ import {
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
   Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle,
-  Star, Radar, Eye, Map, Cookie, Download
+  Star, Radar, Eye, Map, Cookie, Download, Gauge, FlaskConical, Network, GitBranch, Cpu, Target, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LiveClock from "@/components/shared/LiveClock";
 
+const investigationPlatformItems = [
+  {
+    id: 'ops-dashboard',
+    title: 'Operations',
+    icon: Gauge,
+    url: '/OperationsDashboard',
+    glow: 'cyan',
+    section: 'INVESTIGATION PLATFORM'
+  },
+  {
+    id: 'cases-mgmt',
+    title: 'Cases',
+    icon: Briefcase,
+    url: '/CasesManagement',
+    glow: 'cyan'
+  },
+  {
+    id: 'case-import',
+    title: 'Import Case',
+    icon: Upload,
+    url: '/CaseImport',
+    glow: 'cyan'
+  },
+  {
+    id: 'investigation-workspace',
+    title: 'Investigation',
+    icon: Target,
+    url: '/InvestigationWorkspace',
+    glow: 'purple'
+  },
+];
+
 const navigationItems = [
+  ...investigationPlatformItems,
   {
     id: 'dashboard',
     title: 'Dashboard',
