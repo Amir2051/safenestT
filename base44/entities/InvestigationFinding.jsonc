@@ -1,0 +1,204 @@
+{
+  "name": "InvestigationFinding",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related investigation case"
+    },
+    "title": {
+      "type": "string",
+      "description": "Finding title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed finding description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "fraud_indicator",
+        "wallet_activity",
+        "entity_connection",
+        "transaction_pattern",
+        "evidence_correlation",
+        "risk_factor",
+        "other"
+      ],
+      "default": "other",
+      "description": "Finding category"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Finding severity"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium",
+      "description": "Confidence level"
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "Confidence score 0-100"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "under_review",
+        "verified",
+        "rejected",
+        "superseded"
+      ],
+      "default": "proposed",
+      "description": "Review status \u2014 AI findings start as 'proposed' and are NOT auto-verified"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "hermes",
+        "investigator"
+      ],
+      "default": "hermes",
+      "description": "Who generated the finding"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Supporting evidence IDs"
+    },
+    "entity_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related entity IDs"
+    },
+    "transaction_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related transaction hashes"
+    },
+    "timeline_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related timeline events"
+    },
+    "reviewer": {
+      "type": "string",
+      "description": "Email of reviewer"
+    },
+    "reviewer_name": {
+      "type": "string",
+      "description": "Name of reviewer"
+    },
+    "review_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_notes": {
+      "type": "string",
+      "description": "Reviewer notes"
+    },
+    "review_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Full review history \u2014 every review action is auditable"
+    },
+    "hermes_raw": {
+      "type": "object",
+      "description": "Raw Hermes finding data"
+    }
+  },
+  "required": [
+    "case_id",
+    "title",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

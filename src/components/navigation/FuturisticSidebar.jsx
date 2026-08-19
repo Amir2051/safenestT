@@ -9,7 +9,7 @@ import {
   ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
   Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
   Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle,
-  Star, Radar, Eye, Map, Cookie, Download, Gauge, FlaskConical, Network, GitBranch, Cpu, Target, Upload
+  Star, Radar, Eye, Map, Cookie, Download, Gauge, FlaskConical, Network, GitBranch, Cpu, Target, Upload, ScrollText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,27 @@ const investigationPlatformItems = [
     icon: Target,
     url: '/InvestigationWorkspace',
     glow: 'purple'
+  },
+  {
+    id: 'reports-center',
+    title: 'Reports Center',
+    icon: FileText,
+    url: '/ReportsCenter',
+    glow: 'cyan'
+  },
+  {
+    id: 'audit-log',
+    title: 'Audit Log',
+    icon: ScrollText,
+    url: '/AuditLog',
+    glow: 'cyan'
+  },
+  {
+    id: 'global-search',
+    title: 'Global Search',
+    icon: Search,
+    url: '/GlobalSearch',
+    glow: 'cyan'
   },
 ];
 

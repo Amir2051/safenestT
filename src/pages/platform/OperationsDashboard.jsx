@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Briefcase, ShieldAlert, FileSearch, Activity, FileText,
-  Wifi, Plus, Upload, Gauge,
+  Wifi, Plus, Upload, Gauge, FlaskConical, ScrollText, Search,
 } from "lucide-react";
 import StatCard from "@/components/platform/StatCard";
 import SectionHeader from "@/components/platform/SectionHeader";
@@ -30,14 +30,19 @@ export default function OperationsDashboard() {
     queryFn: () => base44.entities.InvestigationCase.list("-created_date", 200),
   });
 
-  const { data: evidence = [], isLoading: evidenceLoading } = useQuery({
-    queryKey: ["ops-evidence"],
-    queryFn: () => base44.entities.CaseEvidenceFile.list("-created_date", 200),
+  const { data: evidenceItems = [], isLoading: evidenceLoading } = useQuery({
+    queryKey: ["ops-evidence-items"],
+    queryFn: () => base44.entities.EvidenceItem.list("-created_date", 200),
   });
 
-  const { data: timeline = [], isLoading: timelineLoading } = useQuery({
-    queryKey: ["ops-timeline"],
-    queryFn: () => base44.entities.CaseTimelineEvent.list("-created_date", 50),
+  const { data: findings = [], isLoading: findingsLoading } = useQuery({
+    queryKey: ["ops-findings"],
+    queryFn: () => base44.entities.InvestigationFinding.list("-created_date", 100),
+  });
+
+  const { data: auditEvents = [], isLoading: auditLoading } = useQuery({
+    queryKey: ["ops-audit"],
+    queryFn: () => base44.entities.AuditEvent.list("-created_date", 50),
   });
 
   const activeCases = cases.filter((c) =>
@@ -46,13 +51,14 @@ export default function OperationsDashboard() {
   const highRiskCases = cases.filter(
     (c) => c.priority === "high" || c.priority === "critical" || c.case_priority === "high" || c.case_priority === "critical"
   ).length;
-  const evidencePending = evidence.filter((e) => e.parse_status === "PENDING").length;
+  const evidenceReviewRequired = evidenceItems.filter((e) => e.processing_status === "review_required").length;
+  const openFindings = findings.filter((f) => f.status === "proposed" || f.status === "under_review").length;
 
   const stats = [
     { label: "Active Cases", value: activeCases, icon: Briefcase, tone: "cyan", hint: "Open investigations", loading: casesLoading },
     { label: "High-Risk Cases", value: highRiskCases, icon: ShieldAlert, tone: highRiskCases > 0 ? "red" : "slate", hint: "High / critical priority", loading: casesLoading },
-    { label: "Evidence Items", value: evidence.length, icon: FileSearch, tone: "purple", hint: `${evidencePending} awaiting processing`, loading: evidenceLoading },
-    { label: "Recent Activity", value: timeline.length, icon: Activity, tone: "green", hint: "Timeline events (50 recent)", loading: timelineLoading },
+    { label: "Evidence Requiring Review", value: evidenceReviewRequired, icon: FileSearch, tone: evidenceReviewRequired > 0 ? "amber" : "slate", hint: `${evidenceItems.length} total evidence items`, loading: evidenceLoading },
+    { label: "Open Findings", value: openFindings, icon: FlaskConical, tone: openFindings > 0 ? "amber" : "slate", hint: "Proposed or under review", loading: findingsLoading },
   ];
 
   return (
@@ -62,7 +68,8 @@ export default function OperationsDashboard() {
         description="Live operational overview of cases, evidence, and investigation activity."
         icon={Gauge}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Link to="/GlobalSearch"><Button variant="outline" size="sm" className="border-white/15 text-gray-200"><Search className="w-4 h-4 mr-1.5" />Search</Button></Link>
             <Link to="/CaseImport"><Button variant="outline" size="sm" className="border-white/15 text-gray-200"><Upload className="w-4 h-4 mr-1.5" />Import Case</Button></Link>
             <Link to="/CasesManagement"><Button size="sm" className="bg-cyan-600 hover:bg-cyan-700"><Plus className="w-4 h-4 mr-1.5" />New Case</Button></Link>
           </div>
@@ -81,22 +88,23 @@ export default function OperationsDashboard() {
 
       {/* Recent activity */}
       <div>
-        <SectionHeader title="Recent Investigation Activity" description="Latest timeline events across all cases." icon={Activity} />
-        {timelineLoading ? (
+        <SectionHeader title="Recent Investigation Activity" description="Latest audit events across all cases." icon={Activity} actions={<Link to="/AuditLog"><Button variant="ghost" size="sm" className="text-cyan-400">View all</Button></Link>} />
+        {auditLoading ? (
           <EmptyState variant="loading" title="Loading activity…" />
-        ) : timeline.length === 0 ? (
+        ) : auditEvents.length === 0 ? (
           <EmptyState
             variant="empty"
-            icon={Activity}
+            icon={ScrollText}
             title="No investigation activity yet"
-            description="Activity events appear here once investigations are run through Hermes."
+            description="Investigator actions and Hermes events appear here once investigations are performed."
           />
         ) : (
           <div className="rounded-lg border border-white/10 divide-y divide-white/5">
-            {timeline.slice(0, 8).map((ev) => (
+            {auditEvents.slice(0, 8).map((ev) => (
               <div key={ev.id} className="flex items-center gap-3 p-3">
-                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 capitalize">{ev.event_type?.replace(/_/g, " ") || "event"}</Badge>
-                <p className="text-sm text-gray-200 truncate flex-1">{ev.event_title}</p>
+                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 text-[10px]">{ev.action?.replace(/_/g, " ")}</Badge>
+                <p className="text-sm text-gray-200 truncate flex-1">{ev.description}</p>
+                <span className="text-xs text-gray-500 shrink-0">{ev.actor_name || ev.actor}</span>
                 <span className="text-xs text-gray-500 shrink-0">{ev.created_date ? new Date(ev.created_date).toLocaleString() : ""}</span>
               </div>
             ))}
@@ -130,6 +138,30 @@ export default function OperationsDashboard() {
               .map((c) => (
                 <CaseRow key={c.id} caseItem={c} />
               ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent evidence */}
+      <div>
+        <SectionHeader title="Recent Evidence" description="Latest uploaded evidence across all cases." icon={FileSearch} />
+        {evidenceLoading ? (
+          <EmptyState variant="loading" title="Loading evidence…" />
+        ) : evidenceItems.length === 0 ? (
+          <EmptyState variant="empty" icon={FileSearch} title="No evidence uploaded yet" description="Evidence files will appear here once investigators upload them." />
+        ) : (
+          <div className="rounded-lg border border-white/10 divide-y divide-white/5">
+            {evidenceItems.slice(0, 6).map((e) => (
+              <Link key={e.id} to={`/InvestigationWorkspace?case_id=${e.case_id}`} className="flex items-center gap-3 p-3 hover:bg-white/[0.02] transition-colors">
+                <FileText className="w-4 h-4 text-gray-500 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white truncate">{e.filename}</p>
+                  <p className="text-xs text-gray-500 truncate">{e.evidence_type} • {e.uploaded_by_name || e.uploaded_by || "—"}</p>
+                </div>
+                <Badge variant="outline" className={`text-[10px] ${e.processing_status === "review_required" ? "border-amber-500/30 text-amber-400" : e.processing_status === "processed" ? "border-green-500/30 text-green-400" : "border-white/10 text-gray-400"}`}>{(e.processing_status || "uploaded").replace(/_/g, " ")}</Badge>
+                <span className="text-xs text-gray-500 shrink-0">{e.created_date ? new Date(e.created_date).toLocaleDateString() : ""}</span>
+              </Link>
+            ))}
           </div>
         )}
       </div>

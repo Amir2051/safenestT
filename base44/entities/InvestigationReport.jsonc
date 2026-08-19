@@ -1,0 +1,203 @@
+{
+  "name": "InvestigationReport",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related investigation case"
+    },
+    "title": {
+      "type": "string",
+      "description": "Report title"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "investigation_report",
+        "evidence_report",
+        "blockchain_trace_report",
+        "executive_summary",
+        "finding_report"
+      ],
+      "default": "investigation_report",
+      "description": "Type of report"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "generated",
+        "exported",
+        "archived"
+      ],
+      "default": "draft",
+      "description": "Report status"
+    },
+    "generated_by": {
+      "type": "string",
+      "enum": [
+        "hermes",
+        "investigator"
+      ],
+      "default": "hermes",
+      "description": "Who generated the report"
+    },
+    "generated_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content": {
+      "type": "object",
+      "description": "Structured report content from Hermes"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "evidence",
+              "analysis",
+              "inference",
+              "hypothesis",
+              "unknown"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Report sections with classification labels (FACT, EVIDENCE, ANALYSIS, etc.)"
+    },
+    "evidence_register": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "related_findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "related_entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Evidence register attached to this report"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "Exported PDF URL"
+    },
+    "markdown_url": {
+      "type": "string",
+      "description": "Exported Markdown URL"
+    },
+    "json_url": {
+      "type": "string",
+      "description": "Exported JSON URL"
+    },
+    "conclusion": {
+      "type": "string",
+      "description": "Report conclusion"
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recommended next actions"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of report creator/requestor"
+    }
+  },
+  "required": [
+    "case_id",
+    "title",
+    "report_type"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

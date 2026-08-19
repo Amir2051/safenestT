@@ -1,0 +1,104 @@
+{
+  "name": "AuditEvent",
+  "type": "object",
+  "properties": {
+    "actor": {
+      "type": "string",
+      "description": "Email of the actor"
+    },
+    "actor_name": {
+      "type": "string",
+      "description": "Display name of the actor"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "action": {
+      "type": "string",
+      "description": "The action performed (e.g. case_created, evidence_uploaded, investigation_started)"
+    },
+    "object_type": {
+      "type": "string",
+      "description": "Type of object affected (case, evidence, target, finding, report, etc.)"
+    },
+    "object_id": {
+      "type": "string",
+      "description": "ID of the affected object"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Related case ID if applicable"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the event"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional event metadata"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "user",
+        "system",
+        "hermes"
+      ],
+      "default": "user",
+      "description": "Source of the event"
+    }
+  },
+  "required": [
+    "action",
+    "actor"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "data.actor": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

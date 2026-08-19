@@ -1,24 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import {
-  Play, Pause, Square, RefreshCw, Cpu, Clock, Target,
+  Play, Pause, Square, RefreshCw, Cpu, Target,
   FileSearch, Network, GitBranch, ShieldAlert, FlaskConical, FileText,
-  AlertCircle, ArrowLeft,
+  AlertCircle, ArrowLeft, Crosshair, ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/platform/EmptyState";
-import SectionHeader from "@/components/platform/SectionHeader";
 import { HermesAPI, getHermesStatus } from "@/lib/hermesClient";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { toast } from "sonner";
+import OverviewTab from "@/components/platform/tabs/OverviewTab";
+import EvidenceVaultTab from "@/components/platform/tabs/EvidenceVaultTab";
+import TargetsTab from "@/components/platform/tabs/TargetsTab";
+import BlockchainTab from "@/components/platform/tabs/BlockchainTab";
+import EntitiesTab from "@/components/platform/tabs/EntitiesTab";
+import TimelineTab from "@/components/platform/tabs/TimelineTab";
+import FindingsTab from "@/components/platform/tabs/FindingsTab";
+import RiskTab from "@/components/platform/tabs/RiskTab";
+import ReportsTab from "@/components/platform/tabs/ReportsTab";
+import ActivityTab from "@/components/platform/tabs/ActivityTab";
 
-/**
- * Investigation Workspace — the per-case investigation control surface.
- * Hermes is authoritative for ALL investigation output (entities,
- * relationships, timeline, findings, risk, agent activity). The frontend
- * only displays what Hermes returns. No fabricated data.
- */
+const TABS = [
+  { key: "overview", label: "Overview", icon: Target },
+  { key: "evidence", label: "Evidence", icon: FileSearch },
+  { key: "targets", label: "Targets", icon: Crosshair },
+  { key: "blockchain", label: "Blockchain", icon: Network },
+  { key: "entities", label: "Entities", icon: FileSearch },
+  { key: "timeline", label: "Timeline", icon: GitBranch },
+  { key: "findings", label: "Findings", icon: FlaskConical },
+  { key: "risk", label: "Risk", icon: ShieldAlert },
+  { key: "reports", label: "Reports", icon: FileText },
+  { key: "activity", label: "Activity", icon: ScrollText },
+];
+
 export default function InvestigationWorkspace() {
   const [params] = useSearchParams();
   const caseId = params.get("case_id");
@@ -34,53 +52,39 @@ export default function InvestigationWorkspace() {
   if (!caseId) {
     return (
       <div className="p-6 lg:p-8">
-        <EmptyState variant="empty" icon={Target} title="No case selected" description="Select a case to view its investigation workspace." action={<Link to="/CasesManagement"><Button size="sm" className="bg-cyan-600 hover:bg-cyan-700">Go to Cases</Button></Link>} />
+        <EmptyState variant="empty" icon={Target} title="No case selected" description="Select a case to view its investigation workspace."
+          action={<Link to="/CasesManagement"><Button size="sm" className="bg-cyan-600 hover:bg-cyan-700">Go to Cases</Button></Link>} />
       </div>
     );
   }
-
-  if (isLoading) {
-    return <div className="p-8"><EmptyState variant="loading" title="Loading case…" /></div>;
-  }
-
-  if (!caseItem) {
-    return <div className="p-8"><EmptyState variant="error" title="Case not found" description="This case may have been deleted or you may not have access." /></div>;
-  }
-
-  const TABS = [
-    { key: "overview", label: "Overview", icon: Target },
-    { key: "progress", label: "Progress", icon: Clock },
-    { key: "agents", label: "Agent Activity", icon: Cpu },
-    { key: "entities", label: "Entities", icon: FileSearch },
-    { key: "relationships", label: "Relationships", icon: Network },
-    { key: "timeline", label: "Timeline", icon: GitBranch },
-    { key: "findings", label: "Findings", icon: FlaskConical },
-    { key: "risk", label: "Risk", icon: ShieldAlert },
-    { key: "reports", label: "Reports", icon: FileText },
-  ];
+  if (isLoading) return <div className="p-8"><EmptyState variant="loading" title="Loading case…" /></div>;
+  if (!caseItem) return <div className="p-8"><EmptyState variant="error" title="Case not found" description="This case may have been deleted or you may not have access." /></div>;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <Link to="/CasesManagement" className="inline-flex items-center text-sm text-gray-400 hover:text-cyan-400"><ArrowLeft className="w-4 h-4 mr-1" />Back to cases</Link>
-
       <CaseHeader caseItem={caseItem} hermesState={hermes.state} />
-
       <InvestigationControls caseId={caseId} hermesState={hermes.state} />
 
-      {/* Tabs */}
       <div className="flex flex-wrap gap-1 border-b border-white/10 pb-px">
         {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-md transition-colors ${activeTab === t.key ? "text-cyan-400 border-b-2 border-cyan-400 bg-cyan-500/[0.04]" : "text-gray-400 hover:text-gray-200"}`}
-          >
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-md transition-colors ${activeTab === t.key ? "text-cyan-400 border-b-2 border-cyan-400 bg-cyan-500/[0.04]" : "text-gray-400 hover:text-gray-200"}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
       </div>
 
-      <HermesDependentPanel caseId={caseId} tab={activeTab} hermesState={hermes.state} />
+      {activeTab === "overview" && <OverviewTab caseId={caseId} caseItem={caseItem} hermesState={hermes.state} />}
+      {activeTab === "evidence" && <EvidenceVaultTab caseId={caseId} />}
+      {activeTab === "targets" && <TargetsTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "blockchain" && <BlockchainTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "entities" && <EntitiesTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "timeline" && <TimelineTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "findings" && <FindingsTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "risk" && <RiskTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "reports" && <ReportsTab caseId={caseId} hermesState={hermes.state} />}
+      {activeTab === "activity" && <ActivityTab caseId={caseId} hermesState={hermes.state} />}
     </div>
   );
 }
@@ -110,7 +114,7 @@ function CaseHeader({ caseItem, hermesState }) {
 }
 
 function InvestigationControls({ caseId, hermesState }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(null);
   const [lastResult, setLastResult] = useState(null);
 
   const run = async (fn, label) => {
@@ -119,6 +123,7 @@ function InvestigationControls({ caseId, hermesState }) {
     try {
       const res = await fn(caseId);
       setLastResult(res);
+      await logAuditEvent({ action: `investigation_${label}`, objectType: "case", objectId: caseId, caseId, description: `Investigation ${label} requested` });
     } catch (e) {
       setLastResult({ status: "error", error: e?.message || String(e) });
     } finally {
@@ -126,11 +131,12 @@ function InvestigationControls({ caseId, hermesState }) {
     }
   };
 
-  const disabled = hermesState !== "ok";
+  const disabled = hermesState !== "configured" && hermesState !== "ok";
 
   return (
     <div className="rounded-lg border border-white/10 p-4">
-      <SectionHeader title="Investigation Control" description="Start, pause, resume, or cancel the Hermes investigation for this case." icon={Cpu} />
+      <p className="text-sm font-medium text-white mb-2 flex items-center gap-2"><Cpu className="w-4 h-4 text-cyan-400" />Investigation Control</p>
+      <p className="text-xs text-gray-500 mb-3">Start, pause, resume, or cancel the Hermes investigation for this case.</p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={disabled || !!busy} onClick={() => run(HermesAPI.startInvestigation, "start")} className="bg-green-600 hover:bg-green-700"><Play className="w-4 h-4 mr-1.5" />Start</Button>
         <Button size="sm" variant="outline" disabled={disabled || !!busy} onClick={() => run(HermesAPI.pauseInvestigation, "pause")} className="border-white/15 text-gray-200"><Pause className="w-4 h-4 mr-1.5" />Pause</Button>
@@ -154,61 +160,6 @@ function InvestigationControls({ caseId, hermesState }) {
           <p className="text-xs text-green-300">Hermes responded. Investigation status: {String(lastResult.data?.status || "acknowledged")}</p>
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * Renders a Hermes-dependent panel. Until Hermes is connected and returns
- * real data, every panel shows an honest "awaiting data" state — never
- * fabricated results.
- */
-function HermesDependentPanel({ caseId, tab, hermesState }) {
-  if (hermesState !== "ok") {
-    return (
-      <EmptyState
-        variant="not_connected"
-        icon={Cpu}
-        title="Awaiting investigation data"
-        description="This panel displays real data returned by Hermes. Connect Hermes (VITE_HERMES_API_URL + hermesProxy backend function) and start an investigation to populate it."
-      />
-    );
-  }
-
-  // When Hermes is connected, fetch the relevant artifact.
-  return <LiveHermesPanel caseId={caseId} tab={tab} />;
-}
-
-function LiveHermesPanel({ caseId, tab }) {
-  const fetcher = {
-    overview: HermesAPI.getInvestigation,
-    progress: HermesAPI.getInvestigationStatus,
-    agents: HermesAPI.getAgentActivity,
-    entities: HermesAPI.getEntities,
-    relationships: HermesAPI.getRelationships,
-    timeline: HermesAPI.getTimeline,
-    findings: HermesAPI.getFindings,
-    risk: HermesAPI.getRisk,
-    reports: HermesAPI.getReports,
-  }[tab];
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["hermes", tab, caseId],
-    queryFn: () => fetcher(caseId),
-    enabled: !!caseId,
-  });
-
-  if (isLoading) return <EmptyState variant="loading" title="Querying Hermes…" />;
-  if (data?.status !== "ok") {
-    return <EmptyState variant="error" title="Hermes request failed" description={data?.error || "No response from Hermes."} />;
-  }
-  if (!data?.data || (Array.isArray(data.data) && data.data.length === 0)) {
-    return <EmptyState variant="empty" title="No data yet" description="Hermes has not produced data for this section. Start or continue the investigation." />;
-  }
-
-  return (
-    <div className="rounded-lg border border-white/10 p-4">
-      <pre className="text-xs text-gray-300 overflow-auto max-h-[500px] font-mono">{JSON.stringify(data.data, null, 2)}</pre>
     </div>
   );
 }

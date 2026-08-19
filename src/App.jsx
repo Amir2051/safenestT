@@ -13,6 +13,9 @@ import OperationsDashboard from './pages/platform/OperationsDashboard';
 import CasesManagement from './pages/platform/CasesManagement';
 import CaseImport from './pages/platform/CaseImport';
 import InvestigationWorkspace from './pages/platform/InvestigationWorkspace';
+import AuditLog from './pages/platform/AuditLog';
+import GlobalSearchPage from './pages/platform/GlobalSearchPage';
+import ReportsCenter from './pages/platform/ReportsCenter';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -61,6 +64,9 @@ const AuthenticatedApp = () => {
         <Route path="/CasesManagement" element={<LayoutWrapper currentPageName="CasesManagement"><CasesManagement /></LayoutWrapper>} />
         <Route path="/CaseImport" element={<LayoutWrapper currentPageName="CaseImport"><CaseImport /></LayoutWrapper>} />
         <Route path="/InvestigationWorkspace" element={<LayoutWrapper currentPageName="InvestigationWorkspace"><InvestigationWorkspace /></LayoutWrapper>} />
+        <Route path="/AuditLog" element={<LayoutWrapper currentPageName="AuditLog"><AuditLog /></LayoutWrapper>} />
+        <Route path="/GlobalSearch" element={<LayoutWrapper currentPageName="GlobalSearch"><GlobalSearchPage /></LayoutWrapper>} />
+        <Route path="/ReportsCenter" element={<LayoutWrapper currentPageName="ReportsCenter"><ReportsCenter /></LayoutWrapper>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>

@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select as UISelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import EmptyState from "@/components/platform/EmptyState";
 import SectionHeader from "@/components/platform/SectionHeader";
+import { detectTargetsInRecords } from "@/lib/targetDetection";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 const STEPS = ["Upload", "Parse", "Map Fields", "Preview", "Imported"];
 
@@ -55,6 +57,8 @@ export default function CaseImport() {
   const [creating, setCreating] = useState(false);
   const [createdId, setCreatedId] = useState(null);
   const [importLog, setImportLog] = useState([]);
+  const [detectedTargets, setDetectedTargets] = useState([]);
+  const [selectedTargets, setSelectedTargets] = useState(new Set());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -116,6 +120,13 @@ export default function CaseImport() {
           setMappings(auto);
         }
         setImportLog((l) => [...l, { action: "File parsed", detail: `${records.length} record(s) detected`, time: new Date().toISOString() }]);
+        // Detect possible investigation targets in the parsed data
+        const targets = detectTargetsInRecords(records);
+        setDetectedTargets(targets);
+        setSelectedTargets(new Set(targets.map((_, i) => i)));
+        if (targets.length > 0) {
+          setImportLog((l) => [...l, { action: "Targets detected", detail: `${targets.length} potential target(s) found in data`, time: new Date().toISOString() }]);
+        }
         setStep(2);
       } else {
         setParseError(result?.details || "Could not parse file. Ensure it is valid JSON or CSV.");
@@ -153,8 +164,61 @@ export default function CaseImport() {
       });
       setCreatedId(newCase.id);
       setImportLog((l) => [...l, { action: "Case created", detail: `ID: ${newCase.id}`, time: new Date().toISOString() }]);
+      await logAuditEvent({ action: "case_imported", objectType: "case", objectId: newCase.id, caseId: newCase.id, description: `Imported case: ${record?.case_title || file?.name || "Imported case"}` });
       queryClient.invalidateQueries({ queryKey: ["cases-management"] });
       queryClient.invalidateQueries({ queryKey: ["ops-cases"] });
+
+      // Create selected targets as InvestigationTarget records
+      const targetsToAdd = detectedTargets.filter((_, i) => selectedTargets.has(i));
+      if (targetsToAdd.length > 0 && fileUrl) {
+        try {
+          for (const t of targetsToAdd) {
+            await base44.entities.InvestigationTarget.create({
+              case_id: newCase.id,
+              type: t.type,
+              value: t.value,
+              source: "case_import",
+              status: "pending",
+            });
+          }
+          setImportLog((l) => [...l, { action: "Targets created", detail: `${targetsToAdd.length} target(s) added to case`, time: new Date().toISOString() }]);
+          queryClient.invalidateQueries({ queryKey: ["targets", newCase.id] });
+
+          // Also create an evidence record for the imported file
+          await base44.entities.EvidenceItem.create({
+            case_id: newCase.id,
+            filename: file?.name || "imported",
+            file_url: fileUrl,
+            evidence_type: "document",
+            source: "case_import",
+            original_import: true,
+            original_filename: file?.name,
+            processing_status: "uploaded",
+            uploaded_at: new Date().toISOString(),
+            detected_targets: targetsToAdd,
+          });
+          setImportLog((l) => [...l, { action: "Evidence preserved", detail: `Original file stored as evidence`, time: new Date().toISOString() }]);
+        } catch (e) {
+          setImportLog((l) => [...l, { action: "Target creation warning", detail: `Some targets could not be created: ${e?.message || e}`, time: new Date().toISOString() }]);
+        }
+      } else if (fileUrl) {
+        // No targets detected, but still preserve the file as evidence
+        try {
+          await base44.entities.EvidenceItem.create({
+            case_id: newCase.id,
+            filename: file?.name || "imported",
+            file_url: fileUrl,
+            evidence_type: "document",
+            source: "case_import",
+            original_import: true,
+            original_filename: file?.name,
+            processing_status: "uploaded",
+            uploaded_at: new Date().toISOString(),
+          });
+          setImportLog((l) => [...l, { action: "Evidence preserved", detail: `Original file stored as evidence`, time: new Date().toISOString() }]);
+        } catch (e) { /* evidence preservation is best-effort */ }
+      }
+
       setStep(4);
     } catch (err) {
       setParseError("Failed to create case: " + (err?.message || err));
@@ -165,7 +229,7 @@ export default function CaseImport() {
 
   const reset = () => {
     setFile(null); setFileUrl(null); setParsed(null); setMappings({});
-    setParseError(null); setCreatedId(null); setImportLog([]); setStep(0);
+    setParseError(null); setCreatedId(null); setImportLog([]); setDetectedTargets([]); setSelectedTargets(new Set()); setStep(0);
   };
 
   return (
@@ -266,6 +330,28 @@ export default function CaseImport() {
             ))}
             {!previewRecord() && <p className="text-sm text-gray-500">No mapped fields — a case will be created with the filename as the title and this file attached as evidence.</p>}
           </div>
+
+          {/* Detected targets */}
+          {detectedTargets.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-300 mb-2">Detected investigation targets ({detectedTargets.length}):</p>
+              <p className="text-xs text-gray-500 mb-2">Review and select which targets to add. These will be created as pending targets — Hermes analyzes them during investigation.</p>
+              <div className="space-y-1 max-h-48 overflow-auto rounded-md border border-white/10">
+                {detectedTargets.map((t, i) => (
+                  <label key={i} className="flex items-center gap-3 p-2 hover:bg-white/[0.03] cursor-pointer">
+                    <input type="checkbox" checked={selectedTargets.has(i)} onChange={() => {
+                      const next = new Set(selectedTargets);
+                      if (next.has(i)) next.delete(i); else next.add(i);
+                      setSelectedTargets(next);
+                    }} className="accent-cyan-500" />
+                    <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 text-[10px]">{t.type.replace(/_/g, " ")}</Badge>
+                    <span className="text-sm text-gray-200 font-mono truncate">{t.value}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button onClick={handleCreate} disabled={creating} className="bg-green-600 hover:bg-green-700">
               {creating ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Creating…</> : <><FileCheck2 className="w-4 h-4 mr-1.5" />Create Case</>}

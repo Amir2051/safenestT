@@ -1,0 +1,226 @@
+{
+  "name": "EvidenceItem",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related investigation case"
+    },
+    "filename": {
+      "type": "string",
+      "description": "Original filename"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Stored file URL"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "document",
+        "screenshot",
+        "transaction",
+        "communication",
+        "video",
+        "audio",
+        "blockchain",
+        "image",
+        "archive",
+        "other"
+      ],
+      "default": "document",
+      "description": "Category of evidence"
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "MIME type of the file"
+    },
+    "file_size": {
+      "type": "number",
+      "description": "Size in bytes"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual_upload",
+        "case_import",
+        "hermes_extraction"
+      ],
+      "default": "manual_upload",
+      "description": "How the evidence was added"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Email of uploader"
+    },
+    "uploaded_by_name": {
+      "type": "string",
+      "description": "Name of uploader"
+    },
+    "uploaded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "file_hash": {
+      "type": "string",
+      "description": "Checksum/hash of the file"
+    },
+    "description": {
+      "type": "string",
+      "description": "Investigator description of the evidence"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Investigator tags"
+    },
+    "processing_status": {
+      "type": "string",
+      "enum": [
+        "uploaded",
+        "queued",
+        "processing",
+        "processed",
+        "failed",
+        "review_required"
+      ],
+      "default": "uploaded",
+      "description": "Hermes processing status"
+    },
+    "processing_notes": {
+      "type": "string",
+      "description": "Notes from Hermes processing"
+    },
+    "original_import": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was from a case import"
+    },
+    "original_filename": {
+      "type": "string",
+      "description": "Original filename if renamed"
+    },
+    "related_targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of related investigation targets"
+    },
+    "related_entities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of related entities (Hermes)"
+    },
+    "related_findings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of related findings"
+    },
+    "detected_targets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Targets auto-detected from evidence content (wallets, hashes, domains, etc.)"
+    },
+    "audit_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Access and modification audit trail"
+    }
+  },
+  "required": [
+    "case_id",
+    "filename",
+    "file_url"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    }
+  }
+}

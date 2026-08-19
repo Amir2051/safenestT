@@ -1,0 +1,168 @@
+{
+  "name": "InvestigationTarget",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related investigation case"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "wallet_address",
+        "transaction_hash",
+        "token_contract",
+        "blockchain_network",
+        "domain",
+        "url",
+        "ip_address",
+        "email",
+        "phone",
+        "username",
+        "social_identifier",
+        "other"
+      ],
+      "description": "Type of investigation target"
+    },
+    "value": {
+      "type": "string",
+      "description": "The target value (address, hash, URL, etc.)"
+    },
+    "network": {
+      "type": "string",
+      "description": "Blockchain network if applicable (ethereum, bitcoin, polygon, etc.)"
+    },
+    "label": {
+      "type": "string",
+      "description": "Investigator-assigned label"
+    },
+    "description": {
+      "type": "string",
+      "description": "Notes about this target"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "case_import",
+        "evidence_extraction",
+        "hermes"
+      ],
+      "default": "manual",
+      "description": "How the target was created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "queued",
+        "processing",
+        "analyzed",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Hermes investigation status for this target"
+    },
+    "hermes_result": {
+      "type": "object",
+      "description": "Raw Hermes analysis result when available"
+    },
+    "last_investigated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "investigation_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times submitted to Hermes"
+    },
+    "related_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related evidence IDs"
+    },
+    "related_entities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related entity IDs (Hermes)"
+    }
+  },
+  "required": [
+    "case_id",
+    "type",
+    "value"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        },
+        {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
+          }
+        }
+      ]
+    }
+  }
+}

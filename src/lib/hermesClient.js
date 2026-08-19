@@ -16,6 +16,7 @@
  *  - "not_connected"      : VITE_HERMES_API_URL is not set.
  *  - "backend_unavailable": URL is set, but the hermesProxy backend
  *                            function is not accessible (plan limitation).
+ *  - "configured"         : URL is set; calls will be proxied server-side.
  *  - "ok"                 : Hermes responded.
  *
  * This layer NEVER fabricates data. When unavailable, it returns a
@@ -49,7 +50,6 @@ export async function hermesRequest(path, { method = "GET", body } = {}) {
   }
 
   try {
-    // Lazy import to avoid hard dependency at module load.
     const { base44 } = await import("@/api/base44Client");
     const res = await base44.functions.invoke(HERMES_PROXY_FUNCTION, {
       path,
@@ -58,7 +58,6 @@ export async function hermesRequest(path, { method = "GET", body } = {}) {
     });
     return { status: "ok", data: res?.data ?? res };
   } catch (err) {
-    // Backend function missing/inaccessible (plan limitation) or call failed.
     const msg = String(err?.message || err || "");
     const backendMissing =
       msg.includes("not found") ||
@@ -75,6 +74,7 @@ export async function hermesRequest(path, { method = "GET", body } = {}) {
 
 // ── Investigation lifecycle ───────────────────────────────────────────────
 export const HermesAPI = {
+  // Investigation orchestration
   startInvestigation: (caseId, payload = {}) =>
     hermesRequest(`/api/cases/${caseId}/investigation`, { method: "POST", body: payload }),
   getInvestigation: (caseId) =>
@@ -88,24 +88,48 @@ export const HermesAPI = {
   cancelInvestigation: (caseId) =>
     hermesRequest(`/api/cases/${caseId}/investigation`, { method: "POST", body: { action: "cancel" } }),
 
-  // Intelligence artifacts (authoritative — never computed client-side)
-  getEntities: (caseId) => hermesRequest(`/api/cases/${caseId}/entities`),
-  getTimeline: (caseId) => hermesRequest(`/api/cases/${caseId}/timeline`),
-  getRelationships: (caseId) => hermesRequest(`/api/cases/${caseId}/relationships`),
-  getFindings: (caseId) => hermesRequest(`/api/cases/${caseId}/findings`),
-  getRisk: (caseId) => hermesRequest(`/api/cases/${caseId}/risk`),
-  getReports: (caseId) => hermesRequest(`/api/cases/${caseId}/reports`),
-  getAgentActivity: (caseId) => hermesRequest(`/api/cases/${caseId}/agent-activity`),
-
-  // Evidence + targets ingestion
-  addEvidence: (caseId, evidence) =>
+  // Evidence (Hermes-side processing; local storage is in EvidenceItem entity)
+  getEvidence: (caseId) => hermesRequest(`/api/cases/${caseId}/evidence`),
+  submitEvidence: (caseId, evidence) =>
     hermesRequest(`/api/cases/${caseId}/evidence`, { method: "POST", body: evidence }),
-  addTargets: (caseId, targets) =>
-    hermesRequest(`/api/cases/${caseId}/targets`, { method: "POST", body: { targets } }),
 
-  // Blockchain
+  // Targets
+  getTargets: (caseId) => hermesRequest(`/api/cases/${caseId}/targets`),
+  submitTarget: (caseId, target) =>
+    hermesRequest(`/api/cases/${caseId}/targets`, { method: "POST", body: { target } }),
+
+  // Blockchain analysis
+  getBlockchainTrace: (caseId) => hermesRequest(`/api/cases/${caseId}/blockchain/trace`),
   traceBlockchain: (caseId, target) =>
     hermesRequest(`/api/cases/${caseId}/blockchain/trace`, { method: "POST", body: target }),
+  getWallet: (caseId, address) =>
+    hermesRequest(`/api/cases/${caseId}/blockchain/wallet/${address}`),
+  getTransactions: (caseId) =>
+    hermesRequest(`/api/cases/${caseId}/blockchain/transactions`),
+
+  // Entity intelligence
+  getEntities: (caseId) => hermesRequest(`/api/cases/${caseId}/entities`),
+  getRelationships: (caseId) => hermesRequest(`/api/cases/${caseId}/relationships`),
+
+  // Timeline
+  getTimeline: (caseId) => hermesRequest(`/api/cases/${caseId}/timeline`),
+
+  // Findings + Review
+  getFindings: (caseId) => hermesRequest(`/api/cases/${caseId}/findings`),
+  submitFindingReview: (caseId, findingId, review) =>
+    hermesRequest(`/api/cases/${caseId}/findings/${findingId}/review`, { method: "POST", body: review }),
+  getReviews: (caseId) => hermesRequest(`/api/cases/${caseId}/reviews`),
+
+  // Risk
+  getRisk: (caseId) => hermesRequest(`/api/cases/${caseId}/risk`),
+
+  // Reports
+  getReports: (caseId) => hermesRequest(`/api/cases/${caseId}/reports`),
+  createReport: (caseId, payload) =>
+    hermesRequest(`/api/cases/${caseId}/reports`, { method: "POST", body: payload }),
+
+  // Agent activity
+  getAgentActivity: (caseId) => hermesRequest(`/api/cases/${caseId}/agent-activity`),
 };
 
 export default HermesAPI;
