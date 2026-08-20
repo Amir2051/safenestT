@@ -5,34 +5,37 @@
  * evidence processing, blockchain analysis, entities, relationships,
  * timeline, findings, risk, reports, and agent execution.
  *
+ * API: Nous Research Inference API (OpenAI-compatible)
+ *   Base URL: https://inference-api.nousresearch.com/v1
+ *   Models:   nousresearch/hermes-4-70b, nousresearch/hermes-4-405b
+ *   Auth:     Bearer token (stored as HERMES_API_KEY secret — server-side only)
+ *
  * SECURITY RULES (enforced by design):
- *  - No API keys or credentials ever live in frontend code.
+ *  - The HERMES_API_KEY is stored as an app secret and is NEVER exposed
+ *    to the browser. It is only accessible in backend functions via
+ *    process.env.HERMES_API_KEY.
  *  - All Hermes calls are proxied through a Base44 backend function
- *    (`hermesProxy`) so secrets stay server-side.
- *  - The frontend only reads a public base URL (VITE_HERMES_API_URL)
- *    to know whether Hermes is configured.
+ *    (`hermesProxy`) so the key stays server-side.
+ *  - The base URL below is public (not secret) and safe to reference here.
  *
  * CONNECTION STATES:
- *  - "not_connected"      : VITE_HERMES_API_URL is not set.
- *  - "backend_unavailable": URL is set, but the hermesProxy backend
- *                            function is not accessible (plan limitation).
- *  - "configured"         : URL is set; calls will be proxied server-side.
+ *  - "backend_unavailable": The hermesProxy backend function is not
+ *                            accessible (requires Builder+ plan).
+ *  - "configured"         : API endpoint is known; calls will be proxied.
  *  - "ok"                 : Hermes responded.
  *
  * This layer NEVER fabricates data. When unavailable, it returns a
  * structured not-connected result so the UI can show honest states.
  */
 
-const HERMES_BASE_URL = import.meta.env.VITE_HERMES_API_URL || "";
+const HERMES_BASE_URL = "https://inference-api.nousresearch.com/v1";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
+export const HERMES_DEFAULT_MODEL = "nousresearch/hermes-4-70b";
 
 /**
  * Returns the current Hermes connection descriptor.
  */
 export function getHermesStatus() {
-  if (!HERMES_BASE_URL) {
-    return { connected: false, state: "not_connected", baseUrl: null };
-  }
   return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL };
 }
 
