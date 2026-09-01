@@ -49,6 +49,7 @@ import AutomatedReportGenerator from "../reports/AutomatedReportGenerator";
 import PaymentTransactionsView from "../cases/PaymentTransactionsView";
 import TransactionsList from "../cases/TransactionsList";
 import SharedFilesPanel from "../cases/SharedFilesPanel";
+import CaseDownloadButtons from "./CaseDownloadButtons";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -404,50 +405,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
               </div>
               </div>
               <div className="flex justify-end pr-8 pb-2">
-              <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="text-xs h-7 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 gap-2"
-                  onClick={async () => {
-                      const toastId = toast.loading("Generating PDF Report...");
-                      try {
-                          const response = await base44.functions.invoke('generateCasePdf', { caseId: caseData.id });
-
-                          if (response.headers && response.headers['content-type'] === 'application/json') {
-                              // It's an error JSON
-                              if (response.data.error) throw new Error(response.data.error);
-                          }
-
-                          // If successful blob
-                          const blob = new Blob([response.data], { type: 'application/pdf' });
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `Case_${caseData.case_number || 'Report'}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                          toast.success("Report Downloaded", { id: toastId });
-                      } catch (e) {
-                          // Try to read error from blob if it exists
-                          let errorMsg = "Generation failed";
-                          if (e.response?.data instanceof ArrayBuffer) {
-                              try {
-                                  const dec = new TextDecoder();
-                                  const text = dec.decode(e.response.data);
-                                  const json = JSON.parse(text);
-                                  errorMsg = json.error || errorMsg;
-                              } catch(err){}
-                          } else if (e.message) {
-                              errorMsg = e.message;
-                          }
-                          toast.error(errorMsg, { id: toastId });
-                      }
-                  }}
-              >
-                  <FileText className="w-3 h-3" />
-                  Download PDF Report
-              </Button>
+                <CaseDownloadButtons caseData={liveCase} size="sm" variant="outline" />
               </div>
               </DialogHeader>
 

@@ -7,7 +7,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Upload, FileDown, FileJson, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Upload, FileDown, FileJson, FileSpreadsheet, Printer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CSV_FIELDS = [
@@ -72,9 +72,49 @@ function downloadFile(content, filename, mime) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = filename;
+  a.style.display = "none";
   document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Delay cleanup so the download actually starts on all browsers
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+function casesToHTML(cases) {
+  const rows = cases.map(c => `
+    <tr>
+      <td>${c.case_number || "—"}</td>
+      <td>${c.client_name || "—"}</td>
+      <td>${c.client_email || "—"}</td>
+      <td>${c.issue_type || "—"}</td>
+      <td>${c.status || "—"}</td>
+      <td>${c.urgency || "—"}</td>
+      <td>${(c.amount_lost || 0).toLocaleString()} ${c.cryptocurrency || "USD"}</td>
+      <td>${c.scammer_wallet || "—"}</td>
+      <td>${(c.description || "").slice(0, 120)}${(c.description || "").length > 120 ? "…" : ""}</td>
+      <td>${c.created_date ? new Date(c.created_date).toLocaleDateString() : "—"}</td>
+    </tr>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SafeNestT Case Export</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 24px; color: #111; }
+    h1 { font-size: 20px; border-bottom: 2px solid #06b6d4; padding-bottom: 8px; }
+    .meta { color: #666; font-size: 13px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #0f1419; color: #fff; padding: 8px; text-align: left; }
+    td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    tr:nth-child(even) { background: #f9fafb; }
+    @media print { body { margin: 0; } .no-print { display: none; } }
+  </style></head><body>
+    <h1>SafeNestT — Case Export</h1>
+    <div class="meta">${cases.length} cases • Generated ${new Date().toLocaleString()}</div>
+    <table><thead><tr>
+      <th>Case #</th><th>Client</th><th>Email</th><th>Issue Type</th><th>Status</th><th>Urgency</th><th>Amount</th><th>Scammer Wallet</th><th>Description</th><th>Created</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <div class="no-print" style="margin-top:24px">
+      <button onclick="window.print()" style="padding:10px 20px;background:#06b6d4;color:#000;border:none;border-radius:6px;font-weight:600;cursor:pointer">Print this page</button>
+    </div>
+  </body></html>`;
 }
 
 export default function CaseImportExport({ cases, isAdmin, onImported }) {
@@ -82,6 +122,22 @@ export default function CaseImportExport({ cases, isAdmin, onImported }) {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const fileRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!cases || cases.length === 0) {
+      toast.error("No cases to print");
+      return;
+    }
+    const html = casesToHTML(cases);
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.error("Pop-up blocked — allow pop-ups to print");
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
 
   const handleExport = () => {
     if (!cases || cases.length === 0) {
@@ -200,10 +256,15 @@ export default function CaseImportExport({ cases, isAdmin, onImported }) {
             <p className="text-xs text-gray-400 mb-3">
               {isAdmin ? "Download all visible cases." : "Download your own cases."}
             </p>
-            <Button onClick={handleExport} disabled={exporting} size="sm" className="bg-cyan-500 text-black hover:bg-cyan-400">
-              {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : format === "csv" ? <FileSpreadsheet className="w-4 h-4 mr-2" /> : <FileJson className="w-4 h-4 mr-2" />}
-              Download {format.toUpperCase()}
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleExport} disabled={exporting} size="sm" className="bg-cyan-500 text-black hover:bg-cyan-400">
+                {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : format === "csv" ? <FileSpreadsheet className="w-4 h-4 mr-2" /> : <FileJson className="w-4 h-4 mr-2" />}
+                Download {format.toUpperCase()}
+              </Button>
+              <Button onClick={handlePrint} size="sm" variant="outline" className="border-cyan-500/40 text-cyan-400">
+                <Printer className="w-4 h-4 mr-2" /> Print
+              </Button>
+            </div>
           </div>
 
           {isAdmin && (
