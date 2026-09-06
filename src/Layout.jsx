@@ -84,7 +84,11 @@ export default function Layout({ children, currentPageName }) {
 
     base44.entities.SystemConfig.list()
       .then(configs => setMaintenanceMode(configs[0]?.under_construction || false))
-      .catch(() => {});
+      .catch(() => {
+        // Non-admins can't read SystemConfig (admin-only RLS).
+        // Maintenance mode is admin-toggled; non-admins simply see the app.
+        setMaintenanceMode(false);
+      });
   }, []);
 
   // ── Chat widget (IONOS) — consent-gated ───────────────────────────────────

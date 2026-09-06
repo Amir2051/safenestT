@@ -27,20 +27,27 @@ export default function AdminKeyEntry({ onAuthorized }) {
         console.log("User not authenticated", e);
       }
       
-      // Fetch the master key
-      let correctKeys = ['Mouna1122@', 'Ronzoro']; // Added Ronzoro as valid fallback
+      // Fetch the master key from DB (admin-only via RLS).
+      // SECURITY: Never hardcode keys in the client bundle — they are extractable.
+      let correctKeys = [];
       try {
-        // Use filter for precision and trim db value
         const configs = await base44.entities.SystemConfig.filter({ key_name: 'admin_master_key' });
         if (configs && configs.length > 0 && configs[0].value) {
           correctKeys.push(configs[0].value);
         }
       } catch (err) {
-        console.log("Could not fetch system config, using fallback", err);
+        // RLS now blocks non-admin reads; if this fails, no key is accepted.
+        console.warn("Could not fetch admin master key (access denied)", err);
       }
 
-      // Robust comparison: trim whitespace and case-insensitive
-      if (correctKeys.some(k => k.trim().toLowerCase() === key.trim().toLowerCase())) {
+      if (correctKeys.length === 0) {
+        setError('Authorization unavailable. Contact the workspace admin.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Exact match (case-sensitive) — do not lowercase/trim away security.
+      if (correctKeys.some(k => k === key)) {
         // Log success only if we have a user context (optional)
         if (user) {
           try {

@@ -34,9 +34,14 @@ export const HERMES_DEFAULT_MODEL = "nousresearch/hermes-4-70b";
 
 /**
  * Returns the current Hermes connection descriptor.
+ *
+ * NOTE: The Hermes backend is accessed through the `hermesProxy` backend
+ * function, which requires a Builder+ plan. Until that function is
+ * deployed and accessible, we report `not_connected` honestly so the UI
+ * never claims Hermes is live when it cannot reach the engine.
  */
 export function getHermesStatus() {
-  return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL };
+  return { connected: false, state: "backend_unavailable", baseUrl: HERMES_BASE_URL };
 }
 
 /**
