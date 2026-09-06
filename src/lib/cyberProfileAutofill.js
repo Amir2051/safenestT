@@ -200,13 +200,14 @@ export async function generateCyberProfileDraftClient(caseId) {
       "None found",
   ].join("\n");
 
-  // 4. Decide whether AI extraction has any source text to work with
+  // 4. Decide whether AI extraction has any source text to work with.
+  //    A bare `issue_type` classification is not enough — we need narrative,
+  //    suspect, timeline, or note content to actually extract from.
   const hasSource = !!(
-    caseData.description ||
+    (caseData.description && caseData.description.trim()) ||
     caseData.scammer_info ||
     (caseData.timeline && caseData.timeline.length) ||
-    (caseData.case_notes && caseData.case_notes.length) ||
-    caseData.issue_type
+    (caseData.case_notes && caseData.case_notes.length)
   );
 
   // 5. AI extraction (real InvokeLLM call — identical prompt + schema to the

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Save, FileText, Lock, ShieldAlert, User, Database, Eye, Layers } from "lucide-react";
 import AdvancedBlockchainViewer from "./AdvancedBlockchainViewer.jsx";
+import { generateCyberProfileDraftClient, mergeProfiles } from "@/lib/cyberProfileAutofill";
 import { toast } from "sonner";
 
 export default function CyberFraudProfileBuilder({ caseId, caseData }) {
@@ -96,20 +97,27 @@ export default function CyberFraudProfileBuilder({ caseId, caseData }) {
     }
   }, [existingProfile, isLoading, caseData]);
 
-  // Auto-Fill Function
+  // Auto-Fill Function — runs client-side (backend function is unavailable on
+  // the current plan). Merges extracted fields into the existing profile,
+  // preserving any values the user has already entered.
   const handleAutoFill = async () => {
       setIsAutoFilling(true);
       const toastId = toast.loading("Analyzing case data and generating profile...");
       try {
-          const res = await base44.functions.invoke('generateCyberProfileDraft', { caseId });
-          if (res.data.success) {
-              setProfile(res.data.profile);
-              toast.success("Profile Auto-Generated Successfully", { id: toastId });
+          const { profile: draft, extracted } = await generateCyberProfileDraftClient(caseId);
+          const merged = mergeProfiles(profile, draft);
+          setProfile(merged);
+
+          if (!extracted) {
+              toast.warning("No extractable case information was found. Existing fields were preserved.", { id: toastId });
           } else {
-              throw new Error(res.data.error || "Generation failed");
+              toast.success("Profile auto-filled. Existing fields were preserved; empty fields were populated.", { id: toastId });
           }
       } catch (err) {
-          toast.error("Auto-Fill Failed: " + err.message, { id: toastId });
+          const reason = err?.message?.includes("402")
+              ? "This feature requires a plan upgrade. Contact the workspace admin."
+              : (err?.message || "Extraction failed");
+          toast.error("Auto-Fill Failed: " + reason, { id: toastId });
       }
       setIsAutoFilling(false);
   };
