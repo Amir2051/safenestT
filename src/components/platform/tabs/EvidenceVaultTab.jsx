@@ -197,7 +197,7 @@ function UploadModal({ caseId, onClose, onDone }) {
   );
 }
 
-function EvidenceDetail({ item, onClose, onDelete, qc, caseId }) {
+function EvidenceDetail({ item, linkedFindings, onClose, onDelete, qc, caseId }) {
   const [newTag, setNewTag] = useState("");
 
   const addTag = async () => {
@@ -252,6 +252,19 @@ function EvidenceDetail({ item, onClose, onDelete, qc, caseId }) {
               <Button size="sm" variant="outline" onClick={addTag} className="border-white/15 text-gray-200 h-8"><Tag className="w-3 h-3 mr-1" />Add</Button>
             </div>
           </div>
+          {linkedFindings?.length > 0 && (
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Linked Findings</p>
+              <div className="space-y-1">
+                {linkedFindings.map((f) => (
+                  <div key={f.id} className="text-xs text-gray-300 rounded border border-white/5 bg-black/20 px-2 py-1.5">
+                    <span className="text-white">{f.title}</span>
+                    <span className="text-gray-500"> · {f.severity} · {(f.status || "").replace(/_/g, " ")}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {(item.detected_targets?.length > 0) && (
             <div>
               <p className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Detected Targets</p>

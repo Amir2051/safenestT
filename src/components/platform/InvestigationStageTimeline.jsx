@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, XCircle, Loader2, Circle, ChevronRight } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,9 +53,7 @@ export default function InvestigationStageTimeline({ phases, statuses = {}, runn
               </button>
               {!last && (
                 <div className="flex items-center self-center px-1">
-                  <div className={cn("h-0.5 w-6 sm:w-8 rounded-full", nextDone ? "bg-green-500/50" : "bg-white/10")}>
-                    <ChevronRight className="hidden" />
-                  </div>
+                  <div className={cn("h-0.5 w-6 sm:w-8 rounded-full", nextDone ? "bg-green-500/50" : "bg-white/10")} />
                 </div>
               )}
             </li>

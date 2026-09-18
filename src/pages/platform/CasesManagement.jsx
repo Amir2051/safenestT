@@ -131,6 +131,11 @@ export default function CasesManagement() {
 function CaseListItem({ caseItem, onDelete }) {
   const priority = caseItem.priority || caseItem.case_priority || "medium";
   const priTone = priority === "critical" ? "text-red-400 border-red-500/30" : priority === "high" ? "text-amber-400 border-amber-500/30" : priority === "medium" ? "text-cyan-400 border-cyan-500/30" : "text-gray-400 border-white/15";
+  const risk = caseItem.workflow?.risk_score;
+  const riskLevel = caseItem.workflow?.risk_level;
+  const riskTone = riskLevel === "critical" ? "border-red-500/30 text-red-400" : riskLevel === "high" ? "border-amber-500/30 text-amber-400" : riskLevel === "medium" ? "border-cyan-500/30 text-cyan-400" : "border-white/15 text-gray-400";
+  const progress = Math.min(100, Math.max(0, Number(caseItem.investigation_progress) || 0));
+  const amount = Number(caseItem.amount_stolen_usd) || 0;
   return (
     <Link to={`/InvestigationWorkspace?case_id=${caseItem.id}`} className="flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors group">
       <div className="w-9 h-9 rounded-md border border-white/10 bg-white/[0.02] flex items-center justify-center shrink-0">
@@ -141,12 +146,16 @@ function CaseListItem({ caseItem, onDelete }) {
           <p className="text-sm font-medium text-white truncate">{caseItem.case_title || "Untitled case"}</p>
           {caseItem.case_number && <span className="text-xs text-gray-600 font-mono">#{caseItem.case_number}</span>}
         </div>
-        <p className="text-xs text-gray-500 truncate">
-          {caseItem.fraud_type?.replace(/_/g, " ") || "investigation"} • {caseItem.victim_name || "—"} • {new Date(caseItem.created_date).toLocaleDateString()}
+        <p className="text-xs text-gray-500 truncate capitalize">
+          {caseItem.fraud_type?.replace(/_/g, " ") || "investigation"} • {caseItem.victim_name || "—"} • {new Date(caseItem.created_date).toLocaleDateString()}{amount > 0 ? ` • $${amount.toLocaleString()}` : ""}
         </p>
+        <div className="h-1 rounded-full bg-white/5 mt-2 overflow-hidden max-w-xs">
+          <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500" style={{ width: `${progress}%` }} />
+        </div>
       </div>
+      {risk != null && <Badge variant="outline" className={`text-[10px] ${riskTone}`}>Risk {risk}</Badge>}
       <Badge variant="outline" className={`capitalize ${priTone}`}>{priority}</Badge>
-      <Badge variant="outline" className="capitalize border-white/10 text-gray-400">{(caseItem.status || "new").replace(/_/g, " ")}</Badge>
+      <Badge variant="outline" className="capitalize border-white/10 text-gray-400 hidden sm:inline-flex">{(caseItem.status || "new").replace(/_/g, " ")}</Badge>
       <button
         onClick={(e) => { e.preventDefault(); onDelete(caseItem.id); }}
         className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 transition-colors"

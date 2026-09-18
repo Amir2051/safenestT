@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Play, Loader2, Cpu, CheckCircle2, XCircle, History, Activity,
+  Loader2, Cpu, CheckCircle2, XCircle, History, Activity,
   RotateCw, Lock, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { PROVIDERS, getProvider } from "@/lib/investigationAI";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
-import { PHASE_STATUS_STYLES } from "@/components/platform/investigationStyles";
 import { toast } from "sonner";
 
 const TEST_TONE = {
