@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import MaintenanceBanner from "@/components/shared/MaintenanceBanner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -322,11 +321,34 @@ export default function Dashboard() {
       {/* Real-time message notifications */}
       <MessageNotifications user={user} />
       
-      {/* Maintenance Banner */}
-      <MaintenanceBanner />
-      
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+      {/* Dashboard Header */}
+      <Card className="bg-gradient-to-br from-[#111b27] via-[#0f1720] to-[#0a1018] border-cyan-500/20 overflow-hidden relative">
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <CardContent className="p-6 lg:p-7 relative">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  SECURITY OPERATIONS
+                </span>
+                <span className="text-xs text-gray-500 font-mono hidden sm:inline">MIA ENGINE ONLINE</span>
+              </div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-white flex items-center gap-3">
+                Welcome back, {user.full_name?.split(' ')[0] || 'there'}
+                <span className="text-2xl">👋</span>
+              </h1>
+              <p className="text-gray-400 mt-2">
+                Your SafeNestT security command center • Last scan: <LiveClock />
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="hidden sm:block px-4 py-2.5 rounded-xl bg-black/30 border border-white/10">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Protection</p>
+                <p className="text-sm font-semibold text-green-400 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> Active
+                </p>
+              </div>
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             Welcome back, {user.full_name?.split(' ')[0] || 'there'}
@@ -353,7 +375,10 @@ export default function Dashboard() {
             </>
           )}
         </Button>
-      </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Getting Started Checklist - Show for new users */}
       {user && !user.onboarding_completed && (
