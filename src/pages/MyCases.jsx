@@ -39,7 +39,7 @@ import MasterCaseGenerator from "@/components/investigation/MasterCaseGenerator"
 import MergeCasesDialog from "@/components/investigation/MergeCasesDialog";
 import AIPriorityBadge from "@/components/ai/AIPriorityBadge";
 import { DialogTrigger } from "@/components/ui/dialog";
-import { MY_CASES, GLOBAL_CASES } from "@/data/myCasesData";
+
 
 export default function MyCases() {
   const [user, setUser] = useState(null);
@@ -77,7 +77,7 @@ export default function MyCases() {
   }, []);
 
   useEffect(() => {
-    if (user?.is_admin || user?.role === 'admin') setAdminGlobal(true);
+    setAdminGlobal(!!(user?.is_admin || user?.role === 'admin'));
   }, [user]);
 
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
@@ -91,7 +91,6 @@ export default function MyCases() {
     refetchInterval: false,
     refetchOnWindowFocus: false,
     retry: false,
-    initialData: MY_CASES
   });
 
   const { data: clientCases = [] } = useQuery({
@@ -116,7 +115,7 @@ export default function MyCases() {
   }, [myCases, clientCases]);
 
   const displayCases = useMemo(() => {
-    const source = adminGlobal ? [...allRawCases, ...GLOBAL_CASES] : allRawCases;
+    const source = allRawCases;
     return source.filter(c => {
       const q = (globalSearch || "").toLowerCase();
       if (!q) return true;
@@ -255,13 +254,9 @@ export default function MyCases() {
           <CardContent className="p-4 flex flex-col md:flex-row gap-3">
             <Input placeholder="Search cases, emails, wallets..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} className="bg-[#0f1419] border-white/10 text-white" />
             <div className="flex gap-2">
-              <Select value={adminGlobal ? '1' : '0'} onValueChange={v => setAdminGlobal(v === '1')}>
-                <SelectTrigger className="w-[180px] bg-[#0f1419] border-white/10 text-white"><SelectValue placeholder="Scope" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">My Cases</SelectItem>
-                  <SelectItem value="1">Admin: All</SelectItem>
-                </SelectContent>
-              </Select>
+              {isAdmin && (
+                <div className="px-3 py-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 text-xs font-mono text-cyan-300">ADMIN CASE SCOPE: ALL</div>
+              )}
               <Button onClick={handleRefresh} variant="outline" className="border-white/20 text-white"><RefreshCw className="w-4 h-4 mr-2" /> Refresh</Button>
             </div>
           </CardContent>
