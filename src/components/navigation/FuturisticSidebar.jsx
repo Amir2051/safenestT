@@ -62,14 +62,29 @@ const SECTIONS = [
   },
 ];
 
-const ADMIN_ITEMS = [
-  { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard" },
-  { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals" },
-  { id: "admin-invites", label: "Invite Manager", icon: Mail, path: "/AdminInvites" },
-  { id: "admin-reports", label: "Reports & KPIs", icon: Activity, path: "/AdminReports" },
-  { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions" },
-  { id: "admin-deed-fraud", label: "Deed Fraud Cases", icon: Home, path: "/AdminDeedFraud" },
-  { id: "admin-export", label: "Export Users", icon: Download, path: "/UserExport" },
+const ADMIN_SECTIONS = [
+  {
+    label: "Operations",
+    items: [
+      { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
+      { id: "admin-reports", label: "Reports & KPIs", icon: Activity, path: "/AdminReports", glow: "cyan" },
+    ],
+  },
+  {
+    label: "Users",
+    items: [
+      { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals", glow: "blue" },
+      { id: "admin-invites", label: "Invite Manager", icon: Mail, path: "/AdminInvites", glow: "blue" },
+      { id: "admin-export", label: "Export Users", icon: Download, path: "/UserExport", glow: "gray" },
+    ],
+  },
+  {
+    label: "Billing & Content",
+    items: [
+      { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
+      { id: "admin-deed-fraud", label: "Deed Fraud Cases", icon: Home, path: "/AdminDeedFraud", glow: "emerald" },
+    ],
+  },
 ];
 
 const glowBar = {
@@ -107,6 +122,9 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   }, [collapsed]);
 
   const isAdmin = user?.role === "admin" || user?.is_admin;
+  // Case-Workspace deep links (Evidence / Findings / Reports) only make sense
+  // when a case is actually open — hide that section entirely otherwise.
+  const hasCaseContext = new URLSearchParams(location.search).get("case_id");
 
   const go = (item) => {
     let url = item.path;
@@ -202,21 +220,28 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-4">
-          {SECTIONS.map((section) => (
-            <div key={section.label}>
-              <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
-              <div className="space-y-1">
-                {section.items.map((item) => <NavButton key={item.id} item={item} />)}
+          {SECTIONS.map((section) => {
+            if (section.label === "Case Workspace" && !hasCaseContext) return null;
+            return (
+              <div key={section.label}>
+                <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
+                <div className="space-y-1">
+                  {section.items.map((item) => <NavButton key={item.id} item={item} />)}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isAdmin && (
-            <div className="pt-3 border-t border-white/5">
-              <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/80 ${collapsed ? "lg:hidden" : ""}`}>Admin Zone</p>
-              <div className="space-y-1">
-                {ADMIN_ITEMS.map((item) => <NavButton key={item.id} item={item} />)}
-              </div>
+            <div className="pt-3 border-t border-white/5 space-y-4">
+              {ADMIN_SECTIONS.map((section) => (
+                <div key={section.label}>
+                  <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/80 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
+                  <div className="space-y-1">
+                    {section.items.map((item) => <NavButton key={item.id} item={item} />)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </nav>
