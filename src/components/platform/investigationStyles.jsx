@@ -50,6 +50,28 @@ export const RISK_LEVEL_STYLES = {
   low: "border-green-500/30 text-green-400 bg-green-500/10",
 };
 
+export const PHASE_STATUS_STYLES = {
+  pending: "border-white/15 text-gray-500 bg-white/5",
+  running: "border-cyan-500/30 text-cyan-400 bg-cyan-500/10",
+  completed: "border-green-500/30 text-green-400 bg-green-500/10",
+  failed: "border-red-500/30 text-red-400 bg-red-500/10",
+};
+
+// Multi-agent analysis specialists — colors + labels for agent badges.
+export const AGENT_STYLES = {
+  blockchain_analyst: { label: "Blockchain", cls: "border-orange-500/30 text-orange-400 bg-orange-500/10" },
+  financial_analyst: { label: "Financial", cls: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" },
+  behavioral_analyst: { label: "Behavioral", cls: "border-violet-500/30 text-violet-400 bg-violet-500/10" },
+};
+
+export function AgentBadge({ agent }) {
+  const a = AGENT_STYLES[agent];
+  if (!a) {
+    return <Badge variant="outline" className="text-[9px] border-white/15 text-gray-400 capitalize">{String(agent || "agent").replace(/_/g, " ")}</Badge>;
+  }
+  return <Badge variant="outline" className={`text-[9px] capitalize ${a.cls}`}>{a.label}</Badge>;
+}
+
 export function SeverityBadge({ severity }) {
   const cls = SEVERITY_STYLES[severity] || SEVERITY_STYLES.medium;
   return <Badge variant="outline" className={`capitalize ${cls}`}>{severity}</Badge>;

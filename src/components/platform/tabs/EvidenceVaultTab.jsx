@@ -32,6 +32,12 @@ export default function EvidenceVaultTab({ caseId }) {
     queryFn: () => base44.entities.EvidenceItem.filter({ case_id: caseId }, "-created_date", 200),
     enabled: !!caseId,
   });
+  const { data: findings = [] } = useQuery({
+    queryKey: ["findings-for-evidence", caseId],
+    queryFn: () => base44.entities.InvestigationFinding.filter({ case_id: caseId }, "-created_date", 200),
+    enabled: !!caseId,
+  });
+  const findingsFor = (evidenceId) => findings.filter((f) => (f.evidence_refs || []).includes(evidenceId));
 
   const filtered = evidence.filter((e) => {
     if (typeFilter !== "all" && e.evidence_type !== typeFilter) return false;
@@ -98,9 +104,10 @@ export default function EvidenceVaultTab({ caseId }) {
                     <p className="text-xs text-gray-500">{formatBytes(item.file_size)} • {item.mime_type || item.evidence_type}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <Badge variant="outline" className={`text-[10px] ${statusCls}`}>{(item.processing_status || "uploaded").replace(/_/g, " ")}</Badge>
                   {item.tags?.slice(0, 2).map((t) => <Badge key={t} variant="outline" className="text-[10px] border-white/10 text-gray-500">{t}</Badge>)}
+                  {findingsFor(item.id).length > 0 && <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-400">{findingsFor(item.id).length} finding(s)</Badge>}
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); handleDelete(item); }} className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
@@ -110,7 +117,7 @@ export default function EvidenceVaultTab({ caseId }) {
       )}
 
       {showUpload && <UploadModal caseId={caseId} onClose={() => setShowUpload(false)} onDone={() => { setShowUpload(false); qc.invalidateQueries({ queryKey: ["evidence", caseId] }); }} />}
-      {detailItem && <EvidenceDetail item={detailItem} onClose={() => setDetailItem(null)} onDelete={() => { handleDelete(detailItem); setDetailItem(null); }} qc={qc} caseId={caseId} />}
+      {detailItem && <EvidenceDetail item={detailItem} linkedFindings={findingsFor(detailItem.id)} onClose={() => setDetailItem(null)} onDelete={() => { handleDelete(detailItem); setDetailItem(null); }} qc={qc} caseId={caseId} />}
     </div>
   );
 }

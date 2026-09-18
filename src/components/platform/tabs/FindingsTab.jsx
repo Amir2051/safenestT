@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import EmptyState from "@/components/platform/EmptyState";
-import { SeverityBadge, ConfidenceBadge, FINDING_STATUS_STYLES } from "@/components/platform/investigationStyles";
+import { SeverityBadge, ConfidenceBadge, AgentBadge, FINDING_STATUS_STYLES } from "@/components/platform/investigationStyles";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { getCurrentUser } from "@/lib/tenantContext";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ function FindingsList({ findings, caseId, evidence }) {
                   {finding.description && <p className="text-xs text-gray-400">{finding.description}</p>}
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 flex-wrap">
                     {finding.category && <span className="capitalize">{finding.category.replace(/_/g, " ")}</span>}
-                    {finding.hermes_raw?.agent && <Badge variant="outline" className="text-[9px] border-purple-500/30 text-purple-400 capitalize">{String(finding.hermes_raw.agent).replace(/_/g, " ")}</Badge>}
+                    {finding.hermes_raw?.agent && <AgentBadge agent={finding.hermes_raw.agent} />}
                     {finding.evidence_refs?.length > 0 && <span>{finding.evidence_refs.length} evidence ref(s)</span>}
                     {finding.created_date && <span>{new Date(finding.created_date).toLocaleString()}</span>}
                   </div>
