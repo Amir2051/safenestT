@@ -270,18 +270,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             );
           })}
 
-          {false && isAdmin && (
-            <div className="pt-3 border-t border-white/5 space-y-4">
-              {ADMIN_SECTIONS.map((section) => (
-                <div key={section.label}>
-                  <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/80 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
-                  <div className="space-y-1">
-                    {section.items.map((item) => <NavButton key={item.id} item={item} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </nav>
 
         {/* Footer */}
