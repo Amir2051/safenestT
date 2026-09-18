@@ -143,6 +143,51 @@ function titlesSimilar(a, b) {
   return na === nb || na.includes(nb) || nb.includes(na);
 }
 
+// Real OSINT tool dispatch — runs alongside the LLM analysts. Each finding is
+// derived from real provider data (Etherscan/Alchemy/DNS/RDAP/…) and tagged
+// with the producing tool. LLM responses are never treated as OSINT evidence.
+async function runOsintAnalysis(ctx) {
+  const findings = [];
+  const toolsRun = [];
+  for (const t of ctx.targets || []) {
+    const providers = (t.type === "domain" || t.type === "url") ? ["dns", "rdap"]
+      : (t.type === "wallet_address" || t.type === "token_contract" || t.type === "transaction_hash") ? ["etherscan", "alchemy"]
+      : (t.type === "ip_address") ? ["virustotal", "shodan"]
+      : (t.type === "email") ? ["virustotal"] : [];
+    for (const p of providers) {
+      toolsRun.push({ target: t.value, provider: p });
+      try {
+        const res = await base44.functions.invoke("osintProxy", { provider: p, target: t.value, network: t.network });
+        const body = res?.data ?? res;
+        if (!body || body.ok === false || body.status === "error") continue;
+        const data = body.data || {};
+        let title = "", description = "", category = "entity_connection", severity = "low", confidence = "high";
+        if (p === "etherscan" || p === "alchemy") {
+          const eth = data.balance_eth != null ? data.balance_eth : null;
+          const txs = data.recent_txs?.length || data.tx_count || 0;
+          title = `On-chain data for ${String(t.value).slice(0, 14)}… (${p})`;
+          description = `${p} reports balance ${eth ?? "unknown"} ETH and ${txs} recent transactions. Source: ${data.source || p}. Real OSINT data — not LLM inference.`;
+          category = "wallet_activity"; severity = txs > 10 ? "medium" : "low";
+        } else if (p === "dns") {
+          title = `DNS records for ${t.value}`;
+          description = `A: ${(data.records?.A || []).join(", ") || "none"}. NS: ${(data.records?.NS || []).join(", ") || "none"}. MX: ${(data.records?.MX || []).join(", ") || "none"}. Source: Cloudflare DoH.`;
+          category = "entity_connection";
+        } else if (p === "rdap") {
+          const ev = (data.events || []).map((e) => `${e.event}:${e.date}`).join("; ");
+          title = `WHOIS/RDAP for ${t.value}`;
+          description = `Registered: ${data.registered}. Status: ${(data.status || []).join(", ")}. Events: ${ev}. Nameservers: ${(data.nameservers || []).join(", ")}. Source: RDAP.`;
+          category = "entity_connection";
+        } else {
+          title = `${p} data for ${t.value}`;
+          description = JSON.stringify(data).slice(0, 300);
+        }
+        findings.push({ title, description, category, severity, confidence, supporting_evidence: [], agent: "osint", source_tool: p, target_value: t.value });
+      } catch (e) { /* skip individual provider failure — surfaced via toolsRun */ }
+    }
+  }
+  return { findings, toolsRun };
+}
+
 async function runAnalysisMultiAgent(caseItem, ctx, provider, model) {
   const runs = await Promise.allSettled(
     ANALYSTS.map((analyst) => {
@@ -159,6 +204,9 @@ async function runAnalysisMultiAgent(caseItem, ctx, provider, model) {
     })
   );
 
+  // Real OSINT tool dispatch — runs alongside the LLM analysts.
+  const osint = await runOsintAnalysis(ctx).catch(() => ({ findings: [], toolsRun: [] }));
+
   const agentsRun = [];
   const agentsFailed = [];
   const merged = [];
@@ -172,6 +220,11 @@ async function runAnalysisMultiAgent(caseItem, ctx, provider, model) {
       agentsFailed.push({ analyst, error: String(r.reason?.message || r.reason || "").slice(0, 200) });
     }
   }
+  // Merge real OSINT findings, tagged with their producing tool.
+  if (osint.findings.length) {
+    agentsRun.push("osint");
+    osint.findings.forEach((f) => merged.push(f));
+  }
 
   // De-duplicate by title similarity (keep first)
   const deduped = [];
@@ -179,15 +232,17 @@ async function runAnalysisMultiAgent(caseItem, ctx, provider, model) {
     if (!deduped.some((d) => titlesSimilar(d.title, f.title))) deduped.push(f);
   }
 
-  if (agentsFailed.length === ANALYSTS.length) {
-    throw new Error(`All ${ANALYSTS.length} analysts failed: ${agentsFailed.map((a) => a.error).join(" | ")}`);
+  // Only fail if every LLM analyst failed AND no OSINT data was returned.
+  if (agentsFailed.length === ANALYSTS.length && osint.findings.length === 0) {
+    throw new Error(`All ${ANALYSTS.length} analysts failed and no OSINT data: ${agentsFailed.map((a) => a.error).join(" | ")}`);
   }
 
   return {
     findings: deduped,
-    rationale: `Multi-agent analysis: ${agentsRun.length}/${ANALYSTS.length} analysts returned findings (${agentsRun.join(", ")}).${agentsFailed.length ? ` Failed: ${agentsFailed.map((a) => a.analyst).join(", ")}.` : ""}`,
+    rationale: `Multi-agent analysis: ${agentsRun.length} agent(s) returned findings (${agentsRun.join(", ")}).${agentsFailed.length ? ` Failed: ${agentsFailed.map((a) => a.analyst).join(", ")}.` : ""} OSINT tools run: ${osint.toolsRun.length}.`,
     agents_run: agentsRun,
     agents_failed: agentsFailed,
+    osint_tools_run: osint.toolsRun,
   };
 }
 
@@ -417,7 +472,7 @@ async function persistPhaseOutputs({ caseId, phase, output, tenantId, runId, use
         status: "proposed",
         source: "ai_run",
         evidence_refs: evidenceRefs,
-        hermes_raw: { agent: f.agent || "multi_agent", supporting_evidence_raw: f.supporting_evidence || [] },
+        hermes_raw: { agent: f.agent || "multi_agent", source_tool: f.source_tool, target_value: f.target_value, supporting_evidence_raw: f.supporting_evidence || [] },
         generating_run_id: runId,
       }).catch(() => null);
       if (rec) created.push(rec.id);

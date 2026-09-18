@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import {
   Target, FileSearch, Crosshair, Network, GitBranch, FlaskConical,
-  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase,
+  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase, Satellite,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/platform/EmptyState";
-import { getHermesStatus } from "@/lib/hermesClient";
+import { getHermesStatus, pingHermes } from "@/lib/hermesClient";
+import OsintProvidersTab from "@/components/platform/tabs/OsintProvidersTab";
 import { PHASES } from "@/lib/investigationRunner";
 import InvestigationRunnerPanel from "@/components/platform/InvestigationRunnerPanel";
 import OverviewTab from "@/components/platform/tabs/OverviewTab";
@@ -32,6 +33,7 @@ const TABS = [
   { key: "activity", label: "Activity", icon: ScrollText },
   { key: "blockchain", label: "Blockchain", icon: Network },
   { key: "entities", label: "Entities", icon: FileSearch },
+  { key: "osint", label: "OSINT", icon: Satellite },
   { key: "timeline", label: "Timeline", icon: GitBranch },
 ];
 
@@ -41,6 +43,14 @@ export default function InvestigationWorkspace() {
   const requestedTab = params.get("tab");
   const [activeTab, setActiveTab] = useState(requestedTab || "overview");
   const hermes = getHermesStatus();
+  // Real Hermes reachability — pings the server-side proxy. Falls back to the
+  // static "configured" state while the first check is in flight.
+  const { data: hermesHealth } = useQuery({
+    queryKey: ["hermes-health"],
+    queryFn: () => pingHermes(),
+    staleTime: 30000,
+  });
+  const hermesState = hermesHealth?.state || hermes.state;
 
   // Honour a ?tab= deep link (Evidence / Findings & Risk / Reports & Dossiers).
   useEffect(() => {
@@ -117,7 +127,7 @@ export default function InvestigationWorkspace() {
         <ArrowLeft className="w-4 h-4 mr-1.5" />Back to cases
       </Link>
 
-      <CaseHeader caseItem={caseItem} hermesState={hermes.state} />
+      <CaseHeader caseItem={caseItem} hermesState={hermesState} hermesMs={hermesHealth?.ms} />
 
       <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} />
 
@@ -142,16 +152,17 @@ export default function InvestigationWorkspace() {
       </nav>
 
       <div className="pt-1">
-        {activeTab === "overview" && <OverviewTab caseId={caseId} caseItem={caseItem} hermesState={hermes.state} />}
+        {activeTab === "overview" && <OverviewTab caseId={caseId} caseItem={caseItem} hermesState={hermesState} />}
         {activeTab === "evidence" && <EvidenceVaultTab caseId={caseId} />}
-        {activeTab === "targets" && <TargetsTab caseId={caseId} hermesState={hermes.state} />}
+        {activeTab === "targets" && <TargetsTab caseId={caseId} hermesState={hermesState} />}
         {activeTab === "findings" && <FindingsTab caseId={caseId} />}
-        {activeTab === "risk" && <RiskTab caseId={caseId} caseItem={caseItem} hermesState={hermes.state} />}
-        {activeTab === "reports" && <ReportsTab caseId={caseId} hermesState={hermes.state} />}
-        {activeTab === "activity" && <ActivityTab caseId={caseId} hermesState={hermes.state} />}
-        {activeTab === "blockchain" && <BlockchainTab caseId={caseId} hermesState={hermes.state} />}
-        {activeTab === "entities" && <EntitiesTab caseId={caseId} hermesState={hermes.state} />}
-        {activeTab === "timeline" && <TimelineTab caseId={caseId} hermesState={hermes.state} />}
+        {activeTab === "risk" && <RiskTab caseId={caseId} caseItem={caseItem} hermesState={hermesState} />}
+        {activeTab === "reports" && <ReportsTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "activity" && <ActivityTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "blockchain" && <BlockchainTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "entities" && <EntitiesTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "timeline" && <TimelineTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "osint" && <OsintProvidersTab caseId={caseId} />}
       </div>
     </div>
   );
@@ -170,7 +181,7 @@ const RISK_TONE = {
   low: "text-green-400",
 };
 
-function CaseHeader({ caseItem, hermesState }) {
+function CaseHeader({ caseItem, hermesState, hermesMs }) {
   const priority = caseItem.priority || caseItem.case_priority || "medium";
   const wf = caseItem.workflow || {};
   const phase = wf.current_phase || "planning";
@@ -224,7 +235,11 @@ function CaseHeader({ caseItem, hermesState }) {
         <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Victim: <span className="text-gray-300">{caseItem.victim_name || "—"}</span></span>
         {caseItem.assigned_investigator && <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Investigator: <span className="text-gray-300">{caseItem.assigned_investigator}</span></span>}
         <span className="ml-auto font-mono text-gray-600">ID: {caseItem.id?.slice(-8)}</span>
-        {hermesState !== "ok" && <span className="text-amber-400">Hermes: {hermesState.replace(/_/g, " ")}</span>}
+        {hermesState === "ok" ? (
+          <span className="text-green-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Hermes connected{hermesMs != null ? ` · ${hermesMs}ms` : ""}</span>
+        ) : (
+          <span className="text-amber-400">Hermes: {hermesState.replace(/_/g, " ")}</span>
+        )}
       </div>
     </div>
   );

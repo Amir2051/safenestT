@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import EmptyState from "@/components/platform/EmptyState";
-import { HermesAPI } from "@/lib/hermesClient";
 import { TARGET_STATUS_STYLES } from "@/components/platform/investigationStyles";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { ensureTenant } from "@/lib/tenantContext";
@@ -44,18 +43,34 @@ export default function TargetsTab({ caseId, hermesState }) {
 
   const investigate = async (target) => {
     setInvestigating(target.id);
+    const providers = (target.type === "domain" || target.type === "url") ? ["dns", "rdap"]
+      : (target.type === "wallet_address" || target.type === "token_contract" || target.type === "transaction_hash") ? ["etherscan", "alchemy"]
+      : target.type === "ip_address" ? ["virustotal", "shodan"]
+      : target.type === "email" ? ["virustotal"] : [];
     try {
-      const res = await HermesAPI.submitTarget(caseId, { type: target.type, value: target.value, network: target.network });
+      let okCount = 0;
+      const results = [];
+      for (const p of providers) {
+        try {
+          const res = await base44.functions.invoke("osintProxy", { provider: p, target: target.value, network: target.network });
+          const body = res?.data ?? res;
+          const ok = body && body.ok !== false && body.status !== "error";
+          if (ok) okCount++;
+          results.push({ provider: p, ok, configured: body?.configured, error: body?.error });
+        } catch (e) {
+          results.push({ provider: p, ok: false, error: e?.message || String(e) });
+        }
+      }
       await base44.entities.InvestigationTarget.update(target.id, {
-        status: res.status === "ok" ? "processing" : "failed",
+        status: okCount > 0 ? "analyzed" : (providers.length === 0 ? "pending" : "failed"),
         last_investigated: new Date().toISOString(),
         investigation_count: (target.investigation_count || 0) + 1,
+        hermes_result: { osint: results, investigated_at: new Date().toISOString() },
       });
-      await logAuditEvent({ action: "target_investigated", objectType: "target", objectId: target.id, caseId, description: `Submitted target to Hermes: ${target.value}` });
-      if (res.status === "not_connected") toast.error("Hermes not connected. Connect Hermes to investigate targets.");
-      else if (res.status === "backend_unavailable") toast.error("Hermes backend unavailable. Upgrade your plan.");
-      else if (res.status === "ok") toast.success("Target submitted to Hermes for investigation.");
-      else toast.error("Investigation failed: " + (res.error || "unknown"));
+      await logAuditEvent({ action: "target_investigated", objectType: "target", objectId: target.id, caseId, description: `OSINT on ${target.value}: ${okCount}/${providers.length} providers` });
+      if (providers.length === 0) toast.info("No OSINT provider available for this target type.");
+      else if (okCount > 0) toast.success(`OSINT complete (${okCount}/${providers.length} providers)`);
+      else toast.error("OSINT failed for all available providers");
       qc.invalidateQueries({ queryKey: ["targets", caseId] });
     } catch (e) {
       toast.error("Failed: " + (e.message || e));

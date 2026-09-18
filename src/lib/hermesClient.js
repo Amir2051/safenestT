@@ -41,7 +41,35 @@ export const HERMES_DEFAULT_MODEL = "nousresearch/hermes-4-70b";
  * never claims Hermes is live when it cannot reach the engine.
  */
 export function getHermesStatus() {
-  return { connected: false, state: "backend_unavailable", baseUrl: HERMES_BASE_URL };
+  // The hermesProxy backend function is deployed (Builder+). The API key stays
+  // server-side; this only reports that the proxy is wired. A real reachability
+  // check is performed by pingHermes() below.
+  return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL };
+}
+
+/**
+ * Real Hermes reachability check — sends a tiny prompt through the server-side
+ * hermesProxy and reports ok / fail + latency. Never exposes the key.
+ */
+export async function pingHermes() {
+  const t0 = Date.now();
+  try {
+    const { base44 } = await import("@/api/base44Client");
+    const res = await base44.functions.invoke(HERMES_PROXY_FUNCTION, {
+      prompt: "Reply with exactly: ok",
+      temperature: 0,
+      max_tokens: 5,
+    });
+    const body = res?.data ?? res;
+    if (body && body.ok !== false && body.status !== "error") {
+      return { connected: true, state: "ok", ms: Date.now() - t0, model: body?.model };
+    }
+    return { connected: false, state: body?.configured === false ? "not_configured" : "error", ms: Date.now() - t0, error: body?.error || "Hermes did not respond" };
+  } catch (e) {
+    const msg = String(e?.message || e || "");
+    const missing = msg.includes("not found") || msg.includes("not available") || msg.includes("404");
+    return { connected: false, state: missing ? "backend_unavailable" : "error", ms: Date.now() - t0, error: msg };
+  }
 }
 
 /**

@@ -1,0 +1,143 @@
+{
+  "name": "GraphEdge",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    },
+    "case_id": {
+      "type": "string",
+      "description": "ID of the related investigation case"
+    },
+    "source_node": {
+      "type": "string",
+      "description": "Source node value (must match a GraphNode.value)"
+    },
+    "target_node": {
+      "type": "string",
+      "description": "Target node value (must match a GraphNode.value)"
+    },
+    "relationship_type": {
+      "type": "string",
+      "enum": [
+        "sends_funds",
+        "receives_funds",
+        "controls",
+        "owned_by",
+        "communicates_with",
+        "linked_to",
+        "transacted_with",
+        "other"
+      ],
+      "description": "Relationship type between the two nodes"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable relationship label"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Related transaction hash if applicable"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount transferred if applicable"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Supporting evidence IDs"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "hermes_raw": {
+      "type": "object",
+      "description": "Raw extraction output from Hermes for this edge"
+    },
+    "generation_run_id": {
+      "type": "string",
+      "description": "InvestigationRun id that produced this edge (auditable lineage)"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "case_id",
+    "source_node",
+    "target_node",
+    "relationship_type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "tenant_role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "investigator"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

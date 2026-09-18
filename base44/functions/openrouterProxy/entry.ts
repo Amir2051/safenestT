@@ -6,9 +6,19 @@ import { secrets } from "base44:runtime";
  * investigation engine. Keeps OPENROUTER_API_KEY server-side (never returned
  * to the browser). Takes { model, prompt, response_json_schema, temperature,
  * max_tokens } and returns { ok: true, data } on success or { ok: false,
- * error } on failure. Retries 429/5xx and abort/timeout errors up to 3 times
- * with backoff; 90s per-request timeout via AbortController.
+ * error } on failure.
+ *
+ * SECURITY: Only approved FREE OpenRouter models are permitted. Paid model IDs
+ * are rejected server-side with 403. "automatic"/missing model resolves to the
+ * primary free model. On a model-not-found (404) error, the proxy falls back to
+ * the secondary free model once.
+ * Retries 429/5xx and abort/timeout errors up to 3 times with backoff; 60s
+ * per-request timeout via AbortController.
  */
+const PRIMARY = "stepfun/step-3.5-flash:free";
+const FALLBACK = "nvidia/nemotron-3-super-120b-a12b:free";
+const FREE_MODELS = new Set([PRIMARY, FALLBACK, "nvidia/nemotron-3.5-lightning:free"]);
+
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -26,7 +36,11 @@ export default async function (req) {
       return Response.json({ ok: false, error: "OPENROUTER_API_KEY secret is not configured" }, { status: 500 });
     }
 
-    const useModel = model || "openai/gpt-4o-mini";
+    let useModel = model && model !== "automatic" ? model : PRIMARY;
+    if (!FREE_MODELS.has(useModel)) {
+      return Response.json({ ok: false, error: `Model "${useModel}" is not permitted. Only approved free OpenRouter models are allowed.` }, { status: 403 });
+    }
+
     let finalPrompt = prompt;
     if (response_json_schema) {
       finalPrompt +=
@@ -34,17 +48,21 @@ export default async function (req) {
         JSON.stringify(response_json_schema);
     }
 
-    const body = {
-      model: useModel,
-      messages: [{ role: "user", content: finalPrompt }],
-      temperature: typeof temperature === "number" ? temperature : 0.2,
+    const buildBody = (m) => {
+      const b: any = {
+        model: m,
+        messages: [{ role: "user", content: finalPrompt }],
+        temperature: typeof temperature === "number" ? temperature : 0.2,
+      };
+      if (typeof max_tokens === "number") b.max_tokens = max_tokens;
+      if (response_json_schema) b.response_format = { type: "json_object" };
+      return b;
     };
-    if (typeof max_tokens === "number") body.max_tokens = max_tokens;
-    if (response_json_schema) body.response_format = { type: "json_object" };
 
-    const TIMEOUT_MS = 45000;
-    const MAX_ATTEMPTS = 2;
-    let lastErr = null;
+    const TIMEOUT_MS = 60000;
+    const MAX_ATTEMPTS = 3;
+    let lastErr: string | null = null;
+    let triedFallback = false;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const controller = new AbortController();
@@ -58,7 +76,7 @@ export default async function (req) {
             "HTTP-Referer": "https://safenestt.base44.app",
             "X-Title": "SafeNestT Investigation Engine",
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify(buildBody(useModel)),
           signal: controller.signal,
         });
         clearTimeout(timer);
@@ -68,30 +86,38 @@ export default async function (req) {
           const content = json?.choices?.[0]?.message?.content;
           if (response_json_schema && content) {
             try {
-              return Response.json({ ok: true, data: JSON.parse(content) });
+              return Response.json({ ok: true, data: JSON.parse(content), model: useModel });
             } catch {
-              return Response.json({ ok: true, data: content });
+              return Response.json({ ok: true, data: content, model: useModel });
             }
           }
-          return Response.json({ ok: true, data: content });
+          return Response.json({ ok: true, data: content, model: useModel });
         }
 
         const text = await res.text().catch(() => "");
         lastErr = `OpenRouter ${res.status}: ${text.slice(0, 300)}`;
-        // Retry on rate-limit and server errors; otherwise return immediately.
+
+        // Model not found / invalid → fall back to the secondary free model once.
+        if (res.status === 404 && !triedFallback && useModel !== FALLBACK) {
+          triedFallback = true;
+          useModel = FALLBACK;
+          attempt = 0; // restart loop with the fallback model
+          continue;
+        }
+        // Retry on rate-limit and server errors.
         if ((res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
           continue;
         }
         return Response.json({ ok: false, error: lastErr }, { status: 502 });
-      } catch (e) {
+      } catch (e: any) {
         clearTimeout(timer);
         lastErr =
           e?.name === "AbortError"
             ? `OpenRouter request timed out after ${TIMEOUT_MS / 1000}s`
             : e?.message || String(e);
         if (attempt < MAX_ATTEMPTS) {
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
           continue;
         }
         return Response.json({ ok: false, error: lastErr }, { status: 502 });
@@ -99,7 +125,7 @@ export default async function (req) {
     }
 
     return Response.json({ ok: false, error: lastErr || "OpenRouter request failed" }, { status: 502 });
-  } catch (error) {
+  } catch (error: any) {
     return Response.json({ ok: false, error: error?.message || String(error) }, { status: 500 });
   }
 }

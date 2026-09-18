@@ -42,18 +42,15 @@ export const PROVIDERS = {
   },
   openrouter: {
     id: "openrouter",
-    label: "OpenRouter (server-side)",
-    description: "Live — server-side proxy through the openrouterProxy backend function. Keeps the API key server-side.",
+    label: "OpenRouter (free models)",
+    description: "Live — server-side proxy. Only approved free models; paid IDs are blocked server-side.",
     available: true,
-    // Only `:free` models route through this account's allowed OpenRouter
-    // providers. Paid variants are shown but locked — selecting them is blocked
-    // so users get a clear, honest signal about what actually executes.
+    // Only approved `:free` models. The server-side proxy rejects anything not
+    // in this allowlist, so users can never spend on a paid model by accident.
     models: [
-      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free)", free: true },
+      { id: "stepfun/step-3.5-flash:free", label: "Step 3.5 Flash (free · primary)", free: true },
+      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free · fallback)", free: true },
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free)", free: true },
-      { id: "nvidia/nemotron-3.5-lightning", label: "Nemotron 3.5 Lightning (paid)", free: false },
-      { id: "nvidia/llama-3.3-nemotron-super-49b-v1.5", label: "Llama 3.3 Nemotron Super 49B", free: false },
-      { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B", free: false },
     ],
     run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
       const resp = await base44.functions.invoke("openrouterProxy", {

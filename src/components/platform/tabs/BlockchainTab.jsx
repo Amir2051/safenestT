@@ -1,36 +1,37 @@
 import React, { useState } from "react";
-import { Crosshair, Wallet, ArrowRightLeft, Network as NetworkIcon, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Crosshair, Wallet, ArrowRightLeft, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import HermesPanel from "@/components/platform/HermesPanel";
-import { HermesAPI } from "@/lib/hermesClient";
+import { Input } from "@/components/ui/input";
+import EmptyState from "@/components/platform/EmptyState";
 import { toast } from "sonner";
 
-const SUB_TABS = [
-  { key: "trace", label: "Trace", icon: Crosshair },
-  { key: "wallets", label: "Wallets", icon: Wallet },
-  { key: "transactions", label: "Transactions", icon: ArrowRightLeft },
-];
-
-const NETWORKS = [
-  { value: "ethereum", label: "Ethereum", available: true },
-  { value: "bitcoin", label: "Bitcoin", available: false },
-  { value: "polygon", label: "Polygon", available: false },
-  { value: "bsc", label: "BNB Chain", available: false },
-  { value: "arbitrum", label: "Arbitrum", available: false },
-  { value: "base", label: "Base", available: false },
-  { value: "solana", label: "Solana", available: false },
-];
-
-export default function BlockchainTab({ caseId, hermesState }) {
+/**
+ * BlockchainTab — real on-chain lookups via the server-side osintProxy
+ * (Etherscan + Alchemy). The frontend never calls blockchain APIs directly and
+ * never sees the API keys. Results are returned live with honest loading /
+ * empty / error / not-configured states.
+ */
+export default function BlockchainTab({ caseId }) {
   const [sub, setSub] = useState("trace");
-  const [network, setNetwork] = useState("ethereum");
+
+  const { data: targets = [] } = useQuery({
+    queryKey: ["targets", caseId],
+    queryFn: () => base44.entities.InvestigationTarget.filter({ case_id: caseId }, "-created_date", 200),
+    enabled: !!caseId,
+  });
+  const walletTargets = targets.filter((t) => t.type === "wallet_address" || t.type === "token_contract");
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 border-b border-white/10 pb-px">
-        {SUB_TABS.map((t) => (
+        {[
+          { key: "trace", label: "Lookup", icon: Crosshair },
+          { key: "wallets", label: "Wallets", icon: Wallet },
+          { key: "transactions", label: "Transactions", icon: ArrowRightLeft },
+        ].map((t) => (
           <button key={t.key} onClick={() => setSub(t.key)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-md transition-colors ${sub === t.key ? "text-cyan-400 border-b-2 border-cyan-400 bg-cyan-500/[0.04]" : "text-gray-400 hover:text-gray-200"}`}>
             <t.icon className="w-4 h-4" />{t.label}
@@ -38,124 +39,162 @@ export default function BlockchainTab({ caseId, hermesState }) {
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        <NetworkIcon className="w-4 h-4 text-gray-500" />
-        <Select value={network} onValueChange={setNetwork}>
-          <SelectTrigger className="w-48 bg-[#0f1419] border-white/10 text-white"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {NETWORKS.map((n) => <SelectItem key={n.value} value={n.value} disabled={!n.available} className="capitalize">{n.label}{!n.available && " (coming soon)"}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-gray-500">Etherscan V2 ingestion is performed by Hermes — the frontend never calls blockchain APIs directly.</span>
-      </div>
-
-      {sub === "trace" && <TraceView caseId={caseId} hermesState={hermesState} network={network} />}
-      {sub === "wallets" && <WalletsView caseId={caseId} hermesState={hermesState} />}
-      {sub === "transactions" && <TransactionsView caseId={caseId} hermesState={hermesState} />}
+      {sub === "trace" && <LookupView />}
+      {sub === "wallets" && <WalletsView wallets={walletTargets} />}
+      {sub === "transactions" && <TransactionsView wallets={walletTargets} />}
     </div>
   );
 }
 
-function TraceView({ caseId, hermesState, network }) {
-  const [tracing, setTracing] = useState(false);
-  const [target, setTarget] = useState("");
+function LookupView() {
+  const [address, setAddress] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const runTrace = async () => {
-    if (!target.trim()) { toast.error("Enter a wallet address or transaction hash"); return; }
-    setTracing(true);
+  const run = async () => {
+    if (!address.trim()) { toast.error("Enter a wallet address"); return; }
+    setLoading(true); setResult(null);
     try {
-      const res = await HermesAPI.traceBlockchain(caseId, { target: target.trim(), network });
-      if (res.status === "not_connected") toast.error("Hermes not connected");
-      else if (res.status === "backend_unavailable") toast.error("Hermes backend unavailable — upgrade required");
-      else if (res.status === "ok") toast.success("Trace request submitted to Hermes");
-      else toast.error("Trace failed: " + (res.error || "unknown"));
-    } catch (e) { toast.error("Failed: " + (e.message || e)); }
-    finally { setTracing(false); }
+      const [es, al] = await Promise.all([
+        base44.functions.invoke("osintProxy", { provider: "etherscan", target: address.trim() }).catch((e) => ({ ok: false, error: e?.message || String(e) })),
+        base44.functions.invoke("osintProxy", { provider: "alchemy", target: address.trim() }).catch((e) => ({ ok: false, error: e?.message || String(e) })),
+      ]);
+      const esBody = es?.data ?? es;
+      const alBody = al?.data ?? al;
+      setResult({ etherscan: esBody, alchemy: alBody });
+    } catch (e) { toast.error("Lookup failed: " + (e?.message || e)); }
+    finally { setLoading(false); }
   };
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-white/10 p-4">
-        <p className="text-sm text-gray-300 mb-2">Submit a wallet address or transaction hash for Hermes to trace on {network}.</p>
+        <p className="text-sm text-gray-300 mb-2">Look up an Ethereum mainnet address via Etherscan + Alchemy (server-side, keys never exposed).</p>
         <div className="flex gap-2">
-          <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0x... wallet or tx hash" className="flex-1 bg-[#0f1419] border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono" />
-          <Button onClick={runTrace} disabled={tracing || hermesState === "not_connected"} className="bg-cyan-600 hover:bg-cyan-700">
-            {tracing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Crosshair className="w-4 h-4 mr-1.5" />}Trace
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="0x… wallet address" className="font-mono bg-[#0f1419] border-white/10 text-white" />
+          <Button onClick={run} disabled={loading} className="bg-cyan-600 hover:bg-cyan-700">
+            {loading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Crosshair className="w-4 h-4 mr-1.5" />}Lookup
           </Button>
         </div>
-        {hermesState === "not_connected" && <p className="text-xs text-amber-400 mt-2">Hermes is not connected. Connect Hermes to enable blockchain tracing.</p>}
       </div>
-      <HermesPanel caseId={caseId} hermesState={hermesState} queryKey="blockchain-trace" fetcher={HermesAPI.getBlockchainTrace}
-        emptyTitle="No trace results yet" emptyDescription="Submit a target above for Hermes to trace. Results will appear here."
-        render={(data) => (
-          <div className="rounded-lg border border-white/10 p-4">
-            <pre className="text-xs text-gray-300 overflow-auto max-h-[400px] font-mono">{JSON.stringify(data, null, 2)}</pre>
-          </div>
-        )} />
+      {loading && <EmptyState variant="loading" title="Querying Etherscan + Alchemy…" />}
+      {result && <LookupResult result={result} />}
     </div>
   );
 }
 
-function WalletsView({ caseId, hermesState }) {
+function LookupResult({ result }) {
   return (
-    <HermesPanel caseId={caseId} hermesState={hermesState} queryKey="wallets" fetcher={HermesAPI.getTargets}
-      emptyTitle="No wallet data yet" emptyDescription="Wallet analysis is performed by Hermes. When available, wallet balances, transaction counts, and counterparties will appear here."
-      render={(data) => {
-        const wallets = Array.isArray(data) ? data.filter((d) => d.type === "wallet_address" || d.address) : [];
-        if (wallets.length === 0) return <HermesEmptyState message="No wallet analysis returned by Hermes yet." />;
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {wallets.map((w, i) => (
-              <div key={i} className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wallet className="w-4 h-4 text-cyan-400" />
-                  <p className="text-sm font-mono text-white truncate">{w.address || w.value}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <Info label="Network" value={w.network} />
-                  <Info label="Balance" value={w.balance} />
-                  <Info label="Tx Count" value={w.transaction_count} />
-                  <Info label="First Activity" value={w.first_activity} />
-                  <Info label="Last Activity" value={w.last_activity} />
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      }} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <ProviderCard label="Etherscan" body={result.etherscan} />
+      <ProviderCard label="Alchemy" body={result.alchemy} />
+    </div>
   );
 }
 
-function TransactionsView({ caseId, hermesState }) {
+function ProviderCard({ label, body }) {
+  const ok = body && body.ok !== false && body.status !== "error";
+  const notConfigured = body?.configured === false;
   return (
-    <HermesPanel caseId={caseId} hermesState={hermesState} queryKey="transactions" fetcher={HermesAPI.getTransactions}
-      emptyTitle="No transaction data yet" emptyDescription="Transaction analysis is performed by Hermes. When available, transaction details will appear here."
-      render={(data) => {
-        const txs = Array.isArray(data) ? data : data?.transactions || [];
-        if (txs.length === 0) return <HermesEmptyState message="No transactions returned by Hermes yet." />;
-        return (
+    <div className={`rounded-lg border p-4 ${ok ? "border-cyan-500/20 bg-cyan-500/[0.03]" : notConfigured ? "border-amber-500/20 bg-amber-500/[0.03]" : "border-red-500/20 bg-red-500/[0.03]"}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Badge variant="outline" className={`text-[10px] ${ok ? "border-cyan-500/30 text-cyan-400" : notConfigured ? "border-amber-500/30 text-amber-400" : "border-red-500/30 text-red-400"}`}>{label}</Badge>
+        {notConfigured && <span className="text-[11px] text-amber-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Not configured</span>}
+      </div>
+      {ok ? (
+        <div className="space-y-1 text-xs">
+          {body.data?.balance_eth != null && <p className="text-gray-300">Balance: <span className="font-mono text-white">{body.data.balance_eth} ETH</span> <span className="text-gray-600">({body.data.balance_wei} wei)</span></p>}
+          {body.data?.tx_count != null && <p className="text-gray-400">{body.data.tx_count} recent txs (Etherscan)</p>}
+          {body.data?.token_count != null && <p className="text-gray-400">{body.data.token_count} token balances (Alchemy)</p>}
+          {body.data?.recent_txs?.length > 0 && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+              {body.data.recent_txs.map((tx, i) => (
+                <div key={i} className="text-[10px] text-gray-500 font-mono truncate">
+                  {tx.timestamp ? new Date(tx.timestamp).toLocaleDateString() : ""} {tx.from?.slice(0,10)}…→{tx.to?.slice(0,10)}… {tx.value_eth} ETH
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-red-300">{body?.error || "Lookup failed"}</p>
+      )}
+    </div>
+  );
+}
+
+function WalletsView({ wallets }) {
+  if (wallets.length === 0) return <EmptyState variant="empty" icon={Wallet} title="No wallet targets" description="Add wallet addresses as targets to see on-chain balances via Etherscan + Alchemy." />;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {wallets.map((w) => <WalletCard key={w.id} address={w.value} network={w.network} />)}
+    </div>
+  );
+}
+
+function WalletCard({ address, network }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["wallet-balance", address],
+    queryFn: async () => {
+      const res = await base44.functions.invoke("osintProxy", { provider: "etherscan", target: address });
+      return res?.data ?? res;
+    },
+    enabled: !!address,
+    staleTime: 60000,
+  });
+  const ok = data && data.ok !== false && data.status !== "error";
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Wallet className="w-4 h-4 text-cyan-400" />
+        <p className="text-sm font-mono text-white truncate">{address}</p>
+      </div>
+      {isLoading ? <p className="text-xs text-gray-500">Loading balance…</p>
+        : ok ? <p className="text-xs text-gray-300">Balance: <span className="font-mono text-white">{data.data?.balance_eth} ETH</span> • {data.data?.tx_count} txs</p>
+        : <p className="text-xs text-amber-400">{data?.configured === false ? "Etherscan not configured" : (data?.error || "Lookup failed")}</p>}
+    </div>
+  );
+}
+
+function TransactionsView({ wallets }) {
+  const [active, setActive] = useState(wallets[0]?.value || "");
+  if (wallets.length === 0) return <EmptyState variant="empty" icon={ArrowRightLeft} title="No wallet targets" description="Add wallet addresses as targets to fetch recent transactions via Etherscan." />;
+  const addr = active || wallets[0].value;
+  const { data, isLoading } = useQuery({
+    queryKey: ["wallet-txs", addr],
+    queryFn: async () => {
+      const res = await base44.functions.invoke("osintProxy", { provider: "etherscan", target: addr });
+      return res?.data ?? res;
+    },
+    enabled: !!addr,
+    staleTime: 60000,
+  });
+  const txs = data?.ok !== false && data?.data?.recent_txs ? data.data.recent_txs : [];
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {wallets.map((w) => (
+          <button key={w.id} onClick={() => setActive(w.value)} className={`text-xs px-2.5 py-1 rounded-md border font-mono ${addr === w.value ? "border-cyan-400/60 bg-cyan-500/10 text-cyan-200" : "border-white/10 text-gray-400"}`}>{w.value.slice(0, 12)}…</button>
+        ))}
+      </div>
+      {isLoading ? <EmptyState variant="loading" title="Fetching transactions…" />
+        : data?.ok === false ? <p className="text-xs text-amber-400">{data?.configured === false ? "Etherscan not configured" : (data?.error || "Lookup failed")}</p>
+        : txs.length === 0 ? <EmptyState variant="empty" icon={ArrowRightLeft} title="No transactions" description="No recent transactions returned for this address." />
+        : (
           <div className="rounded-lg border border-white/10 divide-y divide-white/5">
             {txs.map((tx, i) => (
               <div key={i} className="flex items-center gap-3 p-3">
                 <ArrowRightLeft className="w-4 h-4 text-gray-500 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-mono text-white truncate">{tx.hash || tx.transaction_hash}</p>
-                  <p className="text-xs text-gray-500">{tx.from?.slice(0, 12)}… → {tx.to?.slice(0, 12)}… • {tx.value} {tx.asset}</p>
+                  <p className="text-sm font-mono text-white truncate">{tx.hash}</p>
+                  <p className="text-xs text-gray-500">{tx.from?.slice(0, 12)}… → {tx.to?.slice(0, 12)}… • {tx.value_eth} ETH</p>
                 </div>
-                <Badge variant="outline" className="border-white/10 text-gray-400 text-[10px]">{tx.block || "—"}</Badge>
+                {tx.is_error && <Badge variant="outline" className="border-red-500/30 text-red-400 text-[10px]">failed</Badge>}
                 <span className="text-xs text-gray-500">{tx.timestamp ? new Date(tx.timestamp).toLocaleString() : "—"}</span>
               </div>
             ))}
           </div>
-        );
-      }} />
+        )}
+    </div>
   );
-}
-
-function Info({ label, value }) {
-  return <div><p className="text-gray-600 text-[10px] uppercase">{label}</p><p className="text-gray-200 truncate">{value != null ? String(value) : "—"}</p></div>;
-}
-
-function HermesEmptyState({ message }) {
-  return <div className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center"><p className="text-sm text-gray-500">{message}</p></div>;
 }
