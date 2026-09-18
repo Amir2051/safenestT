@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import { FlaskConical, CheckCircle2, XCircle, Clock, Loader2, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,11 @@ export default function FindingsTab({ caseId }) {
     queryFn: () => base44.entities.InvestigationFinding.filter({ case_id: caseId }, "-created_date", 200),
     enabled: !!caseId,
   });
+  const { data: evidence = [] } = useQuery({
+    queryKey: ["evidence-for-findings", caseId],
+    queryFn: () => base44.entities.EvidenceItem.filter({ case_id: caseId }, "-created_date", 200),
+    enabled: !!caseId,
+  });
 
   if (isLoading) return <EmptyState variant="loading" title="Loading findings…" />;
   if (!findings.length)
@@ -36,10 +41,10 @@ export default function FindingsTab({ caseId }) {
       />
     );
 
-  return <FindingsList findings={findings} caseId={caseId} />;
+  return <FindingsList findings={findings} caseId={caseId} evidence={evidence} />;
 }
 
-function FindingsList({ findings, caseId }) {
+function FindingsList({ findings, caseId, evidence }) {
   const [reviewFinding, setReviewFinding] = useState(null);
   return (
     <>
@@ -58,11 +63,24 @@ function FindingsList({ findings, caseId }) {
                     {finding.source === "ai_run" && <Badge variant="outline" className="text-[10px] border-purple-500/30 text-purple-400">AI</Badge>}
                   </div>
                   {finding.description && <p className="text-xs text-gray-400">{finding.description}</p>}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 flex-wrap">
                     {finding.category && <span className="capitalize">{finding.category.replace(/_/g, " ")}</span>}
+                    {finding.hermes_raw?.agent && <Badge variant="outline" className="text-[9px] border-purple-500/30 text-purple-400 capitalize">{String(finding.hermes_raw.agent).replace(/_/g, " ")}</Badge>}
                     {finding.evidence_refs?.length > 0 && <span>{finding.evidence_refs.length} evidence ref(s)</span>}
                     {finding.created_date && <span>{new Date(finding.created_date).toLocaleString()}</span>}
                   </div>
+                  {finding.evidence_refs?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {finding.evidence_refs.map((eid) => {
+                        const ev = evidence.find((e) => e.id === eid);
+                        return (
+                          <span key={eid} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/[0.04] text-cyan-300" title={ev?.filename || eid}>
+                            <FileSearch className="w-2.5 h-2.5" />{ev?.filename || eid.slice(-6)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 {(finding.status === "proposed" || finding.status === "under_review") && (
                   <Button size="sm" variant="outline" onClick={() => setReviewFinding(finding)} className="border-cyan-500/30 text-cyan-400 shrink-0">Review</Button>

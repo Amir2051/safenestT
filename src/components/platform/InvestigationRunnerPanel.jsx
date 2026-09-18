@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Loader2, Cpu, AlertCircle, CheckCircle2, XCircle, History } from "lucide-react";
+import { Play, Loader2, Cpu, AlertCircle, CheckCircle2, XCircle, History, Activity, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { PHASES, runPhase, getRunHistory, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
+import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { PROVIDERS, getProvider } from "@/lib/investigationAI";
 import { toast } from "sonner";
 
@@ -23,6 +23,25 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const [model, setModel] = useState(wf.model || DEFAULT_MODEL);
   const [running, setRunning] = useState(null);
   const [lastResult, setLastResult] = useState(null);
+  const [testing, setTesting] = useState(null);
+  const [testResult, setTestResult] = useState(null);
+
+  const testConnection = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await testProvider({ provider, model });
+      setTestResult(res);
+      if (res.status === "ok") toast.success(`${provider}/${model} healthy (${res.ms}ms)`);
+      else if (res.status === "degraded") toast.warning(`${provider}/${model} responded (degraded)`);
+      else toast.error(`${provider}/${model} failed: ${res.error}`);
+    } catch (e) {
+      setTestResult({ status: "failed", error: e?.message || String(e) });
+      toast.error("Health test failed: " + (e?.message || e));
+    } finally {
+      setTesting(null);
+    }
+  };
 
   const { data: history = [], refetch } = useQuery({
     queryKey: ["investigation-runs", caseId],
@@ -115,7 +134,18 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex flex-col justify-end">
+          <Button size="sm" variant="outline" onClick={testConnection} disabled={!!testing} className="border-cyan-500/30 text-cyan-400 h-9">
+            {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Activity className="w-3 h-3 mr-1" />}Test
+          </Button>
+        </div>
       </div>
+
+      {testResult && (
+        <div className={`rounded-md border p-2 text-xs ${testResult.status === "ok" ? "border-green-500/20 bg-green-500/[0.04] text-green-300" : testResult.status === "degraded" ? "border-amber-500/20 bg-amber-500/[0.04] text-amber-300" : "border-red-500/20 bg-red-500/[0.04] text-red-300"}`}>
+          {testResult.status === "failed" ? `✗ ${testResult.error}` : `✓ ${testResult.provider}/${testResult.model} — ${testResult.status} (${testResult.ms}ms)`}
+        </div>
+      )}
 
       {/* Phase buttons */}
       <div className="space-y-2">
@@ -171,6 +201,11 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
                 <span className="text-gray-300 font-mono truncate">{r.provider}/{r.model}</span>
                 {r.status === "completed" ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : r.status === "failed" ? <XCircle className="w-3 h-3 text-red-400" /> : <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />}
                 <span className="text-gray-500">{r.duration_ms ? `${(r.duration_ms / 1000).toFixed(1)}s` : "—"}</span>
+                {r.status === "failed" && (
+                  <button onClick={() => runOne(r.phase)} disabled={!!running} title="Retry phase" className="text-amber-400 hover:text-amber-300 disabled:opacity-40">
+                    <RotateCw className="w-3 h-3" />
+                  </button>
+                )}
                 <span className="text-gray-600 ml-auto">{r.started_at ? new Date(r.started_at).toLocaleString() : ""}</span>
               </div>
             ))}
