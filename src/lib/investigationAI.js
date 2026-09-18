@@ -7,9 +7,7 @@ import { base44 } from "@/api/base44Client";
  *                    plan: real execution, real model selection, real errors.
  *   • `openrouter` — server-side OpenRouter proxy backend function
  *                    (`openrouterProxy`). Keeps OPENROUTER_API_KEY server-side.
- *                    The backend function activates when the app's plan
- *                    includes backend functions; until then it surfaces an
- *                    honest "upgrade required" error instead of mocking.
+ *                    Live when the `openrouterProxy` backend function is deployed.
  *
  * Both providers share the same run contract so the workflow runner and the
  * provider/model selector are provider-agnostic.
@@ -44,38 +42,29 @@ export const PROVIDERS = {
   },
   openrouter: {
     id: "openrouter",
-    label: "OpenRouter (server-side proxy)",
-    description:
-      "Server-side OpenRouter proxy. Requires a Builder+ plan to activate the backend function.",
-    available: false,
+    label: "OpenRouter (server-side)",
+    description: "Live — server-side proxy through the openrouterProxy backend function. Keeps the API key server-side.",
+    available: true,
     models: [
-      { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
-      { id: "openai/gpt-4o", label: "GPT-4o" },
-      { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash" },
-      { id: "nousresearch/hermes-4-405b", label: "Hermes-4 405B" },
-      { id: "meta-llama/llama-3.3-70b-instruct", label: "Llama 3.3 70B" },
-      { id: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
+      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free)" },
+      { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free)" },
+      { id: "nvidia/nemotron-3.5-lightning", label: "Nemotron 3.5 Lightning (paid)" },
+      { id: "nvidia/llama-3.3-nemotron-super-49b-v1.5", label: "Llama 3.3 Nemotron Super 49B" },
+      { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B" },
     ],
-    run: async ({ prompt, model, responseJsonSchema }) => {
-      try {
-        const res = await base44.functions.invoke("openrouterProxy", {
-          model,
-          prompt,
-          response_json_schema: responseJsonSchema,
-        });
-        return res?.data ?? res;
-      } catch (e) {
-        const msg = String(e?.message || e || "");
-        const blocked =
-          msg.includes("402") ||
-          /not (found|available)/i.test(msg) ||
-          /function/i.test(msg);
-        throw new Error(
-          blocked
-            ? "OpenRouter server-side proxy requires a Builder+ plan upgrade. Switch to the Base44 InvokeLLM provider to run investigations now."
-            : `OpenRouter proxy error: ${msg}`
-        );
+    run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
+      const resp = await base44.functions.invoke("openrouterProxy", {
+        model,
+        prompt,
+        response_json_schema: responseJsonSchema,
+        temperature,
+        max_tokens: maxTokens,
+      });
+      const body = resp?.data ?? resp;
+      if (!body || body.ok === false || body.status === "error") {
+        throw new Error(body?.error || "OpenRouter proxy returned an error");
       }
+      return body.data ?? body;
     },
   },
 };
