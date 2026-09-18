@@ -154,7 +154,15 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   // Case-Workspace deep links (Evidence / Findings / Reports) only make sense
   // when a case is actually open — hide that section entirely otherwise.
   const hasCaseContext = new URLSearchParams(location.search).get("case_id");
-  const navSections = isStaff ? SECTIONS : USER_SECTIONS;
+  // Admins get a deliberately minimal shell: all administrative, case,
+  // reporting, and AI-investigation tools live inside Admin Dashboard.
+  const ADMIN_SHELL = [{
+    label: "Administration",
+    items: [
+      { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
+    ],
+  }];
+  const navSections = isAdmin ? ADMIN_SHELL : isStaff ? SECTIONS : USER_SECTIONS;
 
   const go = (item) => {
     let url = item.path;
@@ -262,7 +270,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             );
           })}
 
-          {isAdmin && (
+          {false && isAdmin && (
             <div className="pt-3 border-t border-white/5 space-y-4">
               {ADMIN_SECTIONS.map((section) => (
                 <div key={section.label}>
