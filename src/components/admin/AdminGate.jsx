@@ -22,22 +22,6 @@ function Loading() {
   );
 }
 
-function Denied() {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh] p-6 text-center">
-      <div className="max-w-sm">
-        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/40">
-          <ShieldAlert className="w-8 h-8 text-red-400" />
-        </div>
-        <h2 className="text-white font-bold text-xl mb-2">Access Restricted</h2>
-        <p className="text-gray-400 text-sm">
-          This area is limited to authorized staff. If you believe this is an error, contact your administrator.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function isPrivileged(user, { allowInvestigator = false } = {}) {
   if (!user) return false;
   if (user.role === 'admin' || user.is_admin) return true;
