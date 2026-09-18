@@ -15,10 +15,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import NewCaseModal from "../components/cases/NewCaseModal";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import CaseAssignmentModal from "../components/cases/CaseAssignmentModal";
+import AdminGate from "../components/admin/AdminGate.jsx";
 
 import { createPageUrl } from "@/utils";
 
-export default function Cases() {
+function CasesContent() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -367,4 +368,8 @@ export default function Cases() {
       )}
     </div>
   );
+}
+
+export default function Cases() {
+  return <AdminGate><CasesContent /></AdminGate>;
 }
