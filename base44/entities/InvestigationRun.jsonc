@@ -1,0 +1,157 @@
+{
+  "name": "InvestigationRun",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id (multi-tenant isolation)"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Related investigation case id"
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "evidence",
+        "analysis",
+        "reality_check",
+        "risk",
+        "dossier"
+      ],
+      "description": "Workflow phase this run executed"
+    },
+    "provider": {
+      "type": "string",
+      "description": "AI provider used (invokellm | openrouter)"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier used for this run"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "running"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Prompt sent to the model (may be truncated for storage)"
+    },
+    "input_summary": {
+      "type": "object",
+      "description": "Summary of inputs (evidence count, targets, prior findings)"
+    },
+    "output": {
+      "type": "object",
+      "description": "Parsed structured model output"
+    },
+    "output_text": {
+      "type": "string",
+      "description": "Raw text output if non-structured"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if the run failed"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Run duration in milliseconds"
+    },
+    "tokens_used": {
+      "type": "number"
+    },
+    "run_by": {
+      "type": "string",
+      "description": "User id who triggered the run"
+    },
+    "run_by_email": {
+      "type": "string"
+    },
+    "persisted_outputs": {
+      "type": "object",
+      "description": "References to records created from this run (finding_ids, report_id, etc.)"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "case_id",
+    "phase",
+    "provider",
+    "model",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "tenant_role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "admin"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -81,6 +81,20 @@
       "items": {
         "type": "string"
       }
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Active tenant id for multi-tenant isolation. Referenced by RLS on investigation entities."
+    },
+    "tenant_role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "investigator",
+        "member"
+      ],
+      "description": "Role within the active tenant (owner/admin/investigator/member)."
     }
   },
   "required": []

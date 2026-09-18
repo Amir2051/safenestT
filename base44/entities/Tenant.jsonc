@@ -1,0 +1,92 @@
+{
+  "name": "Tenant",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Tenant / organization display name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-safe unique slug"
+    },
+    "owner_user_id": {
+      "type": "string",
+      "description": "User id of the tenant owner"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email of the tenant owner"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "personal",
+        "team",
+        "enterprise"
+      ],
+      "default": "personal",
+      "description": "Tenant plan tier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "deleted"
+      ],
+      "default": "active"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User ids of members (denormalized for RLS read access)"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "owner_user_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.members": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
