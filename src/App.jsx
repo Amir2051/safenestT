@@ -19,6 +19,7 @@ import ReportsCenter from './pages/platform/ReportsCenter';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AdminGate, { RoleGate } from '@/components/admin/AdminGate';
+import PublicLanding from './pages/PublicLanding';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -54,10 +55,15 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
+      // Show the public landing page instead of auto-redirecting to login.
+      // The landing page's Sign In / Get Started buttons trigger login.
+      return <PublicLanding />;
     }
+  }
+
+  // No token and not authenticated (public app with no session) — show landing.
+  if (!isAuthenticated && !isLoadingAuth && !isLoadingPublicSettings) {
+    return <PublicLanding />;
   }
 
   // Render the main app.
