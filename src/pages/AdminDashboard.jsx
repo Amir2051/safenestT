@@ -32,9 +32,12 @@ import P0IncidentPanel from "../components/admin/P0IncidentPanel.jsx";
 import AdminCaseIntake from "../components/admin/AdminCaseIntake.jsx";
 import CaseVisibilityFixer from "../components/admin/CaseVisibilityFixer.jsx";
 import MaintenanceModeToggle from "../components/admin/MaintenanceModeToggle.jsx";
+import CaseManager from "../components/investigation/CaseManager.jsx";
+import InvestigatorCommandCenter from "../components/dashboard/InvestigatorCommandCenter.jsx";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
+  const [selectedCase, setSelectedCase] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +60,21 @@ export default function AdminDashboard() {
     };
   }, []);
 
+  const { data: adminCases = [], isLoading: loadingCases } = useQuery({
+    queryKey: ['admin-dashboard-cases'],
+    queryFn: async () => {
+      try {
+        return await base44.asServiceRole.entities.MyCase.list('-created_date', 1000);
+      } catch (error) {
+        console.error('Admin case load failed:', error);
+        return [];
+      }
+    },
+    enabled: !!user && (user.role === 'admin' || user.is_admin),
+    staleTime: 0,
+    refetchInterval: 30000,
+  });
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-dashboard-stats'],
     queryFn: async () => {
@@ -71,7 +89,7 @@ export default function AdminDashboard() {
     refetchOnWindowFocus: false
   });
 
-  if (!user || isLoading) {
+  if (!user || isLoading || loadingCases) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
@@ -206,6 +224,14 @@ export default function AdminDashboard() {
       {/* Main Tabs */}
       <Tabs defaultValue="fraud" className="w-full">
         <TabsList className="bg-[#1a2332] border border-cyan-500/20">
+          <TabsTrigger value="cases">
+            <FileText className="w-4 h-4 mr-2" />
+            Cases
+          </TabsTrigger>
+          <TabsTrigger value="ai-investigators">
+            <Brain className="w-4 h-4 mr-2" />
+            AI Investigators
+          </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="w-4 h-4 mr-2" />
             User Management
@@ -251,6 +277,20 @@ export default function AdminDashboard() {
             Case Intake
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="cases" className="mt-6">
+          <CaseManager
+            cases={adminCases}
+            onSelectCase={setSelectedCase}
+            selectedCase={selectedCase}
+            user={user}
+            onUpdate={() => window.location.reload()}
+          />
+        </TabsContent>
+
+        <TabsContent value="ai-investigators" className="mt-6">
+          <InvestigatorCommandCenter />
+        </TabsContent>
 
         <TabsContent value="users" className="mt-6">
           <UserManagement />
