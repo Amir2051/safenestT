@@ -88,6 +88,12 @@ function providerForTarget(type) {
   return [];
 }
 
+// Reputation providers live in a separate backend function so the core OSINT
+// proxy (DNS/RDAP/Etherscan/Alchemy) stays testable when their optional keys
+// are not set.
+const REPUTATION_PROVIDERS = new Set(["virustotal", "shodan", "firecrawl"]);
+const proxyForProvider = (p) => (REPUTATION_PROVIDERS.has(p) ? "osintReputationProxy" : "osintProxy");
+
 function TargetOsintRow({ target, onRan }) {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
@@ -98,7 +104,7 @@ function TargetOsintRow({ target, onRan }) {
     const out = [];
     for (const p of providers) {
       try {
-        const res = await base44.functions.invoke("osintProxy", { provider: p, target: target.value, network: target.network });
+        const res = await base44.functions.invoke(proxyForProvider(p), { provider: p, target: target.value, network: target.network });
         const body = res?.data ?? res;
         out.push({ provider: p, ok: body?.ok !== false && body?.status !== "error", configured: body?.configured, data: body?.data, error: body?.error });
       } catch (e) {

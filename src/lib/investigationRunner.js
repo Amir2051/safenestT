@@ -157,7 +157,10 @@ async function runOsintAnalysis(ctx) {
     for (const p of providers) {
       toolsRun.push({ target: t.value, provider: p });
       try {
-        const res = await base44.functions.invoke("osintProxy", { provider: p, target: t.value, network: t.network });
+        const res = await base44.functions.invoke(
+          (p === "virustotal" || p === "shodan" || p === "firecrawl") ? "osintReputationProxy" : "osintProxy",
+          { provider: p, target: t.value, network: t.network }
+        );
         const body = res?.data ?? res;
         if (!body || body.ok === false || body.status === "error") continue;
         const data = body.data || {};

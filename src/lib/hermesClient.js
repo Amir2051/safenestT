@@ -5,9 +5,12 @@
  * evidence processing, blockchain analysis, entities, relationships,
  * timeline, findings, risk, reports, and agent execution.
  *
- * API: Nous Research Inference API (OpenAI-compatible)
+ * API: Nous Research Inference API (OpenAI-compatible, OpenRouter-backed)
  *   Base URL: https://inference-api.nousresearch.com/v1
- *   Models:   nousresearch/hermes-4-70b, nousresearch/hermes-4-405b
+ *   Models:   live catalog queried via hermesProxy { action: "models" }.
+ *             Hermes-4-70B/405B have been retired; the configured key currently
+ *             has insufficient credits for paid models, so Hermes reports a
+ *             "not_ready" state honestly until credits are added.
  *   Auth:     Bearer token (stored as HERMES_API_KEY secret — server-side only)
  *
  * SECURITY RULES (enforced by design):
@@ -30,7 +33,7 @@
 
 const HERMES_BASE_URL = "https://inference-api.nousresearch.com/v1";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
-export const HERMES_DEFAULT_MODEL = "nousresearch/hermes-4-70b";
+export const HERMES_DEFAULT_MODEL = "unbiased/pareto";
 
 /**
  * Returns the current Hermes connection descriptor.
@@ -64,7 +67,13 @@ export async function pingHermes() {
     if (body && body.ok !== false && body.status !== "error") {
       return { connected: true, state: "ok", ms: Date.now() - t0, model: body?.model };
     }
-    return { connected: false, state: body?.configured === false ? "not_configured" : "error", ms: Date.now() - t0, error: body?.error || "Hermes did not respond" };
+    // Classify the real failure honestly so the UI can show a clear status.
+    const err = String(body?.error || "");
+    let state = "error";
+    if (body?.configured === false) state = "not_configured";
+    else if (err.includes("insufficient_credits") || err.includes("credits")) state = "no_credits";
+    else if (err.includes("retired")) state = "model_retired";
+    return { connected: false, state, ms: Date.now() - t0, error: err || "Hermes did not respond" };
   } catch (e) {
     const msg = String(e?.message || e || "");
     const missing = msg.includes("not found") || msg.includes("not available") || msg.includes("404");

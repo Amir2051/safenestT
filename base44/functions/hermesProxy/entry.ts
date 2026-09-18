@@ -17,7 +17,7 @@ import { secrets } from "base44:runtime";
  * Never logs or returns the API key.
  */
 const DEFAULT_BASE = "https://inference-api.nousresearch.com/v1";
-const DEFAULT_MODEL = "nousresearch/hermes-4-70b";
+const DEFAULT_MODEL = "Hermes-4-70B";
 const TIMEOUT_MS = 60000;
 const MAX_ATTEMPTS = 2;
 
@@ -29,15 +29,25 @@ export default async function (req) {
 
     const payload = await req.json().catch(() => ({}));
     const { prompt, response_json_schema, model, temperature, max_tokens } = payload || {};
-    if (!prompt || typeof prompt !== "string") {
-      return Response.json({ ok: false, error: "prompt is required" }, { status: 400 });
-    }
 
     const apiKey = secrets.get("HERMES_API_KEY");
     if (!apiKey) {
       return Response.json({ ok: false, error: "HERMES_API_KEY secret is not configured", configured: false }, { status: 503 });
     }
-    const baseUrl = (secrets.get("HERMES_API_URL") || DEFAULT_BASE).replace(/\/$/, "");
+    const baseUrl = DEFAULT_BASE.replace(/\/$/, "");
+
+    // Discovery mode: list available models so the UI can show what's live.
+    if (payload?.action === "models") {
+      const res = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+      const text = await res.text();
+      let json: any = null;
+      try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
+      return Response.json({ ok: res.ok, status: res.status, data: json });
+    }
+
+    if (!prompt || typeof prompt !== "string") {
+      return Response.json({ ok: false, error: "prompt is required" }, { status: 400 });
+    }
     const useModel = model || DEFAULT_MODEL;
 
     let finalPrompt = prompt;

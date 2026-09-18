@@ -89,8 +89,15 @@ async function runDns(target: string) {
 async function runRdap(target: string) {
   if (!target) return Response.json({ ok: false, configured: true, provider: "rdap", error: "target (domain) is required" }, { status: 400 });
   const domain = String(target).trim().toLowerCase();
+  const tld = domain.split(".").pop() || "";
+  // Verisign serves RDAP for .com/.net directly (reliable from serverless);
+  // everything else falls back to the rdap.org bootstrap.
+  const endpoint = (tld === "com" || tld === "net")
+    ? `https://rdap.verisign.com/${tld}/v1/domain/${encodeURIComponent(domain)}`
+    : `https://rdap.org/domain/${encodeURIComponent(domain)}`;
+  const headers = { "User-Agent": "SafeNestT-Investigation-Engine/1.0", Accept: "application/rdap+json" };
   try {
-    const res = await fetchWithTimeout(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
+    const res = await fetchWithTimeout(endpoint, { headers });
     if (res.status === 404) return Response.json({ ok: true, configured: true, provider: "rdap", data: { domain, registered: false, note: "No RDAP record found.", source: "rdap" } });
     if (!res.ok) {
       const t = await res.text().catch(() => "");
@@ -116,18 +123,26 @@ async function runEtherscan(target: string) {
       `https://api.etherscan.io/api?module=account&action=balance&address=${encodeURIComponent(address)}&tag=latest&apikey=${encodeURIComponent(key)}`
     );
     const balJson = await balRes.json();
-    const balanceWei = Number(balJson?.result || 0) || 0;
+    // Etherscan returns { status:"1", result:"<wei>" } on success; any other
+    // status is a real error (rate limit, invalid key, invalid address) —
+    // surface it honestly instead of returning a fabricated zero balance.
+    if (balJson?.status !== "1") {
+      return Response.json({ ok: false, configured: true, provider: "etherscan", error: `Etherscan: ${balJson?.message || balJson?.result || "unknown error"}` }, { status: 502 });
+    }
+    const balanceWei = Number(balJson.result) || 0;
     const balanceEth = balanceWei / 1e18;
 
     const txRes = await fetchWithTimeout(
       `https://api.etherscan.io/api?module=account&action=txlist&address=${encodeURIComponent(address)}&startblock=0&page=1&offset=20&sort=desc&apikey=${encodeURIComponent(key)}`
     );
     const txJson = await txRes.json();
-    const txs = (txJson?.result || []).slice(0, 20).map((t: any) => ({
-      hash: t.hash, from: t.from, to: t.to, value_wei: t.value, value_eth: Number(t.value || 0) / 1e18,
-      timestamp: t.timeStamp ? new Date(Number(t.timeStamp) * 1000).toISOString() : null,
-      block: t.blockNumber, is_error: t.isError === "1",
-    }));
+    const txs = Array.isArray(txJson?.result)
+      ? txJson.result.slice(0, 20).map((t: any) => ({
+          hash: t.hash, from: t.from, to: t.to, value_wei: t.value, value_eth: Number(t.value || 0) / 1e18,
+          timestamp: t.timeStamp ? new Date(Number(t.timeStamp) * 1000).toISOString() : null,
+          block: t.blockNumber, is_error: t.isError === "1",
+        }))
+      : [];
 
     return Response.json({
       ok: true, configured: true, provider: "etherscan",
@@ -151,6 +166,10 @@ async function runAlchemy(target: string, network: string) {
       body: JSON.stringify({ id: 1, jsonrpc: "2.0", method: "eth_getBalance", params: [address, "latest"] }),
     });
     const balJson = await balRes.json();
+    // JSON-RPC error → surface honestly (invalid key, rate limit, bad network).
+    if (balJson?.error) {
+      return Response.json({ ok: false, configured: true, provider: "alchemy", error: `Alchemy: ${balJson.error.message || JSON.stringify(balJson.error)}` }, { status: 502 });
+    }
     const balanceWei = parseInt(balJson?.result || "0x0", 16) || 0;
     const balanceEth = balanceWei / 1e18;
 
@@ -159,9 +178,11 @@ async function runAlchemy(target: string, network: string) {
       body: JSON.stringify({ id: 2, jsonrpc: "2.0", method: "alchemy_getTokenBalances", params: [address] }),
     });
     const tokJson = await tokRes.json();
-    const tokenBalances = (tokJson?.result?.tokenBalances || [])
-      .filter((t: any) => t.tokenBalance && t.tokenBalance !== "0x0000000000000000000000000000000000000000000000000000000000000000")
-      .map((t: any) => ({ contract: t.contractAddress }));
+    const tokenBalances = Array.isArray(tokJson?.result?.tokenBalances)
+      ? tokJson.result.tokenBalances
+          .filter((t: any) => t.tokenBalance && t.tokenBalance !== "0x0000000000000000000000000000000000000000000000000000000000000000")
+          .map((t: any) => ({ contract: t.contractAddress }))
+      : [];
 
     return Response.json({
       ok: true, configured: true, provider: "alchemy",

@@ -158,17 +158,17 @@ function WalletCard({ address, network }) {
 
 function TransactionsView({ wallets }) {
   const [active, setActive] = useState(wallets[0]?.value || "");
-  if (wallets.length === 0) return <EmptyState variant="empty" icon={ArrowRightLeft} title="No wallet targets" description="Add wallet addresses as targets to fetch recent transactions via Etherscan." />;
-  const addr = active || wallets[0].value;
+  const addr = active || wallets[0]?.value || "";
   const { data, isLoading } = useQuery({
     queryKey: ["wallet-txs", addr],
     queryFn: async () => {
       const res = await base44.functions.invoke("osintProxy", { provider: "etherscan", target: addr });
       return res?.data ?? res;
     },
-    enabled: !!addr,
+    enabled: wallets.length > 0 && !!addr,
     staleTime: 60000,
   });
+  if (wallets.length === 0) return <EmptyState variant="empty" icon={ArrowRightLeft} title="No wallet targets" description="Add wallet addresses as targets to fetch recent transactions via Etherscan." />;
   const txs = data?.ok !== false && data?.data?.recent_txs ? data.data.recent_txs : [];
   return (
     <div className="space-y-3">

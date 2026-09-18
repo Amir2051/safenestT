@@ -48,9 +48,8 @@ export const PROVIDERS = {
     // Only approved `:free` models. The server-side proxy rejects anything not
     // in this allowlist, so users can never spend on a paid model by accident.
     models: [
-      { id: "stepfun/step-3.5-flash:free", label: "Step 3.5 Flash (free · primary)", free: true },
-      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free · fallback)", free: true },
-      { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free)", free: true },
+      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free · primary)", free: true },
+      { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free · fallback)", free: true },
     ],
     run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
       const resp = await base44.functions.invoke("openrouterProxy", {

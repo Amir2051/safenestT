@@ -15,9 +15,9 @@ import { secrets } from "base44:runtime";
  * Retries 429/5xx and abort/timeout errors up to 3 times with backoff; 60s
  * per-request timeout via AbortController.
  */
-const PRIMARY = "stepfun/step-3.5-flash:free";
-const FALLBACK = "nvidia/nemotron-3-super-120b-a12b:free";
-const FREE_MODELS = new Set([PRIMARY, FALLBACK, "nvidia/nemotron-3.5-lightning:free"]);
+const PRIMARY = "nvidia/nemotron-3-super-120b-a12b:free";
+const FALLBACK = "nvidia/nemotron-3.5-lightning:free";
+const FREE_MODELS = new Set([PRIMARY, FALLBACK]);
 
 export default async function (req) {
   try {
