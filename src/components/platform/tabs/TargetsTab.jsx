@@ -12,6 +12,7 @@ import EmptyState from "@/components/platform/EmptyState";
 import { HermesAPI } from "@/lib/hermesClient";
 import { TARGET_STATUS_STYLES } from "@/components/platform/investigationStyles";
 import { logAuditEvent } from "@/lib/auditLogger";
+import { ensureTenant } from "@/lib/tenantContext";
 import { toast } from "sonner";
 
 const TARGET_TYPES = ["wallet_address", "transaction_hash", "token_contract", "blockchain_network", "domain", "url", "ip_address", "email", "phone", "username", "social_identifier", "other"];
@@ -136,11 +137,12 @@ function TargetModal({ caseId, target, onClose, onSaved }) {
     if (!form.value.trim()) { toast.error("Target value is required"); return; }
     setSaving(true);
     try {
+      const tenantId = await ensureTenant();
       if (target) {
         await base44.entities.InvestigationTarget.update(target.id, form);
         await logAuditEvent({ action: "target_modified", objectType: "target", objectId: target.id, caseId, description: `Modified target: ${form.value}` });
       } else {
-        const created = await base44.entities.InvestigationTarget.create({ ...form, case_id: caseId, source: "manual", status: "pending" });
+        const created = await base44.entities.InvestigationTarget.create({ ...form, tenant_id: tenantId, case_id: caseId, source: "manual", status: "pending" });
         await logAuditEvent({ action: "target_created", objectType: "target", objectId: created.id, caseId, description: `Created target: ${form.value}` });
       }
       toast.success(target ? "Target updated" : "Target added");

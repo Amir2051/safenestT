@@ -14,6 +14,7 @@ import EmptyState from "@/components/platform/EmptyState";
 import SectionHeader from "@/components/platform/SectionHeader";
 import { detectTargetsInRecords } from "@/lib/targetDetection";
 import { logAuditEvent } from "@/lib/auditLogger";
+import { ensureTenant } from "@/lib/tenantContext";
 
 const STEPS = ["Upload", "Parse", "Map Fields", "Preview", "Imported"];
 
@@ -152,7 +153,9 @@ export default function CaseImport() {
     setCreating(true);
     try {
       const record = previewRecord();
+      const tenantId = await ensureTenant();
       const newCase = await base44.entities.InvestigationCase.create({
+        tenant_id: tenantId,
         ...record,
         case_title: record.case_title || file?.name || "Imported case",
         fraud_type: record.fraud_type || "other",
@@ -174,6 +177,7 @@ export default function CaseImport() {
         try {
           for (const t of targetsToAdd) {
             await base44.entities.InvestigationTarget.create({
+              tenant_id: tenantId,
               case_id: newCase.id,
               type: t.type,
               value: t.value,
@@ -186,6 +190,7 @@ export default function CaseImport() {
 
           // Also create an evidence record for the imported file
           await base44.entities.EvidenceItem.create({
+            tenant_id: tenantId,
             case_id: newCase.id,
             filename: file?.name || "imported",
             file_url: fileUrl,
@@ -205,6 +210,7 @@ export default function CaseImport() {
         // No targets detected, but still preserve the file as evidence
         try {
           await base44.entities.EvidenceItem.create({
+            tenant_id: tenantId,
             case_id: newCase.id,
             filename: file?.name || "imported",
             file_url: fileUrl,

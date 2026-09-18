@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import { ensureTenant } from "@/lib/tenantContext";
 
 const FRAUD_TYPES = [
   "Crypto Theft", "Investment Scam", "Romance Scam", "Identity Theft",
@@ -42,7 +43,9 @@ export default function NewInvestigationCaseModal({ open, onClose, onCreated }) 
     }
     setSaving(true);
     try {
+      const tenantId = await ensureTenant();
       const created = await base44.entities.InvestigationCase.create({
+        tenant_id: tenantId,
         case_title: form.case_title.trim(),
         case_number: form.case_number.trim() || undefined,
         victim_name: form.victim_name.trim() || undefined,
@@ -54,6 +57,7 @@ export default function NewInvestigationCaseModal({ open, onClose, onCreated }) 
         description: form.description.trim() || undefined,
         status: "new",
         investigation_progress: 0,
+        workflow: { current_phase: "planning", phases: {} },
       });
       toast.success("Case created");
       onCreated?.(created);

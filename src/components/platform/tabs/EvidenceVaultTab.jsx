@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import EmptyState from "@/components/platform/EmptyState";
 import { PROCESSING_STATUS_STYLES, formatBytes } from "@/components/platform/investigationStyles";
 import { logAuditEvent } from "@/lib/auditLogger";
+import { ensureTenant } from "@/lib/tenantContext";
 import { toast } from "sonner";
 
 const EVIDENCE_TYPES = ["document", "screenshot", "transaction", "communication", "video", "audio", "blockchain", "image", "archive", "other"];
@@ -131,9 +132,11 @@ function UploadModal({ caseId, onClose, onDone }) {
     setUploading(true);
     try {
       const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      const tenantId = await ensureTenant();
       for (const file of files) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
         await base44.entities.EvidenceItem.create({
+          tenant_id: tenantId,
           case_id: caseId,
           filename: file.name,
           file_url,

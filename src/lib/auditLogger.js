@@ -13,6 +13,7 @@ export async function logAuditEvent({ action, objectType = null, objectId = null
   try {
     const user = await base44.auth.me().catch(() => null);
     await base44.entities.AuditEvent.create({
+      tenant_id: user?.tenant_id,
       actor: user?.email || "system",
       actor_name: user?.full_name || user?.email || "System",
       timestamp: new Date().toISOString(),
