@@ -50,7 +50,11 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Render the main app
+  // Render the main app.
+  // The outer LayoutWrapper already wraps <Routes>, so every route below is
+  // already inside the single Layout (one sidebar, one mobile drawer). Do NOT
+  // re-wrap individual route elements in <LayoutWrapper> — that renders a
+  // second sidebar/drawer and a second stacked theme.
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
@@ -58,15 +62,15 @@ const AuthenticatedApp = () => {
         {Object.entries(Pages).map(([path, Page]) => (
           <Route key={path} path={`/${path}`} element={<Page />} />
         ))}
-        <Route path="/PrivacyAdvisor" element={<LayoutWrapper currentPageName="PrivacyAdvisor"><PrivacyAdvisor /></LayoutWrapper>} />
-        <Route path="/UserExport" element={<LayoutWrapper currentPageName="UserExport"><UserExport /></LayoutWrapper>} />
-        <Route path="/OperationsDashboard" element={<LayoutWrapper currentPageName="OperationsDashboard"><OperationsDashboard /></LayoutWrapper>} />
-        <Route path="/CasesManagement" element={<LayoutWrapper currentPageName="CasesManagement"><CasesManagement /></LayoutWrapper>} />
-        <Route path="/CaseImport" element={<LayoutWrapper currentPageName="CaseImport"><CaseImport /></LayoutWrapper>} />
-        <Route path="/InvestigationWorkspace" element={<LayoutWrapper currentPageName="InvestigationWorkspace"><InvestigationWorkspace /></LayoutWrapper>} />
-        <Route path="/AuditLog" element={<LayoutWrapper currentPageName="AuditLog"><AuditLog /></LayoutWrapper>} />
-        <Route path="/GlobalSearch" element={<LayoutWrapper currentPageName="GlobalSearch"><GlobalSearchPage /></LayoutWrapper>} />
-        <Route path="/ReportsCenter" element={<LayoutWrapper currentPageName="ReportsCenter"><ReportsCenter /></LayoutWrapper>} />
+        <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
+        <Route path="/UserExport" element={<UserExport />} />
+        <Route path="/OperationsDashboard" element={<OperationsDashboard />} />
+        <Route path="/CasesManagement" element={<CasesManagement />} />
+        <Route path="/CaseImport" element={<CaseImport />} />
+        <Route path="/InvestigationWorkspace" element={<InvestigationWorkspace />} />
+        <Route path="/AuditLog" element={<AuditLog />} />
+        <Route path="/GlobalSearch" element={<GlobalSearchPage />} />
+        <Route path="/ReportsCenter" element={<ReportsCenter />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import {
   Target, FileSearch, Crosshair, Network, GitBranch, FlaskConical,
-  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge,
+  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/platform/EmptyState";
@@ -53,11 +53,58 @@ export default function InvestigationWorkspace() {
     enabled: !!caseId,
   });
 
+  // Recent cases for the AI Investigations landing (shown when no case is open).
+  const { data: recentCases = [] } = useQuery({
+    queryKey: ["investigation-cases-recent"],
+    queryFn: () => base44.entities.InvestigationCase.list("-last_activity", 12),
+    enabled: !caseId,
+  });
+
   if (!caseId) {
     return (
-      <div className="p-6 lg:p-8">
-        <EmptyState variant="empty" icon={Target} title="No case selected" description="Select a case to view its investigation workspace."
-          action={<Link to="/CasesManagement"><Badge variant="outline" className="border-cyan-500/30 text-cyan-400 cursor-pointer">Go to Cases</Badge></Link>} />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="rounded-xl border border-purple-500/25 bg-gradient-to-br from-purple-500/[0.07] to-cyan-500/[0.04] p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-purple-300" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-white tracking-tight">AI Investigations</h1>
+              <p className="text-sm text-gray-400 mt-0.5">Pick a case to launch the case-aware AI runner — planning, evidence, multi-agent analysis, reality check, risk, and dossier.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/CasesManagement" className="text-xs px-3 py-1.5 rounded-md border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 transition-colors">Browse all cases</Link>
+            <Link to="/CaseImport" className="text-xs px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Import a case</Link>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Recent cases</h2>
+          {recentCases.length === 0 ? (
+            <EmptyState variant="empty" icon={Briefcase} title="No cases yet"
+              description="Create or import a case to begin an AI investigation."
+              action={<Link to="/CasesManagement"><Badge variant="outline" className="border-cyan-500/30 text-cyan-400 cursor-pointer">Go to Cases</Badge></Link>} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recentCases.map((c) => (
+                <Link key={c.id} to={`/InvestigationWorkspace?case_id=${c.id}&tab=overview`}
+                  className="group rounded-lg border border-white/10 bg-white/[0.02] p-4 hover:border-cyan-500/40 hover:bg-cyan-500/[0.04] transition-colors">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-xs text-gray-500 font-mono truncate">#{c.case_number || c.id?.slice(-6)}</span>
+                    <Badge variant="outline" className="capitalize border-cyan-500/30 text-cyan-400">{(c.status || "new").replace(/_/g, " ")}</Badge>
+                  </div>
+                  <p className="text-sm font-medium text-white truncate group-hover:text-cyan-200">{c.case_title || "Untitled case"}</p>
+                  <p className="text-xs text-gray-500 mt-1 capitalize">{c.fraud_type?.replace(/_/g, " ") || "investigation"}</p>
+                  <div className="flex items-center justify-between mt-3 text-[11px] text-gray-500">
+                    <span className="truncate">{c.victim_name || "—"}</span>
+                    <span className="text-cyan-400 group-hover:text-cyan-300 shrink-0">Open runner →</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }

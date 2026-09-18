@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Target, Briefcase, FileSearch, ShieldAlert, FileText,
   Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
-  Command, UserCheck, Mail, Download, Home, Zap,
+  Command, UserCheck, Mail, Download, Home, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ const SECTIONS = [
   {
     label: "Investigations",
     items: [
-      { id: "investigations", label: "Investigations", icon: Target, path: "/InvestigationHub", glow: "purple" },
+      { id: "ai-investigations", label: "AI Investigations", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI", prominent: true },
       { id: "cases", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
       { id: "import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
       { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
@@ -83,11 +83,15 @@ const glowBar = {
 };
 
 function isActiveItem(item, location) {
+  const sp = new URLSearchParams(location.search);
   if (item.tab) {
-    const sp = new URLSearchParams(location.search);
     return location.pathname === item.path && sp.get("tab") === item.tab;
   }
-  // Exact match, or prefix match for sub-routes (e.g. /CasesManagement/...)
+  // The AI Investigations entry shares /InvestigationWorkspace with the
+  // case-tab deep links — only mark it active when no tab is selected.
+  if (item.path === "/InvestigationWorkspace") {
+    return location.pathname === item.path && !sp.get("tab");
+  }
   return location.pathname === item.path;
 }
 
@@ -132,12 +136,14 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           py-2.5
           ${active
             ? "bg-cyan-500/10 border border-cyan-500/40"
-            : "border border-transparent hover:bg-white/[0.04] hover:border-white/10"}`}
+            : item.prominent
+              ? "border border-purple-500/30 bg-purple-500/[0.06] hover:bg-purple-500/10 hover:border-purple-500/50"
+              : "border border-transparent hover:bg-white/[0.04] hover:border-white/10"}`}
       >
         {active && (
           <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b ${grad}`} />
         )}
-        <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? "text-cyan-300" : "text-gray-400 group-hover:text-cyan-300"}`} />
+        <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? "text-cyan-300" : item.prominent ? "text-purple-300 group-hover:text-purple-200" : "text-gray-400 group-hover:text-cyan-300"}`} />
         <span className={`flex-1 text-left text-sm font-medium truncate transition-colors ${active ? "text-white" : "text-gray-300 group-hover:text-white"} ${collapsed ? "lg:hidden" : ""}`}>
           {item.label}
         </span>

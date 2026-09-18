@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Briefcase, Target, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Briefcase, Sparkles, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 /**
@@ -12,7 +12,7 @@ export default function MobileBottomNav() {
   const navItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard" },
     { name: "Cases", icon: Briefcase, path: "/CasesManagement" },
-    { name: "Investigate", icon: Target, path: "/InvestigationHub" },
+    { name: "AI", icon: Sparkles, path: "/InvestigationWorkspace" },
     { name: "Security", icon: ShieldCheck, path: "/SecurityDashboard" },
   ];
 
