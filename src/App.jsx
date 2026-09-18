@@ -27,7 +27,7 @@ const ADMIN_PAGE_KEYS = new Set([
   'AdminInvites', 'AdminMonitoringDashboard', 'AdminReferralDashboard',
   'AdminReferrals', 'AdminReports', 'AdminSubscriptions', 'AdminSupport',
   'AdminUserApprovals', 'AdminVPNServers', 'AdminVerifiedCompanies',
-  'AdminDeedFraud',
+  'AdminDeedFraud', 'Cases', 'InvestigationDashboard', 'InvestigatorDashboard',
 ]);
 
 const { Pages, Layout, mainPage } = pagesConfig;
