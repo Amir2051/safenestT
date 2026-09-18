@@ -222,7 +222,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="fraud" className="w-full">
+      <Tabs defaultValue="cases" className="w-full">
         <TabsList className="bg-[#1a2332] border border-cyan-500/20">
           <TabsTrigger value="cases">
             <FileText className="w-4 h-4 mr-2" />
