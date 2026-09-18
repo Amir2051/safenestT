@@ -1,6 +1,5 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 /**
@@ -11,7 +10,7 @@ import { useAuth } from '@/lib/AuthContext';
  *   investigation platform pages so investigators keep working while regular
  *   users are blocked.
  *
- * Non-privileged users see an "Access Restricted" panel instead of the page.
+ * Non-privileged users are redirected to the regular dashboard.
  */
 
 function Loading() {
