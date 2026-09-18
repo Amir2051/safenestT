@@ -349,32 +349,23 @@ export default function Dashboard() {
                   <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> Active
                 </p>
               </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            Welcome back, {user.full_name?.split(' ')[0] || 'there'}
-            <span className="text-2xl">👋</span>
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Your digital security dashboard • Last scan: <LiveClock />
-          </p>
-        </div>
-        <Button
-          onClick={runSecurityScan}
-          disabled={scanning}
-          className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold shadow-lg shadow-cyan-500/20"
-        >
-          {scanning ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-              Scanning...
-            </>
-          ) : (
-            <>
-              <Shield className="w-4 h-4 mr-2" />
-              Run Security Scan
-            </>
-          )}
-        </Button>
+              <Button
+                onClick={runSecurityScan}
+                disabled={scanning}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold shadow-lg shadow-cyan-500/20"
+              >
+                {scanning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4 mr-2" />
+                    Run Security Scan
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>
