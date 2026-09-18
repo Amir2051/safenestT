@@ -2,6 +2,10 @@
   "name": "EvidenceItem",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    },
     "case_id": {
       "type": "string",
       "description": "ID of the related investigation case"
@@ -150,74 +154,70 @@
     }
   },
   "required": [
+    "tenant_id",
     "case_id",
     "filename",
     "file_url"
   ],
   "rls": {
-    "create": {
+    "read": {
       "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "user"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
           }
         }
       ]
     },
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
-        }
-      ]
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "$or": [
         {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
         }
       ]
     },
     "delete": {
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "tenant_role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "investigator"
+                  }
+                }
+              ]
+            }
+          ]
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
+            "role": "admin"
           }
         }
       ]

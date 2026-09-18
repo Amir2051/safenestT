@@ -2,6 +2,10 @@
   "name": "InvestigationReport",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    },
     "case_id": {
       "type": "string",
       "description": "ID of the related investigation case"
@@ -17,7 +21,8 @@
         "evidence_report",
         "blockchain_trace_report",
         "executive_summary",
-        "finding_report"
+        "finding_report",
+        "dossier"
       ],
       "default": "investigation_report",
       "description": "Type of report"
@@ -37,9 +42,10 @@
       "type": "string",
       "enum": [
         "hermes",
-        "investigator"
+        "investigator",
+        "ai_run"
       ],
-      "default": "hermes",
+      "default": "ai_run",
       "description": "Who generated the report"
     },
     "generated_date": {
@@ -48,7 +54,7 @@
     },
     "content": {
       "type": "object",
-      "description": "Structured report content from Hermes"
+      "description": "Structured report content"
     },
     "sections": {
       "type": "array",
@@ -141,63 +147,75 @@
     "created_by": {
       "type": "string",
       "description": "Email of report creator/requestor"
+    },
+    "generating_run_id": {
+      "type": "string",
+      "description": "InvestigationRun id that produced this report (auditable lineage)"
     }
   },
   "required": [
+    "tenant_id",
     "case_id",
     "title",
     "report_type"
   ],
   "rls": {
-    "create": {
+    "read": {
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
+            "role": "admin"
           }
         }
       ]
     },
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
-        }
-      ]
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
+            "role": "admin"
           }
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "tenant_role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "admin"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }

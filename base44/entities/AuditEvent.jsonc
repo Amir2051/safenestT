@@ -2,6 +2,10 @@
   "name": "AuditEvent",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    },
     "actor": {
       "type": "string",
       "description": "Email of the actor"
@@ -43,52 +47,33 @@
       "enum": [
         "user",
         "system",
-        "hermes"
+        "hermes",
+        "ai_run"
       ],
       "default": "user",
       "description": "Source of the event"
     }
   },
   "required": [
+    "tenant_id",
     "action",
     "actor"
   ],
   "rls": {
-    "create": {
+    "read": {
       "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
         {
           "user_condition": {
             "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "user"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
           }
         }
       ]
     },
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "data.actor": "{{user.email}}"
-        }
-      ]
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "user_condition": {

@@ -2,6 +2,10 @@
   "name": "InvestigationFinding",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    },
     "case_id": {
       "type": "string",
       "description": "ID of the related investigation case"
@@ -69,9 +73,10 @@
       "type": "string",
       "enum": [
         "hermes",
-        "investigator"
+        "investigator",
+        "ai_run"
       ],
-      "default": "hermes",
+      "default": "ai_run",
       "description": "Who generated the finding"
     },
     "evidence_refs": {
@@ -142,63 +147,75 @@
     "hermes_raw": {
       "type": "object",
       "description": "Raw Hermes finding data"
+    },
+    "generating_run_id": {
+      "type": "string",
+      "description": "InvestigationRun id that produced this finding (auditable lineage)"
     }
   },
   "required": [
+    "tenant_id",
     "case_id",
     "title",
     "status"
   ],
   "rls": {
-    "create": {
+    "read": {
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
+            "role": "admin"
           }
         }
       ]
     },
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
-        }
-      ]
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
+            "role": "admin"
           }
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "tenant_role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "tenant_role": "admin"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }
