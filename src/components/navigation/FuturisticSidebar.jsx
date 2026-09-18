@@ -62,6 +62,32 @@ const SECTIONS = [
   },
 ];
 
+// Minimal navigation for regular (non-staff) users.
+const USER_SECTIONS = [
+  {
+    label: "Home",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/", glow: "cyan" },
+    ],
+  },
+  {
+    label: "My Activity",
+    items: [
+      { id: "my-cases", label: "My Cases", icon: Briefcase, path: "/MyCases", glow: "cyan" },
+      { id: "report-scam", label: "Report a Scam", icon: ShieldAlert, path: "/ReportScam", glow: "red" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+      { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
+      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
+      { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+    ],
+  },
+];
+
 const ADMIN_SECTIONS = [
   {
     label: "Operations",
@@ -122,9 +148,13 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   }, [collapsed]);
 
   const isAdmin = user?.role === "admin" || user?.is_admin;
+  // Staff = admins + tenant investigators/owners — they get the full investigation OS.
+  // Regular users get the minimal USER_SECTIONS navigation.
+  const isStaff = isAdmin || ["owner", "admin", "investigator"].includes(user?.tenant_role);
   // Case-Workspace deep links (Evidence / Findings / Reports) only make sense
   // when a case is actually open — hide that section entirely otherwise.
   const hasCaseContext = new URLSearchParams(location.search).get("case_id");
+  const navSections = isStaff ? SECTIONS : USER_SECTIONS;
 
   const go = (item) => {
     let url = item.path;
@@ -220,7 +250,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-4">
-          {SECTIONS.map((section) => {
+          {navSections.map((section) => {
             if (section.label === "Case Workspace" && !hasCaseContext) return null;
             return (
               <div key={section.label}>

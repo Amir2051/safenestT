@@ -18,6 +18,16 @@ import GlobalSearchPage from './pages/platform/GlobalSearchPage';
 import ReportsCenter from './pages/platform/ReportsCenter';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import AdminGate, { RoleGate } from '@/components/admin/AdminGate';
+
+// Pages rendered through the pagesConfig loop that must be admin-only.
+const ADMIN_PAGE_KEYS = new Set([
+  'AdminDashboard', 'AdminInvestigation', 'AdminInvestmentMonitor',
+  'AdminInvites', 'AdminMonitoringDashboard', 'AdminReferralDashboard',
+  'AdminReferrals', 'AdminReports', 'AdminSubscriptions', 'AdminSupport',
+  'AdminUserApprovals', 'AdminVPNServers', 'AdminVerifiedCompanies',
+  'AdminDeedFraud',
+]);
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -59,18 +69,25 @@ const AuthenticatedApp = () => {
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
         <Route path="/" element={<MainPage />} />
-        {Object.entries(Pages).map(([path, Page]) => (
-          <Route key={path} path={`/${path}`} element={<Page />} />
-        ))}
+        {Object.entries(Pages).map(([path, Page]) => {
+          const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : null;
+          return (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={Gate ? <Gate><Page /></Gate> : <Page />}
+            />
+          );
+        })}
         <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
-        <Route path="/UserExport" element={<UserExport />} />
-        <Route path="/OperationsDashboard" element={<OperationsDashboard />} />
-        <Route path="/CasesManagement" element={<CasesManagement />} />
-        <Route path="/CaseImport" element={<CaseImport />} />
-        <Route path="/InvestigationWorkspace" element={<InvestigationWorkspace />} />
-        <Route path="/AuditLog" element={<AuditLog />} />
-        <Route path="/GlobalSearch" element={<GlobalSearchPage />} />
-        <Route path="/ReportsCenter" element={<ReportsCenter />} />
+        <Route path="/UserExport" element={<AdminGate><UserExport /></AdminGate>} />
+        <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator><OperationsDashboard /></RoleGate>} />
+        <Route path="/CasesManagement" element={<RoleGate allowInvestigator><CasesManagement /></RoleGate>} />
+        <Route path="/CaseImport" element={<RoleGate allowInvestigator><CaseImport /></RoleGate>} />
+        <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator><InvestigationWorkspace /></RoleGate>} />
+        <Route path="/AuditLog" element={<RoleGate allowInvestigator><AuditLog /></RoleGate>} />
+        <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
+        <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>
