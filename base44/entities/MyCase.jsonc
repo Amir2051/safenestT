@@ -488,16 +488,16 @@
           }
         },
         {
-          "user_id": "{{user.id}}"
+          "data.user_id": "{{user.id}}"
         },
         {
-          "created_by": "{{user.email}}"
+          "data.client_email": "{{user.email}}"
         },
         {
-          "client_email": "{{user.email}}"
+          "data.created_by_email": "{{user.email}}"
         },
         {
-          "created_by_email": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         }
       ]
     },
@@ -510,17 +510,17 @@
         },
         {
           "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        },
-        {
-          "user_condition": {
             "role": "user"
           }
         },
         {
           "user_condition": {
             "role": "authenticated"
+          }
+        },
+        {
+          "user_condition": {
+            "job_title": "Fraud Specialist"
           }
         }
       ]
@@ -538,16 +538,16 @@
           }
         },
         {
-          "user_id": "{{user.id}}"
+          "data.user_id": "{{user.id}}"
         },
         {
-          "created_by": "{{user.email}}"
+          "data.client_email": "{{user.email}}"
         },
         {
-          "client_email": "{{user.email}}"
+          "data.created_by_email": "{{user.email}}"
         },
         {
-          "created_by_email": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         }
       ]
     },
