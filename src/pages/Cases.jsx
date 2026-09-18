@@ -145,7 +145,7 @@ export default function Cases() {
           <p className="text-gray-400 mt-1">View and manage SafeNestT case records, investigations, and recovery requests</p>
         </div>
         <div className="flex gap-3">
-          <NewCaseModal onCaseCreated={() => queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] })} />
+          <NewCaseModal onCaseCreated={() => queryClient.invalidateQueries({ queryKey: ['cases-page'] })} />
         </div>
       </div>
 
@@ -361,7 +361,7 @@ export default function Cases() {
             setSelectedCaseId(null);
           }} 
           onUpdate={() => {
-             queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] });
+             queryClient.invalidateQueries({ queryKey: ['cases-page'] });
           }}
         />
       )}
