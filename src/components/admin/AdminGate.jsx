@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -49,7 +50,7 @@ function isPrivileged(user, { allowInvestigator = false } = {}) {
 export function RoleGate({ children, allowInvestigator = false }) {
   const { user, isLoadingAuth } = useAuth();
   if (isLoadingAuth || !user) return <Loading />;
-  if (!isPrivileged(user, { allowInvestigator })) return <Denied />;
+  if (!isPrivileged(user, { allowInvestigator })) return <Navigate to="/Dashboard" replace />;
   return <>{children}</>;
 }
 
