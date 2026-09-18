@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard, Target, Briefcase, FileSearch, ShieldAlert, FileText,
+  LayoutDashboard, Briefcase, FileSearch, ShieldAlert, FileText,
   Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
-  Command, UserCheck, Mail, Download, Home, Sparkles,
+  Command, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
