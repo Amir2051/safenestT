@@ -53,7 +53,6 @@ export default function MyCases() {
   const [selectedCasesForMerge, setSelectedCasesForMerge] = useState([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [adminGlobal, setAdminGlobal] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const queryClient = useQueryClient();
 
@@ -75,10 +74,6 @@ export default function MyCases() {
   useEffect(() => {
     base44.auth.me().then(userData => setUser(userData)).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    setAdminGlobal(!!(user?.is_admin || user?.role === 'admin'));
-  }, [user]);
 
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases', user?.id],
@@ -121,7 +116,7 @@ export default function MyCases() {
       if (!q) return true;
       return (c.case_number||"").toLowerCase().includes(q) || (c.title || c.case_number || "").toLowerCase().includes(q) || (c.client_email||"").toLowerCase().includes(q);
     }).sort((a,b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [allRawCases, globalSearch, adminGlobal]);
+  }, [allRawCases, globalSearch]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
