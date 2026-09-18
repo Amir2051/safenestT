@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Menu, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NotificationCenter from "./components/shared/NotificationCenter.jsx";
+import Breadcrumb from "./components/shared/Breadcrumb.jsx";
 import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
@@ -312,6 +313,8 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               )}
             </div>
+
+            <Breadcrumb />
 
             <div className="flex items-center gap-4">
               <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">

@@ -1,809 +1,247 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
-import { motion, AnimatePresence } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  Shield, LayoutDashboard, Lock, Bell, Bot, Settings as SettingsIcon, LogOut,
-  Users, Wifi, Activity, ShieldCheck, ShieldOff, Mail, Server,
-  ChevronRight, Power, AlertTriangle, Globe, Smartphone, UserCheck, Command,
-  Wallet, Search, Building2, CreditCard, FileText, Brain, Home,
-  Megaphone, Sparkles, Briefcase, MessageSquare, BarChart3, HelpCircle,
-  Star, Radar, Eye, Map, Cookie, Download, Gauge, FlaskConical, Network, GitBranch, Cpu, Target, Upload, ScrollText
+  LayoutDashboard, Target, Briefcase, FileSearch, ShieldAlert, FileText,
+  Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
+  CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
+  Command, UserCheck, Mail, Download, Home, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import LiveClock from "@/components/shared/LiveClock";
 
-const investigationPlatformItems = [
+/**
+ * Investigation-focused sidebar.
+ * Clean section hierarchy, role-gated admin zone, desktop collapse-to-rail,
+ * and case-aware workspace deep links (Evidence / Findings & Risk / Reports).
+ */
+
+const SECTIONS = [
   {
-    id: 'ops-dashboard',
-    title: 'Operations',
-    icon: Gauge,
-    url: '/OperationsDashboard',
-    glow: 'cyan',
-    section: 'INVESTIGATION PLATFORM'
+    label: "Overview",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
+    ],
   },
   {
-    id: 'cases-mgmt',
-    title: 'Cases',
-    icon: Briefcase,
-    url: '/CasesManagement',
-    glow: 'cyan'
+    label: "Investigations",
+    items: [
+      { id: "investigations", label: "Investigations", icon: Target, path: "/InvestigationHub", glow: "purple" },
+      { id: "cases", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
+      { id: "import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
+      { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
+    ],
   },
   {
-    id: 'case-import',
-    title: 'Import Case',
-    icon: Upload,
-    url: '/CaseImport',
-    glow: 'cyan'
+    label: "Case Workspace",
+    items: [
+      { id: "ws-evidence", label: "Evidence", icon: FileSearch, path: "/InvestigationWorkspace", tab: "evidence", glow: "cyan" },
+      { id: "ws-findings", label: "Findings & Risk", icon: ShieldAlert, path: "/InvestigationWorkspace", tab: "findings", glow: "amber" },
+      { id: "ws-reports", label: "Reports & Dossiers", icon: FileText, path: "/InvestigationWorkspace", tab: "reports", glow: "cyan" },
+      { id: "audit", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+    ],
   },
   {
-    id: 'investigation-workspace',
-    title: 'Investigation',
-    icon: Target,
-    url: '/InvestigationWorkspace',
-    glow: 'purple'
+    label: "Intelligence & Security",
+    items: [
+      { id: "intelligence", label: "Intelligence", icon: Radar, path: "/ReportedScams", glow: "red" },
+      { id: "monitoring", label: "Monitoring", icon: Activity, path: "/Alerts", glow: "red", badge: "LIVE" },
+      { id: "security", label: "Security", icon: ShieldCheck, path: "/SecurityDashboard", glow: "emerald" },
+    ],
   },
   {
-    id: 'reports-center',
-    title: 'Reports Center',
-    icon: FileText,
-    url: '/ReportsCenter',
-    glow: 'cyan'
-  },
-  {
-    id: 'audit-log',
-    title: 'Audit Log',
-    icon: ScrollText,
-    url: '/AuditLog',
-    glow: 'cyan'
-  },
-  {
-    id: 'global-search',
-    title: 'Global Search',
-    icon: Search,
-    url: '/GlobalSearch',
-    glow: 'cyan'
+    label: "Account",
+    items: [
+      { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+      { id: "vault", label: "Password Vault", icon: Lock, path: "/PasswordVault", glow: "blue" },
+      { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
+      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
+      { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+    ],
   },
 ];
 
-const navigationItems = [
-  ...investigationPlatformItems,
-  {
-    id: 'dashboard',
-    title: 'Dashboard',
-    icon: LayoutDashboard,
-    url: createPageUrl('Dashboard'),
-    glow: 'cyan'
-  },
-  {
-    id: 'verified-hub',
-    title: 'Verified Investments',
-    icon: Building2,
-    url: createPageUrl('VerifiedHub'),
-    glow: 'blue',
-    badge: 'HUB'
-  },
-
-  {
-    id: 'messages',
-    title: 'AI Assistant',
-    icon: Bot,
-    url: createPageUrl('MiaAssistant'),
-    glow: 'purple',
-    badge: 'AI'
-  },
-
-  {
-    id: 'vault',
-    title: 'Password Vault',
-    icon: Lock,
-    url: createPageUrl('PasswordVault'),
-    glow: 'blue'
-  },
-
-  {
-    id: 'crypto',
-    title: 'Crypto Protection',
-    icon: Wallet,
-    url: createPageUrl('CryptoProtection'),
-    glow: 'purple'
-  },
-  {
-    id: 'device-care',
-    title: 'Device Protection',
-    icon: Smartphone,
-    url: createPageUrl('DeviceCare'),
-    glow: 'green',
-    badge: 'SCAN'
-  },
-
-  {
-    id: 'electra',
-    title: 'Electra Wallet',
-    icon: Wallet,
-    url: createPageUrl('ElectraWallet'),
-    glow: 'purple',
-    badge: 'NEW'
-  },
-  {
-    id: 'vpn',
-    title: 'VPN Protection',
-    icon: Wifi,
-    url: createPageUrl('VPNPage'),
-    glow: 'emerald'
-  },
-  {
-    id: 'fraud-tracking',
-    title: 'Fraud Tracking',
-    icon: AlertTriangle,
-    url: createPageUrl('FraudTracking'),
-    glow: 'orange'
-  },
-  {
-    id: 'web-vpn',
-    title: 'Web VPN',
-    icon: Globe,
-    url: createPageUrl('WebVPN'),
-    glow: 'cyan'
-  },
-  {
-    id: 'privacy-hub',
-    title: 'Privacy Hub',
-    icon: Home,
-    url: createPageUrl('PrivacyHub'),
-    glow: 'cyan',
-    badge: 'HUB'
-  },
-  {
-    id: 'privacy-guard',
-    title: 'Privacy Guard',
-    icon: ShieldOff,
-    url: createPageUrl('PrivacyGuard'),
-    glow: 'purple',
-    badge: 'NEW'
-  },
-  {
-    id: 'alerts',
-    title: 'Security Alerts',
-    icon: Bell,
-    url: createPageUrl('Alerts'),
-    glow: 'red',
-    badge: 'LIVE'
-  },
-  {
-    id: 'reported-scams',
-    title: 'Reported Scams',
-    icon: AlertTriangle,
-    url: createPageUrl('ReportedScams'),
-    glow: 'red'
-  },
-  {
-    id: 'my-cases',
-    title: 'My Cases',
-    icon: FileText,
-    url: createPageUrl('MyCases'),
-    glow: 'cyan'
-  },
-  {
-    id: 'deed-fraud',
-    title: 'Deed Fraud Protection',
-    icon: Home,
-    url: createPageUrl('DeedFraudProtection'),
-    glow: 'orange',
-    badge: 'NYS'
-  },
-  {
-    id: 'invitations',
-    title: 'Referrals',
-    icon: Users,
-    url: createPageUrl('Referrals'),
-    glow: 'pink'
-  },
-  {
-    id: 'subscription',
-    title: 'My Subscription',
-    icon: CreditCard,
-    url: createPageUrl('Subscription'),
-    glow: 'purple',
-    badge: 'PREMIUM'
-  },
-  {
-    id: 'activity',
-    title: 'Activity Log',
-    icon: Activity,
-    url: createPageUrl('Activity'),
-    glow: 'green'
-  },
-  {
-    id: 'support',
-    title: 'Support',
-    icon: MessageSquare,
-    url: createPageUrl('Support'),
-    glow: 'blue'
-  },
-  {
-    id: 'us-cybercrime-resources',
-    title: 'U.S. Cybercrime Resources',
-    icon: Shield,
-    url: createPageUrl('USCybercrimeResources'),
-    glow: 'red',
-    badge: 'GOV'
-  },
-  {
-    id: 'help-center',
-    title: 'Help Center',
-    icon: HelpCircle,
-    url: createPageUrl('HelpCenter'),
-    glow: 'cyan',
-    badge: 'FAQ'
-  },
-  {
-    id: 'settings',
-    title: 'Settings',
-    icon: SettingsIcon,
-    url: createPageUrl('Settings'),
-    glow: 'gray'
-  },
+const ADMIN_ITEMS = [
+  { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard" },
+  { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals" },
+  { id: "admin-invites", label: "Invite Manager", icon: Mail, path: "/AdminInvites" },
+  { id: "admin-reports", label: "Reports & KPIs", icon: Activity, path: "/AdminReports" },
+  { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions" },
+  { id: "admin-deed-fraud", label: "Deed Fraud Cases", icon: Home, path: "/AdminDeedFraud" },
+  { id: "admin-export", label: "Export Users", icon: Download, path: "/UserExport" },
 ];
 
-
-
-const privacyHubItems = [
-  { id: "privacy-score", title: "Privacy Score", icon: Star, url: createPageUrl("PrivacyScore"), glow: "cyan" },
-  { id: "broker-removal", title: "Broker Removal", icon: ShieldOff, url: createPageUrl("BrokerRemoval"), glow: "red" },
-  { id: "exposure-scanner", title: "Exposure Scanner", icon: Radar, url: createPageUrl("ExposureScanner"), glow: "orange" },
-  { id: "dark-web-monitor-hub", title: "Dark Web Monitor", icon: Eye, url: createPageUrl("DarkWebMonitorHub"), glow: "pink" },
-  { id: "footprint-map", title: "Footprint Map", icon: Map, url: createPageUrl("FootprintMap"), glow: "blue" },
-  { id: "cookie-intel", title: "Cookie Intel", icon: Cookie, url: createPageUrl("CookieIntel"), glow: "orange" },
-  { id: "rights-center", title: "Rights Center", icon: FileText, url: createPageUrl("RightsCenter"), glow: "green" },
-  { id: "secure-vault", title: "Secure Vault", icon: Lock, url: createPageUrl("SecureVault"), glow: "emerald" },
-  { id: "privacy-advisor", title: "Privacy Advisor", icon: Bot, url: createPageUrl("PrivacyAdvisor"), glow: "purple", badge: "AI" },
-  { id: "privacy-coming-soon", title: "Coming Soon ▸", icon: Bell, url: createPageUrl("PrivacyComingSoon"), glow: "purple" },
-];
-
-const investigationItems = [
-  {
-    id: 'client-protection',
-    title: 'Protection Dashboard',
-    icon: ShieldCheck,
-    url: createPageUrl('ClientProtection'),
-    glow: 'blue'
-  },
-  {
-    id: 'threat-intel',
-    title: 'Threat Intelligence',
-    icon: Globe,
-    url: createPageUrl('ThreatIntelligence'),
-    glow: 'purple',
-    badge: 'INTEL'
-  },
-  {
-    id: 'forensics',
-    title: 'Digital Forensics',
-    icon: Search,
-    url: createPageUrl('DigitalForensics'),
-    glow: 'cyan',
-    badge: 'TOOLS'
-  }
-];
-
-const mediaNavItems = [
-   { 
-     id: 'media-command', 
-     title: "Media Command", 
-     icon: Megaphone, 
-     url: createPageUrl('MediaDashboard'), 
-     glow: "pink" 
-   },
-   { 
-     id: 'media-ai', 
-     title: "Media AI Agent", 
-     icon: Sparkles, 
-     url: createPageUrl('MediaDirectorAI'), 
-     glow: "purple", 
-     badge: 'AI' 
-   },
-];
-
-const adminItems = [
-  {
-    id: 'analytics-dashboard',
-    title: 'Analytics & Intelligence',
-    icon: Brain,
-    url: createPageUrl('AnalyticsDashboard'),
-    glow: 'purple',
-    badge: 'AI'
-  },
-  {
-    id: 'admin-verified-companies',
-    title: 'Verified Investment Hub',
-    icon: Building2,
-    url: createPageUrl('AdminVerifiedCompanies'),
-    glow: 'blue',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-investment-monitor',
-    title: 'Investment Monitor',
-    icon: Activity,
-    url: createPageUrl('AdminInvestmentMonitor'),
-    glow: 'emerald',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'investigation-portal',
-    title: 'Investigation Portal',
-    icon: Search,
-    url: createPageUrl('InvestigationDashboard'),
-    glow: 'red',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-investigation',
-    title: 'Admin Investigation',
-    icon: ShieldCheck,
-    url: createPageUrl('AdminInvestigation'),
-    glow: 'red',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'intel-center',
-    title: 'Intelligence Center',
-    icon: Brain,
-    url: createPageUrl('IntelligenceCenter'),
-    glow: 'purple',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'wallet-checker',
-    title: 'Crypto Wallet Checker',
-    icon: Wallet,
-    url: createPageUrl('CryptoWalletChecker'),
-    glow: 'orange',
-    badge: 'TOOL'
-  },
-  {
-    id: 'le-access',
-    title: 'LEO Portal Access',
-    icon: Lock,
-    url: createPageUrl('LawEnforcementAccess'),
-    glow: 'blue',
-    badge: 'LEO'
-  },
-  {
-    id: 'admin-dashboard',
-    title: 'Admin Dashboard',
-    icon: Command,
-    url: createPageUrl('AdminDashboard'),
-    glow: 'cyan',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-reports',
-    title: 'Reports & KPIs',
-    icon: Activity,
-    url: createPageUrl('AdminReports'),
-    glow: 'blue',
-    badge: 'KPI'
-  },
-  {
-    id: 'admin-approvals',
-    title: 'User Approvals',
-    icon: UserCheck,
-    url: createPageUrl('AdminUserApprovals'),
-    glow: 'purple',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-user-export',
-    title: 'Export Users',
-    icon: Download,
-    url: '/UserExport',
-    glow: 'cyan',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-invites',
-    title: 'Invite Manager',
-    icon: Mail,
-    url: createPageUrl('AdminInvites'),
-    glow: 'red',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-vpn',
-    title: 'VPN Servers',
-    icon: Server,
-    url: createPageUrl('AdminVPNServers'),
-    glow: 'orange',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-subscriptions',
-    title: 'Subscriptions',
-    icon: CreditCard,
-    url: createPageUrl('AdminSubscriptions'),
-    glow: 'emerald',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-support',
-    title: 'Support Chat',
-    icon: MessageSquare,
-    url: createPageUrl('AdminSupport'),
-    glow: 'blue',
-    badge: 'ADMIN'
-  },
-  {
-    id: 'admin-deed-fraud',
-    title: 'Deed Fraud Cases',
-    icon: Home,
-    url: createPageUrl('AdminDeedFraud'),
-    glow: 'orange',
-    badge: 'ADMIN'
-  }
-];
-
-const glowColors = {
-  cyan: 'shadow-cyan-500/50 border-cyan-500/50',
-  purple: 'shadow-purple-500/50 border-purple-500/50',
-  blue: 'shadow-blue-500/50 border-blue-500/50',
-  pink: 'shadow-pink-500/50 border-pink-500/50',
-  green: 'shadow-green-500/50 border-green-500/50',
-  red: 'shadow-red-500/50 border-red-500/50',
-  emerald: 'shadow-emerald-500/50 border-emerald-500/50',
-  gray: 'shadow-gray-500/50 border-gray-500/50',
-  orange: 'shadow-orange-500/50 border-orange-500/50'
+const glowBar = {
+  cyan: "from-cyan-500 to-cyan-400",
+  purple: "from-purple-500 to-fuchsia-500",
+  amber: "from-amber-500 to-orange-500",
+  red: "from-red-500 to-rose-500",
+  emerald: "from-emerald-500 to-green-500",
+  blue: "from-blue-500 to-sky-500",
+  gray: "from-gray-500 to-slate-500",
 };
 
-const NavItem = ({ item, activeItem, onNavClick }) => {
-    const isActive = activeItem === item.id;
-    const Icon = item.icon;
-    const glow = glowColors[item.glow] || glowColors.cyan;
-    
-    return (
-      <motion.div
-        key={item.id}
-        initial={{ x: -50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="relative"
-      >
-        {isActive && (
-          <motion.div
-            layoutId="activeIndicator"
-            className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-purple-500 rounded-r-full ${glow}`}
-            initial={false}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          />
-        )}
-        
-        <button
-          onClick={() => onNavClick(item)}
-          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-300 group touch-manipulation ${
-            isActive
-              ? `bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/50 ${glow}`
-              : 'bg-gray-900/30 border border-gray-700/30 hover:border-cyan-500/30 hover:bg-gray-800/50'
-          }`}
-        >
-          <div className={`relative ${isActive ? 'animate-pulse-glow' : ''}`}>
-            <Icon className={`w-5 h-5 ${
-              isActive ? 'text-cyan-400' : 'text-gray-400 group-hover:text-cyan-400'
-            } transition-colors`} />
-            {isActive && (
-              <div className="absolute inset-0 blur-md bg-cyan-400 opacity-50" />
-            )}
-          </div>
-          
-          <span className={`flex-1 text-left text-sm font-medium tracking-wide ${
-            isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'
-          } transition-colors leading-relaxed`}>
-            {item.label || item.title}
-          </span>
-          
-          {item.badge && (
-            <Badge className={`text-[9px] px-1.5 py-0.5 ${
-              item.badge === 'ADMIN'
-                ? 'bg-red-500/20 text-red-400 border-red-500/50'
-                : item.badge === 'AI'
-                ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-                : item.badge === 'SCAN'
-                ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                : item.badge === 'NEW'
-                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
-                : item.badge === 'LEO'
-                ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                : item.badge === 'HUB'
-                ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
-            } border`}>
-              {item.badge}
-            </Badge>
-          )}
-          
-          {isActive && (
-            <ChevronRight className="w-4 h-4 text-cyan-400 animate-pulse" />
-          )}
-        </button>
-      </motion.div>
-    );
-};
+function isActiveItem(item, location) {
+  if (item.tab) {
+    const sp = new URLSearchParams(location.search);
+    return location.pathname === item.path && sp.get("tab") === item.tab;
+  }
+  // Exact match, or prefix match for sub-routes (e.g. /CasesManagement/...)
+  return location.pathname === item.path;
+}
 
 export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeItem, setActiveItem] = useState('dashboard');
-  const [securityStatus, setSecurityStatus] = useState('optimal');
-  const [lastLogin, setLastLogin] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("sn-sidebar-collapsed") === "1"; } catch { return false; }
+  });
 
   useEffect(() => {
-    const allItems = [...navigationItems, ...privacyHubItems, ...investigationItems, ...mediaNavItems, ...adminItems];
-    
-    const current = allItems.find(item => location.pathname === item.url);
-    if (current) {
-      setActiveItem(current.id);
-    }
-  }, [location.pathname]);
+    try { localStorage.setItem("sn-sidebar-collapsed", collapsed ? "1" : "0"); } catch { /* ignore */ }
+  }, [collapsed]);
 
-  useEffect(() => {
-    if (user) {
-      setLastLogin(user.last_login || user.created_date);
-      
-      const score = user.risk_score || 0;
-      if (score >= 90) setSecurityStatus('optimal');
-      else if (score >= 70) setSecurityStatus('good');
-      else if (score >= 50) setSecurityStatus('warning');
-      else setSecurityStatus('critical');
-    }
-  }, [user]);
+  const isAdmin = user?.role === "admin" || user?.is_admin;
 
-  const handleNavClick = (item) => {
-    setActiveItem(item.id);
-    navigate(item.url);
-    if (onNavigate) {
-      onNavigate();
+  const go = (item) => {
+    let url = item.path;
+    if (item.tab) {
+      // Preserve the current case context when switching workspace tabs.
+      const sp = new URLSearchParams(location.search);
+      const caseId = sp.get("case_id");
+      const next = new URLSearchParams();
+      next.set("tab", item.tab);
+      if (caseId) next.set("case_id", caseId);
+      url = `${item.path}?${next.toString()}`;
     }
+    navigate(url);
+    if (onNavigate) onNavigate();
   };
 
-  const statusConfig = {
-    optimal: { color: 'text-green-400', glow: 'shadow-green-500/50', label: 'Optimal' },
-    good: { color: 'text-blue-400', glow: 'shadow-blue-500/50', label: 'Good' },
-    warning: { color: 'text-yellow-400', glow: 'shadow-yellow-500/50', label: 'Warning' },
-    critical: { color: 'text-red-400', glow: 'shadow-red-500/50', label: 'Critical' }
+  const NavButton = ({ item }) => {
+    const active = isActiveItem(item, location);
+    const Icon = item.icon;
+    const grad = glowBar[item.glow] || glowBar.cyan;
+    return (
+      <button
+        onClick={() => go(item)}
+        title={collapsed ? item.label : undefined}
+        className={`relative w-full flex items-center gap-3 rounded-lg transition-all duration-200 group touch-manipulation
+          ${collapsed ? "lg:justify-center lg:px-0 px-3" : "px-3"}
+          py-2.5
+          ${active
+            ? "bg-cyan-500/10 border border-cyan-500/40"
+            : "border border-transparent hover:bg-white/[0.04] hover:border-white/10"}`}
+      >
+        {active && (
+          <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b ${grad}`} />
+        )}
+        <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? "text-cyan-300" : "text-gray-400 group-hover:text-cyan-300"}`} />
+        <span className={`flex-1 text-left text-sm font-medium truncate transition-colors ${active ? "text-white" : "text-gray-300 group-hover:text-white"} ${collapsed ? "lg:hidden" : ""}`}>
+          {item.label}
+        </span>
+        {item.badge && !collapsed && (
+          <Badge className={`text-[9px] px-1.5 py-0.5 border ${
+            item.badge === "AI" ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+            : item.badge === "LIVE" ? "bg-red-500/20 text-red-300 border-red-500/40"
+            : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"}`}>
+            {item.badge}
+          </Badge>
+        )}
+      </button>
+    );
   };
 
-  const status = statusConfig[securityStatus] || statusConfig.optimal;
+  const widthCls = collapsed ? "w-72 lg:w-[78px]" : "w-72";
 
   return (
-    <motion.div
-      initial={{ x: -300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="relative w-72 h-full min-h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 flex flex-col"
+    <motion.aside
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className={`${widthCls} h-full min-h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 flex flex-col relative transition-[width] duration-200`}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/20 via-transparent to-purple-950/20 pointer-events-none" />
-      <div className="absolute top-0 left-0 w-full h-32 bg-gradient-radial from-cyan-500/10 to-transparent blur-2xl pointer-events-none animate-pulse" />
-      
-      <div className="relative z-10 flex flex-col h-full min-h-screen p-6">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8"
-        >
-          <div className="relative">
-            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full blur-md opacity-75 animate-spin-slow" />
-            <div className="relative w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/50 mx-auto">
-              <span className="text-white font-bold text-2xl">
-                {user?.full_name?.[0]?.toUpperCase() || 'U'}
-              </span>
-            </div>
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/10 via-transparent to-purple-950/10 pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col h-full min-h-screen px-3 py-4">
+        {/* Header / brand + collapse toggle */}
+        <div className="flex items-center gap-2 px-1 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shrink-0 border border-cyan-400/40 shadow-lg shadow-cyan-500/30">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          
-          <div className="mt-4 text-center">
-            <h3 className="text-white font-bold text-lg tracking-wide">
-              {user?.full_name || 'User'}
-            </h3>
-            <p className="text-cyan-400 text-xs font-mono tracking-wider mt-1">
-              {user?.role === 'admin' || user?.is_admin ? '// ADMIN ACCESS //' : '// SECURED //'}
-            </p>
-            {user?.job_title && user?.job_title !== 'None' && (
-                <Badge className="mt-1 bg-pink-500/20 text-pink-400 border-pink-500/50 text-[10px]">
-                    {user.job_title}
-                </Badge>
-            )}
+          <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+            <p className="text-white font-bold text-sm tracking-wider leading-none">SafeNestT</p>
+            <p className="text-cyan-400 text-[10px] font-mono mt-0.5">{isAdmin ? "// ADMIN //" : "// SECURED //"}</p>
           </div>
-        </motion.div>
-
-        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-custom pb-4" style={{ minHeight: '300px', maxHeight: 'calc(100vh - 400px)' }}>
-          {/* Main Navigation */}
-          {navigationItems.filter(item => {
-            const isAdmin = user?.role === 'admin' || user?.is_admin;
-            if (item.id === 'support' && isAdmin) return false;
-            if (item.id === 'verified-hub' && isAdmin) return false;
-            return true;
-          }).map((item) => (
-            <NavItem 
-              key={item.id} 
-              item={item} 
-              activeItem={activeItem} 
-              onNavClick={handleNavClick} 
-            />
-          ))}
-
-          {/* Privacy Hub Suite */}
-          <div className="space-y-2 pt-4 border-t border-gray-800/50">
-            <div className="px-4 mb-2">
-              <span className="text-xs font-bold text-cyan-500 uppercase tracking-widest">Privacy Hub</span>
-            </div>
-            {privacyHubItems.map((item) => (
-              <NavItem key={item.id} item={item} activeItem={activeItem} onNavClick={handleNavClick} />
-            ))}
-          </div>
-
-          {/* Investigation Suite */}
-          <div className="space-y-2 pt-4 border-t border-gray-800/50">
-            <div className="px-4 mb-2">
-              <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Investigation Suite</span>
-            </div>
-            {investigationItems.map((item) => (
-              <NavItem 
-                key={item.id} 
-                item={item} 
-                activeItem={activeItem} 
-                onNavClick={handleNavClick} 
-              />
-            ))}
-          </div>
-
-          {/* Media Command Center - Show for Media Directors OR Admins */}
-          {(user?.job_title === 'Media Director' || user?.role === 'admin' || user?.is_admin) && (
-            <div className="space-y-2 pt-4 border-t border-gray-800/50">
-              <div className="px-4 mb-2">
-                <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Media Command</span>
-              </div>
-              {mediaNavItems.map((item) => (
-                <NavItem 
-                  key={item.id} 
-                  item={item} 
-                  activeItem={activeItem} 
-                  onNavClick={handleNavClick} 
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Admin Navigation */}
-          {(user?.role === 'admin' || user?.is_admin) && (
-            <div className="space-y-2 pt-4 border-t border-gray-800/50">
-              <div className="px-4 mb-2">
-                <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Admin Zone</span>
-              </div>
-              {adminItems.map((item) => (
-                <NavItem 
-                  key={item.id} 
-                  item={item} 
-                  activeItem={activeItem} 
-                  onNavClick={handleNavClick} 
-                />
-              ))}
-            </div>
-          )}
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="hidden lg:flex ml-auto w-7 h-7 items-center justify-center rounded-md border border-white/10 text-gray-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors"
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
+          </button>
         </div>
 
-        <motion.div
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 space-y-4"
-        >
-          <div className="p-4 bg-gray-900/50 backdrop-blur-md border border-gray-700/50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-400 uppercase tracking-wider">System Status</span>
-              <div className={`w-2 h-2 rounded-full ${status.color} ${status.glow} shadow-lg animate-pulse`} />
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className={`w-4 h-4 ${status.color}`} />
-              <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
-            </div>
-            <div className="mt-2 pt-2 border-t border-gray-700/50">
-              <p className="text-[10px] text-gray-500 font-mono">
-                <LiveClock label="Last: " />
-              </p>
-            </div>
+        {/* User chip */}
+        <div className={`flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2 py-2 mb-3 ${collapsed ? "lg:justify-center" : ""}`}>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border border-cyan-500/30 flex items-center justify-center shrink-0">
+            <span className="text-cyan-200 text-xs font-bold">{user?.full_name?.[0]?.toUpperCase() || "U"}</span>
           </div>
+          <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+            <p className="text-xs font-medium text-white truncate leading-none">{user?.full_name || "User"}</p>
+            <p className="text-[10px] text-gray-500 truncate mt-0.5">{user?.email || ""}</p>
+          </div>
+        </div>
 
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-4">
+          {SECTIONS.map((section) => (
+            <div key={section.label}>
+              <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
+              <div className="space-y-1">
+                {section.items.map((item) => <NavButton key={item.id} item={item} />)}
+              </div>
+            </div>
+          ))}
+
+          {isAdmin && (
+            <div className="pt-3 border-t border-white/5">
+              <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/80 ${collapsed ? "lg:hidden" : ""}`}>Admin Zone</p>
+              <div className="space-y-1">
+                {ADMIN_ITEMS.map((item) => <NavButton key={item.id} item={item} />)}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className="pt-3 mt-2 border-t border-white/5 space-y-2">
+          <div className={`flex items-center justify-between px-2 py-1.5 rounded-md bg-white/[0.02] border border-white/10 ${collapsed ? "lg:hidden" : ""}`}>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Engine
+            </span>
+            <span className="text-[10px] text-gray-400 font-mono"><LiveClock /></span>
+          </div>
           <Button
             variant="outline"
-            className="w-full bg-red-950/30 border-red-500/50 text-red-400 hover:bg-red-950/50 hover:border-red-500 transition-all"
-            onClick={() => {
-              toast.info('Emergency mode: Coming soon');
-              if (onNavigate) onNavigate();
-            }}
+            onClick={() => { onLogout?.(); onNavigate?.(); }}
+            className={`w-full bg-red-950/30 border-red-500/40 text-red-300 hover:bg-red-950/50 hover:border-red-500/60 transition-all ${collapsed ? "lg:px-0" : ""}`}
+            title={collapsed ? "Sign Out" : undefined}
           >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Emergency Mode
+            <Power className="w-4 h-4 shrink-0" />
+            <span className={`ml-2 ${collapsed ? "lg:hidden" : ""}`}>Sign Out</span>
           </Button>
-
-          <Button
-            onClick={() => {
-              onLogout();
-              if (onNavigate) onNavigate();
-            }}
-            className="w-full bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 text-gray-300 hover:text-white hover:border-cyan-500/50 transition-all"
-          >
-            <Power className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
-        </motion.div>
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 opacity-5 bg-gradient-to-b from-transparent via-cyan-500 to-transparent animate-scan-line" />
+        </div>
       </div>
 
       <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px currentColor); }
-          50% { opacity: 0.6; filter: drop-shadow(0 0 12px currentColor); }
-        }
-        
-        @keyframes scan-line {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
-        }
-        
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
-        }
-        
-        .animate-pulse-glow {
-          animation: pulse-glow 2s ease-in-out infinite;
-        }
-        
-        .animate-scan-line {
-          animation: scan-line 4s linear infinite;
-        }
-        
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-
-        .scrollbar-custom::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-track {
-          background: rgba(15, 20, 25, 0.5);
-          border-radius: 10px;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-thumb {
-          background: rgba(6, 182, 212, 0.3);
-          border-radius: 10px;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-          background: rgba(6, 182, 212, 0.5);
-        }
-        
-        .scrollbar-custom {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(6, 182, 212, 0.3) rgba(15, 20, 25, 0.5);
-        }
+        .scrollbar-custom::-webkit-scrollbar { width: 6px; }
+        .scrollbar-custom::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-custom::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.25); border-radius: 10px; }
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover { background: rgba(6,182,212,0.45); }
+        .scrollbar-custom { scrollbar-width: thin; scrollbar-color: rgba(6,182,212,0.25) transparent; }
       `}</style>
-    </motion.div>
+    </motion.aside>
   );
 }

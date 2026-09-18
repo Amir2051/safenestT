@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
@@ -38,8 +38,14 @@ const TABS = [
 export default function InvestigationWorkspace() {
   const [params] = useSearchParams();
   const caseId = params.get("case_id");
-  const [activeTab, setActiveTab] = useState("overview");
+  const requestedTab = params.get("tab");
+  const [activeTab, setActiveTab] = useState(requestedTab || "overview");
   const hermes = getHermesStatus();
+
+  // Honour a ?tab= deep link (Evidence / Findings & Risk / Reports & Dossiers).
+  useEffect(() => {
+    if (requestedTab && TABS.some((t) => t.key === requestedTab)) setActiveTab(requestedTab);
+  }, [requestedTab]);
 
   const { data: caseItem, isLoading } = useQuery({
     queryKey: ["investigation-case", caseId],
