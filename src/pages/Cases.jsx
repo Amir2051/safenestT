@@ -16,7 +16,6 @@ import NewCaseModal from "../components/cases/NewCaseModal";
 import CaseDetailDialog from "@/components/investigation/CaseDetailDialog";
 import CaseAssignmentModal from "../components/cases/CaseAssignmentModal";
 
-import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function Cases() {
@@ -29,33 +28,23 @@ export default function Cases() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all_cases");
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
     base44.auth.me().then(userData => {
-      if (mounted) {
-        if (userData.role !== 'admin' && !userData.is_admin) {
-          navigate(createPageUrl("Dashboard"));
-        }
-        setUser(userData);
-      }
+      if (mounted) setUser(userData);
     }).catch(() => {
-      if (mounted) navigate(createPageUrl("Dashboard"));
+      if (mounted) setUser(null);
     });
     return () => { mounted = false; };
-  }, [navigate]);
+  }, []);
 
   const { data: fetchedCases = [], isLoading: loadingCases } = useQuery({
-    queryKey: ['my-cases-admin'],
-    queryFn: async () => {
-      if (user?.role === 'admin' || user?.is_admin) {
-        return base44.entities.MyCase.list('-created_date', 1000);
-      }
-      // Fallback if non-admin lands here
-      return base44.entities.MyCase.filter({ created_by: user.email }, '-created_date', 1000);
-    },
-    enabled: !!user
+    queryKey: ['cases-page'],
+    queryFn: () => base44.entities.MyCase.list('-created_date', 1000),
+    enabled: !!user,
+    staleTime: 30000,
+    refetchInterval: 30000
   });
 
   const cases = useMemo(() => {
@@ -106,7 +95,12 @@ export default function Cases() {
     });
   };
 
-  const myCases = cases.filter(c => c.assigned_to === user?.email);
+  const myCases = cases.filter(c =>
+    c.assigned_to === user?.email ||
+    c.created_by_email === user?.email ||
+    c.client_email === user?.email ||
+    c.user_id === user?.id
+  );
   
   const displayedCases = filterCases(activeTab === "my_cases" ? myCases : cases);
 
@@ -148,7 +142,7 @@ export default function Cases() {
             <Shield className="w-8 h-8 text-blue-500" />
             Client Case Management
           </h1>
-          <p className="text-gray-400 mt-1">Manage cybersecurity support requests and crypto recovery cases</p>
+          <p className="text-gray-400 mt-1">View and manage SafeNestT case records, investigations, and recovery requests</p>
         </div>
         <div className="flex gap-3">
           <NewCaseModal onCaseCreated={() => queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] })} />
@@ -161,7 +155,7 @@ export default function Cases() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Pending Cases</p>
-              <p className="text-2xl font-bold text-white">{cases.filter(c => c.status === 'Pending').length}</p>
+              <p className="text-2xl font-bold text-white">{cases.filter(c => ['pending', 'new', 'submitted', 'in review'].includes((c.status || '').toLowerCase())).length}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
               <Clock className="w-5 h-5 text-yellow-400" />
@@ -172,7 +166,7 @@ export default function Cases() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">High Urgency</p>
-              <p className="text-2xl font-bold text-red-400">{cases.filter(c => c.urgency === 'High').length}</p>
+              <p className="text-2xl font-bold text-red-400">{cases.filter(c => ['High', 'Critical'].includes(c.urgency)).length}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-red-400" />
@@ -194,7 +188,7 @@ export default function Cases() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Resolved (All Time)</p>
-              <p className="text-2xl font-bold text-green-400">{cases.filter(c => c.status === 'Resolved').length}</p>
+              <p className="text-2xl font-bold text-green-400">{cases.filter(c => ['resolved', 'recovered', 'closed', 'completed'].includes((c.status || '').toLowerCase())).length}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-green-400" />
@@ -209,7 +203,7 @@ export default function Cases() {
             All Cases
           </TabsTrigger>
           <TabsTrigger value="my_cases" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white px-6">
-            My Assignments
+            My Cases
           </TabsTrigger>
         </TabsList>
 
