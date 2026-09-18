@@ -648,7 +648,7 @@
     "read": {
       "$or": [
         {
-          "data.tenant_id": "{{user.data.tenant_id}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -663,7 +663,7 @@
     "update": {
       "$or": [
         {
-          "data.tenant_id": "{{user.data.tenant_id}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -675,25 +675,7 @@
     "delete": {
       "$or": [
         {
-          "$and": [
-            {
-              "data.tenant_id": "{{user.data.tenant_id}}"
-            },
-            {
-              "$or": [
-                {
-                  "user_condition": {
-                    "tenant_role": "owner"
-                  }
-                },
-                {
-                  "user_condition": {
-                    "tenant_role": "admin"
-                  }
-                }
-              ]
-            }
-          ]
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
