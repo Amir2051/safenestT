@@ -88,31 +88,6 @@ const USER_SECTIONS = [
   },
 ];
 
-const ADMIN_SECTIONS = [
-  {
-    label: "Operations",
-    items: [
-      { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
-      { id: "admin-reports", label: "Reports & KPIs", icon: Activity, path: "/AdminReports", glow: "cyan" },
-    ],
-  },
-  {
-    label: "Users",
-    items: [
-      { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals", glow: "blue" },
-      { id: "admin-invites", label: "Invite Manager", icon: Mail, path: "/AdminInvites", glow: "blue" },
-      { id: "admin-export", label: "Export Users", icon: Download, path: "/UserExport", glow: "gray" },
-    ],
-  },
-  {
-    label: "Billing & Content",
-    items: [
-      { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
-      { id: "admin-deed-fraud", label: "Deed Fraud Cases", icon: Home, path: "/AdminDeedFraud", glow: "emerald" },
-    ],
-  },
-];
-
 const glowBar = {
   cyan: "from-cyan-500 to-cyan-400",
   purple: "from-purple-500 to-fuchsia-500",
