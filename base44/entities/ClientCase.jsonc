@@ -354,7 +354,10 @@
           }
         },
         {
-          "created_by": "{{user.email}}"
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "data.created_by_email": "{{user.email}}"
         }
       ]
     },
@@ -395,7 +398,10 @@
           }
         },
         {
-          "created_by": "{{user.email}}"
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "data.created_by_email": "{{user.email}}"
         }
       ]
     },
