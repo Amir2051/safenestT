@@ -236,9 +236,9 @@ function CaseHeader({ caseItem, hermesState, hermesMs }) {
         {caseItem.assigned_investigator && <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Investigator: <span className="text-gray-300">{caseItem.assigned_investigator}</span></span>}
         <span className="ml-auto font-mono text-gray-600">ID: {caseItem.id?.slice(-8)}</span>
         {hermesState === "ok" ? (
-          <span className="text-green-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Hermes connected{hermesMs != null ? ` · ${hermesMs}ms` : ""}</span>
+          <span className="text-green-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />MIA connected{hermesMs != null ? ` · ${hermesMs}ms` : ""}</span>
         ) : (
-          <span className="text-amber-400">Hermes: {hermesState.replace(/_/g, " ")}</span>
+          <span className="text-amber-400">MIA: {hermesState.replace(/_/g, " ")}</span>
         )}
       </div>
     </div>
