@@ -6,15 +6,23 @@ import { motion } from "framer-motion";
 /**
  * Investigation-focused mobile bottom nav — four primary destinations.
  */
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ user }) {
   const location = useLocation();
+  const isStaff = user?.role === "admin" || user?.is_admin || ["owner", "admin", "investigator"].includes(user?.tenant_role);
 
-  const navItems = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard" },
-    { name: "Cases", icon: Briefcase, path: "/CasesManagement" },
-    { name: "AI", icon: Sparkles, path: "/InvestigationWorkspace" },
-    { name: "Security", icon: ShieldCheck, path: "/SecurityDashboard" },
-  ];
+  const navItems = isStaff
+    ? [
+        { name: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard" },
+        { name: "Cases", icon: Briefcase, path: "/CasesManagement" },
+        { name: "AI", icon: Sparkles, path: "/InvestigationWorkspace" },
+        { name: "Security", icon: ShieldCheck, path: "/SecurityDashboard" },
+      ]
+    : [
+        { name: "Dashboard", icon: LayoutDashboard, path: "/" },
+        { name: "Report Scam", icon: Briefcase, path: "/ReportScam" },
+        { name: "AI", icon: Sparkles, path: "/MiaAssistant" },
+        { name: "VPN", icon: ShieldCheck, path: "/VPNPage" },
+      ];
 
   return (
     <nav
@@ -23,7 +31,7 @@ export default function MobileBottomNav() {
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || (item.path === "/InvestigationWorkspace" && location.pathname === item.path);
           const Icon = item.icon;
           return (
             <Link key={item.name} to={item.path} className="flex-1">
