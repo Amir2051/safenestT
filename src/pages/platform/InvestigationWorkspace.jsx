@@ -59,14 +59,14 @@ export default function InvestigationWorkspace() {
 
   const { data: caseItem, isLoading } = useQuery({
     queryKey: ["investigation-case", caseId],
-    queryFn: () => base44.entities.InvestigationCase.get(caseId),
+    queryFn: async () => {\n      const myCase = await base44.entities.MyCase.get(caseId).catch(() => null);\n      return myCase || base44.entities.InvestigationCase.get(caseId);\n    },
     enabled: !!caseId,
   });
 
   // Recent cases for the AI Investigations landing (shown when no case is open).
   const { data: recentCases = [] } = useQuery({
     queryKey: ["investigation-cases-recent"],
-    queryFn: () => base44.entities.InvestigationCase.list("-last_activity", 12),
+    queryFn: async () => {\n      const myCases = await base44.entities.MyCase.list("-created_date", 12).catch(() => []);\n      if (myCases.length) return myCases;\n      return base44.entities.InvestigationCase.list("-last_activity", 12);\n    },
     enabled: !caseId,
   });
 
