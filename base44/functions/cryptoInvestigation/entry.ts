@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function trackWallet(data) {
+async function trackWallet(data, base44) {
   const { address, blockchain } = data;
   
   // Simulate blockchain API call (in production, integrate with Etherscan, Blockchain.com, etc.)
