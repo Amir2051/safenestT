@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Briefcase, Sparkles, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Briefcase, Sparkles, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
 
 /**
@@ -19,7 +19,7 @@ export default function MobileBottomNav({ user }) {
       ]
     : [
         { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-        { name: "Report Scam", icon: Briefcase, path: "/ReportScam" },
+        { name: "Report Scam", icon: ShieldAlert, path: "/ReportScam" },
         { name: "AI", icon: Sparkles, path: "/MiaAssistant" },
         { name: "VPN", icon: ShieldCheck, path: "/VPNPage" },
       ];
@@ -31,7 +31,7 @@ export default function MobileBottomNav({ user }) {
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || (item.path === "/InvestigationWorkspace" && location.pathname === item.path);
+          const isActive = location.pathname === item.path;
           const Icon = item.icon;
           return (
             <Link key={item.name} to={item.path} className="flex-1">
