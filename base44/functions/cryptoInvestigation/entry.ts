@@ -118,24 +118,22 @@ async function analyzeTransactionFlow(data, base44) {
   const exchangeDeposits = [];
   const mixerDetected = relevant.some(tx => String(tx.category || '').toLowerCase().includes('mixer'));
   
-  // Generate transaction flow map
-  const flowMap = {
-    nodes: Array.from(nodes.values()),
-    edges: edges
-
-
-
-    ]
-  };
+  // Generate transaction flow map from real case-linked transactions.
+  const flowMap = { nodes: Array.from(nodes.values()), edges };
 
   return Response.json({
     success: true,
     data: {
       flowMap,
-      totalHops: 3,
-      mixerDetected: true,
-      exchangeDeposits: ['Binance'],
-      crossChainTransfers: true
+      totalHops: edges.length,
+      mixerDetected,
+      exchangeDeposits,
+      crossChainTransfers: new Set(relevant.map(tx => tx.blockchain || chain)).size > 1,
+      transactionCount: relevant.length,
+      source: 'case_transactions + blockchainIntelligence',
+      wallet: address,
+      blockchain: chain,
+      depth
     }
   });
 }
