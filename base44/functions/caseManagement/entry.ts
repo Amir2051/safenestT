@@ -412,7 +412,8 @@ Deno.serve(async (req) => {
                     };
                     
                     // Create in MyCase
-                    await base44.entities.MyCase.create(newCase);
+                    const migrated = await base44.entities.MyCase.create(newCase);
+                    if (migrated?.id) await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: migrated.id }).catch(() => null);
                     // Delete from ClientCase
                     await base44.entities.ClientCase.delete(cc.id);
                     migratedCases.push(newCase);
@@ -449,7 +450,8 @@ Deno.serve(async (req) => {
                         metadata: JSON.stringify({ legacy_id: fc.id, source: 'fraud_case_migration_final' })
                     };
 
-                    await base44.entities.MyCase.create(newCase);
+                    const migrated = await base44.entities.MyCase.create(newCase);
+                    if (migrated?.id) await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: migrated.id }).catch(() => null);
                     await base44.entities.FraudCase.delete(fc.id);
                     migratedCases.push(newCase);
                 }
@@ -787,7 +789,8 @@ Deno.serve(async (req) => {
                                     original_data: JSON.stringify(sourceRecord).substring(0, 500)
                                 });
 
-                                await base44.entities.MyCase.create(mapped);
+                                const importedCase = await base44.entities.MyCase.create(mapped);
+                                if (importedCase?.id) await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: importedCase.id }).catch(() => null);
                                 stats.imported++;
                                 importedIds.push(mapped.case_number);
                             }
