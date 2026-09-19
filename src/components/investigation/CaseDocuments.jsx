@@ -160,7 +160,7 @@ Date Range: ${transactions.length > 0 ?
         };
         break;
 
-      case 'transaction_analysis':
+      case 'transaction_analysis': {
         const uniqueFrom = [...new Set(transactions.map(tx => tx.from).filter(Boolean))];
         const uniqueTo = [...new Set(transactions.map(tx => tx.to).filter(Boolean))];
         const patterns = [];
@@ -208,6 +208,7 @@ Total Wallets Involved: ${new Set([...uniqueFrom, ...uniqueTo]).size}`
           ]
         };
         break;
+      }
 
       case 'scammer_profile':
         content = {
