@@ -12,7 +12,7 @@ import MergeCasesDialog from "./MergeCasesDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
-export default function CaseManager({ cases, onSelectCase, selectedCase, recoveryFunds, user, onUpdate }) {
+export default function CaseManager({ cases = [], onSelectCase, selectedCase, recoveryFunds = [], user, onUpdate }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [searchResults, setSearchResults] = React.useState(null);
   const [isSearching, setIsSearching] = React.useState(false);
@@ -80,7 +80,7 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
   const displayCases = searchResults || cases;
 
   const getCaseFundSupport = (caseId) => {
-    return (recoveryFunds || [])
+    return recoveryFunds
       .filter(f => f.fraud_case_id === caseId && f.transaction_type === 'distribution' && f.status === 'distributed')
       .reduce((sum, f) => sum + f.amount_usd, 0);
   };
