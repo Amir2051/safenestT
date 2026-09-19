@@ -369,7 +369,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </main>
 
-        {!user?.is_admin && user?.role !== 'admin' && <MobileBottomNav />}
+        {!user?.is_admin && user?.role !== 'admin' && <MobileBottomNav user={user} />}
       </div>
 
       <style>{`
