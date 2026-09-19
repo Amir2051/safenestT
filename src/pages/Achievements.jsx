@@ -382,19 +382,22 @@ export default function Achievements() {
         return { current: monitors.length, target: 3, percentage: Math.min((monitors.length / 3) * 100, 100) };
       case 'breach_detector':
         return { current: monitors.length, target: 1, percentage: Math.min((monitors.length / 1) * 100, 100) };
-      case 'security_pro':
+      case 'security_pro': {
         const score75 = user?.risk_score || 0;
         return { current: score75, target: 75, percentage: Math.min((score75 / 75) * 100, 100) };
-      case 'security_champion':
+      }
+      case 'security_champion': {
         const score90 = user?.risk_score || 0;
         return { current: score90, target: 90, percentage: Math.min((score90 / 90) * 100, 100) };
+      }
       case 'streak_7':
         return { current: user?.current_streak || 0, target: 7, percentage: Math.min(((user?.current_streak || 0) / 7) * 100, 100) };
       case 'streak_30':
         return { current: user?.current_streak || 0, target: 30, percentage: Math.min(((user?.current_streak || 0) / 30) * 100, 100) };
-      case 'premium_member':
+      case 'premium_member': {
         const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
         return { current: isPremium ? 1 : 0, target: 1, percentage: isPremium ? 100 : 0 };
+      }
       case 'first_login': // This is usually auto-unlocked
       case 'first_scan': // Scan state is usually external, assume 0/1 for now
       case 'device_cleaner': // Device care state is external, assume 0/1 for now
