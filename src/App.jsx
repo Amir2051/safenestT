@@ -16,6 +16,8 @@ import InvestigationWorkspace from './pages/platform/InvestigationWorkspace';
 import AuditLog from './pages/platform/AuditLog';
 import GlobalSearchPage from './pages/platform/GlobalSearchPage';
 import ReportsCenter from './pages/platform/ReportsCenter';
+import WalletTrackerAdmin from './pages/WalletTrackerAdmin';
+import FlowMapAdmin from './pages/FlowMapAdmin';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AdminGate, { RoleGate } from '@/components/admin/AdminGate';
@@ -106,6 +108,8 @@ const AuthenticatedApp = () => {
         <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
         <Route path="/UserExport" element={<AdminGate><UserExport /></AdminGate>} />
         <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator><OperationsDashboard /></RoleGate>} />
+        <Route path="/WalletTrackerAdmin" element={<AdminGate><WalletTrackerAdmin /></AdminGate>} />
+        <Route path="/FlowMapAdmin" element={<AdminGate><FlowMapAdmin /></AdminGate>} />
         <Route path="/CasesManagement" element={<RoleGate allowInvestigator><CasesManagement /></RoleGate>} />
         <Route path="/CaseImport" element={<RoleGate allowInvestigator><CaseImport /></RoleGate>} />
         <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator><InvestigationWorkspace /></RoleGate>} />
