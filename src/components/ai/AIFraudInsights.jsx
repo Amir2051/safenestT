@@ -85,7 +85,9 @@ export default function AIFraudInsights({ caseData, onUpdate }) {
       try {
         const parsed = JSON.parse(textCandidate);
         if (parsed && typeof parsed === 'object') return parsed;
-      } catch (e) {}
+      } catch (e) {
+        // Ignore malformed model text and use the deterministic fallback below.
+      }
       return {
         risk_level: amountRisk(caseData),
         confidence_score: 55,
