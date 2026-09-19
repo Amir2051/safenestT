@@ -77,7 +77,7 @@ export default function CaseManager({ cases = [], onSelectCase, selectedCase, re
     setIsSearching(false);
   };
 
-  const displayCases = searchResults || cases;
+  const displayCases = Array.isArray(searchResults) ? searchResults : (Array.isArray(cases) ? cases : []);
 
   const getCaseFundSupport = (caseId) => {
     return recoveryFunds
