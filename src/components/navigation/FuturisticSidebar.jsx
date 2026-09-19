@@ -6,6 +6,8 @@ import {
   Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
   Command, Sparkles,
+  UserCheck, UserPlus, FileBarChart, LifeBuoy, Users, TrendingUp,
+  LineChart, Server, Building2, Gavel, Home as HomeIcon, Cookie, Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,8 +58,21 @@ const SECTIONS = [
       { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
       { id: "vault", label: "Password Vault", icon: Lock, path: "/PasswordVault", glow: "blue" },
       { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
-      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
       { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+    ],
+  },
+  {
+    label: "Legal & Privacy",
+    items: [
+      { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
+      { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
+      { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
+      { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
+      { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
+      { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
+      { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
+      { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
+      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
     ],
   },
 ];
@@ -83,8 +98,21 @@ const USER_SECTIONS = [
     items: [
       { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
       { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
-      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
       { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+    ],
+  },
+  {
+    label: "Legal & Privacy",
+    items: [
+      { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
+      { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
+      { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
+      { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
+      { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
+      { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
+      { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
+      { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
+      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
     ],
   },
 ];
@@ -130,15 +158,58 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   // Case-Workspace deep links (Evidence / Findings / Reports) only make sense
   // when a case is actually open — hide that section entirely otherwise.
   const hasCaseContext = new URLSearchParams(location.search).get("case_id");
-  // Admins get a deliberately minimal shell: all administrative, case,
-  // reporting, and AI-investigation tools live inside Admin Dashboard.
-  const ADMIN_SHELL = [{
-    label: "Administration",
-    items: [
-      { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
-    ],
-  }];
-  const navSections = isAdmin ? ADMIN_SHELL : isStaff ? SECTIONS : USER_SECTIONS;
+  // Admins get a full multi-section administration sidebar covering all the
+  // admin pages registered in pages.config.js, plus the Security/Operations
+  // tools shared with investigators.
+  const ADMIN_SECTIONS = [
+    {
+      label: "Administration",
+      items: [
+        { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
+        { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals", glow: "cyan" },
+        { id: "admin-invites", label: "User Invites", icon: UserPlus, path: "/AdminInvites", glow: "cyan" },
+        { id: "admin-reports", label: "Admin Reports", icon: FileBarChart, path: "/AdminReports", glow: "cyan" },
+        { id: "admin-support", label: "Admin Support", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },
+        { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
+      ],
+    },
+    {
+      label: "Growth & Referrals",
+      items: [
+        { id: "admin-referrals", label: "Referrals", icon: Users, path: "/AdminReferrals", glow: "purple" },
+        { id: "admin-referral-dashboard", label: "Referral Dashboard", icon: TrendingUp, path: "/AdminReferralDashboard", glow: "purple" },
+        { id: "admin-investment-monitor", label: "Investment Monitor", icon: LineChart, path: "/AdminInvestmentMonitor", glow: "emerald" },
+      ],
+    },
+    {
+      label: "Monitoring & Infrastructure",
+      items: [
+        { id: "admin-monitoring", label: "Monitoring Dashboard", icon: Activity, path: "/AdminMonitoringDashboard", glow: "red" },
+        { id: "admin-vpn-servers", label: "VPN Servers", icon: Server, path: "/AdminVPNServers", glow: "blue" },
+        { id: "admin-verified-companies", label: "Verified Companies", icon: Building2, path: "/AdminVerifiedCompanies", glow: "emerald" },
+      ],
+    },
+    {
+      label: "Investigations",
+      items: [
+        { id: "admin-investigation", label: "Admin Investigation", icon: Gavel, path: "/AdminInvestigation", glow: "amber" },
+        { id: "admin-deed-fraud", label: "Admin Deed Fraud", icon: HomeIcon, path: "/AdminDeedFraud", glow: "amber" },
+      ],
+    },
+    {
+      label: "Security & Operations",
+      items: [
+        { id: "ops-dashboard", label: "Operations", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
+        { id: "cases-mgmt", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
+        { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
+        { id: "investigation-ws", label: "Investigation Workspace", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI" },
+        { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
+        { id: "reports-center", label: "Reports Center", icon: FileText, path: "/ReportsCenter", glow: "cyan" },
+        { id: "audit-log", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+      ],
+    },
+  ];
+  const navSections = isAdmin ? ADMIN_SECTIONS : isStaff ? SECTIONS : USER_SECTIONS;
 
   const go = (item) => {
     let url = item.path;

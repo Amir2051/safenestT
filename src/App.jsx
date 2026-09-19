@@ -21,6 +21,8 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AdminGate, { RoleGate } from '@/components/admin/AdminGate';
 import PublicLanding from './pages/PublicLanding';
 import PublicLegalLayout from '@/components/shared/PublicLegalLayout';
+import CookiePolicy from './pages/CookiePolicy';
+import DataRightsDeletion from './pages/DataRightsDeletion';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -72,6 +74,11 @@ const AuthenticatedApp = () => {
         <Route path="/PrivacyPolicy" element={<PublicLegalLayout><Pages.PrivacyPolicy /></PublicLegalLayout>} />
         <Route path="/AcceptableUsePolicy" element={<PublicLegalLayout><Pages.AcceptableUsePolicy /></PublicLegalLayout>} />
         <Route path="/RefundPolicy" element={<PublicLegalLayout><Pages.RefundPolicy /></PublicLegalLayout>} />
+        <Route path="/CookiePolicy" element={<PublicLegalLayout><CookiePolicy /></PublicLegalLayout>} />
+        <Route path="/DataRightsDeletion" element={<PublicLegalLayout><DataRightsDeletion /></PublicLegalLayout>} />
+        <Route path="/RightsCenter" element={<PublicLegalLayout><Pages.RightsCenter /></PublicLegalLayout>} />
+        <Route path="/CookieIntel" element={<PublicLegalLayout><Pages.CookieIntel /></PublicLegalLayout>} />
+        <Route path="/HelpCenter" element={<PublicLegalLayout><Pages.HelpCenter /></PublicLegalLayout>} />
         <Route path="*" element={<PublicLanding />} />
       </Routes>
     );
@@ -105,6 +112,8 @@ const AuthenticatedApp = () => {
         <Route path="/AuditLog" element={<RoleGate allowInvestigator><AuditLog /></RoleGate>} />
         <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
         <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
+        <Route path="/CookiePolicy" element={<CookiePolicy />} />
+        <Route path="/DataRightsDeletion" element={<DataRightsDeletion />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>

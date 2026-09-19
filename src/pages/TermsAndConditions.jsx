@@ -1,6 +1,41 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Shield, AlertTriangle, Scale, CheckCircle } from "lucide-react";
+import { FileText, Shield, AlertTriangle, Scale, CheckCircle, Link2, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+
+const RELATED_DOCS = [
+  { to: "/PrivacyPolicy", label: "Privacy Policy" },
+  { to: "/AcceptableUsePolicy", label: "Acceptable Use Policy" },
+  { to: "/RefundPolicy", label: "Refund Policy" },
+  { to: "/CookiePolicy", label: "Cookie Policy" },
+  { to: "/DataRightsDeletion", label: "Data Rights & Deletion" },
+  { to: "/RightsCenter", label: "Rights Request Center" },
+];
+
+function RelatedLegalDocsCard() {
+  return (
+    <Card className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-cyan-500/30">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Link2 className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-lg font-bold text-white">Related Legal &amp; Privacy Documents</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {RELATED_DOCS.map((doc) => (
+            <Link
+              key={doc.to}
+              to={doc.to}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-cyan-400 transition-colors"
+            >
+              <ArrowRight className="w-3.5 h-3.5 text-cyan-500/70" />
+              {doc.label}
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function TermsAndConditions() {
   return (
@@ -14,6 +49,9 @@ export default function TermsAndConditions() {
         <p className="text-gray-400">SafeNestT Inc.</p>
         <p className="text-gray-500 text-sm mt-2">Last Updated: January 12, 2026</p>
       </div>
+
+      {/* Related legal & privacy documents — top navigation card */}
+      <RelatedLegalDocsCard />
 
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
         <CardContent className="p-8 space-y-8 text-gray-300">
@@ -362,6 +400,9 @@ export default function TermsAndConditions() {
 
         </CardContent>
       </Card>
+
+      {/* Related legal & privacy documents — bottom navigation card */}
+      <RelatedLegalDocsCard />
     </div>
   );
 }

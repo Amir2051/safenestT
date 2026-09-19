@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Shield, FileText, Scale, BookOpen } from "lucide-react";
+import { Shield, FileText, Scale, BookOpen, Cookie, UserX, FileSearch, HelpCircle } from "lucide-react";
 import SafeNesttDisclaimer from "./SafeNesttDisclaimer";
 
 export default function LegalFooter() {
@@ -25,7 +25,7 @@ export default function LegalFooter() {
 
           {/* Legal Links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Legal</h4>
+            <h4 className="text-white font-semibold mb-4">Legal & Privacy</h4>
             <div className="space-y-2">
               <Link
                 to="/PrivacyPolicy"
@@ -54,6 +54,41 @@ export default function LegalFooter() {
               >
                 <FileText className="w-4 h-4" />
                 Refund Policy
+              </Link>
+              <Link
+                to="/CookiePolicy"
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <Cookie className="w-4 h-4" />
+                Cookie Policy
+              </Link>
+              <Link
+                to="/DataRightsDeletion"
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <UserX className="w-4 h-4" />
+                Data Rights & Deletion
+              </Link>
+              <Link
+                to="/RightsCenter"
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <FileSearch className="w-4 h-4" />
+                Rights Request Center
+              </Link>
+              <Link
+                to="/CookieIntel"
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <Cookie className="w-4 h-4" />
+                Cookie Intel
+              </Link>
+              <Link
+                to="/HelpCenter"
+                className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Help Center
               </Link>
             </div>
           </div>
