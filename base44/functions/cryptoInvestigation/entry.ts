@@ -120,12 +120,7 @@ async function analyzeTransactionFlow(data, base44) {
   
   // Generate transaction flow map
   const flowMap = {
-    nodes: [
-      { id: startAddress, label: 'Scammer Wallet', type: 'scammer', balance: '10.5' },
-      { id: '0xmixer1...', label: 'Mixer Wallet 1', type: 'mixer', balance: '8.2' },
-      { id: '0xexchange...', label: 'Exchange Deposit', type: 'exchange', exchange: 'Binance', balance: '7.8' },
-      { id: '0xbridge...', label: 'Bridge Contract', type: 'bridge', balance: '3.1' }
-    ],
+    nodes: Array.from(nodes.values()),
     edges: [
       { from: startAddress, to: '0xmixer1...', value: '8.5', txid: '0xtx1...', timestamp: new Date().toISOString() },
       { from: '0xmixer1...', to: '0xexchange...', value: '7.8', txid: '0xtx2...', timestamp: new Date().toISOString() },
