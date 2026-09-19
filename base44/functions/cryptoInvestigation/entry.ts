@@ -121,7 +121,7 @@ async function analyzeTransactionFlow(data, base44) {
   // Generate transaction flow map
   const flowMap = {
     nodes: Array.from(nodes.values()),
-    edges: [
+    edges: edges
       { from: startAddress, to: '0xmixer1...', value: '8.5', txid: '0xtx1...', timestamp: new Date().toISOString() },
       { from: '0xmixer1...', to: '0xexchange...', value: '7.8', txid: '0xtx2...', timestamp: new Date().toISOString() },
       { from: startAddress, to: '0xbridge...', value: '2.0', txid: '0xtx3...', timestamp: new Date().toISOString() }
