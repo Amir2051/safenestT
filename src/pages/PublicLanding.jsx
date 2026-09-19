@@ -10,7 +10,7 @@ const FEATURES = [
   {
     icon: ScanSearch,
     title: "AI Investigations",
-    desc: "Six-phase guided workflow — planning, evidence, analysis, reality-check, risk, dossier — powered by the real Hermes engine.",
+    desc: "Six-phase guided workflow — planning, evidence, analysis, reality-check, risk, dossier — powered by MIA, the SafeNestT intelligence command layer.",
     accent: "cyan",
   },
   {
@@ -94,7 +94,7 @@ export default function PublicLanding() {
       <section className="relative z-10 px-6 pt-16 pb-20 max-w-5xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full border border-cyan-500/30 bg-cyan-500/5">
           <Zap className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-xs font-semibold text-cyan-300 tracking-wide">Powered by the Hermes investigation engine</span>
+          <span className="text-xs font-semibold text-cyan-300 tracking-wide">MIA INTELLIGENCE // ONLINE</span>
         </div>
         <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight">
           The Investigation OS for
