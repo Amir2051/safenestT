@@ -102,7 +102,9 @@ export default function ReportGenerator({ selectedCase }) {
                 const text = dec.decode(error.response.data);
                 const json = JSON.parse(text);
                 errorMsg = json.error || errorMsg;
-            } catch(err){}
+            } catch(err) {
+                // Keep the generic generation error when the response is not JSON.
+            }
         } else if (error.message) {
             errorMsg = error.message;
         }
