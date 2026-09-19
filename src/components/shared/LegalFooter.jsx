@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { Shield, FileText, Scale, BookOpen } from "lucide-react";
 import SafeNesttDisclaimer from "./SafeNesttDisclaimer";
 
@@ -29,28 +28,28 @@ export default function LegalFooter() {
             <h4 className="text-white font-semibold mb-4">Legal</h4>
             <div className="space-y-2">
               <Link
-                to={createPageUrl('PrivacyPolicy')}
+                to="/PrivacyPolicy"
                 className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 <FileText className="w-4 h-4" />
                 Privacy Policy
               </Link>
               <Link
-                to={createPageUrl('TermsAndConditions')}
+                to="/TermsAndConditions"
                 className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 <Scale className="w-4 h-4" />
                 Terms & Conditions
               </Link>
               <Link
-                to={createPageUrl('AcceptableUsePolicy')}
+                to="/AcceptableUsePolicy"
                 className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 <Shield className="w-4 h-4" />
                 Acceptable Use Policy
               </Link>
               <Link
-                to={createPageUrl('RefundPolicy')}
+                to="/RefundPolicy"
                 className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 <FileText className="w-4 h-4" />
@@ -64,13 +63,13 @@ export default function LegalFooter() {
             <h4 className="text-white font-semibold mb-4">Support</h4>
             <div className="space-y-2">
               <Link
-                to={createPageUrl('HelpCenter')}
+                to="/HelpCenter"
                 className="block text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 Help Center
               </Link>
               <Link
-                to={createPageUrl('SafetyResources')}
+                to="/SafetyResources"
                 className="block text-gray-400 hover:text-cyan-400 transition-colors text-sm"
               >
                 Safety Resources

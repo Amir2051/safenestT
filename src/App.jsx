@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AdminGate, { RoleGate } from '@/components/admin/AdminGate';
 import PublicLanding from './pages/PublicLanding';
+import PublicLegalLayout from '@/components/shared/PublicLegalLayout';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -54,16 +55,26 @@ const AuthenticatedApp = () => {
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Show the public landing page instead of auto-redirecting to login.
-      // The landing page's Sign In / Get Started buttons trigger login.
-      return <PublicLanding />;
     }
+    // 'auth_required' falls through to the public routes below so visitors
+    // can still read the legal/policy pages linked from the landing footer.
   }
 
-  // No token and not authenticated (public app with no session) — show landing.
+  // Unauthenticated visitors: render the public landing plus the legal/policy
+  // pages (Terms, Privacy, Acceptable Use, Refund) in a lightweight public
+  // shell. These pages contain real policy content that must be readable
+  // without signing in. Any other path falls back to the landing page.
   if (!isAuthenticated && !isLoadingAuth && !isLoadingPublicSettings) {
-    return <PublicLanding />;
+    return (
+      <Routes>
+        <Route path="/" element={<PublicLanding />} />
+        <Route path="/TermsAndConditions" element={<PublicLegalLayout><Pages.TermsAndConditions /></PublicLegalLayout>} />
+        <Route path="/PrivacyPolicy" element={<PublicLegalLayout><Pages.PrivacyPolicy /></PublicLegalLayout>} />
+        <Route path="/AcceptableUsePolicy" element={<PublicLegalLayout><Pages.AcceptableUsePolicy /></PublicLegalLayout>} />
+        <Route path="/RefundPolicy" element={<PublicLegalLayout><Pages.RefundPolicy /></PublicLegalLayout>} />
+        <Route path="*" element={<PublicLanding />} />
+      </Routes>
+    );
   }
 
   // Render the main app.
