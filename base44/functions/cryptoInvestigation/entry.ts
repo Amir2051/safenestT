@@ -58,8 +58,12 @@ async function trackWallet(data, base44) {
     }
   ];
 
-  const balance = '2.3';
-  
+  const live = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+    action: 'track-wallet',
+    data: { wallet_address: address, blockchain }
+  });
+  const liveBody = live?.data ?? live;
+  if (!liveBody?.success) return Response.json({ error: liveBody?.error || 'Blockchain intelligence unavailable' }, { status: 502 });
   return Response.json({
     success: true,
     data: {
