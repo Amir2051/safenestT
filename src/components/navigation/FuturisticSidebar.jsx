@@ -198,7 +198,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       label: "Security & Operations",
       items: [
         { id: "ops-dashboard", label: "Operations", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
-        { id: "cases-mgmt", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
+        { id: "my-cases", label: "My Cases", icon: Briefcase, path: "/MyCases", glow: "cyan" },
+        { id: "cases-mgmt", label: "Cases Management", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
         { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
         { id: "investigation-ws", label: "Investigation Workspace", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI" },
         { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
