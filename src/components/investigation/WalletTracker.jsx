@@ -49,8 +49,8 @@ async function fetchEvmTxns(address, chain) {
   return Array.isArray(json.result) ? json.result : [];
 }
 
-export default function WalletTracker({ cases = [] }) {
-  const [selectedCase, setSelectedCase] = useState("");
+export default function WalletTracker({ cases = [], caseData = null }) {
+  const [selectedCase, setSelectedCase] = useState(caseData?.id || "");
   const [walletAddress, setWalletAddress] = useState("");
   const [blockchain, setBlockchain] = useState("ethereum");
   const [tracking, setTracking] = useState(false);
@@ -166,13 +166,47 @@ export default function WalletTracker({ cases = [] }) {
       });
 
       toast.success(`Wallet loaded — ${txns.length} transactions found`);
-    } catch (err) {
-      console.error('[WalletTracker] Error:', err);
-      const msg = err.message || 'Unknown error';
-      setError(msg);
-      toast.error("Wallet fetch failed: " + msg);
+
+    if (!walletAddress.trim()) {
+      toast.error("Please enter a wallet address");
+      return;
     }
 
+    setTracking(true);
+    setError(null);
+    setActivityData(null);
+
+    try {
+      const response = await base44.functions.invoke("cryptoInvestigation", {
+        action: "track-wallet",
+        data: {
+          address: walletAddress.trim(),
+          blockchain,
+          caseId: selectedCase || caseData?.id || undefined,
+          walletType: "scammer"
+        }
+      });
+      const payload = response?.data ?? response;
+      if (!payload?.success) throw new Error(payload?.error || "Wallet intelligence failed");
+      const data = payload.data || {};
+      const txns = Array.isArray(data.transactions) ? data.transactions : [];
+      const balance = data.balance || {};
+      setActivityData({
+        address: data.address || walletAddress.trim(),
+        blockchain: data.blockchain || blockchain,
+        balance: balance.amount ?? "N/A",
+        balanceCurrency: blockchain === "ethereum" ? "ETH" : blockchain.toUpperCase(),
+        balanceUSD: balance.usd ?? "N/A",
+        transactionCount: txns.length,
+        firstSeen: txns.length ? new Date(txns[txns.length - 1].timestamp).toLocaleDateString() : "N/A",
+        lastActivity: txns.length ? new Date(txns[0].timestamp).toLocaleDateString() : "N/A",
+        riskScore: data.riskScore?.score ?? "N/A",
+        riskIndicators: data.riskScore?.indicators || [],
+        interactions: new Set(txns.flatMap(t => [t.from, t.to].filter(Boolean))).size,
+        transactions: txns.slice(0, 20)
+      });
+      toast.success(`Live wallet intelligence loaded — ${txns.length} transactions`);
+    } catch (err) {
     setTracking(false);
   };
 
