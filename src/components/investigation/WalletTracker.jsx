@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +56,7 @@ export default function WalletTracker({ cases = [], caseData = null }) {
   const [tracking, setTracking] = useState(false);
   const [activityData, setActivityData] = useState(null);
   const [error, setError] = useState(null);
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient();\n\n  useEffect(() => {\n    if (caseData?.id) {\n      setSelectedCase(caseData.id);\n      const wallet = caseData.scammer_wallet || caseData.victim_wallet || (caseData.monitored_wallets || [])[0];\n      if (wallet) setWalletAddress(wallet);\n      if (caseData.blockchain) setBlockchain(String(caseData.blockchain).toLowerCase());\n    }\n  }, [caseData?.id, caseData?.scammer_wallet, caseData?.victim_wallet]);
 
   const addWalletMutation = useMutation({
     mutationFn: async ({ caseId, wallet }) => {
