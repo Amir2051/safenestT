@@ -59,9 +59,9 @@ export const PHASE_STATUS_STYLES = {
 
 // Multi-agent analysis specialists — colors + labels for agent badges.
 export const AGENT_STYLES = {
-  blockchain_analyst: { label: "Blockchain", cls: "border-orange-500/30 text-orange-400 bg-orange-500/10" },
-  financial_analyst: { label: "Financial", cls: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" },
-  behavioral_analyst: { label: "Behavioral", cls: "border-violet-500/30 text-violet-400 bg-violet-500/10" },
+  blockchain_analyst: { label: "NEXUS", cls: "border-orange-500/30 text-orange-400 bg-orange-500/10" },
+  financial_analyst: { label: "ATLAS", cls: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" },
+  behavioral_analyst: { label: "ORION", cls: "border-violet-500/30 text-violet-400 bg-violet-500/10" },
 };
 
 export function AgentBadge({ agent }) {
