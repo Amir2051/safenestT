@@ -62,14 +62,15 @@ export default function AdminReports() {
         ? Math.round((resolutionHours.reduce((a, b) => a + b, 0) / resolutionHours.length) * 10) / 10
         : null;
 
-      const caseRuns = investigationRuns.filter(r => caseIds.has(r.case_id));
+      const filteredCaseIds = new Set(filtered.map(c => c.id));
+      const caseRuns = investigationRuns.filter(r => filteredCaseIds.has(r.case_id));
       const completedRuns = caseRuns.filter(r => String(r.status).toLowerCase() === 'completed').length;
       const failedRuns = caseRuns.filter(r => ['failed','error'].includes(String(r.status).toLowerCase())).length;
       const attemptedRuns = completedRuns + failedRuns;
       const automationSuccessRate = attemptedRuns ? Math.round((completedRuns / attemptedRuns) * 1000) / 10 : null;
 
       const findingAgents = {};
-      findings.filter(f => caseIds.has(f.case_id)).forEach(f => {
+      findings.filter(f => filteredCaseIds.has(f.case_id)).forEach(f => {
         const agent = f.agent || 'Unassigned';
         findingAgents[agent] = (findingAgents[agent] || 0) + 1;
       });
