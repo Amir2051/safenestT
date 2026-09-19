@@ -39,7 +39,6 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
       const firstOk = freeOnly ? models.find((m) => m.free !== false) : models[0];
       setModel(firstOk?.id || DEFAULT_MODEL);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
   const { data: history = [], refetch } = useQuery({
