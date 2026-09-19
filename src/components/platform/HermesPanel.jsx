@@ -23,7 +23,7 @@ export default function HermesPanel({
   queryKey,
   fetcher,
   emptyTitle = "No data yet",
-  emptyDescription = "Hermes has not produced data for this section. Start or continue the investigation.",
+  emptyDescription = "MIA has not produced data for this section. Start or continue the investigation.",
   render,
 }) {
   const canFetch = hermesState === "configured" || hermesState === "ok";
@@ -40,24 +40,24 @@ export default function HermesPanel({
       <EmptyState
         variant="not_connected"
         title="Awaiting investigation data"
-        description="This panel displays real data returned by Hermes. Connect Hermes (VITE_HERMES_API_URL + hermesProxy backend function) and start an investigation to populate it."
+        description="This panel displays real intelligence returned by MIA. The secure backend gateway must be connected before an investigation can populate it."
       />
     );
   }
   if (isLoading) {
-    return <EmptyState variant="loading" title="Querying Hermes…" />;
+    return <EmptyState variant="loading" title="Querying MIA…" />;
   }
   if (data?.status === "not_connected" || data?.status === "backend_unavailable") {
     return (
       <EmptyState
         variant="not_connected"
-        title="Hermes backend unavailable"
-        description="The hermesProxy backend function is not accessible on your current plan. Upgrade to enable real investigation data."
+        title="MIA intelligence gateway unavailable"
+        description="The secure intelligence gateway is not accessible. Verify the hosted MIA gateway and backend configuration."
       />
     );
   }
   if (data?.status === "error") {
-    return <EmptyState variant="error" title="Hermes request failed" description={data?.error || "No response from Hermes."} />;
+    return <EmptyState variant="error" title="MIA request failed" description={data?.error || "No response from MIA."} />;
   }
   const payload = data?.data;
   if (!payload || (Array.isArray(payload) && payload.length === 0) || (payload && typeof payload === "object" && !Array.isArray(payload) && Object.keys(payload).length === 0)) {
