@@ -13,10 +13,10 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'track-wallet':
-        return await trackWallet(data);
+        return await trackWallet(data, base44);
       
       case 'analyze-transaction-flow':
-        return await analyzeTransactionFlow(data);
+        return await analyzeTransactionFlow(data, base44);
       
       case 'detect-exchange':
         return await detectExchange(data);
