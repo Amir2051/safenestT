@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from "react";
+import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,13 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
   const [selected, setSelected] = useState({ mia: true, monitor: true });
   const [analysisResult, setAnalysisResult] = useState(null);
   const [summaryResult, setSummaryResult] = useState(null);
+  const [agentAssignments, setAgentAssignments] = useState([]);
+
+  const AGENTS = [
+    { id: "blockchain_analyst", name: "NEXUS", role: "Blockchain & crypto-flow analyst", color: "orange" },
+    { id: "financial_analyst", name: "ATLAS", role: "Financial & funds-flow analyst", color: "emerald" },
+    { id: "behavioral_analyst", name: "ORION", role: "Behavioral & social-engineering analyst", color: "violet" },
+  ];
 
   // Race-guard: bump on every run / case change; stale runs bail out.
   const runIdRef = useRef(0);
@@ -54,6 +61,19 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
   }, []);
 
   const hasExisting = useMemo(() => Boolean(caseData.ai_analysis), [caseData.ai_analysis]);
+
+  const loadAgents = useCallback(async () => {
+    if (!caseData?.id) return;
+    try {
+      await base44.functions.invoke("ensureCaseAgents", { caseId: caseData.id });
+      const res = await base44.entities.CaseAgentAssignment.filter({ case_id: caseData.id }, "-created_date", 20);
+      setAgentAssignments(Array.isArray(res) ? res : []);
+    } catch (e) {
+      console.error("Failed to load case AI agents:", e);
+    }
+  }, [caseData?.id]);
+
+  useEffect(() => { loadAgents(); }, [loadAgents]);
 
   const runAll = async () => {
     const chosen = TASKS.filter((t) => selected[t.key]);
@@ -115,6 +135,7 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
           { id: toastId }
         );
       }
+      await loadAgents();
       if (onUpdate) onUpdate();
     } catch (e) {
       if (runId === runIdRef.current) {
@@ -152,6 +173,29 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Persistent case-linked agent team */}
+        <Card className="bg-[#0f1419] border-cyan-500/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-sm flex items-center gap-2"><Brain className="w-4 h-4 text-cyan-400" /> Case AI Agent Team</CardTitle>
+            <p className="text-xs text-gray-500">These three specialists are permanently linked to this case. New cases receive the same team automatically.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {AGENTS.map((agent) => {
+                const assignment = agentAssignments.find(a => a.agent_id === agent.id);
+                const specialist = analysisResult?.specialists?.find(a => a.id === agent.id);
+                const status = specialist?.status || assignment?.status || "assigned";
+                const tone = agent.color === "orange" ? "border-orange-500/30 bg-orange-500/10 text-orange-300" : agent.color === "emerald" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-violet-500/30 bg-violet-500/10 text-violet-300";
+                return <div key={agent.id} className={`rounded-xl border p-3 ${tone}`}>
+                  <div className="flex items-center justify-between"><span className="font-bold">{agent.name}</span><Badge variant="outline" className="text-[9px] uppercase">{status}</Badge></div>
+                  <p className="text-[11px] mt-1 opacity-80">{agent.role}</p>
+                  <p className="text-[10px] mt-2 opacity-60">{assignment?.run_count || 0} run(s) · {assignment?.findings_count || 0} finding(s)</p>
+                </div>;
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Task toggles */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {TASKS.map((t) => {
