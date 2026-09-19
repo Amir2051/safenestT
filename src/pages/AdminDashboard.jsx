@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,11 +33,32 @@ export default function AdminDashboard() {
 
   const { data: adminCases = [], isLoading: loadingCases, refetch } = useQuery({
     queryKey: ["admin-dashboard-cases"],
-    queryFn: () => base44.asServiceRole.entities.MyCase.list("-created_date", 1000),
+    queryFn: async () => {
+      const response = await base44.functions.invoke("getAllCases", {});
+      return response?.data?.cases || response?.cases || [];
+    },
     enabled: !!user && isAdmin,
     staleTime: 0,
     refetchInterval: 30000,
   });
+
+  const { data: investigationRuns = [] } = useQuery({
+    queryKey: ["admin-dashboard-investigation-runs"],
+    queryFn: () => base44.entities.InvestigationRun.list("-created_date", 500),
+    enabled: !!user && isAdmin,
+    staleTime: 0,
+    refetchInterval: 30000,
+  });
+
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["admin-dashboard-transactions"],
+    queryFn: () => base44.entities.Transaction.list("-created_date", 500),
+    enabled: !!user && isAdmin,
+    staleTime: 0,
+    refetchInterval: 30000,
+  });
+
+  const commandData = useMemo(() => ({ cases: adminCases, investigationRuns, transactions }), [adminCases, investigationRuns, transactions]);
 
   if (!user || loadingCases) {
     return (
@@ -122,7 +143,7 @@ export default function AdminDashboard() {
           </Card>
 
           <div className="space-y-6">
-            <InvestigatorCommandCenter />
+            <InvestigatorCommandCenter data={commandData} />
             {selectedCase && (
               <InvestigationAICenter
                 caseData={selectedCase}
