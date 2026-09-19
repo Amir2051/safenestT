@@ -41,9 +41,17 @@ export default function AdminMonitoringDashboard() {
 
   const { data: alerts = [] } = useQuery({
     queryKey: ['all-title-alerts'],
-    queryFn: () => base44.entities.TitleAlert.list('-alert_date', 200),
+    queryFn: () => base44.entities.TitleAlert.list('-alert_date', 200).catch(() => []),
     enabled: !!user && user?.role === 'admin',
     initialData: [],
+  });
+
+  const { data: cases = [] } = useQuery({
+    queryKey: ['monitoring-case-summary'],
+    queryFn: () => base44.entities.MyCase.list('-created_date', 10000).catch(() => []),
+    enabled: !!user && user?.role === 'admin',
+    initialData: [],
+    refetchInterval: 30000,
   });
 
   // Calculate metrics
@@ -74,9 +82,15 @@ export default function AdminMonitoringDashboard() {
     
     // Health status
     const recentFailures = scans.slice(0, 5).filter(s => s.status === 'failed').length;
+    const latestScanAgeHours = latestScan?.started_at ? (Date.now() - new Date(latestScan.started_at).getTime()) / 3600000 : null;
     let healthStatus = 'healthy';
     if (recentFailures >= 3) healthStatus = 'down';
-    else if (recentFailures >= 2) healthStatus = 'warning';
+    else if (recentFailures >= 2 || (latestScanAgeHours != null && latestScanAgeHours > 24)) healthStatus = 'warning';
+
+    const submittedCases = cases.filter(c => String(c.status || '').toLowerCase() === 'submitted').length;
+    const activeCases = cases.filter(c => !['resolved','completed','recovered','closed'].includes(String(c.status || '').toLowerCase())).length;
+    const totalLoss = cases.reduce((sum, c) => sum + (Number(c.amount_lost) || 0), 0);
+    const totalRecovered = cases.reduce((sum, c) => sum + (Number(c.recovery_amount) || 0), 0);
     
     // Trend data (last 7 days)
     const trendData = [];
@@ -117,9 +131,15 @@ export default function AdminMonitoringDashboard() {
       successRate,
       healthStatus,
       trendData,
-      recentScans: scans.slice(0, 20)
+      recentScans: scans.slice(0, 20),
+      latestScanAgeHours,
+      submittedCases,
+      activeCases,
+      totalLoss,
+      totalRecovered,
+      caseCount: cases.length
     };
-  }, [scans, properties, alerts]);
+  }, [scans, properties, alerts, cases]);
 
   const filteredScans = metrics.recentScans.filter(scan => {
     const matchesStatus = statusFilter === 'all' || scan.status === statusFilter;
@@ -163,9 +183,9 @@ export default function AdminMonitoringDashboard() {
     );
   }
 
-  const nextScanTime = metrics.latestScan?.next_scheduled_scan 
+  const nextScanTime = metrics.latestScan?.next_scheduled_scan
     ? new Date(metrics.latestScan.next_scheduled_scan)
-    : new Date(new Date().setHours(3, 0, 0, 0) + (Date.now() > new Date().setHours(3, 0, 0, 0) ? 24 * 60 * 60 * 1000 : 0));
+    : null;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -208,14 +228,14 @@ export default function AdminMonitoringDashboard() {
                   {healthColors.icon} Engine Status: {metrics.healthStatus.toUpperCase()}
                 </h2>
                 <p className={`text-sm ${healthColors.text}`}>
-                  {metrics.healthStatus === 'healthy' && '✓ All systems operational'}
-                  {metrics.healthStatus === 'warning' && '⚠️ Performance degraded - monitoring'}
-                  {metrics.healthStatus === 'down' && '🔴 Critical issues detected - immediate attention required'}
+                  {metrics.healthStatus === 'healthy' && '✓ Current scan records are operating normally'}
+                  {metrics.healthStatus === 'warning' && '⚠️ Monitoring data is stale or recent scans have failed'}
+                  {metrics.healthStatus === 'down' && '🔴 Recent monitoring scans are failing'}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-400">Success Rate</p>
+              <p className="text-sm text-gray-400">Recorded Scan Success</p>
               <p className="text-3xl font-bold text-green-400">{metrics.successRate}%</p>
             </div>
           </div>
@@ -358,19 +378,36 @@ export default function AdminMonitoringDashboard() {
                 <div className="absolute inset-0 rounded-full border-4 border-purple-400 border-t-transparent animate-spin" 
                      style={{ animationDuration: '3s' }} />
               </div>
-              <p className="text-3xl font-bold text-white mb-2">
-                {formatDistanceToNow(nextScanTime, { addSuffix: true })}
-              </p>
-              <p className="text-sm text-gray-400">
-                {format(nextScanTime, 'MMM dd, yyyy HH:mm')} EST
-              </p>
-              <p className="text-xs text-purple-400 mt-3">
-                Daily automated scan • 3:00 AM EST
-              </p>
+              {nextScanTime ? (
+                <>
+                  <p className="text-3xl font-bold text-white mb-2">{formatDistanceToNow(nextScanTime, { addSuffix: true })}</p>
+                  <p className="text-sm text-gray-400">{format(nextScanTime, 'MMM dd, yyyy HH:mm')}</p>
+                  <p className="text-xs text-purple-400 mt-3">Scheduled time recorded by the monitoring engine</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-amber-300 mb-2">No scheduled scan recorded</p>
+                  <p className="text-sm text-gray-400">SafeNestT has no next_scheduled_scan value in the monitoring database.</p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Case Database Synchronization */}
+      <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
+        <CardHeader><CardTitle className="text-white flex items-center gap-2"><Database className="w-5 h-5 text-purple-400" /> SafeNestT Case Database</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div><p className="text-xs text-gray-400">Cases Submitted</p><p className="text-2xl font-bold text-white">{metrics.submittedCases}</p></div>
+            <div><p className="text-xs text-gray-400">Active Cases</p><p className="text-2xl font-bold text-cyan-400">{metrics.activeCases}</p></div>
+            <div><p className="text-xs text-gray-400">Reported Loss</p><p className="text-2xl font-bold text-orange-400">${metrics.totalLoss.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-400">Recorded Recovery</p><p className="text-2xl font-bold text-green-400">${metrics.totalRecovered.toLocaleString()}</p></div>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">Source: MyCase records in the SafeNestT database. Refreshes every 30 seconds.</p>
+        </CardContent>
+      </Card>
 
       {/* Performance Trends */}
       <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
