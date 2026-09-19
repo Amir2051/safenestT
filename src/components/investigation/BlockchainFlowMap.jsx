@@ -11,13 +11,13 @@ export default function BlockchainFlowMap({ selectedCase }) {
   const [flowData, setFlowData] = useState(null);
 
   useEffect(() => {
-    if (selectedCase?.scammer_wallet) {
+    if (selectedCase?.scammer_wallet || selectedCase?.victim_wallet) {
       analyzeFlow();
     }
   }, [selectedCase]);
 
   const analyzeFlow = async () => {
-    if (!selectedCase?.scammer_wallet) {
+    if (!selectedCase?.scammer_wallet && !selectedCase?.victim_wallet) {
       toast.error("Please select a case first");
       return;
     }
@@ -27,8 +27,9 @@ export default function BlockchainFlowMap({ selectedCase }) {
       const response = await base44.functions.invoke('cryptoInvestigation', {
         action: 'analyze-transaction-flow',
         data: { 
-          startAddress: selectedCase.scammer_wallet,
+          startAddress: selectedCase.scammer_wallet || selectedCase.victim_wallet,
           blockchain: selectedCase.blockchain,
+          caseId: selectedCase.id,
           depth: 5
         }
       });
