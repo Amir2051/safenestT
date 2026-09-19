@@ -78,8 +78,11 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases', user?.id],
     queryFn: async () => {
-      const cases = await base44.entities.MyCase.list('-created_date', 10000);
-      return cases;
+      const res = await base44.functions.invoke('getAllCases', {});
+      const body = res?.data ?? res;
+      if (body?.success && Array.isArray(body.cases)) return body.cases;
+      // Fallback for authenticated users if the helper function is unavailable.
+      return await base44.entities.MyCase.list('-created_date', 10000);
     },
     enabled: !!user,
     staleTime: 10000,
@@ -140,7 +143,7 @@ export default function MyCases() {
       seenIds.add(key);
       return true;
     });
-  }, [myCases, clientCases]);
+  }, [myCases, clientCases, masterCases]);
 
   const displayCases = useMemo(() => {
     const source = allRawCases;
