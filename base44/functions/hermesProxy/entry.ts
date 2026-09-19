@@ -17,7 +17,10 @@ import { secrets } from "base44:runtime";
  * Never logs or returns the API key.
  */
 const DEFAULT_BASE = "https://inference-api.nousresearch.com/v1";
-const DEFAULT_MODEL = "Hermes-4-70B";
+// Hermes-4-70B is retired and the account has no credits for paid models.
+// Default to a live free model from the catalog so the proxy works out of the
+// box (e.g. health pings that don't pass an explicit model).
+const DEFAULT_MODEL = "meituan/longcat-2.0:free";
 const TIMEOUT_MS = 60000;
 const MAX_ATTEMPTS = 2;
 

@@ -33,7 +33,9 @@
 
 const HERMES_BASE_URL = "https://inference-api.nousresearch.com/v1";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
-export const HERMES_DEFAULT_MODEL = "unbiased/pareto";
+// Live free model from the Nous catalog (Hermes-4-70B is retired; the account
+// has no credits for paid models). Used by pingHermes() and as the fallback.
+export const HERMES_DEFAULT_MODEL = "meituan/longcat-2.0:free";
 
 /**
  * Returns the current Hermes connection descriptor.
@@ -60,6 +62,7 @@ export async function pingHermes() {
     const { base44 } = await import("@/api/base44Client");
     const res = await base44.functions.invoke(HERMES_PROXY_FUNCTION, {
       prompt: "Reply with exactly: ok",
+      model: HERMES_DEFAULT_MODEL,
       temperature: 0,
       max_tokens: 5,
     });

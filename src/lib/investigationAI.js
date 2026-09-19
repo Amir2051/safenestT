@@ -40,6 +40,40 @@ export const PROVIDERS = {
       return res; // object when a schema is supplied, else string
     },
   },
+  hermes: {
+    id: "hermes",
+    label: "Hermes Engine (Nous)",
+    description: "Live — server-side hermesProxy. Free Nous Research inference models; key stays server-side.",
+    available: true,
+    // Only the 7 free models in the live Nous catalog (paid IDs need credits
+    // we don't have). The server-side proxy reads HERMES_API_KEY from secrets.
+    models: [
+      { id: "meituan/longcat-2.0:free", label: "LongCat 2.0 (free · 1M ctx)", free: true },
+      { id: "upstage/solar-pro4:free", label: "Solar Pro 4 (free · 512K)", free: true },
+      { id: "inclusionai/ling-3.0-flash-fin:free", label: "Ling 3.0 Flash Fin (free)", free: true },
+      { id: "inclusionai/ling-3.0-flash-sante:free", label: "Ling 3.0 Flash Sante (free)", free: true },
+      { id: "stepfun/step-3.7-flash:free", label: "Step 3.7 Flash (free)", free: true },
+      { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1 (free)", free: true },
+      { id: "poolside/laguna-xs-2.1:free", label: "Laguna XS 2.1 (free)", free: true },
+    ],
+    run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
+      const resp = await base44.functions.invoke("hermesProxy", {
+        prompt,
+        model: model || "meituan/longcat-2.0:free",
+        response_json_schema: responseJsonSchema,
+        temperature,
+        max_tokens: maxTokens,
+      });
+      const body = resp?.data ?? resp;
+      if (!body || body.ok === false) {
+        throw new Error(body?.error || "Hermes proxy returned an error");
+      }
+      if (body.data == null) {
+        throw new Error("Hermes returned empty content");
+      }
+      return body.data;
+    },
+  },
   openrouter: {
     id: "openrouter",
     label: "OpenRouter (free models)",
