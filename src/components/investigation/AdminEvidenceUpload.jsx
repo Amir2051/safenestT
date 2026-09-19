@@ -38,7 +38,9 @@ export default function AdminEvidenceUpload({ caseId }) {
             try {
                 const currentCase = await base44.entities.MyCase.get(caseId);
                 caseOwnerEmail = currentCase.created_by || currentCase.client_email;
-            } catch (e) {}
+            } catch (e) {
+                // Case ownership metadata is optional; continue with the upload.
+            }
 
             // 3. Create Record
             const record = await base44.entities.CaseEvidenceFile.create({
