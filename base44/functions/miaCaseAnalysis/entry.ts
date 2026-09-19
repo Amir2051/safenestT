@@ -17,6 +17,24 @@ Deno.serve(async (req) => {
     const stored = await base44.asServiceRole.entities.MyCase.get(caseId);
     if (!stored) return Response.json({ error: "Case not found" }, { status: 404 });
 
+    // Every MyCase receives the same persistent MIA specialist team.
+    const agentDefs = [
+      { id: "blockchain_analyst", name: "NEXUS", role: "Blockchain & crypto-flow analyst" },
+      { id: "financial_analyst", name: "ATLAS", role: "Financial & funds-flow analyst" },
+      { id: "behavioral_analyst", name: "ORION", role: "Behavioral & social-engineering analyst" },
+    ];
+    const existingAgents = await base44.asServiceRole.entities.CaseAgentAssignment.filter({ case_id: caseId }, "-created_date", 20).catch(() => []);
+    const existingById = new Map(existingAgents.map((a) => [a.agent_id, a]));
+    for (const agent of agentDefs) {
+      if (!existingById.has(agent.id)) {
+        const created = await base44.asServiceRole.entities.CaseAgentAssignment.create({
+          case_id: caseId, agent_id: agent.id, agent_name: agent.name, role: agent.role,
+          status: "assigned", findings_count: 0, run_count: 0
+        });
+        existingById.set(agent.id, created);
+      }
+    }
+
     const [evidence, timeline, transactions] = await Promise.all([
       base44.asServiceRole.entities.CaseEvidenceItem.filter({ case_id: caseId }, "-created_date", 200).catch(() => []),
       base44.asServiceRole.entities.CaseTimelineEvent.filter({ case_id: caseId }, "-created_date", 200).catch(() => []),
@@ -164,6 +182,19 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
       return { id: agent.id, name: agent.name, status: body?.ok ? "completed" : "failed", result: body?.data || body?.result || body?.text || body?.error || "No specialist response" };
     }));
     const specialists = specialistRuns.map((run, i) => run.status === "fulfilled" ? run.value : ({ id: specialistSpecs[i].id, name: specialistSpecs[i].name, status: "failed", result: String(run.reason?.message || run.reason || "Specialist failed") }));
+    for (const specialist of specialists) {
+      const current = existingById.get(specialist.id);
+      if (current?.id) {
+        await base44.asServiceRole.entities.CaseAgentAssignment.update(current.id, {
+          status: specialist.status === "completed" ? "completed" : "failed",
+          last_run_at: new Date().toISOString(),
+          last_run_status: specialist.status,
+          last_run_summary: typeof specialist.result === "string" ? specialist.result.slice(0, 1200) : JSON.stringify(specialist.result).slice(0, 1200),
+          findings_count: Array.isArray(specialist.result?.findings) ? specialist.result.findings.length : (current.findings_count || 0),
+          run_count: (current.run_count || 0) + 1,
+        }).catch(() => null);
+      }
+    }
     const ai = await base44.functions.invoke("hermesProxy", {
       prompt,
       model: MODEL,
