@@ -30,11 +30,14 @@ export default function AdminReports() {
   const { data: analytics, isLoading, refetch } = useQuery({
     queryKey: ['admin-analytics', filters],
     queryFn: async () => {
-      const [myCases, clientCases] = await Promise.all([
+      const [myCases, clientCases, investigationRuns, findings] = await Promise.all([
         base44.entities.MyCase.list('-created_date', 10000),
-        base44.entities.ClientCase.list('-created_date', 10000).catch(() => [])
+        base44.entities.ClientCase.list('-created_date', 10000).catch(() => []),
+        base44.entities.InvestigationRun.list('-created_date', 10000).catch(() => []),
+        base44.entities.InvestigationFinding.list('-created_date', 10000).catch(() => [])
       ]);
       const allCases = [...myCases, ...clientCases];
+      const caseIds = new Set(allCases.map(c => c.id));
 
       // Apply filters
       let filtered = allCases;
@@ -43,10 +46,33 @@ export default function AdminReports() {
       if (filters.startDate) filtered = filtered.filter(c => new Date(c.created_date) >= new Date(filters.startDate));
       if (filters.endDate) filtered = filtered.filter(c => new Date(c.created_date) <= new Date(filters.endDate));
 
-      const resolvedCases = filtered.filter(c => ['Resolved','resolved','Completed','recovered'].includes(c.status));
-      const activeCases = filtered.filter(c => !['Resolved','resolved','Closed','closed','Completed','recovered'].includes(c.status));
-      const totalRecovered = filtered.reduce((s, c) => s + (c.recovery_amount || 0), 0);
+      const resolvedCases = filtered.filter(c => ['resolved','completed','recovered','closed'].includes(String(c.status || '').toLowerCase()));
+      const activeCases = filtered.filter(c => !['resolved','completed','recovered','closed'].includes(String(c.status || '').toLowerCase()));
+      const totalRecovered = filtered.reduce((sum, c) => sum + (Number(c.recovery_amount) || 0), 0);
       const recoveryRate = filtered.length > 0 ? Math.round((resolvedCases.length / filtered.length) * 100) : 0;
+
+      const resolutionHours = resolvedCases
+        .map(c => {
+          const created = new Date(c.created_date).getTime();
+          const updated = new Date(c.updated_date || c.created_date).getTime();
+          return Number.isFinite(created) && Number.isFinite(updated) && updated >= created ? (updated - created) / 3600000 : null;
+        })
+        .filter(v => v !== null);
+      const avgResolutionHours = resolutionHours.length
+        ? Math.round((resolutionHours.reduce((a, b) => a + b, 0) / resolutionHours.length) * 10) / 10
+        : null;
+
+      const caseRuns = investigationRuns.filter(r => caseIds.has(r.case_id));
+      const completedRuns = caseRuns.filter(r => String(r.status).toLowerCase() === 'completed').length;
+      const failedRuns = caseRuns.filter(r => ['failed','error'].includes(String(r.status).toLowerCase())).length;
+      const attemptedRuns = completedRuns + failedRuns;
+      const automationSuccessRate = attemptedRuns ? Math.round((completedRuns / attemptedRuns) * 1000) / 10 : null;
+
+      const findingAgents = {};
+      findings.filter(f => caseIds.has(f.case_id)).forEach(f => {
+        const agent = f.agent || 'Unassigned';
+        findingAgents[agent] = (findingAgents[agent] || 0) + 1;
+      });
 
       // Fraud type breakdown
       const typeMap = {};
@@ -60,7 +86,8 @@ export default function AdminReports() {
       const monthMap = {};
       filtered.forEach(c => {
         if (!c.created_date) return;
-        const m = new Date(c.created_date).toLocaleString('default', { month: 'short' });
+        const d = new Date(c.created_date);
+        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         monthMap[m] = (monthMap[m] || 0) + 1;
       });
       const byMonth = Object.entries(monthMap).map(([name, value]) => ({ name, value }));
@@ -74,11 +101,23 @@ export default function AdminReports() {
         if (['Resolved','resolved','Completed'].includes(c.status)) specMap[email].resolved++;
         else specMap[email].active++;
       });
-      const specialists = Object.values(specMap);
+      const specialists = Object.values(specMap).map(s => ({
+        ...s,
+        findingCount: findingAgents[s.email] || 0
+      }));
+      Object.entries(findingAgents).forEach(([agent, findingCount]) => {
+        if (!specialists.some(s => s.email === agent)) specialists.push({ email: agent, total: 0, active: 0, resolved: 0, avgResolutionHours: 0, findingCount });
+      });
+
+      const automationBreakdown = [
+        { type: 'investigation_runs', count: caseRuns.length, rate: automationSuccessRate },
+        { type: 'case_intake', count: filtered.length, rate: filtered.length ? 100 : null },
+        { type: 'resolved_cases', count: resolvedCases.length, rate: recoveryRate }
+      ];
 
       return {
         kpis: {
-          avgResolutionHours: 48,
+          avgResolutionHours,
           recoveryRate,
           totalRecovered,
           activeCases: activeCases.length,
@@ -87,13 +126,9 @@ export default function AdminReports() {
         trends: { byType, byMonth },
         specialists,
         automation: {
-          successRate: 94,
-          totalEvents: filtered.length,
-          breakdown: [
-            { type: 'case_intake', count: filtered.length, rate: 97 },
-            { type: 'status_updates', count: resolvedCases.length, rate: 94 },
-            { type: 'notifications', count: activeCases.length, rate: 91 }
-          ]
+          successRate: automationSuccessRate,
+          totalEvents: caseRuns.length,
+          breakdown: automationBreakdown
         }
       };
     }
@@ -115,7 +150,7 @@ export default function AdminReports() {
     // Prepare data
     const kpiData = [
         ['Metric', 'Value'],
-        ['Avg Resolution Time', `${analytics.kpis.avgResolutionHours} hrs`],
+        ['Avg Resolution Time', `${analytics.kpis.avgResolutionHours == null ? 'N/A' : `${analytics.kpis.avgResolutionHours} hrs`}`],
         ['Recovery Rate', `${analytics.kpis.recoveryRate}%`],
         ['Total Recovered', `$${analytics.kpis.totalRecovered}`],
         ['Active Cases', analytics.kpis.activeCases],
@@ -258,9 +293,9 @@ export default function AdminReports() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-gray-400 text-sm font-medium">Avg. Resolution Time</p>
-                <h3 className="text-3xl font-bold text-white mt-2">{analytics.kpis.avgResolutionHours} hrs</h3>
+                <h3 className="text-3xl font-bold text-white mt-2">{analytics.kpis.avgResolutionHours == null ? 'N/A' : `${analytics.kpis.avgResolutionHours} hrs`}</h3>
                 <p className="text-green-400 text-xs mt-1 flex items-center">
-                  <TrendingUp className="w-3 h-3 mr-1" /> -12% from last month
+                  <TrendingUp className="w-3 h-3 mr-1" /> Calculated from case created/updated timestamps
                 </p>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-lg">
@@ -292,9 +327,9 @@ export default function AdminReports() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-gray-400 text-sm font-medium">Automation Success</p>
-                <h3 className="text-3xl font-bold text-white mt-2">{analytics.automation.successRate}%</h3>
+                <h3 className="text-3xl font-bold text-white mt-2">{analytics.automation.successRate == null ? 'N/A' : `${analytics.automation.successRate}%`}</h3>
                 <p className="text-gray-500 text-xs mt-1">
-                  {analytics.automation.totalEvents} automations run
+                  {analytics.automation.totalEvents} investigation runs
                 </p>
               </div>
               <div className="p-3 bg-purple-500/10 rounded-lg">
@@ -361,7 +396,7 @@ export default function AdminReports() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">{specialist.email}</p>
-                      <p className="text-xs text-gray-500">{specialist.total} total cases</p>
+                      <p className="text-xs text-gray-500">{specialist.total} cases • {specialist.findingCount || 0} findings</p>
                     </div>
                   </div>
                   <div className="flex gap-3 text-right">
@@ -398,7 +433,7 @@ export default function AdminReports() {
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-gray-500">{item.count} runs</span>
                     <Badge variant="outline" className={`${item.rate > 90 ? 'text-green-400 border-green-500/30' : 'text-yellow-400 border-yellow-500/30'}`}>
-                      {item.rate}% Success
+                      {item.rate == null ? 'N/A' : `${item.rate}%`}
                     </Badge>
                   </div>
                 </div>
