@@ -26,10 +26,10 @@ import DataRightsDeletion from './pages/DataRightsDeletion';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
-  'AdminDashboard', 'AdminInvestigation', 'AdminInvestmentMonitor',
+  'AdminDashboard', 'AdminInvestigation',
   'AdminInvites', 'AdminMonitoringDashboard', 'AdminReferralDashboard',
   'AdminReferrals', 'AdminReports', 'AdminSubscriptions', 'AdminSupport',
-  'AdminUserApprovals', 'AdminVPNServers', 'AdminVerifiedCompanies',
+  'AdminUserApprovals', 'AdminVPNServers',
   'AdminDeedFraud', 'Cases', 'InvestigationDashboard', 'InvestigatorDashboard',
 ]);
 
