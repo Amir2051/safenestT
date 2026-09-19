@@ -80,7 +80,7 @@ export default function CaseManager({ cases, onSelectCase, selectedCase, recover
   const displayCases = searchResults || cases;
 
   const getCaseFundSupport = (caseId) => {
-    return recoveryFunds
+    return (recoveryFunds || [])
       .filter(f => f.fraud_case_id === caseId && f.transaction_type === 'distribution' && f.status === 'distributed')
       .reduce((sum, f) => sum + f.amount_usd, 0);
   };
