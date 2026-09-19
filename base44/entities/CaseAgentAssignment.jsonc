@@ -1,0 +1,85 @@
+{
+  "name": "CaseAgentAssignment",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "Authoritative MyCase ID"
+    },
+    "agent_id": {
+      "type": "string",
+      "enum": [
+        "blockchain_analyst",
+        "financial_analyst",
+        "behavioral_analyst"
+      ]
+    },
+    "agent_name": {
+      "type": "string",
+      "enum": [
+        "NEXUS",
+        "ATLAS",
+        "ORION"
+      ]
+    },
+    "role": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "running",
+        "completed",
+        "failed"
+      ],
+      "default": "assigned"
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run_status": {
+      "type": "string"
+    },
+    "last_run_summary": {
+      "type": "string"
+    },
+    "findings_count": {
+      "type": "number",
+      "default": 0
+    },
+    "run_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "case_id",
+    "agent_id",
+    "agent_name",
+    "role"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
