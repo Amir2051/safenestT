@@ -69,10 +69,12 @@ async function trackWallet(data, base44) {
     data: {
       address,
       blockchain,
-      balance,
-      transactions: mockTransactions,
-      totalIncoming: 5,
-      totalOutgoing: 3
+      balance: liveBody.data?.balance,
+      transactions: liveBody.data?.transactions || [],
+      totalIncoming: (liveBody.data?.transactions || []).filter(t => String(t.from || '').toLowerCase() !== String(address).toLowerCase()).length,
+      totalOutgoing: (liveBody.data?.transactions || []).filter(t => String(t.from || '').toLowerCase() === String(address).toLowerCase()).length,
+      riskScore: liveBody.data?.riskScore,
+      source: 'blockchainIntelligence'
     }
   });
 }
