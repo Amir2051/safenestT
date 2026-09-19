@@ -416,6 +416,7 @@ Rules:
             });
             
             const createdCase = await base44.asServiceRole.entities.MyCase.create(finalCaseData);
+            if (createdCase?.id) await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: createdCase.id }).catch((e) => console.error("Agent assignment failed:", e));
             
             if (!createdCase || !createdCase.id) {
                 console.error('❌ Case creation failed - no ID returned');
