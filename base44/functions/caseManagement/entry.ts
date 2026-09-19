@@ -207,6 +207,7 @@ Deno.serve(async (req) => {
             try {
                 // Use asServiceRole for guaranteed creation
                 newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+                if (newCase?.id) await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: newCase.id }).catch((e) => console.error("Agent assignment failed:", e));
             } catch (writeError) {
                 console.error('❌ DATABASE WRITE FAILED:', writeError);
                 console.error('💾 Failed data:', JSON.stringify(caseData, null, 2));
