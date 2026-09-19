@@ -79,8 +79,44 @@ async function trackWallet(data, base44) {
   });
 }
 
-async function analyzeTransactionFlow(data) {
-  const { startAddress, blockchain, depth = 3 } = data;
+async function analyzeTransactionFlow(data, base44) {
+  const { startAddress, blockchain, depth = 5, caseId } = data;
+  let address = startAddress;
+  let chain = blockchain;
+  if (caseId) {
+    const caseData = await base44.asServiceRole.entities.MyCase.get(caseId).catch(() => null);
+    if (!caseData) return Response.json({ error: 'Case not found' }, { status: 404 });
+    address = caseData.scammer_wallet || caseData.victim_wallet || startAddress;
+    chain = caseData.blockchain || blockchain;
+  }
+  if (!address || !chain) return Response.json({ error: 'Case must contain a wallet address and blockchain' }, { status: 400 });
+
+  let transactions = caseId ? await base44.asServiceRole.entities.Transaction.filter({ case_id: caseId }, '-timestamp', 500).catch(() => []) : [];
+  if (!transactions.length) {
+    const tracked = await base44.asServiceRole.functions.invoke('blockchainIntelligence', {
+      action: 'track-wallet',
+      data: { wallet_address: address, blockchain: chain, fraud_case_id: caseId, wallet_type: 'scammer' }
+    }).catch(() => null);
+    transactions = tracked?.data?.data?.transactions || tracked?.data?.transactions || [];
+  }
+  const relevant = transactions.filter(tx => {
+    const from = String(tx.from_address || tx.from || '').toLowerCase();
+    const to = String(tx.to_address || tx.to || '').toLowerCase();
+    return from === String(address).toLowerCase() || to === String(address).toLowerCase();
+  }).slice(0, 200);
+  const nodes = new Map();
+  nodes.set(address, { id: address, label: 'Case wallet', type: 'scammer' });
+  const edges = [];
+  for (const tx of relevant) {
+    const from = tx.from_address || tx.from;
+    const to = tx.to_address || tx.to;
+    if (!from || !to) continue;
+    if (!nodes.has(from)) nodes.set(from, { id: from, label: 'Transaction address', type: 'wallet' });
+    if (!nodes.has(to)) nodes.set(to, { id: to, label: 'Transaction address', type: 'wallet' });
+    edges.push({ from, to, value: String(tx.amount ?? tx.value ?? 0), txid: tx.tx_hash || tx.hash || 'unknown', timestamp: tx.timestamp || tx.created_date });
+  }
+  const exchangeDeposits = [];
+  const mixerDetected = relevant.some(tx => String(tx.category || '').toLowerCase().includes('mixer'));
   
   // Generate transaction flow map
   const flowMap = {
