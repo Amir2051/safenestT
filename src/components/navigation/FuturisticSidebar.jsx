@@ -7,7 +7,7 @@ import {
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
   Command, Sparkles,
   UserCheck, UserPlus, FileBarChart, LifeBuoy, Users, TrendingUp,
-  LineChart, Server, Building2, Gavel, Home as HomeIcon, Cookie, Scale,
+  Server, Gavel, Home as HomeIcon, Cookie, Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -178,7 +178,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       items: [
         { id: "admin-referrals", label: "Referrals", icon: Users, path: "/AdminReferrals", glow: "purple" },
         { id: "admin-referral-dashboard", label: "Referral Dashboard", icon: TrendingUp, path: "/AdminReferralDashboard", glow: "purple" },
-        { id: "admin-investment-monitor", label: "Investment Monitor", icon: LineChart, path: "/AdminInvestmentMonitor", glow: "emerald" },
       ],
     },
     {
@@ -186,7 +185,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       items: [
         { id: "admin-monitoring", label: "Monitoring Dashboard", icon: Activity, path: "/AdminMonitoringDashboard", glow: "red" },
         { id: "admin-vpn-servers", label: "VPN Servers", icon: Server, path: "/AdminVPNServers", glow: "blue" },
-        { id: "admin-verified-companies", label: "Verified Companies", icon: Building2, path: "/AdminVerifiedCompanies", glow: "emerald" },
       ],
     },
     {
