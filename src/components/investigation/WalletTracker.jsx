@@ -83,108 +83,13 @@ export default function WalletTracker({ cases = [], caseData = null }) {
       toast.error("Please enter a wallet address");
       return;
     }
-
     setTracking(true);
     setError(null);
     setActivityData(null);
-
-    try {
-      console.log('[WalletTracker] Starting track for:', walletAddress, 'on', blockchain);
-
-      if (blockchain === 'bitcoin') {
-        // Bitcoin: use public Blockstream API (no key required)
-        const addr = walletAddress.trim();
-        const res = await fetch(`https://blockstream.info/api/address/${addr}`);
-        if (!res.ok) throw new Error(`Blockstream API error: ${res.status}`);
-        const data = await res.json();
-        console.log('[WalletTracker] BTC data:', data);
-        const balanceSats = (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum);
-        const balance = balanceSats / 1e8;
-        const txCount = data.chain_stats.tx_count;
-
-        setActivityData({
-          address: addr,
-          blockchain: 'bitcoin',
-          balance: balance.toFixed(8),
-          balanceCurrency: 'BTC',
-          balanceUSD: 'N/A',
-          transactionCount: txCount,
-          firstSeen: 'N/A',
-          lastActivity: 'N/A',
-          riskScore: txCount > 1000 ? 75 : txCount > 100 ? 40 : 10,
-          riskIndicators: txCount > 1000 ? ['High transaction volume'] : [],
-          interactions: txCount,
-          transactions: []
-        });
-        toast.success(`Bitcoin wallet loaded — ${txCount} transactions`);
-        setTracking(false);
-        return;
-      }
-
-      // EVM chains: use Blockscout (no API key required, CORS-enabled)
-      if (!BLOCKSCOUT_ENDPOINTS[blockchain]) {
-        throw new Error(`Chain "${blockchain}" is not yet supported for EVM tracking. Use Ethereum, BSC, or Polygon.`);
-      }
-
-      const addr = walletAddress.trim();
-      const [balance, txns] = await Promise.all([
-        fetchEvmBalance(addr, blockchain),
-        fetchEvmTxns(addr, blockchain)
-      ]);
-
-      const uniqueInteractions = new Set([
-        ...txns.map(t => t.to?.toLowerCase()).filter(Boolean),
-        ...txns.map(t => t.from?.toLowerCase()).filter(Boolean)
-      ]).size;
-
-      const firstTx = txns.length > 0 ? txns[txns.length - 1] : null;
-      const lastTx = txns.length > 0 ? txns[0] : null;
-
-      // Simple risk heuristic (no backend needed)
-      const highValueTxns = txns.filter(t => parseFloat(t.value) / 1e18 > 1).length;
-      const riskScore = Math.min(100, (highValueTxns * 5) + (txns.length > 500 ? 30 : 0) + (balance > 10 ? 20 : 0));
-      const riskIndicators = [];
-      if (highValueTxns > 10) riskIndicators.push(`${highValueTxns} high-value transactions`);
-      if (txns.length > 500) riskIndicators.push('Very high transaction volume');
-      if (balance > 10) riskIndicators.push('Large current balance');
-
-      console.log('[WalletTracker] Parsed result:', { balance, txCount: txns.length, riskScore });
-
-      setActivityData({
-        address: addr,
-        blockchain,
-        balance: balance.toFixed(6),
-        balanceCurrency: blockchain === 'ethereum' ? 'ETH' : blockchain === 'bsc' ? 'BNB' : 'MATIC',
-        balanceUSD: 'Live',
-        transactionCount: txns.length,
-        firstSeen: firstTx ? new Date(parseInt(firstTx.timeStamp) * 1000).toLocaleDateString() : 'N/A',
-        lastActivity: lastTx ? new Date(parseInt(lastTx.timeStamp) * 1000).toLocaleDateString() : 'N/A',
-        riskScore,
-        riskIndicators,
-        interactions: uniqueInteractions,
-        transactions: txns.slice(0, 20) // Show latest 20
-      });
-
-      toast.success(`Wallet loaded — ${txns.length} transactions found`);
-
-    if (!walletAddress.trim()) {
-      toast.error("Please enter a wallet address");
-      return;
-    }
-
-    setTracking(true);
-    setError(null);
-    setActivityData(null);
-
     try {
       const response = await base44.functions.invoke("cryptoInvestigation", {
         action: "track-wallet",
-        data: {
-          address: walletAddress.trim(),
-          blockchain,
-          caseId: selectedCase || caseData?.id || undefined,
-          walletType: "scammer"
-        }
+        data: { address: walletAddress.trim(), blockchain, caseId: selectedCase || caseData?.id || undefined, walletType: "scammer" }
       });
       const payload = response?.data ?? response;
       if (!payload?.success) throw new Error(payload?.error || "Wallet intelligence failed");
@@ -207,7 +112,13 @@ export default function WalletTracker({ cases = [], caseData = null }) {
       });
       toast.success(`Live wallet intelligence loaded — ${txns.length} transactions`);
     } catch (err) {
-    setTracking(false);
+      console.error("[WalletTracker] Error:", err);
+      const msg = err?.message || "Unknown error";
+      setError(msg);
+      toast.error("Wallet fetch failed: " + msg);
+    } finally {
+      setTracking(false);
+    }
   };
 
   const handleAddToCase = () => {
