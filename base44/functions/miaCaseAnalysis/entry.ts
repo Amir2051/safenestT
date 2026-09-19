@@ -152,6 +152,18 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
       }
     };
 
+    const specialistSpecs = [
+      { id: "blockchain_analyst", name: "NEXUS", focus: "blockchain and crypto-flow analysis: wallets, transaction paths, chain hops, exchange or mixer indicators" },
+      { id: "financial_analyst", name: "ATLAS", focus: "financial analysis: losses, payment methods, funds movement, monetary exposure" },
+      { id: "behavioral_analyst", name: "ORION", focus: "behavioral analysis: impersonation, social engineering, communications, suspect-victim interaction" },
+    ];
+    const specialistRuns = await Promise.allSettled(specialistSpecs.map(async (agent) => {
+      const agentPrompt = "You are " + agent.name + ", a specialist inside MIA. Focus ONLY on " + agent.focus + ". Do not invent facts.\n\nCASE:\n" + JSON.stringify(caseSnapshot, null, 2) + "\n\nEVIDENCE:\n" + JSON.stringify(compactEvidence, null, 2) + "\n\nTRANSACTIONS:\n" + JSON.stringify(compactTransactions, null, 2) + "\n\nTIMELINE:\n" + JSON.stringify(compactTimeline, null, 2);
+      const out = await base44.functions.invoke("hermesProxy", { prompt: agentPrompt, model: MODEL, temperature: 0.1, max_tokens: 2200 });
+      const body = out?.data ?? out;
+      return { id: agent.id, name: agent.name, status: body?.ok ? "completed" : "failed", result: body?.data || body?.result || body?.text || body?.error || "No specialist response" };
+    }));
+    const specialists = specialistRuns.map((run, i) => run.status === "fulfilled" ? run.value : ({ id: specialistSpecs[i].id, name: specialistSpecs[i].name, status: "failed", result: String(run.reason?.message || run.reason || "Specialist failed") }));
     const ai = await base44.functions.invoke("hermesProxy", {
       prompt,
       model: MODEL,
@@ -168,7 +180,7 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
       }, { status: 502 });
     }
 
-    const analysis = result.data;
+    const analysis = { ...result.data, specialists };
     await base44.asServiceRole.entities.MyCase.update(caseId, {
       ai_analysis: JSON.stringify(analysis),
       priority_score: typeof analysis?.confidence_score === "number" ? analysis.confidence_score : stored.priority_score,
