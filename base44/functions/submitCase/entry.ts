@@ -167,6 +167,7 @@ Deno.serve(async (req) => {
 
         // DIRECT DATABASE WRITE - Use asServiceRole to ensure proper creation
         const newCase = await base44.asServiceRole.entities.MyCase.create(caseData);
+        await base44.asServiceRole.functions.invoke("ensureCaseAgents", { caseId: newCase.id }).catch((e) => console.error("Agent assignment failed:", e));
         
         console.log('✅ CASE CREATED:', {
             id: newCase.id,
