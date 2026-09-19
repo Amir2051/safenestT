@@ -76,7 +76,9 @@ export default function CryptoIntelligenceReport({ caseData }) {
                 const text = dec.decode(e.response.data);
                 const json = JSON.parse(text);
                 errorMsg = json.error || errorMsg;
-            } catch(err){}
+            } catch(err) {
+                // Keep the generic generation error when the response is not JSON.
+            }
         } else if (e.message) {
             errorMsg = e.message;
         }
