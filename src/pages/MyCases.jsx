@@ -98,9 +98,42 @@ export default function MyCases() {
     initialData: []
   });
 
+  const { data: masterCases = [] } = useQuery({
+    queryKey: ['master-cases', user?.id],
+    queryFn: async () => base44.entities.MasterCase.list('-generated_date', 10000).catch(() => []),
+    enabled: !!user,
+    staleTime: 10000,
+    refetchInterval: false,
+    retry: false,
+    initialData: []
+  });
+
   const allRawCases = useMemo(() => {
     const seenIds = new Set();
-    const merged = [...myCases, ...clientCases.map(c => ({ ...c, _sourceEntity: 'ClientCase' }))];
+    const normalizedMasters = masterCases.map(c => ({
+      ...c,
+      _sourceEntity: 'MasterCase',
+      case_number: c.case_number || `PROF-${String(c.id || '').slice(0, 8).toUpperCase()}`,
+      title: c.title || `Master Case Profile — ${c.user_id || 'Unknown User'}`,
+      description: c.merged_summary,
+      amount_lost: c.total_loss,
+      status: c.status || 'draft',
+      created_date: c.generated_date,
+      client_email: c.user_id,
+      client_name: c.user_id,
+      linked_case_ids: c.linked_case_ids || [],
+      wallet_addresses: c.wallet_addresses || [],
+      transaction_records: c.transaction_records || [],
+      evidence_index: c.evidence_index || [],
+      scam_list: c.scam_list || [],
+      pattern_analysis: c.pattern_analysis,
+      pdf_url: c.pdf_url,
+    }));
+    const merged = [
+      ...myCases.map(c => ({ ...c, _sourceEntity: 'MyCase' })),
+      ...clientCases.map(c => ({ ...c, _sourceEntity: 'ClientCase' })),
+      ...normalizedMasters,
+    ];
     return merged.filter(c => {
       const key = c.case_number || c.id;
       if (seenIds.has(key)) return false;
@@ -185,6 +218,7 @@ export default function MyCases() {
   const handleCaseUpdate = async () => {
     queryClient.invalidateQueries({ queryKey: ['my-cases'] });
     queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['master-cases'] });
     const { data: fresh } = await refetchCases();
     if (selectedCase && fresh) {
       const updated = fresh.find(c => c.id === selectedCase.id);
@@ -213,6 +247,7 @@ export default function MyCases() {
   const handleImported = () => {
     queryClient.invalidateQueries({ queryKey: ['my-cases'] });
     queryClient.invalidateQueries({ queryKey: ['client-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['master-cases'] });
     refetchCases();
   };
 
