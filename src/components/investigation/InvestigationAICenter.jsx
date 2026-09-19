@@ -21,20 +21,11 @@ import { toast } from "sonner";
 
 const TASKS = [
   {
-    key: "fraud",
-    label: "Fraud Pattern Analysis",
+    key: "mia",
+    label: "MIA Case Intelligence",
     icon: Brain,
-    fn: "fraudDetectionAI",
-    payload: (c) => ({ action: "analyze_case", data: { caseId: c.id, caseData: c } }),
-    // Writes ai_analysis + risk profile
-  },
-  {
-    key: "summary",
-    label: "Executive Summary",
-    icon: Sparkles,
-    fn: "caseSummary",
-    payload: (c) => ({ caseId: c.id, entityName: c._entityName || "MyCase" }),
-    // Writes ai_analysis text
+    fn: "miaCaseAnalysis",
+    payload: (c) => ({ caseId: c.id }),
   },
   {
     key: "monitor",
@@ -42,7 +33,6 @@ const TASKS = [
     icon: Link2,
     fn: "blockchainMonitor",
     payload: (c) => ({ caseId: c.id }),
-    // Spins up on-chain monitoring
   },
 ];
 
@@ -50,7 +40,7 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
   const [running, setRunning] = useState(false);
   const [statuses, setStatuses] = useState({}); // key -> 'idle'|'running'|'done'|'error'
   const [lastRun, setLastRun] = useState(null);
-  const [selected, setSelected] = useState({ fraud: true, summary: true, monitor: true });
+  const [selected, setSelected] = useState({ mia: true, monitor: true });
   const [analysisResult, setAnalysisResult] = useState(null);
   const [summaryResult, setSummaryResult] = useState(null);
 
@@ -72,12 +62,6 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
       return;
     }
     const already = Boolean(caseData.ai_analysis);
-    const onlySummary = chosen.every((t) => t.key === "summary" || t.key === "fraud");
-    if (already && onlySummary && chosen.length > 0) {
-      toast.success("AI analysis already available");
-      onUpdate?.();
-      return;
-    }
     if (chosen.length === 0) {
       toast.warning("Select at least one analysis to run");
       return;
@@ -104,8 +88,12 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
               setStatus(t.key, "error");
               return { key: t.key, ok: false, error: res.data.error };
             }
-            if (t.key === 'fraud') setAnalysisResult(res?.data || null);
-            if (t.key === 'summary') setSummaryResult(res?.data || null);
+            if (t.key === 'mia') {
+              const payload = res?.data || res || {};
+              const analysis = payload.analysis || payload.data || payload;
+              setAnalysisResult(analysis);
+              setSummaryResult(analysis?.executive_summary || null);
+            }
             setStatus(t.key, "done");
             return { key: t.key, ok: true };
           } catch (e) {
@@ -159,7 +147,7 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
           )}
         </div>
         <p className="text-gray-400 text-xs mt-1">
-          Run fraud, summary, and on-chain monitoring together — orchestrated in parallel for speed.
+          MIA reads the authoritative case record plus connected evidence, timeline, transactions, and wallet targets, then runs the selected investigation functions.
         </p>
       </CardHeader>
 
@@ -198,7 +186,7 @@ export default function InvestigationAICenter({ caseData, onUpdate }) {
               className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 flex-1"
             >
               <Zap className="w-4 h-4 mr-2" />
-              {hasExisting ? "Re-run AI Investigation" : "Run AI Investigation"}
+              {hasExisting ? "Re-run MIA Investigation" : "Run MIA Investigation"}
             </Button>
           ) : (
             <Button onClick={cancel} variant="outline" className="flex-1 border-red-500/40 text-red-400">
