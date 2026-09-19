@@ -323,7 +323,11 @@ export default function MyCases() {
       </div>
 
       {selectedCase && (
-        <CaseDetailDialog caseData={selectedCase} onClose={() => setSelectedCase(null)} onUpdate={() => setSelectedCase(null)} />
+        <CaseDetailDialog
+          caseData={selectedCase}
+          onClose={() => setSelectedCase(null)}
+          onUpdate={handleCaseUpdate}
+        />
       )}
     </div>
   );

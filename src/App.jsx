@@ -25,6 +25,7 @@ import PublicLanding from './pages/PublicLanding';
 import PublicLegalLayout from '@/components/shared/PublicLegalLayout';
 import CookiePolicy from './pages/CookiePolicy';
 import DataRightsDeletion from './pages/DataRightsDeletion';
+import OAuthConsent from './pages/OAuthConsent';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -45,6 +46,14 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+
+  // MCP OAuth consent page — must render outside the app layout and any auth
+  // guard. The page resolves the signed-in session itself via /consent-info and
+  // redirects to login when signed out, preserving the `ctx` handle. See
+  // base44/mcp/config.json (consent_path defaults to /oauth/consent).
+  if (typeof window !== 'undefined' && window.location.pathname === '/oauth/consent') {
+    return <OAuthConsent />;
+  }
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
