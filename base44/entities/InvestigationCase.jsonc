@@ -651,8 +651,34 @@
           "created_by_id": "{{user.id}}"
         },
         {
+          "data.assigned_investigator": "{{user.email}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "investigator"
           }
         }
       ]
@@ -666,8 +692,34 @@
           "created_by_id": "{{user.id}}"
         },
         {
+          "data.assigned_investigator": "{{user.email}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "is_admin": true
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "tenant_role": "investigator"
           }
         }
       ]
