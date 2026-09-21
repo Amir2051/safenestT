@@ -16,19 +16,17 @@ export default function MyCasesWidget({ user }) {
     queryFn: async () => {
       if (!user) return [];
       
-      // Fetch user's cases with RLS filtering
-      if (user.role === 'admin' || user.is_admin || user.job_title === 'Fraud Specialist') {
+      // Admins may see the global case list. Non-admin users must only
+      // request their own records; do not rely on client-side filtering.
+      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      if (isAdmin) {
         return base44.entities.MyCase.list('-created_date', 5);
-      } else {
-        return base44.entities.MyCase.filter({
-          $or: [
-            { user_id: user.id },
-            { created_by: user.email },
-            { client_email: user.email },
-            { created_by_email: user.email }
-          ]
-        }, '-created_date', 5);
       }
+      return base44.entities.MyCase.filter(
+        { user_id: user.id },
+        '-created_date',
+        5
+      );
     },
     enabled: !!user,
     refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
