@@ -41,11 +41,25 @@ function CasesContent() {
   }, []);
 
   const { data: fetchedCases = [], isLoading: loadingCases } = useQuery({
-    queryKey: ['cases-page'],
-    queryFn: () => base44.entities.MyCase.list('-created_date', 1000),
+    queryKey: ['cases-page', user?.id, user?.role, user?.is_admin],
+    queryFn: async () => {
+      if (!user) return [];
+      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      if (isAdmin) {
+        return base44.entities.MyCase.list('-created_date', 1000);
+      }
+      // Defense in depth: never request the global case list for a non-admin.
+      // RLS remains authoritative, but the UI should only ever request this user's cases.
+      return base44.entities.MyCase.filter(
+        { user_id: user.id },
+        '-created_date',
+        1000
+      );
+    },
     enabled: !!user,
     staleTime: 30000,
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true
   });
 
   const cases = useMemo(() => {
