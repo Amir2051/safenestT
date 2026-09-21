@@ -19,10 +19,14 @@ export default function AnalyticsDashboard() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
+  const isAdmin = user?.role === 'admin' || user?.is_admin === true;
+
   const { data: cases = [] } = useQuery({
-    queryKey: ['all-cases'],
+    queryKey: ['all-cases', user?.id],
     queryFn: () => base44.entities.MyCase.list('-created_date', 1000),
-    enabled: !!user
+    // AdminGate protects the page, but the data query must also be protected.
+    // This prevents a non-admin from ever receiving the global case dataset.
+    enabled: isAdmin
   });
 
   return (
