@@ -81,8 +81,16 @@ export default function MyCases() {
       const res = await base44.functions.invoke('getAllCases', {});
       const body = res?.data ?? res;
       if (body?.success && Array.isArray(body.cases)) return body.cases;
-      // Fallback for authenticated users if the helper function is unavailable.
-      return await base44.entities.MyCase.list('-created_date', 10000);
+      // Defense-in-depth fallback: never request the global case list for a non-admin.
+      const isAdmin = user?.role === 'admin' || user?.is_admin === true;
+      if (isAdmin) {
+        return await base44.entities.MyCase.list('-created_date', 10000);
+      }
+      return await base44.entities.MyCase.filter(
+        { user_id: user.id },
+        '-created_date',
+        10000
+      );
     },
     enabled: !!user,
     staleTime: 10000,
@@ -93,7 +101,17 @@ export default function MyCases() {
 
   const { data: clientCases = [] } = useQuery({
     queryKey: ['client-cases', user?.id],
-    queryFn: async () => base44.entities.ClientCase.list('-created_date', 10000).catch(() => []),
+    queryFn: async () => {
+      if (!user) return [];
+      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      if (isAdmin) return base44.entities.ClientCase.list('-created_date', 10000).catch(() => []);
+      return base44.entities.ClientCase.filter({
+        $or: [
+          { client_email: user.email },
+          { created_by_email: user.email }
+        ]
+      }, '-created_date', 10000).catch(() => []);
+    },
     enabled: !!user,
     staleTime: 10000,
     refetchInterval: false,
@@ -103,7 +121,16 @@ export default function MyCases() {
 
   const { data: masterCases = [] } = useQuery({
     queryKey: ['master-cases', user?.id],
-    queryFn: async () => base44.entities.MasterCase.list('-generated_date', 10000).catch(() => []),
+    queryFn: async () => {
+      if (!user) return [];
+      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      if (isAdmin) return base44.entities.MasterCase.list('-generated_date', 10000).catch(() => []);
+      return base44.entities.MasterCase.filter(
+        { user_id: user.email },
+        '-generated_date',
+        10000
+      ).catch(() => []);
+    },
     enabled: !!user,
     staleTime: 10000,
     refetchInterval: false,
