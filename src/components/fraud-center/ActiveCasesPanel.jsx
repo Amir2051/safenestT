@@ -25,17 +25,17 @@ export default function ActiveCasesPanel({ user }) {
   const { data: myCases = [], isLoading: loadingCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases-all'],
     queryFn: async () => {
-      if (user?.role === 'admin' || user?.is_admin || user?.job_title === 'Fraud Specialist') {
+      const isAdmin = user?.role === 'admin' || user?.is_admin === true;
+      if (isAdmin) {
         return base44.entities.MyCase.list('-created_date', 1000);
       }
-      // For users, show their own cases
-      return base44.entities.MyCase.filter({ 
-        $or: [
-          { created_by: user.email },
-          { created_by_email: user.email },
-          { client_email: user.email }
-        ]
-      }, '-created_date', 1000);
+      // Defense in depth: non-admin users only request cases owned by their
+      // authenticated user ID. Never fetch the global list and filter in React.
+      return base44.entities.MyCase.filter(
+        { user_id: user.id },
+        '-created_date',
+        1000
+      );
     },
     enabled: !!user
   });
