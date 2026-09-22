@@ -23,9 +23,8 @@ function Loading() {
 
 function isPrivileged(user, { allowInvestigator = false } = {}) {
   if (!user) return false;
-  if (user.role === 'admin' || user.is_admin) return true;
+  if (user.role === 'admin') return true;
   const tr = user.tenant_role;
-  if (tr === 'owner' || tr === 'admin') return true;
   if (allowInvestigator && tr === 'investigator') return true;
   return false;
 }

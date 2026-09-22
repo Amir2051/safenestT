@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         if (action === 'create' || action === 'create_for_user') {
             // Admin check for create_for_user
             if (action === 'create_for_user') {
-                if (user.role !== 'admin' && !user.is_admin) {
+                if (user.role !== 'admin') {
                     return Response.json({ error: 'Unauthorized: Only admins can create cases for others' }, { status: 403 });
                 }
             }
@@ -260,8 +260,8 @@ Deno.serve(async (req) => {
             updates.updated_date = new Date().toISOString();
             updates.updated_by = user.email; 
 
-            const isAdmin = user.role === 'admin' || user.is_admin;
-            const isSpecialist = user.job_title === 'Fraud Specialist';
+            const isAdmin = user.role === 'admin';
+            const isSpecialist = false;
 
             try {
                 // Determine entity type from parameter or fallback
@@ -295,8 +295,8 @@ Deno.serve(async (req) => {
                 console.log('✅ Found case in entity:', entityType);
 
                 // ADMIN OVERRIDE: Admins can update ANY case using service role
-                if (isAdmin || isSpecialist) {
-                    console.log('🔓 Admin/Specialist update - using service role');
+                if (isAdmin) {
+                    console.log('🔓 Admin update - using service role');
                     
                     // Log status changes
                     if (updates.status && existing.status !== updates.status) {
@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'migrate') {
-            if (user.role !== 'admin' && !user.is_admin) {
+            if (user.role !== 'admin') {
                 return Response.json({ error: 'Unauthorized' }, { status: 403 });
             }
 
@@ -511,7 +511,7 @@ Deno.serve(async (req) => {
             }
 
             if (action === 'toggle_redaction') {
-            if (user.role !== 'admin' && !user.is_admin) {
+            if (user.role !== 'admin') {
                 return Response.json({ error: 'Unauthorized: Only admins can redact fields' }, { status: 403 });
             }
 
@@ -556,7 +556,7 @@ Deno.serve(async (req) => {
             }
 
             if (action === 'recover_access') {
-                if (user.role !== 'admin' && !user.is_admin) {
+                if (user.role !== 'admin') {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
@@ -710,7 +710,7 @@ Deno.serve(async (req) => {
             }
 
             if (action === 'import_all_legacy_cases') {
-                if (user.role !== 'admin' && !user.is_admin) {
+                if (user.role !== 'admin') {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
@@ -882,7 +882,7 @@ Deno.serve(async (req) => {
             }
 
             if (action === 'merge_cases') {
-                if (user.role !== 'admin' && !user.is_admin) {
+                if (user.role !== 'admin') {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 
@@ -1016,7 +1016,7 @@ Provide a concise investigative pattern analysis identifying common tactics, sim
             return Response.json({ error: 'Invalid action' }, { status: 400 });
 
             if (action === 'import_to_master_profile') {
-                if (user.role !== 'admin' && !user.is_admin) {
+                if (user.role !== 'admin') {
                     return Response.json({ error: 'Unauthorized' }, { status: 403 });
                 }
 

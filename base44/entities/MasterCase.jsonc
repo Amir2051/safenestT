@@ -105,7 +105,7 @@
     "read": {
       "$or": [
         {
-          "user_id": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -115,14 +115,23 @@
       ]
     },
     "create": {
-      "user_condition": {
-        "role": "authenticated"
-      }
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
     },
     "update": {
       "$or": [
         {
-          "user_id": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
