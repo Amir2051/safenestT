@@ -104,7 +104,7 @@ export default function MyCases() {
     queryKey: ['client-cases', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      const isAdmin = user.role === 'admin';
       if (isAdmin) return base44.entities.ClientCase.list('-created_date', 10000).catch(() => []);
       return base44.entities.ClientCase.filter({
         $or: [
@@ -124,7 +124,7 @@ export default function MyCases() {
     queryKey: ['master-cases', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      const isAdmin = user.role === 'admin';
       if (isAdmin) return base44.entities.MasterCase.list('-generated_date', 10000).catch(() => []);
       return base44.entities.MasterCase.filter(
         { user_id: user.email },
@@ -216,7 +216,7 @@ export default function MyCases() {
   };
 
   useEffect(() => {
-    if (!user || (user.role !== 'admin' && !user.is_admin && user.job_title !== 'Fraud Specialist')) return;
+    if (!user || user.role !== 'admin') return;
     const timer = setTimeout(() => {
       if (searchQuery.trim().length >= 1) performSearch(); else if (searchQuery.trim().length === 0) setSearchResults(null);
     }, 300);

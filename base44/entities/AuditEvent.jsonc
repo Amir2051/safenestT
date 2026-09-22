@@ -63,7 +63,7 @@
     "read": {
       "$or": [
         {
-          "data.tenant_id": "{{user.data.tenant_id}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
