@@ -78,16 +78,17 @@ export default function MyCases() {
   const { data: myCases = [], isLoading: loadingMyCases, refetch: refetchCases } = useQuery({
     queryKey: ['my-cases', user?.id],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getAllCases', {});
-      const body = res?.data ?? res;
-      if (body?.success && Array.isArray(body.cases)) return body.cases;
-      // Defense-in-depth fallback: never request the global case list for a non-admin.
-      const isAdmin = user?.role === 'admin' || user?.is_admin === true;
+      if (!user) return [];
+      const isAdmin = user.role === 'admin';
       if (isAdmin) {
         return await base44.entities.MyCase.list('-created_date', 10000);
       }
+      // Non-admin: only ever request this user's own cases. RLS is authoritative,
+      // and the query is scoped to immutable ownership keys (user_id + created_by_id),
+      // never to mutable client-set email fields. No backend function is used so
+      // the user's own token enforces RLS directly.
       return await base44.entities.MyCase.filter(
-        { user_id: user.id },
+        { $or: [{ user_id: user.id }, { created_by_id: user.id }] },
         '-created_date',
         10000
       );

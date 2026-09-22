@@ -4,7 +4,7 @@
   "properties": {
     "user_id": {
       "type": "string",
-      "description": "ID of the user who owns this incident report"
+      "description": "ID of the user who owns this incident report. Set by trusted creation code (client self-create or backend service). RLS read/update rely on this immutable ownership key, NOT on mutable email fields."
     },
     "source_type": {
       "type": "string",
@@ -484,22 +484,8 @@
           "data.user_id": "{{user.id}}"
         },
         {
-          "data.client_email": "{{user.email}}"
-        },
-        {
-          "data.created_by_email": "{{user.email}}"
-        },
-        {
-          "data.assigned_to": "{{user.email}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
           }
         }
       ]
@@ -520,11 +506,6 @@
           "user_condition": {
             "role": "authenticated"
           }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
         }
       ]
     },
@@ -537,22 +518,8 @@
           "data.user_id": "{{user.id}}"
         },
         {
-          "data.client_email": "{{user.email}}"
-        },
-        {
-          "data.created_by_email": "{{user.email}}"
-        },
-        {
-          "data.assigned_to": "{{user.email}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
           }
         }
       ]

@@ -44,14 +44,14 @@ function CasesContent() {
     queryKey: ['cases-page', user?.id, user?.role, user?.is_admin],
     queryFn: async () => {
       if (!user) return [];
-      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      const isAdmin = user.role === 'admin';
       if (isAdmin) {
         return base44.entities.MyCase.list('-created_date', 1000);
       }
       // Defense in depth: never request the global case list for a non-admin.
       // RLS remains authoritative, but the UI should only ever request this user's cases.
       return base44.entities.MyCase.filter(
-        { user_id: user.id },
+        { $or: [{ user_id: user.id }, { created_by_id: user.id }] },
         '-created_date',
         1000
       );

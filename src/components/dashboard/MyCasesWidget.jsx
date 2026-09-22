@@ -12,18 +12,18 @@ import { createPageUrl } from "@/utils";
 
 export default function MyCasesWidget({ user }) {
   const { data: cases = [], isLoading } = useQuery({
-    queryKey: ['dashboard-cases'],
+    queryKey: ['dashboard-cases', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
+
       // Admins may see the global case list. Non-admin users must only
       // request their own records; do not rely on client-side filtering.
-      const isAdmin = user.role === 'admin' || user.is_admin === true;
+      const isAdmin = user.role === 'admin';
       if (isAdmin) {
         return base44.entities.MyCase.list('-created_date', 5);
       }
       return base44.entities.MyCase.filter(
-        { user_id: user.id },
+        { $or: [{ user_id: user.id }, { created_by_id: user.id }] },
         '-created_date',
         5
       );
