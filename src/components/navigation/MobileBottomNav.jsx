@@ -19,9 +19,9 @@ export default function MobileBottomNav({ user }) {
       ]
     : [
         { name: "Dashboard", icon: LayoutDashboard, path: "/" },
+        { name: "My Cases", icon: Briefcase, path: "/MyCases" },
         { name: "Report Scam", icon: ShieldAlert, path: "/ReportScam" },
         { name: "AI", icon: Sparkles, path: "/MiaAssistant" },
-        { name: "VPN", icon: ShieldCheck, path: "/VPNPage" },
       ];
 
   return (

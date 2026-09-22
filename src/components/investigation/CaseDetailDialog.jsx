@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,8 @@ import PaymentTransactionsView from "../cases/PaymentTransactionsView";
 import TransactionsList from "../cases/TransactionsList";
 import SharedFilesPanel from "../cases/SharedFilesPanel";
 import CaseDownloadButtons from "./CaseDownloadButtons";
+import { Link } from "react-router-dom";
+import AuthorizationBadge from "@/components/authorization/AuthorizationBadge";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -62,6 +64,21 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [user, setUser] = useState(null);
   const [liveCase, setLiveCase] = useState(caseData);
   const prevStatusRef = useRef(caseData.status);
+
+  // Client authorization status for this case, managed via the ClientAuthorization
+  // system (server-side, scope-explicit) — NOT the legacy law_enforcement_authorization
+  // checkbox. Used to display whether SafeNestT is currently authorized to act.
+  const { data: authData } = useQuery({
+    queryKey: ['case-authorization', caseData.id],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('clientAuthorizationService', { action: 'list', case_id: caseData.id });
+      return res?.data ?? res;
+    },
+    enabled: !!user,
+    staleTime: 30000,
+  });
+  const caseAuthorizations = authData?.authorizations || [];
+  const activeAuth = caseAuthorizations.find(a => a.status === 'ACTIVE' && (!a.expires_at || new Date(a.expires_at) > new Date()));
 
   useEffect(() => {
     base44.auth.me().then(u => {
@@ -1215,66 +1232,31 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                 </div>
               </div>
 
-              {/* Law Enforcement Authorization - Editable */}
+              {/* Client Authorization — managed via the ClientAuthorization system, not a checkbox/initials */}
               <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <h4 className="text-purple-400 font-semibold mb-4 flex items-center gap-2">
+                <h4 className="text-purple-400 font-semibold mb-3 flex items-center gap-2">
                   <Shield className="w-4 h-4" />
-                  Law Enforcement Authorization
+                  Client Authorization to Act on Behalf
                 </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="le_auth"
-                      checked={editedCase.law_enforcement_authorization?.authorized || false}
-                      onChange={(e) => setEditedCase({
-                        ...editedCase,
-                        law_enforcement_authorization: {
-                          ...editedCase.law_enforcement_authorization,
-                          authorized: e.target.checked,
-                          authorized_date: e.target.checked ? new Date().toISOString() : null
-                        }
-                      })}
-                      className="w-4 h-4 rounded border-purple-500/50 bg-[#1a2332]"
-                    />
-                    <Label htmlFor="le_auth" className="text-white cursor-pointer">Authorized by Client</Label>
+                <p className="text-sm text-gray-300 mb-3">
+                  SafeNestT may only act on behalf of this client under an <strong>ACTIVE, scope-explicit authorization</strong> granted by the client and verified by staff. This is managed through the Client Authorization system — not a checkbox or typed initials.
+                </p>
+                {activeAuth ? (
+                  <div className="flex flex-col gap-2 mb-3">
+                    <AuthorizationBadge authorization={activeAuth} />
+                    <div className="text-xs text-gray-400 space-y-0.5">
+                      <div>Granted: {activeAuth.granted_at ? new Date(activeAuth.granted_at).toLocaleString() : '—'}</div>
+                      <div>Verified by: {activeAuth.verified_by_email || '—'}</div>
+                      <div>Scopes: {(activeAuth.scopes || []).join(', ')}</div>
+                      {activeAuth.expires_at && <div>Expires: {new Date(activeAuth.expires_at).toLocaleString()}</div>}
+                    </div>
                   </div>
-                  
-                  {editedCase.law_enforcement_authorization?.authorized && (
-                    <>
-                      <div>
-                        <Label className="text-gray-300 mb-2 block">Full Legal Name (Signature)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.full_name || ''}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              full_name: e.target.value
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="Enter full legal name"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-gray-300 mb-2 block">Authorized Agencies (comma separated)</Label>
-                        <Input
-                          value={editedCase.law_enforcement_authorization?.agencies?.join(', ') || 'FBI, IC3, FTC'}
-                          onChange={(e) => setEditedCase({
-                            ...editedCase,
-                            law_enforcement_authorization: {
-                              ...editedCase.law_enforcement_authorization,
-                              agencies: e.target.value.split(',').map(s => s.trim())
-                            }
-                          })}
-                          className="bg-[#1a2332] border-purple-500/30 text-white"
-                          placeholder="FBI, IC3, FTC, Local Police"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
+                ) : (
+                  <p className="text-xs text-orange-400 mb-3">No active authorization for this case. The client must grant authorization before SafeNestT can act on their behalf.</p>
+                )}
+                <Link to="/ClientAuthorizations" className="inline-flex items-center gap-1 text-cyan-400 text-sm hover:underline">
+                  Manage Client Authorization →
+                </Link>
               </div>
 
               {/* Notes */}

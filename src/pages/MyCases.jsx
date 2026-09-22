@@ -351,11 +351,18 @@ export default function MyCases() {
       </div>
 
       {selectedCase && (
-        <CaseDetailDialog
-          caseData={selectedCase}
-          onClose={() => setSelectedCase(null)}
-          onUpdate={handleCaseUpdate}
-        />
+        isAdmin ? (
+          <CaseDetailDialog
+            caseData={selectedCase}
+            onClose={() => setSelectedCase(null)}
+            onUpdate={handleCaseUpdate}
+          />
+        ) : (
+          <UserCaseDetail
+            caseData={selectedCase}
+            onClose={() => setSelectedCase(null)}
+          />
+        )
       )}
     </div>
   );

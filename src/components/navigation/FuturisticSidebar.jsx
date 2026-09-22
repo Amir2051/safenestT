@@ -89,6 +89,7 @@ const USER_SECTIONS = [
   {
     label: "My Activity",
     items: [
+      { id: "my-cases", label: "My Cases", icon: Briefcase, path: "/MyCases", glow: "cyan" },
       { id: "report-scam", label: "Report a Scam", icon: ShieldAlert, path: "/ReportScam", glow: "red" },
       { id: "vpn", label: "VPN Protection", icon: ShieldCheck, path: "/VPNPage", glow: "emerald", badge: "VPN" },
       { id: "my-auth", label: "My Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
