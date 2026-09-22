@@ -89,6 +89,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
             if (onClose) onClose();
         }
     }).catch(() => {});
+    // Always load the freshest case record on open so the admin/investigator
+    // sees the latest user edits, even if the list row passed as caseData is stale.
+    base44.entities.MyCase.get(caseData.id).then(setLiveCase).catch(() => {});
   }, []);
 
   // Real-time sync so dialog reflects external changes immediately
@@ -309,7 +312,7 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     setUploading(true);
     try {
       const toastId = toast.loading("Uploading and analyzing evidence...");
-      const response = await base44.integrations.Core.UploadFile({ file });
+      const response = await base44.integrations.Core.UploadPublicFile({ file });
       
       // 1. Create CaseEvidenceFile Entity (Metadata)
       const evidenceFile = await base44.entities.CaseEvidenceFile.create({
@@ -708,21 +711,21 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
                           icon={Phone}
                           caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
                       />
-                      {caseData.address_information && (
+                      {liveCase.address_information && (
                           <div className="pt-1 mt-1 border-t border-cyan-500/10">
                               <p className="text-xs text-gray-400 mb-1">Address</p>
                               <SensitiveField 
                                   field="address" 
                                   value={[
-                                      caseData.address_information.street_address,
-                                      caseData.address_information.apartment_unit,
-                                      caseData.address_information.city,
-                                      caseData.address_information.state_province,
-                                      caseData.address_information.zip_postal_code,
-                                      caseData.address_information.country
+                                      liveCase.address_information.street_address,
+                                      liveCase.address_information.apartment_unit,
+                                      liveCase.address_information.city,
+                                      liveCase.address_information.state_province,
+                                      liveCase.address_information.zip_postal_code,
+                                      liveCase.address_information.country
                                   ].filter(Boolean).join(', ') || 'N/A'} 
                                   icon={MapPin}
-                                  caseData={caseData} onUpdate={onUpdate} isAdmin={isAdmin}
+                                  caseData={liveCase} onUpdate={onUpdate} isAdmin={isAdmin}
                               />
                           </div>
                       )}

@@ -81,7 +81,7 @@ export default function MultiFileUploader({ onFilesUploaded, maxFiles = 10 }) {
         ));
       }, 200);
 
-      const response = await base44.integrations.Core.UploadFile({ file: fileObj.file });
+      const response = await base44.integrations.Core.UploadPublicFile({ file: fileObj.file });
       
       clearInterval(progressInterval);
 

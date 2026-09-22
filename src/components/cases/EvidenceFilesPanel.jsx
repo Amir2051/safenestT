@@ -96,7 +96,7 @@ export default function EvidenceFilesPanel({
     let successCount = 0;
     for (const file of files) {
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
         await base44.entities.CaseEvidenceFile.create({
           case_id: caseId,
           file_url,

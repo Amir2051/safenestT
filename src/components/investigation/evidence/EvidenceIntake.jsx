@@ -38,7 +38,7 @@ export default function EvidenceIntake({ caseId, onUpdate }) {
 
         try {
             // 1. Upload File
-            const uploadRes = await base44.integrations.Core.UploadFile({ file });
+            const uploadRes = await base44.integrations.Core.UploadPublicFile({ file });
             
             // 2. Create File Entity
             const fileEntity = await base44.entities.CaseEvidenceFile.create({

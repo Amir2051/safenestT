@@ -35,6 +35,10 @@ export default function UserCaseDetail({ caseData, onClose }) {
   }, []);
 
   const [liveCase, setLiveCase] = React.useState(caseData);
+  // Local accumulating state for nested objects so multi-field edits don't
+  // clobber each other by merging against the stale caseData prop.
+  const [addressInfo, setAddressInfo] = useState(caseData.address_information || {});
+  const [scammerInfo, setScammerInfo] = useState(caseData.scammer_info || {});
 
   // Real-time sync so status updates from admin are immediately visible to user
   React.useEffect(() => {
@@ -77,7 +81,7 @@ export default function UserCaseDetail({ caseData, onClose }) {
     setUploading(true);
     try {
       const toastId = toast.loading("Uploading evidence...");
-      const response = await base44.integrations.Core.UploadFile({ file });
+      const response = await base44.integrations.Core.UploadPublicFile({ file });
       
       // Create CaseEvidenceFile
       await base44.entities.CaseEvidenceFile.create({
@@ -285,84 +289,27 @@ export default function UserCaseDetail({ caseData, onClose }) {
                                 My Address (Optional)
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="md:col-span-2">
-                                    <Label className="text-gray-300 text-sm">Street Address</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.street_address}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                street_address: e.target.value 
-                                            } 
-                                        })}
+                                {[
+                                  { key: 'street_address', label: 'Street Address', full: true },
+                                  { key: 'apartment_unit', label: 'Apartment / Unit' },
+                                  { key: 'city', label: 'City' },
+                                  { key: 'state_province', label: 'State / Province' },
+                                  { key: 'zip_postal_code', label: 'ZIP / Postal Code' },
+                                  { key: 'country', label: 'Country' },
+                                ].map(({ key, label, full }) => (
+                                  <div key={key} className={full ? 'md:col-span-2' : ''}>
+                                    <Label className="text-gray-300 text-sm">{label}</Label>
+                                    <Input
+                                      className="bg-[#1a2332] border-gray-600 mt-1"
+                                      defaultValue={addressInfo?.[key] || ''}
+                                      onBlur={(e) => {
+                                        const next = { ...addressInfo, [key]: e.target.value };
+                                        setAddressInfo(next);
+                                        updateCaseMutation.mutate({ address_information: next });
+                                      }}
                                     />
-                                </div>
-                                <div>
-                                    <Label className="text-gray-300 text-sm">Apartment / Unit</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.apartment_unit}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                apartment_unit: e.target.value 
-                                            } 
-                                        })}
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-gray-300 text-sm">City</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.city}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                city: e.target.value 
-                                            } 
-                                        })}
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-gray-300 text-sm">State / Province</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.state_province}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                state_province: e.target.value 
-                                            } 
-                                        })}
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-gray-300 text-sm">ZIP / Postal Code</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.zip_postal_code}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                zip_postal_code: e.target.value 
-                                            } 
-                                        })}
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-gray-300 text-sm">Country</Label>
-                                    <Input 
-                                        className="bg-[#1a2332] border-gray-600 mt-1" 
-                                        defaultValue={caseData.address_information?.country}
-                                        onBlur={(e) => updateCaseMutation.mutate({ 
-                                            address_information: { 
-                                                ...caseData.address_information, 
-                                                country: e.target.value 
-                                            } 
-                                        })}
-                                    />
-                                </div>
+                                  </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -378,31 +325,39 @@ export default function UserCaseDetail({ caseData, onClose }) {
                                 <Label>Scammer Name / Alias</Label>
                                 <Input 
                                     className="bg-[#1a2332] border-gray-600" 
-                                    defaultValue={caseData.scammer_info?.name}
-                                    onBlur={(e) => updateCaseMutation.mutate({ 
-                                        scammer_info: { ...caseData.scammer_info, name: e.target.value } 
-                                    })}
+                                    defaultValue={scammerInfo?.name || ''}
+                                    onBlur={(e) => {
+                                        const next = { ...scammerInfo, name: e.target.value };
+                                        setScammerInfo(next);
+                                        updateCaseMutation.mutate({ scammer_info: next });
+                                    }}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label>Scammer Email</Label>
                                 <Input 
                                     className="bg-[#1a2332] border-gray-600" 
-                                    defaultValue={caseData.scammer_info?.email}
-                                    onBlur={(e) => updateCaseMutation.mutate({ 
-                                        scammer_info: { ...caseData.scammer_info, email: e.target.value } 
-                                    })}
+                                    defaultValue={scammerInfo?.email || ''}
+                                    onBlur={(e) => {
+                                        const next = { ...scammerInfo, email: e.target.value };
+                                        setScammerInfo(next);
+                                        updateCaseMutation.mutate({ scammer_info: next });
+                                    }}
                                 />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <Label>Scammer Wallet Address</Label>
                                 <Input 
                                     className="bg-[#1a2332] border-gray-600 font-mono" 
-                                    defaultValue={caseData.scammer_wallet}
-                                    onBlur={(e) => updateCaseMutation.mutate({ 
-                                        scammer_wallet: e.target.value,
-                                        scammer_info: { ...caseData.scammer_info, wallet_addresses: [e.target.value] }
-                                    })}
+                                    defaultValue={caseData.scammer_wallet || ''}
+                                    onBlur={(e) => {
+                                        const next = { ...scammerInfo, wallet_addresses: [e.target.value] };
+                                        setScammerInfo(next);
+                                        updateCaseMutation.mutate({ 
+                                            scammer_wallet: e.target.value,
+                                            scammer_info: next
+                                        });
+                                    }}
                                 />
                             </div>
                         </div>
