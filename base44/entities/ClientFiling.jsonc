@@ -1,0 +1,148 @@
+{
+  "name": "ClientFiling",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "SafeNestT org/tenant isolation"
+    },
+    "authorization_id": {
+      "type": "string",
+      "description": "The ACTIVE ClientAuthorization record this filing was made under (auditable lineage)."
+    },
+    "client_user_id": {
+      "type": "string",
+      "description": "Immutable client user id"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "case_title": {
+      "type": "string"
+    },
+    "scope_used": {
+      "type": "string",
+      "enum": [
+        "VIEW_CASE",
+        "INVESTIGATE",
+        "COMMUNICATE",
+        "FILE_REPORT",
+        "FILE_LAW_ENFORCEMENT_REPORT",
+        "SUBMIT_TO_REGULATOR",
+        "SUBMIT_TO_PLATFORM",
+        "OTHER"
+      ],
+      "description": "The authorization scope under which this filing was made."
+    },
+    "filing_type": {
+      "type": "string",
+      "description": "Type of filing: ic3_complaint, law_enforcement_report, regulator_submission, platform_report, other"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "Agency / platform / regulator the filing was submitted to"
+    },
+    "submission_reference": {
+      "type": "string",
+      "description": "External submission / reference number returned, if available"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "accepted",
+        "rejected",
+        "pending",
+        "failed"
+      ],
+      "default": "submitted"
+    },
+    "filed_by": {
+      "type": "string",
+      "description": "User id of SafeNestT personnel who filed"
+    },
+    "filed_by_email": {
+      "type": "string"
+    },
+    "filed_by_name": {
+      "type": "string"
+    },
+    "filed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "on_behalf_of": {
+      "type": "boolean",
+      "default": true,
+      "description": "Always true \u2014 this filing was made ON BEHALF OF the client."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "document_url": {
+      "type": "string",
+      "description": "The filing document that was submitted"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "authorization_id",
+    "client_user_id",
+    "case_id",
+    "scope_used",
+    "filed_by",
+    "filed_at"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.client_user_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

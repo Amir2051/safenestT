@@ -42,6 +42,7 @@ const SECTIONS = [
       { id: "ws-findings", label: "Findings & Risk", icon: ShieldAlert, path: "/InvestigationWorkspace", tab: "findings", glow: "amber" },
       { id: "ws-reports", label: "Reports & Dossiers", icon: FileText, path: "/InvestigationWorkspace", tab: "reports", glow: "cyan" },
       { id: "audit", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+      { id: "client-auth", label: "Client Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
     ],
   },
   {
@@ -90,6 +91,7 @@ const USER_SECTIONS = [
     items: [
       { id: "report-scam", label: "Report a Scam", icon: ShieldAlert, path: "/ReportScam", glow: "red" },
       { id: "vpn", label: "VPN Protection", icon: ShieldCheck, path: "/VPNPage", glow: "emerald", badge: "VPN" },
+      { id: "my-auth", label: "My Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
     ],
   },
   {

@@ -1,0 +1,159 @@
+{
+  "name": "ClientAuthorization",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "SafeNestT org/tenant that claimed this authorization (set on verification). Drives tenant isolation for file-on-behalf actions."
+    },
+    "client_user_id": {
+      "type": "string",
+      "description": "Immutable user id of the client who grants authorization. Anchors RLS \u2014 never rely on mutable email fields."
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Case this authorization is scoped to. Required \u2014 authorization is case-scoped."
+    },
+    "case_title": {
+      "type": "string"
+    },
+    "case_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "ACTIVE",
+        "EXPIRED",
+        "REVOKED"
+      ],
+      "default": "PENDING",
+      "description": "Only ACTIVE permits the covered action."
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "VIEW_CASE",
+          "INVESTIGATE",
+          "COMMUNICATE",
+          "FILE_REPORT",
+          "FILE_LAW_ENFORCEMENT_REPORT",
+          "SUBMIT_TO_REGULATOR",
+          "SUBMIT_TO_PLATFORM",
+          "OTHER"
+        ]
+      },
+      "description": "Explicit scopes of authorization. Authorization for one action never implies another."
+    },
+    "scope_other_description": {
+      "type": "string"
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiration; null = no expiration."
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified_by": {
+      "type": "string",
+      "description": "User id of SafeNestT personnel who verified/activated"
+    },
+    "verified_by_email": {
+      "type": "string"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoked_by": {
+      "type": "string"
+    },
+    "revoked_by_email": {
+      "type": "string"
+    },
+    "authorization_document_url": {
+      "type": "string",
+      "description": "Signed authorization document / evidence reference"
+    },
+    "client_ip": {
+      "type": "string"
+    },
+    "client_user_agent": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_user_id",
+    "case_id",
+    "status",
+    "scopes"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.client_user_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "data.client_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.client_user_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

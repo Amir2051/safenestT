@@ -89,28 +89,11 @@
     "filename"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "uploader_id": "{{user.id}}"
-        },
-        {
-          "case_owner_email": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Fraud Specialist"
-          }
-        }
-      ]
-    },
     "create": {
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": "authenticated"
@@ -123,10 +106,31 @@
         }
       ]
     },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.uploader_id": "{{user.email}}"
+        },
+        {
+          "data.case_owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
     "update": {
       "$or": [
         {
-          "uploader_id": "{{user.id}}"
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.uploader_id": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -138,7 +142,10 @@
     "delete": {
       "$or": [
         {
-          "uploader_id": "{{user.id}}"
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.uploader_id": "{{user.email}}"
         },
         {
           "user_condition": {

@@ -26,6 +26,7 @@ import PublicLegalLayout from '@/components/shared/PublicLegalLayout';
 import CookiePolicy from './pages/CookiePolicy';
 import DataRightsDeletion from './pages/DataRightsDeletion';
 import OAuthConsent from './pages/OAuthConsent';
+import ClientAuthorizations from './pages/ClientAuthorizations';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -125,6 +126,7 @@ const AuthenticatedApp = () => {
         <Route path="/AuditLog" element={<RoleGate allowInvestigator><AuditLog /></RoleGate>} />
         <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
         <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
+        <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
         <Route path="/CookiePolicy" element={<CookiePolicy />} />
         <Route path="/DataRightsDeletion" element={<DataRightsDeletion />} />
         <Route path="*" element={<PageNotFound />} />
