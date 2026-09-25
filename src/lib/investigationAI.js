@@ -3,14 +3,9 @@ import { base44 } from "@/api/base44Client";
 /**
  * Investigation AI — provider abstraction.
  *
- *   • `invokellm`  — Base44 Core.InvokeLLM integration. LIVE on the current
- *                    plan: real execution, real model selection, real errors.
- *   • `openrouter` — server-side OpenRouter proxy backend function
- *                    (`openrouterProxy`). Keeps OPENROUTER_API_KEY server-side.
- *                    Live when the `openrouterProxy` backend function is deployed.
- *
- * Both providers share the same run contract so the workflow runner and the
- * provider/model selector are provider-agnostic.
+ * Hermes Engine is the only provider exposed by the investigation pipeline.
+ * Other Base44 AI integrations may still exist elsewhere in the application,
+ * but they are not valid pipeline providers.
  */
 
 export const DEFAULT_PROVIDER = "hermes";
