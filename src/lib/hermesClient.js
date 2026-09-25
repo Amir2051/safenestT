@@ -122,13 +122,56 @@ export async function hermesRequest(path, { method = "GET", body } = {}) {
 
 // ── Investigation lifecycle ───────────────────────────────────────────────
 export const HermesAPI = {
-  // Investigation orchestration
-  startInvestigation: (caseId, payload = {}) =>
-    hermesRequest(`/api/cases/${caseId}/investigation`, { method: "POST", body: payload }),
-  getInvestigation: (caseId) =>
-    hermesRequest(`/api/cases/${caseId}/investigation`),
-  getInvestigationStatus: (caseId) =>
-    hermesRequest(`/api/cases/${caseId}/investigation/status`),
+  // Investigation orchestration. Execution itself is performed by the
+  // investigation runner, whose default provider is Hermes. Status is read
+  // from the same auditable Base44 InvestigationRun records that the runner
+  // writes, rather than from an unsupported /api/cases endpoint.
+  startInvestigation: async (caseId, payload = {}) => {
+    const { runPhase } = await import("@/lib/investigationRunner");
+    const phases = ["planning", "evidence", "analysis", "reality_check", "risk", "dossier"];
+    const results = [];
+    for (const phase of phases) {
+      const result = await runPhase({
+        caseId,
+        phase,
+        provider: payload.provider || "hermes",
+        model: payload.model || "meituan/longcat-2.0:free",
+      });
+      results.push({ phase, status: result.status, run_id: result.run?.id, error: result.error });
+      if (result.status !== "completed") break;
+    }
+    return { status: results.every((r) => r.status === "completed") ? "ok" : "error", data: { caseId, phases: results } };
+  },
+  getInvestigation: async (caseId) => {
+    const { base44 } = await import("@/api/base44Client");
+    const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 100).catch(() => []);
+    return { status: "ok", data: { case_id: caseId, runs } };
+  },
+  getInvestigationStatus: async (caseId) => {
+    const { base44 } = await import("@/api/base44Client");
+    const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 100).catch(() => []);
+    const latest = runs[0] || null;
+    const phases = {};
+    for (const run of runs) {
+      if (!phases[run.phase]) phases[run.phase] = run;
+    }
+    const active = runs.filter((r) => r.status === "running");
+    return {
+      status: "ok",
+      data: {
+        investigation: {
+          case_id: caseId,
+          status: active.length ? "running" : latest?.status || "idle",
+          current_phase: latest?.phase || null,
+          started_at: latest?.started_at || null,
+          agents_active: latest?.phase === "analysis" && latest?.status === "running" ? 3 : 0,
+          provider: latest?.provider || "hermes",
+          model: latest?.model || HERMES_DEFAULT_MODEL,
+          phases,
+        },
+      },
+    };
+  },
   pauseInvestigation: (caseId) =>
     hermesRequest(`/api/cases/${caseId}/investigation`, { method: "POST", body: { action: "pause" } }),
   resumeInvestigation: (caseId) =>
