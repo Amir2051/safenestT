@@ -22,8 +22,11 @@ const TEST_TONE = {
 export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const qc = useQueryClient();
   const wf = caseItem?.workflow || {};
-  const [provider, setProvider] = useState(wf.provider || DEFAULT_PROVIDER);
-  const [model, setModel] = useState(wf.model || DEFAULT_MODEL);
+  // Hermes is mandatory for the investigation pipeline. Ignore any legacy
+  // provider value persisted on older cases so the UI cannot route a run to
+  // Base44 InvokeLLM or another legacy provider.
+  const [provider, setProvider] = useState(DEFAULT_PROVIDER);
+  const [model, setModel] = useState(wf.provider === DEFAULT_PROVIDER && wf.model ? wf.model : DEFAULT_MODEL);
   const [running, setRunning] = useState(null);
   const [runAllActive, setRunAllActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
