@@ -5,8 +5,8 @@
  * evidence processing, blockchain analysis, entities, relationships,
  * timeline, findings, risk, reports, and agent execution.
  *
- * API: Nous Research Inference API (OpenAI-compatible, OpenRouter-backed)
- *   Base URL: https://inference-api.nousresearch.com/v1
+ * API: Hermes Gateway / OpenAI-compatible inference endpoint.
+ *   Base URL is configured server-side via HERMES_BASE_URL (or HERMES_API_URL).
  *   Models:   live catalog queried via hermesProxy { action: "models" }.
  *             Hermes-4-70B/405B have been retired; the configured key currently
  *             has insufficient credits for paid models, so Hermes reports a
@@ -31,7 +31,9 @@
  * structured not-connected result so the UI can show honest states.
  */
 
-const HERMES_BASE_URL = "https://inference-api.nousresearch.com/v1";
+// The actual gateway URL is intentionally server-side. Browser code must
+// never depend on or expose its endpoint/credentials; calls go through hermesProxy.
+const HERMES_BASE_URL = "server-side-hermes-gateway";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
 // Live free model from the Nous catalog (Hermes-4-70B is retired; the account
 // has no credits for paid models). Used by pingHermes() and as the fallback.
@@ -49,7 +51,7 @@ export function getHermesStatus() {
   // The hermesProxy backend function is deployed (Builder+). The API key stays
   // server-side; this only reports that the proxy is wired. A real reachability
   // check is performed by pingHermes() below.
-  return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL };
+  return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL, via: HERMES_PROXY_FUNCTION };
 }
 
 /**
@@ -93,10 +95,8 @@ export async function pingHermes() {
  * DO NOT bypass this by calling Hermes directly from the browser.
  */
 export async function hermesRequest(path, { method = "GET", body } = {}) {
-  if (!HERMES_BASE_URL) {
-    return { status: "not_connected", data: null };
-  }
-
+  // The proxy is the only supported transport. The browser does not know
+  // the real gateway URL and must never attempt to call it directly.
   try {
     const { base44 } = await import("@/api/base44Client");
     const res = await base44.functions.invoke(HERMES_PROXY_FUNCTION, {
