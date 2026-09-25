@@ -37,7 +37,8 @@ export default async function (req) {
     if (!apiKey) {
       return Response.json({ ok: false, error: "HERMES_API_KEY secret is not configured", configured: false }, { status: 503 });
     }
-    const baseUrl = DEFAULT_BASE.replace(/\/$/, "");
+    const configuredBase = secrets.get("HERMES_BASE_URL") || secrets.get("HERMES_API_URL") || DEFAULT_BASE;
+    const baseUrl = configuredBase.replace(/\/$/, "");
 
     // Discovery mode: list available models so the UI can show what's live.
     if (payload?.action === "models") {
