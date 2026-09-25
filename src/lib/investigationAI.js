@@ -13,8 +13,8 @@ import { base44 } from "@/api/base44Client";
  * provider/model selector are provider-agnostic.
  */
 
-export const DEFAULT_PROVIDER = "invokellm";
-export const DEFAULT_MODEL = "automatic";
+export const DEFAULT_PROVIDER = "hermes";
+export const DEFAULT_MODEL = "meituan/longcat-2.0:free";
 
 export const PROVIDERS = {
   invokellm: {
@@ -103,7 +103,7 @@ export const PROVIDERS = {
 };
 
 export function getProvider(id) {
-  return PROVIDERS[id] || PROVIDERS.invokellm;
+  return PROVIDERS[id] || PROVIDERS.hermes;
 }
 
 export function providerStatus(id) {
