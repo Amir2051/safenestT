@@ -474,7 +474,7 @@
         },
         "provider": {
           "type": "string",
-          "description": "Preferred AI provider for this case (invokellm | openrouter)"
+          "description": "Investigation pipeline provider. Hermes Engine is the required provider."
         },
         "model": {
           "type": "string",
