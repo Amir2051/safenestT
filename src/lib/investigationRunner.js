@@ -23,8 +23,8 @@ export const PHASES = [
 ];
 
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p) => [p.id, p]));
-export const DEFAULT_PROVIDER = "invokellm";
-export const DEFAULT_MODEL = "automatic";
+export const DEFAULT_PROVIDER = "hermes";
+export const DEFAULT_MODEL = "meituan/longcat-2.0:free";
 const LLM_TIMEOUT_MS = 90000;
 
 function truncate(s, n) {
@@ -258,7 +258,10 @@ const SEVERITY_WEIGHT = { critical: 25, high: 15, medium: 8, low: 3 };
 const CONFIDENCE_MULT = { high: 1, medium: 0.7, low: 0.4 };
 
 function computeRiskScore(caseItem, ctx) {
-  const findings = ctx.findings || [];
+  // Risk scoring must never reward findings that the reality-check rejected.
+  // Verified and partially-supported findings may contribute; unsupported and
+  // still-proposed findings are excluded until independently checked.
+  const findings = (ctx.findings || []).filter((f) => f.status === "verified" || f.status === "partially_supported");
   let findingScore = 0;
   const riskFactors = [];
 
@@ -483,6 +486,34 @@ async function persistPhaseOutputs({ caseId, phase, output, tenantId, runId, use
     result.finding_ids = created;
     result.agents_run = output.agents_run || [];
     result.agents_failed = output.agents_failed || [];
+  }
+
+  if (phase === "reality_check" && Array.isArray(output.verifications)) {
+    const updates = [];
+    for (const v of output.verifications) {
+      if (!v?.finding_title) continue;
+      const status = String(v.status || "").toLowerCase();
+      const mapped = status === "supported" ? "verified"
+        : status === "partially_supported" ? "partially_supported"
+        : status === "unsupported" ? "unsupported"
+        : null;
+      if (!mapped) continue;
+      const matches = (ctx.findings || []).filter((f) => titlesSimilar(f.title, v.finding_title));
+      for (const f of matches) {
+        await base44.entities.InvestigationFinding.update(f.id, {
+          status: mapped,
+          reality_check: {
+            status: mapped,
+            reasoning: v.reasoning || "",
+            run_id: runId,
+            checked_at: new Date().toISOString(),
+          },
+        }).catch(() => {});
+        updates.push({ finding_id: f.id, status: mapped });
+      }
+    }
+    result.finding_updates = updates;
+    result.unsupported_claims = output.unsupported_claims || [];
   }
 
   if (phase === "risk" && typeof output.risk_score === "number") {
