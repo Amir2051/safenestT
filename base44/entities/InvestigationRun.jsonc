@@ -24,7 +24,7 @@
     },
     "provider": {
       "type": "string",
-      "description": "AI provider used (invokellm | openrouter)"
+      "description": "AI provider used by the investigation pipeline (hermes)"
     },
     "model": {
       "type": "string",
