@@ -12,29 +12,6 @@ export const DEFAULT_PROVIDER = "hermes";
 export const DEFAULT_MODEL = "meituan/longcat-2.0:free";
 
 export const PROVIDERS = {
-  invokellm: {
-    id: "invokellm",
-    label: "Base44 InvokeLLM",
-    description: "Live now — real execution via the Base44 AI integration.",
-    available: true,
-    models: [
-      { id: "automatic", label: "Automatic" },
-      { id: "gemini_3_flash", label: "Gemini 3 Flash (fast)" },
-      { id: "gpt_5_mini", label: "GPT-5 mini" },
-      { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
-      { id: "claude_opus_5", label: "Claude Opus 5" },
-      { id: "gpt_5_6_luna", label: "GPT-5.6 Luna" },
-    ],
-    run: async ({ prompt, model, responseJsonSchema, fileUrls }) => {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        model: model || undefined,
-        response_json_schema: responseJsonSchema || undefined,
-        file_urls: fileUrls || undefined,
-      });
-      return res; // object when a schema is supplied, else string
-    },
-  },
   hermes: {
     id: "hermes",
     label: "Hermes Engine (Nous)",
