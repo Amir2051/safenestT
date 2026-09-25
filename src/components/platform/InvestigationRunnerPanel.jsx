@@ -233,9 +233,7 @@ function ProviderModelControls({ provider, onProvider, model, onModel, models, f
           <Select value={provider} onValueChange={onProvider}>
             <SelectTrigger className="bg-[#0f1419] border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {Object.values(PROVIDERS).map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.label}{!p.available ? " (Builder+)" : ""}</SelectItem>
-              ))}
+              <SelectItem value="hermes">Hermes Engine (Nous)</SelectItem>
             </SelectContent>
           </Select>
         </div>
