@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
-import { PROVIDERS, getProvider } from "@/lib/investigationAI";
+import { getProvider } from "@/lib/investigationAI";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
 import { toast } from "sonner";
 
