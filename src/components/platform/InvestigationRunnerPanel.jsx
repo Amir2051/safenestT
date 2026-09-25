@@ -59,7 +59,12 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
     } catch { /* best-effort */ }
   };
 
-  const onProviderChange = (v) => { setProvider(v); savePreference(v, model); };
+  const onProviderChange = () => {
+    // Kept for compatibility with the selector component; Hermes is the only
+    // supported investigation pipeline provider.
+    setProvider(DEFAULT_PROVIDER);
+    savePreference(DEFAULT_PROVIDER, model);
+  };
   const onModelChange = (m) => { setModel(m); savePreference(provider, m); };
 
   const testConnection = async () => {
