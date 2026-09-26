@@ -31,7 +31,7 @@ export const PROVIDERS = {
     run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
       const resp = await base44.functions.invoke("hermesProxy", {
         prompt,
-        model: model || "meituan/longcat-2.0:free",
+        model: model || "hermes-agent",
         response_json_schema: responseJsonSchema,
         temperature,
         max_tokens: maxTokens,
