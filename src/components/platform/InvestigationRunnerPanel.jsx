@@ -230,7 +230,7 @@ function ProviderModelControls({ provider, onProvider, model, onModel, models, f
           <Select value={provider} onValueChange={onProvider}>
             <SelectTrigger className="bg-[#0f1419] border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="hermes">Hermes Engine (Nous)</SelectItem>
+              <SelectItem value="hermes">Hermes Agent</SelectItem>
             </SelectContent>
           </Select>
         </div>
