@@ -40,9 +40,31 @@ export default async function (req) {
     const configuredBase = secrets.get("HERMES_BASE_URL") || secrets.get("HERMES_API_URL") || DEFAULT_BASE;
     const baseUrl = configuredBase.replace(/\/$/, "");
 
+    // Real Hermes Agent gateway health check. Hermes exposes /health and /v1/health.
+    if (payload?.action === "health") {
+      const urls = baseUrl.endsWith("/v1") ? [baseUrl + "/health"] : [baseUrl + "/health", baseUrl + "/v1/health"];
+      let lastStatus = 502;
+      let lastBody = "";
+      for (const url of [...new Set(urls)]) {
+        try {
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+          const text = await res.text();
+          lastStatus = res.status;
+          lastBody = text;
+          if (res.ok) {
+            let json: any = null;
+            try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
+            return Response.json({ ok: true, status: res.status, data: json, endpoint: url });
+          }
+        } catch (e: any) { lastBody = e?.message || String(e); }
+      }
+      return Response.json({ ok: false, status: lastStatus, error: `Hermes gateway health check failed: ${lastBody.slice(0, 500)}`, configured: true }, { status: 502 });
+    }
+
     // Discovery mode: list available models so the UI can show what's live.
     if (payload?.action === "models") {
-      const res = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+      const modelUrl = baseUrl.endsWith("/v1") ? baseUrl + "/models" : baseUrl + "/v1/models";
+      const res = await fetch(modelUrl, { headers: { Authorization: `Bearer ${apiKey}` } });
       const text = await res.text();
       let json: any = null;
       try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
