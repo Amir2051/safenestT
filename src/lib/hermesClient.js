@@ -17,7 +17,6 @@
  *    process.env.HERMES_API_KEY.
  *  - All Hermes calls are proxied through a Base44 backend function
  *    (`hermesProxy`) so the key stays server-side.
- *  - The base URL below is public (not secret) and safe to reference here.
  *
  * CONNECTION STATES:
  *  - "backend_unavailable": The hermesProxy backend function is not accessible.
@@ -31,7 +30,6 @@
 
 // The actual gateway URL is intentionally server-side. Browser code must
 // never depend on or expose its endpoint/credentials; calls go through hermesProxy.
-const HERMES_BASE_URL = "server-side-hermes-gateway";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
 // Default model for the SafeNestT investigation gateway.
 export const HERMES_DEFAULT_MODEL = "hermes-agent";
