@@ -51,7 +51,7 @@ export function getHermesStatus() {
   // The hermesProxy backend function is deployed (Builder+). The API key stays
   // server-side; this only reports that the proxy is wired. A real reachability
   // check is performed by pingHermes() below.
-  return { connected: true, state: "configured", baseUrl: HERMES_BASE_URL, via: HERMES_PROXY_FUNCTION };
+  return { connected: false, state: "checking", baseUrl: HERMES_BASE_URL, via: HERMES_PROXY_FUNCTION };
 }
 
 /**
