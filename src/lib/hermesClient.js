@@ -132,7 +132,7 @@ export const HermesAPI = {
         caseId,
         phase,
         provider: payload.provider || "hermes",
-        model: payload.model || "meituan/longcat-2.0:free",
+        model: payload.model || "hermes-agent",
       });
       results.push({ phase, status: result.status, run_id: result.run?.id, error: result.error });
       if (result.status !== "completed") break;
