@@ -7,10 +7,8 @@
  *
  * API: Hermes Gateway / OpenAI-compatible inference endpoint.
  *   Base URL is configured server-side via HERMES_BASE_URL (or HERMES_API_URL).
- *   Models:   live catalog queried via hermesProxy { action: "models" }.
- *             Hermes-4-70B/405B have been retired; the configured key currently
- *             has insufficient credits for paid models, so Hermes reports a
- *             "not_ready" state honestly until credits are added.
+ *   Models:   hermes-agent by default; the live catalog can be queried via
+ *             hermesProxy { action: "models" }.
  *   Auth:     Bearer token (stored as HERMES_API_KEY secret — server-side only)
  *
  * SECURITY RULES (enforced by design):
@@ -22,9 +20,9 @@
  *  - The base URL below is public (not secret) and safe to reference here.
  *
  * CONNECTION STATES:
- *  - "backend_unavailable": The hermesProxy backend function is not
- *                            accessible (requires Builder+ plan).
- *  - "configured"         : API endpoint is known; calls will be proxied.
+ *  - "backend_unavailable": The hermesProxy backend function is not accessible.
+ *  - "not_configured"     : Required Hermes deployment secrets are missing.
+ *  - "gateway_unreachable": Secrets exist but the Hermes gateway cannot be reached.
  *  - "ok"                 : Hermes responded.
  *
  * This layer NEVER fabricates data. When unavailable, it returns a
@@ -35,8 +33,7 @@
 // never depend on or expose its endpoint/credentials; calls go through hermesProxy.
 const HERMES_BASE_URL = "server-side-hermes-gateway";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
-// Live free model from the Nous catalog (Hermes-4-70B is retired; the account
-// has no credits for paid models). Used by pingHermes() and as the fallback.
+// Default model for the SafeNestT investigation gateway.
 export const HERMES_DEFAULT_MODEL = "hermes-agent";
 
 /**
@@ -51,7 +48,7 @@ export function getHermesStatus() {
   // The hermesProxy backend function is deployed (Builder+). The API key stays
   // server-side; this only reports that the proxy is wired. A real reachability
   // check is performed by pingHermes() below.
-  return { connected: false, state: "checking", baseUrl: HERMES_BASE_URL, via: HERMES_PROXY_FUNCTION };
+  return { connected: false, state: "checking", via: HERMES_PROXY_FUNCTION };
 }
 
 /**
