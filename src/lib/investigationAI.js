@@ -9,7 +9,7 @@ import { base44 } from "@/api/base44Client";
  */
 
 export const DEFAULT_PROVIDER = "hermes";
-export const DEFAULT_MODEL = "meituan/longcat-2.0:free";
+export const DEFAULT_MODEL = "hermes-agent";
 
 export const PROVIDERS = {
   hermes: {
