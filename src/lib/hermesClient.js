@@ -63,10 +63,7 @@ export async function pingHermes() {
   try {
     const { base44 } = await import("@/api/base44Client");
     const res = await base44.functions.invoke(HERMES_PROXY_FUNCTION, {
-      prompt: "Reply with exactly: ok",
-      model: HERMES_DEFAULT_MODEL,
-      temperature: 0,
-      max_tokens: 5,
+      action: "health",
     });
     const body = res?.data ?? res;
     if (body && body.ok !== false && body.status !== "error") {
