@@ -37,7 +37,7 @@ const HERMES_BASE_URL = "server-side-hermes-gateway";
 export const HERMES_PROXY_FUNCTION = "hermesProxy";
 // Live free model from the Nous catalog (Hermes-4-70B is retired; the account
 // has no credits for paid models). Used by pingHermes() and as the fallback.
-export const HERMES_DEFAULT_MODEL = "meituan/longcat-2.0:free";
+export const HERMES_DEFAULT_MODEL = "hermes-agent";
 
 /**
  * Returns the current Hermes connection descriptor.
