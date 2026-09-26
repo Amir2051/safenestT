@@ -60,8 +60,8 @@ const DOSSIER_SCHEMA = { type: "object", properties: { title: { type: "string" }
 const PHASE_SPECS = {
   planning: { instr: "Produce an investigation plan: objectives, scope, key hypotheses, priority targets, and a step-by-step plan. Respond as JSON.", schema: PLAN_SCHEMA },
   evidence: { instr: "Summarize the collected evidence, surface key indicators, note gaps, and flag evidence that needs verification. Respond as JSON.", schema: EVIDENCE_SCHEMA },
-  reality_check: { instr: "Review the existing findings. For each, mark verification status (supported / partially_supported / unsupported) with reasoning. Flag any unsupported claims. Respond as JSON.", schema: REALITY_SCHEMA },
-  dossier: { instr: "Generate a structured case dossier with classified sections (fact/evidence/analysis/inference/hypothesis), a conclusion, and recommended actions. Respond as JSON.", schema: DOSSIER_SCHEMA },
+  reality_check: { instr: "Review the existing findings. For each, mark verification status (supported / partially_supported / unsupported) with reasoning. Flag any unsupported claims. Do not upgrade a claim beyond the supplied evidence. Respond as JSON.", schema: REALITY_SCHEMA },
+  dossier: { instr: "The dossier is evidence-gated. Use ONLY the verified and partially-supported findings supplied in the prompt. Do not invent identities, locations, transaction paths, exchange use, laundering, motives, or other facts. Unsupported claims must not appear as FACT or EVIDENCE. Respond as JSON.", schema: DOSSIER_SCHEMA },
 };
 
 function caseSummary(caseItem) {
@@ -253,6 +253,78 @@ function safeParse(s) {
   try { return JSON.parse(s); } catch { return null; }
 }
 
+function buildEvidenceGatedDossier(caseItem, ctx) {
+  const findings = (ctx.findings || []).filter(
+    (f) => f.status === "verified" || f.status === "partially_supported"
+  );
+  const evidence = ctx.evidence || [];
+
+  const sections = [
+    {
+      title: "Case Facts",
+      classification: "FACT",
+      content: [
+        caseItem.victim_name ? `Victim: ${caseItem.victim_name}.` : "",
+        caseItem.case_title ? `Case: ${caseItem.case_title}.` : "",
+        caseItem.incident_date ? `Incident date: ${caseItem.incident_date}.` : "",
+        Number.isFinite(Number(caseItem.amount_stolen_usd))
+          ? `Reported loss: $${Number(caseItem.amount_stolen_usd).toLocaleString()} USD.`
+          : "",
+        caseItem.fraud_type ? `Reported fraud type: ${caseItem.fraud_type}.` : "",
+      ].filter(Boolean).join(" "),
+    },
+    {
+      title: "Evidence Summary",
+      classification: "EVIDENCE",
+      content: evidence.length
+        ? `${evidence.length} evidence item(s) are attached to this case. Only evidence-backed findings are carried into the dossier.`
+        : "No evidence items are attached to this case.",
+    },
+    {
+      title: "Verified Findings",
+      classification: "EVIDENCE",
+      content: findings.length
+        ? findings.map((f) => `[${f.status}] ${f.title}: ${f.description || ""}`).join(" ")
+        : "No findings passed the reality-check gate.",
+    },
+  ];
+
+  const unsupported = (ctx.findings || [])
+    .filter((f) => f.status === "unsupported")
+    .map((f) => f.title)
+    .filter(Boolean);
+
+  if (unsupported.length) {
+    sections.push({
+      title: "Excluded Claims",
+      classification: "ANALYSIS",
+      content: `The following proposed claims were excluded because the reality check did not support them: ${unsupported.join("; ")}.`,
+    });
+  }
+
+  const conclusion = findings.length
+    ? `This dossier is limited to ${findings.length} finding(s) that passed the evidence gate. Partially-supported findings remain explicitly qualified and require additional evidence before being treated as established facts.`
+    : "The available material is insufficient to establish substantive findings. Additional evidence is required.";
+
+  return {
+    title: `${caseItem.case_title || "Investigation"} — Evidence-Gated Dossier`,
+    sections,
+    conclusion,
+    recommended_actions: [
+      "Preserve and attach primary transaction, communication, and identity evidence.",
+      "Do not treat hypotheses or unsupported claims as established facts.",
+      ...(findings.some((f) => f.status === "partially_supported")
+        ? ["Obtain the missing evidence needed to upgrade partially-supported findings."]
+        : []),
+    ],
+    evidence_gate: {
+      allowed_statuses: ["verified", "partially_supported"],
+      included_finding_ids: findings.map((f) => f.id),
+      excluded_finding_ids: (ctx.findings || []).filter((f) => f.status === "unsupported").map((f) => f.id),
+    },
+  };
+}
+
 // ── Deterministic risk scoring ───────────────────────────────────────────
 const SEVERITY_WEIGHT = { critical: 25, high: 15, medium: 8, low: 3 };
 const CONFIDENCE_MULT = { high: 1, medium: 0.7, low: 0.4 };
@@ -315,6 +387,12 @@ async function computePhaseOutput(phase, caseItem, ctx, provider, model) {
   if (phase === "risk") {
     return computeRiskScore(caseItem, ctx); // deterministic, no LLM, no timeout
   }
+  if (phase === "dossier") {
+    // Dossier content is deterministic and evidence-gated. Hermes may still run
+    // the preceding investigative phases, but it cannot introduce new claims
+    // at the final reporting boundary.
+    return buildEvidenceGatedDossier(caseItem, ctx);
+  }
   const { prompt, schema } = buildPhasePrompt(phase, caseItem, ctx);
   const out = await withTimeout(
     runInference({ provider, model, prompt, responseJsonSchema: schema }),
@@ -329,6 +407,17 @@ async function computePhaseOutput(phase, caseItem, ctx, provider, model) {
  */
 export async function runPhase({ caseId, phase, provider = DEFAULT_PROVIDER, model = DEFAULT_MODEL }) {
   if (!PHASE_BY_ID[phase]) throw new Error(`Unknown phase: ${phase}`);
+
+  if (phase === "dossier") {
+    const prior = await base44.entities.InvestigationRun.filter(
+      { case_id: caseId, phase: "reality_check", status: "completed" },
+      "-completed_at",
+      1
+    ).catch(() => []);
+    if (!prior.length) {
+      throw new Error("Dossier blocked: reality-check must complete successfully before report generation.");
+    }
+  }
 
   const tenantId = await ensureTenant();
   const user = await getCurrentUser();
@@ -426,20 +515,33 @@ async function updateWorkflowPhase(caseId, phase, patch) {
   phases[phase] = { ...(phases[phase] || {}), ...patch };
 
   const order = PHASES.map((p) => p.id);
-  let currentPhase = wf.current_phase || "planning";
-  if (patch.status === "completed") {
-    const idx = order.indexOf(phase);
-    if (idx >= 0 && idx < order.length - 1) currentPhase = order[idx + 1];
-    else if (idx === order.length - 1) currentPhase = "closed";
-  }
+  const idx = order.indexOf(phase);
   const completedCount = order.filter((p) => phases[p]?.status === "completed").length;
   const progress = Math.round((completedCount / order.length) * 100);
 
-  await base44.entities.InvestigationCase.update(caseId, {
+  // A case can only become terminal after every phase completed successfully.
+  // A failed phase keeps the case open at that phase; it must never be reported
+  // as closed merely because a later phase was run.
+  let currentPhase = wf.current_phase || "planning";
+  let caseStatus;
+
+  if (patch.status === "failed") {
+    currentPhase = phase;
+    caseStatus = "investigating";
+  } else if (patch.status === "completed") {
+    const allCompleted = order.every((p) => phases[p]?.status === "completed");
+    currentPhase = allCompleted ? "closed" : (idx >= 0 && idx < order.length - 1 ? order[idx + 1] : phase);
+    caseStatus = allCompleted ? "closed" : "investigating";
+  }
+
+  const update = {
     workflow: { ...wf, phases, current_phase: currentPhase },
     investigation_progress: progress,
     last_activity: new Date().toISOString(),
-  });
+  };
+  if (caseStatus) update.status = caseStatus;
+
+  await base44.entities.InvestigationCase.update(caseId, update);
 }
 
 // Resolve LLM-supplied supporting_evidence (filenames or ids) to real EvidenceItem ids
