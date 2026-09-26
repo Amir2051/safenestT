@@ -409,13 +409,18 @@ export async function runPhase({ caseId, phase, provider = DEFAULT_PROVIDER, mod
   if (!PHASE_BY_ID[phase]) throw new Error(`Unknown phase: ${phase}`);
 
   if (phase === "dossier") {
-    const prior = await base44.entities.InvestigationRun.filter(
-      { case_id: caseId, phase: "reality_check", status: "completed" },
-      "-completed_at",
+    const realityRuns = await base44.entities.InvestigationRun.filter(
+      { case_id: caseId, phase: "reality_check" },
+      "-started_at",
       1
     ).catch(() => []);
-    if (!prior.length) {
-      throw new Error("Dossier blocked: reality-check must complete successfully before report generation.");
+    const latestReality = realityRuns[0];
+    if (!latestReality || latestReality.status !== "completed") {
+      throw new Error(
+        latestReality?.status === "failed"
+          ? "Dossier blocked: the latest reality-check failed. Re-run reality-check successfully before report generation."
+          : "Dossier blocked: reality-check must complete successfully before report generation."
+      );
     }
   }
 
