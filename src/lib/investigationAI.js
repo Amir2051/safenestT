@@ -14,7 +14,7 @@ export const DEFAULT_MODEL = "hermes-agent";
 export const PROVIDERS = {
   hermes: {
     id: "hermes",
-    label: "Hermes Engine (Nous)",
+    label: "Hermes Agent",
     description: "Hermes Agent gateway — authoritative investigation pipeline. Credentials stay server-side.",
     available: true,
     models: [
