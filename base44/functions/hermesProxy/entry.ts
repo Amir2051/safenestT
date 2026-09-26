@@ -16,9 +16,9 @@ import { secrets } from "base44:runtime";
  * Never logs or returns the API key.
  */
 const DEFAULT_BASE = "";
-// Hermes-4-70B is retired and the account has no credits for paid models.
-// Default to a live free model from the catalog so the proxy works out of the
-// box (e.g. health pings that don't pass an explicit model).
+// The gateway URL and API key are deployment secrets. There is intentionally
+// no public/default gateway URL: SafeNestT must be explicitly pointed at the
+// operator's authenticated Hermes Agent gateway.
 const DEFAULT_MODEL = "hermes-agent";
 const TIMEOUT_MS = 60000;
 const MAX_ATTEMPTS = 2;
@@ -34,10 +34,28 @@ export default async function (req) {
 
     const apiKey = secrets.get("HERMES_API_KEY");
     if (!apiKey) {
+      // Keep health diagnostics at HTTP 200 so the client receives the actual
+      // configuration reason instead of the SDK collapsing it into "503".
+      if (payload?.action === "health") {
+        return Response.json({
+          ok: false,
+          status: "not_configured",
+          configured: false,
+          error: "HERMES_API_KEY secret is not configured",
+        });
+      }
       return Response.json({ ok: false, error: "HERMES_API_KEY secret is not configured", configured: false }, { status: 503 });
     }
     const configuredBase = secrets.get("HERMES_BASE_URL") || secrets.get("HERMES_API_URL") || DEFAULT_BASE;
     if (!configuredBase) {
+      if (payload?.action === "health") {
+        return Response.json({
+          ok: false,
+          status: "not_configured",
+          configured: false,
+          error: "HERMES_BASE_URL secret is not configured. Point it to the real Hermes Agent gateway.",
+        });
+      }
       return Response.json(
         { ok: false, error: "HERMES_BASE_URL secret is not configured. Point it to the real Hermes Agent gateway.", configured: false },
         { status: 503 }
@@ -63,7 +81,13 @@ export default async function (req) {
           }
         } catch (e: any) { lastBody = e?.message || String(e); }
       }
-      return Response.json({ ok: false, status: lastStatus, error: `Hermes gateway health check failed: ${lastBody.slice(0, 500)}`, configured: true }, { status: 502 });
+      return Response.json({
+        ok: false,
+        status: "gateway_unreachable",
+        upstream_status: lastStatus,
+        error: `Hermes gateway health check failed: ${lastBody.slice(0, 500)}`,
+        configured: true,
+      });
     }
 
     // Discovery mode: list available models so the UI can show what's live.
