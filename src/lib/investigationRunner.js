@@ -24,7 +24,7 @@ export const PHASES = [
 
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p) => [p.id, p]));
 export const DEFAULT_PROVIDER = "hermes";
-export const DEFAULT_MODEL = "meituan/longcat-2.0:free";
+export const DEFAULT_MODEL = "hermes-agent";
 const LLM_TIMEOUT_MS = 90000;
 
 function truncate(s, n) {
