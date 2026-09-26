@@ -26,7 +26,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   // provider value persisted on older cases so the UI cannot route a run to
   // Base44 InvokeLLM or another legacy provider.
   const [provider, setProvider] = useState(DEFAULT_PROVIDER);
-  const [model, setModel] = useState(wf.provider === DEFAULT_PROVIDER && wf.model ? wf.model : DEFAULT_MODEL);
+  const [model, setModel] = useState(DEFAULT_MODEL);
   const [running, setRunning] = useState(null);
   const [runAllActive, setRunAllActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
@@ -38,10 +38,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const freeOnly = provider === "openrouter";
 
   useEffect(() => {
-    if (!models.find((m) => m.id === model)) {
-      const firstOk = freeOnly ? models.find((m) => m.free !== false) : models[0];
-      setModel(firstOk?.id || DEFAULT_MODEL);
-    }
+    if (model !== DEFAULT_MODEL) setModel(DEFAULT_MODEL);
   }, [provider]);
 
   const { data: history = [], refetch } = useQuery({
@@ -65,7 +62,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
     setProvider(DEFAULT_PROVIDER);
     savePreference(DEFAULT_PROVIDER, model);
   };
-  const onModelChange = (m) => { setModel(m); savePreference(provider, m); };
+  const onModelChange = () => { setModel(DEFAULT_MODEL); savePreference(DEFAULT_PROVIDER, DEFAULT_MODEL); };
 
   const testConnection = async () => {
     setTesting(true); setTestResult(null);
