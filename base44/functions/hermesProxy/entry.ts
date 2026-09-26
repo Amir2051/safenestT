@@ -4,10 +4,9 @@ import { secrets } from "base44:runtime";
 /**
  * hermesProxy — server-side proxy to the Hermes investigation engine.
  *
- * Hermes is exposed as an OpenAI-compatible chat-completions API (Nous Research
- * Inference API). The HERMES_API_KEY is read from app secrets and NEVER returned
- * to the browser. The base URL is public (overridable via the HERMES_API_URL
- * secret) and safe to reference here.
+ * Hermes Agent exposes an OpenAI-compatible gateway. The HERMES_API_KEY is read
+ * from app secrets and NEVER returned to the browser. HERMES_BASE_URL (or the
+ * legacy HERMES_API_URL) must point to the real Hermes Agent gateway.
  *
  * Contract:
  *   IN  { prompt, response_json_schema?, model?, temperature?, max_tokens? }
@@ -16,7 +15,7 @@ import { secrets } from "base44:runtime";
  * Retries 429/5xx and abort/timeout errors (max 2 attempts, 60s timeout).
  * Never logs or returns the API key.
  */
-const DEFAULT_BASE = "https://inference-api.nousresearch.com/v1";
+const DEFAULT_BASE = "";
 // Hermes-4-70B is retired and the account has no credits for paid models.
 // Default to a live free model from the catalog so the proxy works out of the
 // box (e.g. health pings that don't pass an explicit model).
@@ -38,6 +37,12 @@ export default async function (req) {
       return Response.json({ ok: false, error: "HERMES_API_KEY secret is not configured", configured: false }, { status: 503 });
     }
     const configuredBase = secrets.get("HERMES_BASE_URL") || secrets.get("HERMES_API_URL") || DEFAULT_BASE;
+    if (!configuredBase) {
+      return Response.json(
+        { ok: false, error: "HERMES_BASE_URL secret is not configured. Point it to the real Hermes Agent gateway.", configured: false },
+        { status: 503 }
+      );
+    }
     const baseUrl = configuredBase.replace(/\/$/, "");
 
     // Real Hermes Agent gateway health check. Hermes exposes /health and /v1/health.
