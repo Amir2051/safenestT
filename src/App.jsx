@@ -5,7 +5,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import VisualEditAgent from '@/lib/VisualEditAgent'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import PrivacyAdvisor from './pages/PrivacyAdvisor';
 import UserExport from './pages/UserExport';
@@ -105,6 +105,9 @@ const AuthenticatedApp = () => {
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
         <Route path="/" element={<MainPage />} />
+        {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
+        <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
+        <Route path="/AdminInvestigation" element={<Navigate to="/InvestigationWorkspace" replace />} />
         {Object.entries(Pages).map(([path, Page]) => {
           const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : null;
           return (

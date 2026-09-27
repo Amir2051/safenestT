@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, FileSearch, ShieldAlert, FileText,
   Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
-  CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power,
+  CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power, Wallet,
   Command, Sparkles,
   UserCheck, UserPlus, FileBarChart, LifeBuoy, Users, TrendingUp,
   Server, Gavel, Home as HomeIcon, Cookie, Scale,
@@ -163,51 +163,59 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   // Admins get a full multi-section administration sidebar covering all the
   // admin pages registered in pages.config.js, plus the Security/Operations
   // tools shared with investigators.
+  // Canonical admin navigation — ONE entry per administrative function.
+  // Legacy duplicate routes (/AdminDashboard, /AdminInvestigation) are redirected
+  // in App.jsx to their canonical equivalents and intentionally absent here.
   const ADMIN_SECTIONS = [
     {
-      label: "Administration",
+      label: "Overview",
       items: [
-        { id: "admin-dashboard", label: "Admin Dashboard", icon: Command, path: "/AdminDashboard", glow: "cyan" },
-        { id: "admin-approvals", label: "User Approvals", icon: UserCheck, path: "/AdminUserApprovals", glow: "cyan" },
-        { id: "admin-invites", label: "User Invites", icon: UserPlus, path: "/AdminInvites", glow: "cyan" },
-        { id: "admin-reports", label: "Admin Reports", icon: FileBarChart, path: "/AdminReports", glow: "cyan" },
-        { id: "admin-support", label: "Admin Support", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },
-        { id: "admin-subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
-      ],
-    },
-    {
-      label: "Growth & Referrals",
-      items: [
-        { id: "admin-referrals", label: "Referrals", icon: Users, path: "/AdminReferrals", glow: "purple" },
-        { id: "admin-referral-dashboard", label: "Referral Dashboard", icon: TrendingUp, path: "/AdminReferralDashboard", glow: "purple" },
-      ],
-    },
-    {
-      label: "Monitoring & Infrastructure",
-      items: [
-        { id: "admin-monitoring", label: "Monitoring Dashboard", icon: Activity, path: "/AdminMonitoringDashboard", glow: "red" },
-        { id: "admin-vpn-servers", label: "VPN Servers", icon: Server, path: "/AdminVPNServers", glow: "blue" },
+        { id: "ops-dashboard", label: "Operations", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
       ],
     },
     {
       label: "Investigations",
       items: [
-        { id: "admin-deed-fraud", label: "Admin Deed Fraud", icon: HomeIcon, path: "/AdminDeedFraud", glow: "amber" },
+        { id: "investigation-ws", label: "Investigations", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI" },
+        { id: "cases-mgmt", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
+        { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
+        { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
       ],
     },
     {
-      label: "Security & Operations",
+      label: "Reports & Audit",
       items: [
-        { id: "ops-dashboard", label: "Operations", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
-        { id: "wallet-tracker", label: "Wallet Tracker", icon: Search, path: "/WalletTrackerAdmin", glow: "cyan" },
+        { id: "reports-center", label: "Reports", icon: FileText, path: "/ReportsCenter", glow: "cyan" },
+        { id: "audit-log", label: "Audit Trail", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+      ],
+    },
+    {
+      label: "Intelligence",
+      items: [
+        { id: "wallet-tracker", label: "Wallet Tracker", icon: Wallet, path: "/WalletTrackerAdmin", glow: "cyan" },
         { id: "flow-map", label: "Flow Map", icon: Activity, path: "/FlowMapAdmin", glow: "purple" },
-        { id: "my-cases", label: "My Cases", icon: Briefcase, path: "/MyCases", glow: "cyan" },
-        { id: "cases-mgmt", label: "Cases Management", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
-        { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
-        { id: "investigation-ws", label: "Investigation Workspace", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI" },
-        { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
-        { id: "reports-center", label: "Reports Center", icon: FileText, path: "/ReportsCenter", glow: "cyan" },
-        { id: "audit-log", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+        { id: "threat-intel", label: "Threat Intel", icon: ShieldAlert, path: "/ReportedScams", glow: "red" },
+      ],
+    },
+    {
+      label: "Platform",
+      items: [
+        { id: "users", label: "Users", icon: Users, path: "/AdminUserApprovals", glow: "cyan" },
+        { id: "invites", label: "Invitations", icon: UserPlus, path: "/AdminInvites", glow: "cyan" },
+        { id: "analytics", label: "Analytics", icon: TrendingUp, path: "/AdminReports", glow: "blue" },
+        { id: "subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
+        { id: "monitoring", label: "Monitoring", icon: Server, path: "/AdminMonitoringDashboard", glow: "red" },
+        { id: "vpn-servers", label: "VPN Servers", icon: ShieldCheck, path: "/AdminVPNServers", glow: "blue" },
+        { id: "deed-fraud", label: "Deed Fraud", icon: HomeIcon, path: "/AdminDeedFraud", glow: "amber" },
+        { id: "user-export", label: "User Export", icon: FileBarChart, path: "/UserExport", glow: "cyan" },
+        { id: "admin-support", label: "Support Queue", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },
+      ],
+    },
+    {
+      label: "Growth",
+      items: [
+        { id: "admin-referrals", label: "Referrals", icon: UserCheck, path: "/AdminReferrals", glow: "purple" },
+        { id: "admin-referral-dashboard", label: "Referral Analytics", icon: TrendingUp, path: "/AdminReferralDashboard", glow: "purple" },
       ],
     },
   ];
