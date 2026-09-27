@@ -24,7 +24,7 @@ export default function PublicLegalLayout({ children }) {
             </div>
             <div className="leading-none">
               <p className="text-white font-bold tracking-wider text-sm">SafeNestT</p>
-              <p className="text-cyan-400 text-[10px] font-mono mt-0.5">// SECURED //</p>
+              <p className="text-cyan-400 text-[10px] font-mono mt-0.5">// SECURITY OPERATIONS &amp; INVESTIGATION //</p>
             </div>
           </Link>
 

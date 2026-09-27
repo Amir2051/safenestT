@@ -142,7 +142,7 @@ export default function Subscription() {
             </h1>
           </div>
           <p className="text-lg md:text-xl text-gray-300 max-w-lg mx-auto px-4">
-            Complete protection for your digital life
+            Investigation, evidence, and threat-intelligence tools for security operations
           </p>
         </div>
 

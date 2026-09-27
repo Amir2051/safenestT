@@ -39,8 +39,8 @@ export default function AcceptableUsePolicy() {
               Platform Purpose and Ethical Use
             </h2>
             <p className="leading-relaxed mb-4">
-              SafeNestT is designed to be a <strong className="text-white">case preparation, reporting assistance, and 
-              cybersecurity support platform</strong>. The Platform is intended for:
+              SafeNestT is designed to be a <strong className="text-white">Security Operations &amp; Investigation 
+              Services (SO &amp; IS) platform</strong>. The Platform is intended for:
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
               <li>Victims of cyber fraud to document and organize incident details</li>

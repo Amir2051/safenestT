@@ -79,7 +79,7 @@ export default function Upgrade() {
             Choose Your Protection Level
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-6">
-            Secure your digital identity with comprehensive monitoring and instant alerts
+            Investigate fraud, manage evidence with provenance, and act on threat intelligence
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">

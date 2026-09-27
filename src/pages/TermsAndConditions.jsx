@@ -80,7 +80,7 @@ export default function TermsAndConditions() {
               Platform Description
             </h2>
             <p className="leading-relaxed mb-4">
-              SafeNestT is a <strong className="text-white">case preparation, reporting assistance, and cybersecurity support platform</strong>. 
+              SafeNestT is a <strong className="text-white">Security Operations &amp; Investigation Services (SO &amp; IS) platform</strong> for case-centric fraud, cryptocurrency, and cybercrime investigations. 
               We provide tools to help users:
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">

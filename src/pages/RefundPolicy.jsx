@@ -20,8 +20,8 @@ export default function RefundPolicy() {
           {/* Introduction */}
           <section>
             <p className="leading-relaxed">
-              At SafeNestT, we are committed to providing you with a secure platform to report and track scams, 
-              connect with authorities, and protect your interests. Your satisfaction and trust are important to us. 
+              At SafeNestT, we are committed to providing a reliable Security Operations &amp; Investigation 
+              Services platform for documenting cases, tracing assets, and preparing filings. Your satisfaction and trust are important to us. 
               This Refund Policy outlines the circumstances under which refunds may be issued.
             </p>
           </section>

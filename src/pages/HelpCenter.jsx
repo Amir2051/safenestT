@@ -77,7 +77,7 @@ export default function HelpCenter() {
       questions: [
         {
           q: "What is SafeNestT?",
-          a: "SafeNestT is a comprehensive cyber fraud protection and recovery platform. We help victims of digital fraud document their cases, trace stolen assets, and coordinate with law enforcement for recovery efforts."
+          a: "SafeNestT is a Security Operations & Investigation Services (SO & IS) platform for fraud, cryptocurrency, and cybercrime investigations. It helps users document cases, trace stolen assets, manage evidence with provenance, and prepare structured filings for appropriate authorities."
         },
         {
           q: "How do I report an incident?",

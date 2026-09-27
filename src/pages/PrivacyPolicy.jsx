@@ -25,8 +25,8 @@ export default function PrivacyPolicy() {
               Introduction
             </h2>
             <p className="leading-relaxed mb-4">
-              SafeNestT Inc. ("SafeNestT," "we," "us," or "our") operates a case preparation, reporting assistance, 
-              and cybersecurity support platform accessible at SafeNestT.com (the "Platform"). This Privacy Policy 
+              SafeNestT Inc. ("SafeNestT," "we," "us," or "our") operates a Security Operations &amp; Investigation 
+              Services (SO &amp; IS) platform accessible at SafeNestT.com (the "Platform"). This Privacy Policy 
               describes how we collect, use, store, and protect information you provide when using our Platform.
             </p>
             <p className="leading-relaxed">
