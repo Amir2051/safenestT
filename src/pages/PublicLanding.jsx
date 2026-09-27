@@ -74,22 +74,23 @@ export default function PublicLanding() {
   const goGetStarted = () => navigateToLogin();
 
   return (
-    <div className="min-h-screen bg-[#000000] text-slate-100 relative overflow-hidden">
+    <div className="min-h-screen bg-[#020508] text-slate-100 relative overflow-hidden font-mono">
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[140px]" />
         <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[140px]" />
       </div>
 
-      {/* Nav */}
+      {/* Investigator terminal navigation */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" aria-hidden="true" />
       <header className="relative z-10 px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
             <ShieldCheck className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-white font-bold tracking-wider text-lg leading-none">SafeNestT</h1>
-            <p className="text-cyan-400 text-[10px] font-mono mt-0.5">// INVESTIGATION OS //</p>
+            <h1 className="text-white font-bold tracking-wider text-lg leading-none">SAFENESTT</h1>
+            <p className="text-cyan-400 text-[10px] font-mono mt-0.5">MIA // INVESTIGATION TERMINAL</p>
           </div>
         </div>
         <button
@@ -104,17 +105,17 @@ export default function PublicLanding() {
       <section className="relative z-10 px-6 pt-16 pb-20 max-w-5xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full border border-cyan-500/30 bg-cyan-500/5">
           <Zap className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-xs font-semibold text-cyan-300 tracking-wide">MIA INTELLIGENCE // ONLINE</span>
+          <span className="text-xs font-semibold text-cyan-300 tracking-[0.18em]">MIA // SECURE INVESTIGATION TERMINAL // ONLINE</span>
         </div>
         <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight">
-          The Investigation OS for
+          INVESTIGATOR COMMAND TERMINAL FOR
           <br />
           <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            Fraud, Crypto & Cybercrime
+            FRAUD // CRYPTO // CYBERCRIME
           </span>
         </h2>
         <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
-          Manage the full lifecycle of fraud and cybercrime investigations — evidence, blockchain traces, entity graphs, findings, risk, and investigator-ready reports — in one secure, multi-tenant platform. No fabricated data. Ever.
+          A case-centric intelligence operating system for planning investigations, collecting evidence, correlating entities, tracing blockchain activity, validating findings, assessing risk, and producing auditable dossiers. Intelligence is traceable. Evidence is reviewable. No fabricated data. Ever.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
@@ -132,9 +133,7 @@ export default function PublicLanding() {
             Sign In
           </button>
         </div>
-        <p className="mt-4 text-xs text-slate-500">
-          Sign in with email &amp; password or Google — choose what works for you.
-        </p>
+        <p className="mt-4 text-[11px] text-slate-600 tracking-wide">AUTHENTICATED ACCESS // EMAIL + PASSWORD OR GOOGLE // TENANT-ISOLATED WORKSPACE</p>
       </section>
 
       {/* Stats */}
@@ -152,8 +151,8 @@ export default function PublicLanding() {
       {/* Features */}
       <section className="relative z-10 px-6 pb-20 max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-white">Everything an investigator needs</h3>
-          <p className="mt-3 text-slate-400">One platform. Real engine. Honest results.</p>
+          <h3 className="text-3xl font-bold text-white tracking-tight">INVESTIGATION SYSTEMS</h3>
+          <p className="mt-3 text-slate-500 font-mono text-xs uppercase tracking-widest">Live case intelligence // evidence // analysis // reporting</p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f) => {
@@ -182,8 +181,8 @@ export default function PublicLanding() {
             <Bot className="w-3.5 h-3.5 text-purple-400" />
             <span className="text-xs font-semibold text-purple-300 tracking-wide">SAFENESTT INTELLIGENCE TEAM</span>
           </div>
-          <h3 className="text-3xl font-bold text-white">Six specialized AI agents. One intelligence platform.</h3>
-          <p className="mt-3 text-slate-400 max-w-2xl mx-auto">Each agent has a defined role inside the investigation workflow. They work together while evidence, provenance, and investigator review remain at the center.</p>
+          <h3 className="text-3xl font-bold text-white tracking-tight">MIA INTELLIGENCE // SPECIALIZED AGENTS</h3>
+          <p className="mt-3 text-slate-500 max-w-2xl mx-auto text-sm">Six coordinated intelligence roles operate inside the investigation workflow. Agent output remains attributable to evidence, provenance, and investigator review.</p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {AI_AGENTS.map((agent, index) => {
@@ -215,8 +214,8 @@ export default function PublicLanding() {
       <section className="relative z-10 px-6 pb-20 max-w-6xl mx-auto">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 md:p-10">
           <div className="text-center mb-10">
-            <h3 className="text-3xl font-bold text-white">The investigation workflow</h3>
-            <p className="mt-3 text-slate-400">From target to dossier, every stage is designed to keep intelligence traceable and reviewable.</p>
+            <h3 className="text-3xl font-bold text-white tracking-tight">CASE EXECUTION PIPELINE</h3>
+            <p className="mt-3 text-slate-500 text-sm">TARGET → PLAN → COLLECT → ANALYZE → REALITY CHECK → RISK → DOSSIER. Every stage leaves an auditable trail.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {["Planning", "Evidence", "Analysis", "Reality Check", "Risk", "Dossier"].map((phase, index) => (
@@ -232,7 +231,7 @@ export default function PublicLanding() {
       {/* Principles */}
       <section className="relative z-10 px-6 pb-20 max-w-4xl mx-auto">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
-          <h3 className="text-2xl font-bold text-white text-center">Built on evidence, not invention</h3>
+          <h3 className="text-2xl font-bold text-white text-center tracking-tight">EVIDENCE // PROVENANCE // HUMAN REVIEW</h3>
           <div className="mt-8 grid md:grid-cols-3 gap-6">
             {[
               "No fabricated findings, wallets, or relationships",
@@ -266,7 +265,7 @@ export default function PublicLanding() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <ShieldCheck className="w-4 h-4 text-cyan-500/70" />
-            <span>SafeNestT — Multi-Tenant Investigation Operating System</span>
+            <span>SAFENESTT // MULTI-TENANT INVESTIGATION OPERATING SYSTEM // MIA TERMINAL</span>
           </div>
           <div className="flex items-center gap-5 text-xs text-slate-500">
             <Link to="/TermsAndConditions" className="hover:text-cyan-400 transition-colors">Terms</Link>
