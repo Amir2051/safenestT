@@ -3,7 +3,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, ScanSearch, Wallet, FileLock2, Network, FileText,
-  ArrowRight, Lock, Zap, BarChart3, CheckCircle2,
+  ArrowRight, Lock, Zap, BarChart3, CheckCircle2, BrainCircuit,
+  Radar, Eye, GitBranch, Bot,
 } from "lucide-react";
 
 const FEATURES = [
@@ -47,9 +48,18 @@ const FEATURES = [
 
 const STATS = [
   { value: "6", label: "Investigation phases" },
-  { value: "1", label: "Unified case OS" },
+  { value: "6", label: "Specialized AI agents" },
   { value: "∞", label: "Multi-tenant cases" },
   { value: "100%", label: "Auditable lineage" },
+];
+
+const AI_AGENTS = [
+  { icon: BrainCircuit, name: "Mia", role: "Intelligence & Investigator Assistant", desc: "Your investigator-facing intelligence assistant for navigating cases, findings, evidence, and the SafeNestT investigation workflow.", accent: "cyan" },
+  { icon: ShieldCheck, name: "Aegis", role: "Security & Threat Defense", desc: "Analyzes security signals and threat intelligence to help investigators understand defensive risk and emerging cyber threats.", accent: "purple" },
+  { icon: Radar, name: "Orion", role: "OSINT & Digital Intelligence", desc: "Coordinates open-source intelligence across digital footprints, domains, IP addresses, and other investigation targets.", accent: "cyan" },
+  { icon: Eye, name: "Nyx", role: "Identity & Exposure Intelligence", desc: "Focuses on identity signals, exposure indicators, and digital-risk intelligence that can support an investigation.", accent: "purple" },
+  { icon: Wallet, name: "Vanta", role: "Fraud & Financial Intelligence", desc: "Specializes in fraud analysis, cryptocurrency investigations, wallet intelligence, transactions, and fund-flow analysis.", accent: "cyan" },
+  { icon: GitBranch, name: "Nova", role: "Evidence Correlation & Risk Analysis", desc: "Connects evidence, findings, entities, relationships, provenance, and deterministic risk into an investigator-ready picture.", accent: "purple" },
 ];
 
 const accentMap = {
@@ -104,7 +114,7 @@ export default function PublicLanding() {
           </span>
         </h2>
         <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
-          Manage the full lifecycle of fraud cases — evidence, blockchain traces, entity graphs, findings, and court-ready reports — in one secure, multi-tenant platform. No fabricated data. Ever.
+          Manage the full lifecycle of fraud and cybercrime investigations — evidence, blockchain traces, entity graphs, findings, risk, and investigator-ready reports — in one secure, multi-tenant platform. No fabricated data. Ever.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
@@ -165,10 +175,64 @@ export default function PublicLanding() {
         </div>
       </section>
 
-      {/* Principles */}
+      {/* AI Intelligence Team */}
+      <section className="relative z-10 px-6 pb-20 max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full border border-purple-500/30 bg-purple-500/5">
+            <Bot className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-xs font-semibold text-purple-300 tracking-wide">SAFENESTT INTELLIGENCE TEAM</span>
+          </div>
+          <h3 className="text-3xl font-bold text-white">Six specialized AI agents. One intelligence platform.</h3>
+          <p className="mt-3 text-slate-400 max-w-2xl mx-auto">Each agent has a defined role inside the investigation workflow. They work together while evidence, provenance, and investigator review remain at the center.</p>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {AI_AGENTS.map((agent, index) => {
+            const a = accentMap[agent.accent];
+            const Icon = agent.icon;
+            return (
+              <div
+                key={agent.name}
+                className={"group rounded-2xl border " + a.ring + " bg-slate-900/40 p-6 hover:bg-slate-900/60 transition-all shadow-lg " + a.glow + (index === 0 ? " ring-1 ring-cyan-400/20" : "")}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className={"w-12 h-12 rounded-xl " + a.bg + " " + a.ring + " border flex items-center justify-center"}>
+                    <Icon className={"w-6 h-6 " + a.text} />
+                  </div>
+                  {index === 0 && (
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-cyan-400 border border-cyan-500/20 rounded-full px-2 py-1">Lead</span>
+                  )}
+                </div>
+                <h4 className="mt-5 text-xl font-bold text-white">{agent.name}</h4>
+                <p className={"mt-1 text-sm font-medium " + a.text}>{agent.role}</p>
+                <p className="mt-3 text-sm text-slate-400 leading-relaxed">{agent.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Investigation Workflow */}
+      <section className="relative z-10 px-6 pb-20 max-w-6xl mx-auto">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 md:p-10">
+          <div className="text-center mb-10">
+            <h3 className="text-3xl font-bold text-white">The investigation workflow</h3>
+            <p className="mt-3 text-slate-400">From target to dossier, every stage is designed to keep intelligence traceable and reviewable.</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            {["Planning", "Evidence", "Analysis", "Reality Check", "Risk", "Dossier"].map((phase, index) => (
+              <div key={phase} className="relative rounded-xl border border-slate-800 bg-black/30 p-4 text-center">
+                <div className="mx-auto w-8 h-8 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 flex items-center justify-center text-xs font-bold">{index + 1}</div>
+                <div className="mt-3 text-xs font-semibold text-slate-200">{phase}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Principles */
       <section className="relative z-10 px-6 pb-20 max-w-4xl mx-auto">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
-          <h3 className="text-2xl font-bold text-white text-center">Built on honesty</h3>
+          <h3 className="text-2xl font-bold text-white text-center">Built on evidence, not invention</h3>
           <div className="mt-8 grid md:grid-cols-3 gap-6">
             {[
               "No fabricated findings, wallets, or relationships",
@@ -202,7 +266,7 @@ export default function PublicLanding() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <ShieldCheck className="w-4 h-4 text-cyan-500/70" />
-            <span>SafeNestT — Investigation Operating System</span>
+            <span>SafeNestT — Multi-Tenant Investigation Operating System</span>
           </div>
           <div className="flex items-center gap-5 text-xs text-slate-500">
             <Link to="/TermsAndConditions" className="hover:text-cyan-400 transition-colors">Terms</Link>
