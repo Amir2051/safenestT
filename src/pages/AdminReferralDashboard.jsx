@@ -59,14 +59,6 @@ export default function AdminReferralDashboard() {
   const completedReferrals = referrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
   const conversionRate = totalClicks > 0 ? ((completedReferrals / totalClicks) * 100).toFixed(1) : 0;
 
-  const titleProtectionRefs = referrals.filter(r => 
-    r.referral_source === 'title_protection' || r.completion_action === 'property_added'
-  ).length;
-
-  const legalSupportRefs = referrals.filter(r => 
-    r.referral_source === 'legal_support' || r.completion_action === 'legal_consultation'
-  ).length;
-
   const totalCreditsIssued = referrals
     .filter(r => r.bonus_granted)
     .reduce((sum, r) => sum + (r.bonus_value || 0), 0);
@@ -78,8 +70,6 @@ export default function AdminReferralDashboard() {
       name: u.full_name,
       email: u.email,
       total: u.referral_stats.completed_referrals,
-      property: u.referral_stats.property_referrals || 0,
-      legal: u.referral_stats.legal_referrals || 0,
       credits: u.referral_stats.total_credits_earned || 0,
       tier: u.referral_tier
     }))
@@ -106,9 +96,7 @@ export default function AdminReferralDashboard() {
 
   // Service breakdown
   const serviceData = [
-    { name: 'Title Protection', value: titleProtectionRefs, color: '#06b6d4' },
-    { name: 'Legal Support', value: legalSupportRefs, color: '#a855f7' },
-    { name: 'Other', value: totalReferrals - titleProtectionRefs - legalSupportRefs, color: '#6b7280' }
+    { name: 'Referrals', value: totalReferrals, color: '#06b6d4' }
   ];
 
   return (
@@ -195,22 +183,10 @@ export default function AdminReferralDashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              <div className="text-center p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                <Home className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
-                <p className="text-sm font-bold text-white">{titleProtectionRefs}</p>
-                <p className="text-xs text-gray-400">Title Protection</p>
-              </div>
-              <div className="text-center p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                <Scale className="w-5 h-5 text-purple-400 mx-auto mb-1" />
-                <p className="text-sm font-bold text-white">{legalSupportRefs}</p>
-                <p className="text-xs text-gray-400">Legal Support</p>
-              </div>
-              <div className="text-center p-3 bg-gray-500/10 rounded-lg border border-gray-500/20">
-                <Users className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                <p className="text-sm font-bold text-white">{totalReferrals - titleProtectionRefs - legalSupportRefs}</p>
-                <p className="text-xs text-gray-400">Other</p>
-              </div>
+            <div className="text-center p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/20 mt-4">
+              <Users className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
+              <p className="text-sm font-bold text-white">{totalReferrals}</p>
+              <p className="text-xs text-gray-400">Total Referrals</p>
             </div>
           </CardContent>
         </Card>
@@ -283,14 +259,7 @@ export default function AdminReferralDashboard() {
                   <div className="text-right">
                     <p className="text-2xl font-bold text-white">{referrer.total}</p>
                     <p className="text-xs text-gray-400">{referrer.credits} credits</p>
-                    <div className="flex gap-2 mt-1">
-                      <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs">
-                        🏠 {referrer.property}
-                      </Badge>
-                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 border text-xs">
-                        ⚖️ {referrer.legal}
-                      </Badge>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -320,12 +289,8 @@ export default function AdminReferralDashboard() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-white font-mono">{click.referral_code}</span>
-                    <Badge className={
-                      click.referral_source === 'title_protection' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs'
-                        : 'bg-purple-500/20 text-purple-400 border-purple-500/50 border text-xs'
-                    }>
-                      {click.referral_source === 'title_protection' ? '🏠' : '⚖️'}
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs">
+                      {click.referral_source || 'referral'}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-gray-400">
@@ -370,14 +335,8 @@ export default function AdminReferralDashboard() {
                   </div>
                   <p className="text-gray-400 mb-1">{ref.referred_email}</p>
                   <div className="flex items-center gap-2">
-                    <Badge className={
-                      ref.referral_source === 'title_protection' || ref.completion_action === 'property_added'
-                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs'
-                        : 'bg-purple-500/20 text-purple-400 border-purple-500/50 border text-xs'
-                    }>
-                      {ref.referral_source === 'title_protection' || ref.completion_action === 'property_added' 
-                        ? '🏠 Title' 
-                        : '⚖️ Legal'}
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 border text-xs">
+                      {ref.referral_source || 'referral'}
                     </Badge>
                     {ref.bonus_granted && (
                       <Badge className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">

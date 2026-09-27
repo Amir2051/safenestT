@@ -60,8 +60,6 @@ import RightsCenter from './pages/RightsCenter.jsx';
 import SecureVault from './pages/SecureVault.jsx';
 import PrivacyComingSoon from './pages/PrivacyComingSoon.jsx';
 import AcceptableUsePolicy from './pages/AcceptableUsePolicy';
-import DeedFraudProtection from './pages/DeedFraudProtection';
-import AdminDeedFraud from './pages/AdminDeedFraud';
 import AccessDenied from './pages/AccessDenied';
 import Achievements from './pages/Achievements';
 import Activity from './pages/Activity';
@@ -69,7 +67,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminInvestigation from './pages/AdminInvestigation';
 import AdminInvestmentMonitor from './pages/AdminInvestmentMonitor';
 import AdminInvites from './pages/AdminInvites';
-import AdminMonitoringDashboard from './pages/AdminMonitoringDashboard';
 import AdminReferralDashboard from './pages/AdminReferralDashboard';
 import AdminReferrals from './pages/AdminReferrals';
 import AdminReports from './pages/AdminReports';
@@ -81,13 +78,11 @@ import AdvancedSecurity from './pages/AdvancedSecurity';
 import AgenciesDirectory from './pages/AgenciesDirectory';
 import Alerts from './pages/Alerts';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
-import AttorneyTasks from './pages/AttorneyTasks';
 import AutoProtection from './pages/AutoProtection';
 import Billing from './pages/Billing';
 import CaseDocumentManager from './pages/CaseDocumentManager';
 import Cases from './pages/Cases';
 import ClientProtection from './pages/ClientProtection';
-import Collaboration from './pages/Collaboration';
 import CompanyProfile from './pages/CompanyProfile';
 import CreditCardMonitor from './pages/CreditCardMonitor';
 import CreditMonitor from './pages/CreditMonitor';
@@ -114,8 +109,6 @@ import InvestigationHub from './pages/InvestigationHub';
 import InvestigatorDashboard from './pages/InvestigatorDashboard';
 import InvestmentCheckout from './pages/InvestmentCheckout';
 import LawEnforcementAccess from './pages/LawEnforcementAccess';
-import LegalAssistant from './pages/LegalAssistant';
-import LegalSupport from './pages/LegalSupport';
 import LiveIntelligence from './pages/LiveIntelligence';
 import MediaDashboard from './pages/MediaDashboard';
 import MediaDirectorAI from './pages/MediaDirectorAI';
@@ -147,13 +140,11 @@ import SubscriptionRequired from './pages/SubscriptionRequired';
 import Support from './pages/Support';
 import TermsAndConditions from './pages/TermsAndConditions';
 import ThreatIntelligence from './pages/ThreatIntelligence';
-import TitleProtection from './pages/TitleProtection';
 import TrackingPage from './pages/TrackingPage';
 import USCybercrimeResources from './pages/USCybercrimeResources';
 import Upgrade from './pages/Upgrade';
 import VerifiedHub from './pages/VerifiedHub';
 import VictimPortal from './pages/VictimPortal';
-import ViewAlerts from './pages/ViewAlerts';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
 import __Layout from './Layout.jsx';
 
@@ -172,8 +163,6 @@ export const PAGES = {
     "SecureVault": SecureVault,
     "PrivacyComingSoon": PrivacyComingSoon,
     "AcceptableUsePolicy": AcceptableUsePolicy,
-    "DeedFraudProtection": DeedFraudProtection,
-    "AdminDeedFraud": AdminDeedFraud,
     "AccessDenied": AccessDenied,
     "Achievements": Achievements,
     "Activity": Activity,
@@ -181,7 +170,6 @@ export const PAGES = {
     "AdminInvestigation": AdminInvestigation,
     "AdminInvestmentMonitor": AdminInvestmentMonitor,
     "AdminInvites": AdminInvites,
-    "AdminMonitoringDashboard": AdminMonitoringDashboard,
     "AdminReferralDashboard": AdminReferralDashboard,
     "AdminReferrals": AdminReferrals,
     "AdminReports": AdminReports,
@@ -193,13 +181,11 @@ export const PAGES = {
     "AgenciesDirectory": AgenciesDirectory,
     "Alerts": Alerts,
     "AnalyticsDashboard": AnalyticsDashboard,
-    "AttorneyTasks": AttorneyTasks,
     "AutoProtection": AutoProtection,
     "Billing": Billing,
     "CaseDocumentManager": CaseDocumentManager,
     "Cases": Cases,
     "ClientProtection": ClientProtection,
-    "Collaboration": Collaboration,
     "CompanyProfile": CompanyProfile,
     "CreditCardMonitor": CreditCardMonitor,
     "CreditMonitor": CreditMonitor,
@@ -226,8 +212,6 @@ export const PAGES = {
     "InvestigatorDashboard": InvestigatorDashboard,
     "InvestmentCheckout": InvestmentCheckout,
     "LawEnforcementAccess": LawEnforcementAccess,
-    "LegalAssistant": LegalAssistant,
-    "LegalSupport": LegalSupport,
     "LiveIntelligence": LiveIntelligence,
     "MediaDashboard": MediaDashboard,
     "MediaDirectorAI": MediaDirectorAI,
@@ -259,13 +243,11 @@ export const PAGES = {
     "Support": Support,
     "TermsAndConditions": TermsAndConditions,
     "ThreatIntelligence": ThreatIntelligence,
-    "TitleProtection": TitleProtection,
     "TrackingPage": TrackingPage,
     "USCybercrimeResources": USCybercrimeResources,
     "Upgrade": Upgrade,
     "VerifiedHub": VerifiedHub,
     "VictimPortal": VictimPortal,
-    "ViewAlerts": ViewAlerts,
     "WelcomeOnboarding": WelcomeOnboarding,
 }
 
