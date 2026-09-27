@@ -271,14 +271,14 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className={`${widthCls} h-full min-h-screen bg-black/95 backdrop-blur-xl border-r border-cyan-500/20 flex flex-col relative transition-[width] duration-200`}
+      className={`${widthCls} h-full min-h-screen bg-[#06090d] border-r border-slate-700/60 flex flex-col relative transition-[width] duration-200`}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/10 via-transparent to-purple-950/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/20 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative z-10 flex flex-col h-full min-h-screen px-3 py-4">
         {/* Header / brand + collapse toggle */}
         <div className="flex items-center gap-2 px-1 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shrink-0 border border-cyan-400/40 shadow-lg shadow-cyan-500/30">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 border border-cyan-500/40">
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>

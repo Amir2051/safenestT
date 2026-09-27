@@ -9,6 +9,8 @@ import ReferralCodeHandler from "./components/shared/ReferralCodeHandler.jsx";
 import RealTimeReferralUpdates from "./components/shared/RealTimeReferralUpdates.jsx";
 import FuturisticSidebar from "./components/navigation/FuturisticSidebar.jsx";
 import MobileBottomNav from "./components/navigation/MobileBottomNav.jsx";
+import CommandHeader from "@/components/investigation-shell/CommandHeader.jsx";
+import MobileCommandNav from "@/components/investigation-shell/MobileCommandNav.jsx";
 import ProfileCompletionPopup from "./components/popups/ProfileCompletionPopup.jsx";
 import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
@@ -257,86 +259,19 @@ export default function Layout({ children, currentPageName }) {
         </AnimatePresence>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative overflow-hidden min-h-screen">
+        <main className="flex-1 flex flex-col bg-[#05080b] relative overflow-hidden min-h-screen ic-grid-bg">
           {/* Ambient glow */}
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/[0.04] rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/[0.04] rounded-full blur-[120px]" />
           </div>
 
-          {/* Header */}
-          <header
-            className="relative z-10 bg-black/40 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between"
-            style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))', userSelect: 'none' }}
-          >
-            <div className="flex items-center gap-3">
-              {currentPageName !== 'Dashboard' ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => window.history.back()}
-                    aria-label="Go back"
-                    className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-cyan-400" />
-                  </button>
-                  <button
-                    onClick={handleMenuOpen}
-                    aria-label="Open navigation menu"
-                    className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
-                  >
-                    <Menu className="w-5 h-5 text-cyan-400" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowMenuButton(true)}
-                  aria-label="Show navigation menu"
-                  className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-cyan-500/10 transition-colors"
-                >
-                  <Menu className="w-5 h-5 text-cyan-400" />
-                </button>
-              )}
-
-              {userLoading ? (
-                <HeaderSkeleton />
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/30">
-                  <img
-                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/690cdf897b59e44d278ad008/f1f9f692a_AQPdYUAcWfSxcbl5WH1P7SHWzE69TPlSNmOOjFqmImtFnSve6HFjkZH2apvzXZjK2y6qEy-eyKZh-UhbfbQkKebhM9nYOpiVBMjjOkG5bcl67Qn9pdXC5KgkKkF0yVNx.jpeg"
-                    alt="SafeNestT logo"
-                    className="w-8 h-8 rounded object-contain"
-                  />
-                  <div>
-                    <h1 className="text-white font-bold text-sm tracking-wider">SafeNestT</h1>
-                    <p className="text-cyan-400 text-[10px] font-mono">// SECURED //</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
+          {/* Command Header */}
+          <CommandHeader user={user} onMenuOpen={handleMenuOpen} onLogout={handleLogout} />
+          <div className="relative z-10 bg-[#06090d]/70 border-b border-slate-800/60 px-3 sm:px-4 h-10 flex items-center justify-between gap-2">
             <Breadcrumb />
-
-            <div className="flex items-center gap-4">
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-500/50" aria-hidden="true" />
-                <span className="text-xs font-bold text-green-400 tracking-wide">LIVE</span>
-              </div>
-
-              {!userLoading && user?.risk_score !== undefined && (
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
-                  <span className="text-xs text-gray-400">SCORE</span>
-                  <span className={`text-sm font-bold ${
-                    user.risk_score >= 80 ? 'text-green-400' :
-                    user.risk_score >= 60 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
-                    {user.risk_score}
-                  </span>
-                </div>
-              )}
-
-              <NotificationCenter />
-            </div>
-          </header>
+            <NotificationCenter />
+          </div>
 
           {/* Page Content */}
           <div
@@ -369,7 +304,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </main>
 
-        {!user?.is_admin && user?.role !== 'admin' && <MobileBottomNav user={user} />}
+        {!user?.is_admin && user?.role !== 'admin' && <MobileCommandNav user={user} />}
       </div>
 
       <style>{`

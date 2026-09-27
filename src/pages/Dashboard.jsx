@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Home, Sparkles, Clock, RefreshCw
+  Shield, AlertTriangle, ChevronRight, ShieldCheck, Gift, Users, Sparkles, Clock, RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -18,7 +17,6 @@ import QuickActionsGrid from "../components/dashboard/QuickActionsGrid.jsx";
 import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "@/components/dashboard/MiaQuickChat.jsx";
 import InvestigatorCommandCenter from "@/components/dashboard/InvestigatorCommandCenter.jsx";
-import { data as safeData } from "@/lib/safenestData";
 import ContactSection from "../components/shared/ContactSection.jsx";
 import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
@@ -26,6 +24,12 @@ import GettingStartedChecklist from "../components/onboarding/GettingStartedChec
 import UserDetailsCard from "../components/dashboard/UserDetailsCard.jsx";
 import MyCasesWidget from "../components/dashboard/MyCasesWidget.jsx";
 import MessageNotifications from "../components/communication/MessageNotifications.jsx";
+
+import { Panel, MetricStat, SectionLabel } from "@/components/investigation-shell/panelPrimitives";
+import AgentGrid from "@/components/investigation-shell/AgentGrid";
+import { ThreatIntelPanel } from "@/components/investigation-shell/IntelPanels";
+import AuditPanel from "@/components/investigation-shell/AuditPanel";
+import RiskPanel from "@/components/investigation-shell/RiskPanel";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -49,7 +53,6 @@ export default function Dashboard() {
     refetchInterval: false
   });
 
-  // Send email notification for new alerts not yet emailed
   const notifiedAlertIds = React.useRef(new Set(JSON.parse(localStorage.getItem('snt_notified_alerts') || '[]')));
 
   useEffect(() => {
@@ -138,24 +141,23 @@ export default function Dashboard() {
       return response.data;
     },
     enabled: !!user,
-    staleTime: 120000, // 2 minutes
-    refetchInterval: false // Disable polling
+    staleTime: 120000,
+    refetchInterval: false
   });
 
   useEffect(() => {
     let isMounted = true;
-    
+
     base44.auth.me().then(async (userData) => {
       if (!isMounted) return;
       setUser(userData);
-      
-      // Initialize trial if needed - ONCE ONLY
+
       if (!userData.trial_started && userData.subscription_plan !== 'basic' && userData.subscription_plan !== 'elite') {
         try {
           await base44.functions.invoke('subscriptionService', {
             endpoint: 'init-trial'
           });
-          
+
           if (!isMounted) return;
           const updatedUser = await base44.auth.me();
           setUser(updatedUser);
@@ -163,29 +165,28 @@ export default function Dashboard() {
           console.error('Failed to init trial:', error);
         }
       }
-      
-      // Check in streak - ONCE PER DAY
+
       const today = new Date().toISOString().split('T')[0];
       const lastCheckIn = userData.last_check_in?.split('T')[0];
-      
+
       if (lastCheckIn !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
-        
+
         let newStreak = 1;
         if (lastCheckIn === yesterdayStr) {
           newStreak = (userData.check_in_streak || 0) + 1;
         }
-        
-        await base44.auth.updateMe({ 
+
+        await base44.auth.updateMe({
           last_check_in: new Date().toISOString(),
           check_in_streak: newStreak
         });
-        
+
         if (!isMounted) return;
-        setUser(prev => ({ 
-          ...prev, 
+        setUser(prev => ({
+          ...prev,
           last_check_in: new Date().toISOString(),
           check_in_streak: newStreak
         }));
@@ -195,7 +196,7 @@ export default function Dashboard() {
         }
       }
     }).catch(() => {});
-    
+
     return () => {
       isMounted = false;
     };
@@ -224,10 +225,10 @@ export default function Dashboard() {
 
   const handleTouchMove = (e) => {
     if (!isPulling.current) return;
-    
+
     const currentY = e.touches[0].clientY;
     const diff = currentY - startY.current;
-    
+
     if (diff > 0 && diff < 120) {
       pullY.set(diff);
     }
@@ -246,26 +247,26 @@ export default function Dashboard() {
     setScanning(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       let score = 100;
-      
+
       score -= alerts.filter(a => a.severity === 'critical').length * 10;
       score -= alerts.filter(a => a.severity === 'high').length * 5;
       score -= alerts.filter(a => a.severity === 'medium').length * 2;
-      
+
       const weakPasswords = passwords.filter(p => p.password_strength === 'weak');
       score -= weakPasswords.length * 3;
-      
+
       if (!user?.vpn_enabled) score -= 5;
       if (!user?.two_factor_enabled) score -= 10;
-      
+
       score = Math.max(0, Math.min(100, score));
-      
-      await base44.auth.updateMe({ 
+
+      await base44.auth.updateMe({
         risk_score: score,
         last_scan_date: new Date().toISOString()
       });
-      
+
       setUser(prev => ({ ...prev, risk_score: score, last_scan_date: new Date().toISOString() }));
 
       toast.success('Security scan completed!');
@@ -279,7 +280,7 @@ export default function Dashboard() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400" />
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-cyan-500/30 border-t-cyan-400" />
       </div>
     );
   }
@@ -287,7 +288,7 @@ export default function Dashboard() {
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const isPremium = user?.subscription_plan === 'basic' || user?.subscription_plan === 'elite';
   const isActive = user?.subscription_status === 'active';
-  
+
   const myReferrals = referrals.filter(r => r.referrer_email === user.email);
   const completedReferrals = myReferrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
   const pendingReferrals = myReferrals.filter(r => r.status === 'pending').length;
@@ -296,18 +297,20 @@ export default function Dashboard() {
   const criticalTitleAlerts = titleAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
   const atRiskProperties = properties.filter(p => (p.title_security_score || 100) < 70).length;
 
+  const securityScore = user.risk_score ?? 0;
+
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="p-6 lg:p-8 space-y-6"
+      className="p-3 sm:p-4 lg:p-5 space-y-4 font-sans"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Pull-to-Refresh Indicator */}
+      {/* Pull-to-refresh */}
       <motion.div
         style={{ y: pullY, opacity: pullProgress }}
-        className="fixed top-20 left-1/2 -translate-x-1/2 z-50 lg:hidden"
+        className="fixed top-16 left-1/2 -translate-x-1/2 z-50 lg:hidden"
       >
         <motion.div
           animate={{ rotate: isRefreshing ? 360 : 0 }}
@@ -318,346 +321,282 @@ export default function Dashboard() {
         </motion.div>
       </motion.div>
 
-      {/* Real-time message notifications */}
       <MessageNotifications user={user} />
-      
-      {/* Dashboard Header */}
-      <Card className="bg-gradient-to-br from-[#111b27] via-[#0f1720] to-[#0a1018] border-cyan-500/20 overflow-hidden relative">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <CardContent className="p-6 lg:p-7 relative">
-          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  SECURITY OPERATIONS
-                </span>
-                <span className="text-xs text-gray-500 font-mono hidden sm:inline">MIA ENGINE ONLINE</span>
-              </div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-white flex items-center gap-3">
-                Welcome back, {user.full_name?.split(' ')[0] || 'there'}
-                <span className="text-2xl">👋</span>
-              </h1>
-              <p className="text-gray-400 mt-2">
-                Your SafeNestT security command center • Last scan: <LiveClock />
-              </p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="hidden sm:block px-4 py-2.5 rounded-xl bg-black/30 border border-white/10">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500">Protection</p>
-                <p className="text-sm font-semibold text-green-400 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> Active
-                </p>
-              </div>
-              <Button
-                onClick={runSecurityScan}
-                disabled={scanning}
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold shadow-lg shadow-cyan-500/20"
-              >
-                {scanning ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Scanning...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Run Security Scan
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Getting Started Checklist - Show for new users */}
+      {/* ── Command strip ─────────────────────────────────────────────── */}
+      <div className="rounded-md border border-slate-700/60 bg-[#06090d] ic-grid-bg px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-mono font-bold tracking-wider text-slate-100 leading-none">
+              SAFENESTT // MIA <span className="text-slate-600">·</span> INVESTIGATION OPERATIONS
+            </p>
+            <p className="text-[10px] font-mono text-cyan-500/80 tracking-wider mt-1">
+              Welcome, {user.full_name?.split(' ')[0] || 'Operator'} · Last sync <LiveClock />
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            className="border-slate-700/60 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            Sync
+          </Button>
+          <Button
+            onClick={runSecurityScan}
+            disabled={scanning}
+            size="sm"
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold"
+          >
+            {scanning ? (
+              <>
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white mr-1.5" />
+                Scanning
+              </>
+            ) : (
+              <>
+                <Shield className="w-3.5 h-3.5 mr-1.5" />
+                Run Scan
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Top metrics (real-derived) ────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricStat label="Active Alerts" value={alerts.length} tone="amber" hint="requires attention" />
+        <MetricStat label="Critical" value={criticalAlerts} tone="red" hint="immediate action" />
+        <MetricStat label="Security Score" value={securityScore} tone={securityScore >= 80 ? "green" : securityScore >= 60 ? "amber" : "red"} hint={securityScore >= 80 ? "healthy" : "review"} />
+        <MetricStat label="Check-in Streak" value={user.check_in_streak || 0} tone="cyan" hint="days" />
+      </div>
+
+      {/* Onboarding checklist */}
       {user && !user.onboarding_completed && (
         <GettingStartedChecklist user={user} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['user'] })} />
       )}
 
-      {/* Subscription Status Banner */}
+      {/* Subscription status */}
       {subscriptionInfo && (
-        <Card className={`bg-gradient-to-r ${
-          subscriptionInfo.subscription_plan === 'elite' ? 'from-purple-500/10 to-pink-500/10 border-purple-500/30' :
-          subscriptionInfo.subscription_plan === 'basic' ? 'from-blue-500/10 to-cyan-500/10 border-blue-500/30' :
-          subscriptionInfo.is_trial_active ? 'from-cyan-500/10 to-blue-500/10 border-cyan-500/30' :
-          'from-gray-500/10 to-gray-600/10 border-gray-500/30'
+        <div className={`rounded-md border px-4 py-3 ${
+          subscriptionInfo.subscription_plan === 'elite' ? 'border-fuchsia-500/30 bg-fuchsia-500/5' :
+          subscriptionInfo.subscription_plan === 'basic' ? 'border-blue-500/30 bg-blue-500/5' :
+          subscriptionInfo.is_trial_active ? 'border-cyan-500/30 bg-cyan-500/5' :
+          'border-slate-700/60 bg-slate-800/20'
         }`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  subscriptionInfo.subscription_plan === 'elite' ? 'bg-gradient-to-br from-purple-500 to-pink-500' :
-                  subscriptionInfo.subscription_plan === 'basic' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' :
-                  'bg-gradient-to-br from-gray-500 to-gray-600'
-                }`}>
-                  {subscriptionInfo.subscription_plan === 'elite' || subscriptionInfo.subscription_plan === 'basic' ? (
-                    <Sparkles className="w-6 h-6 text-white" />
-                  ) : (
-                    <Clock className="w-6 h-6 text-white" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-white font-bold text-lg capitalize">
-                      {subscriptionInfo.subscription_plan === 'elite' ? 'Elite Plan' :
-                       subscriptionInfo.subscription_plan === 'basic' ? 'Basic Plan' :
-                       subscriptionInfo.is_trial_active ? '14-Day Free Trial' : 'Free Plan'}
-                    </h3>
-                    {subscriptionInfo.subscription_status === 'active' && (
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className={`text-sm ${
-                    subscriptionInfo.subscription_plan === 'elite' ? 'text-purple-300' :
-                    subscriptionInfo.subscription_plan === 'basic' ? 'text-blue-300' :
-                    'text-cyan-300'
-                  }`}>
-                    {subscriptionInfo.is_trial_active ? (
-                      <>🎁 {subscriptionInfo.days_left} days remaining in your free trial</>
-                    ) : subscriptionInfo.subscription_plan === 'elite' ? (
-                      <>✨ Multi-device • Advanced protection • Priority support</>
-                    ) : subscriptionInfo.subscription_plan === 'basic' ? (
-                      <>🛡️ Full protection • Single device • Priority support</>
-                    ) : (
-                      <>Start your 14-day free trial today</>
-                    )}
-                  </p>
-                </div>
-              </div>
-              {!subscriptionInfo.has_payment_method && subscriptionInfo.is_trial_active && (
-                <Link to={createPageUrl("Subscription")}>
-                  <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
-                    Subscribe Now
-                  </Button>
-                </Link>
-              )}
-              {(!subscriptionInfo.subscription_plan || subscriptionInfo.subscription_plan === 'free') && !subscriptionInfo.is_trial_active && (
-                <Link to={createPageUrl("Upgrade")}>
-                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Start Free Trial
-                  </Button>
-                </Link>
-              )}
-              {subscriptionInfo.subscription_plan === 'basic' && (
-                <Link to={createPageUrl("Upgrade")}>
-                  <Button variant="outline" className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
-                    Upgrade to Elite
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* OWASP Protection Banner */}
-      <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl" />
-        <CardContent className="p-6 relative">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center">
-                <ShieldCheck className="w-8 h-8 text-green-400 animate-pulse" />
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-md flex items-center justify-center ${
+                subscriptionInfo.subscription_plan === 'elite' ? 'bg-gradient-to-br from-fuchsia-500 to-pink-500' :
+                subscriptionInfo.subscription_plan === 'basic' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' :
+                'bg-gradient-to-br from-slate-600 to-slate-700'
+              }`}>
+                {subscriptionInfo.subscription_plan === 'elite' || subscriptionInfo.subscription_plan === 'basic' ? (
+                  <Sparkles className="w-5 h-5 text-white" />
+                ) : (
+                  <Clock className="w-5 h-5 text-white" />
+                )}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-1">
-                  🛡️ OWASP Top 10 + MSTG Protection Active
-                </h3>
-                <p className="text-green-300 text-sm">
-                  Backend & Mobile security • Real-time defense • 100% coverage • 0 threats blocked today
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-slate-100 font-bold text-base capitalize">
+                    {subscriptionInfo.subscription_plan === 'elite' ? 'Elite Plan' :
+                     subscriptionInfo.subscription_plan === 'basic' ? 'Basic Plan' :
+                     subscriptionInfo.is_trial_active ? '14-Day Free Trial' : 'Free Plan'}
+                  </h3>
+                  {subscriptionInfo.subscription_status === 'active' && (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">Active</Badge>
+                  )}
+                </div>
+                <p className={`text-[12px] ${
+                  subscriptionInfo.subscription_plan === 'elite' ? 'text-fuchsia-300' :
+                  subscriptionInfo.subscription_plan === 'basic' ? 'text-blue-300' : 'text-cyan-300'
+                }`}>
+                  {subscriptionInfo.is_trial_active
+                    ? `${subscriptionInfo.days_left} days remaining in free trial`
+                    : subscriptionInfo.subscription_plan === 'elite'
+                      ? 'Multi-device · Advanced protection · Priority support'
+                      : subscriptionInfo.subscription_plan === 'basic'
+                        ? 'Full protection · Single device · Priority support'
+                        : 'Start your 14-day free trial today'}
                 </p>
               </div>
             </div>
-            <Link to={createPageUrl("SecurityDashboard")}>
-              <Button className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/50">
-                <ShieldCheck className="w-4 h-4 mr-2" />
-                View Security Dashboard
+            {!subscriptionInfo.has_payment_method && subscriptionInfo.is_trial_active && (
+              <Link to={createPageUrl("Subscription")}>
+                <Button size="sm" className="bg-gradient-to-r from-cyan-500 to-blue-600">Subscribe</Button>
+              </Link>
+            )}
+            {(!subscriptionInfo.subscription_plan || subscriptionInfo.subscription_plan === 'free') && !subscriptionInfo.is_trial_active && (
+              <Link to={createPageUrl("Upgrade")}>
+                <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-pink-500">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Start Trial
+                </Button>
+              </Link>
+            )}
+            {subscriptionInfo.subscription_plan === 'basic' && (
+              <Link to={createPageUrl("Upgrade")}>
+                <Button size="sm" variant="outline" className="border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10">
+                  Upgrade
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Critical alert banner */}
+      {criticalAlerts > 0 && (
+        <div className="rounded-md border border-red-500/40 bg-red-500/5 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-500/15 rounded-md flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-slate-100 font-semibold text-sm">
+                {criticalAlerts} Critical Alert{criticalAlerts > 1 ? 's' : ''} Require Immediate Attention
+              </p>
+              <p className="text-red-300 text-xs">Your identity may be at risk</p>
+            </div>
+          </div>
+          <Link to={createPageUrl("Alerts")}>
+            <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
+              View <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Title protection alert */}
+      {properties.length > 0 && (criticalTitleAlerts > 0 || atRiskProperties > 0) && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-500/15 rounded-md flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-slate-100 font-semibold text-sm">
+                Title Protection: {criticalTitleAlerts > 0
+                  ? `${criticalTitleAlerts} Critical Alert${criticalTitleAlerts > 1 ? 's' : ''}`
+                  : `${atRiskProperties} Propert${atRiskProperties > 1 ? 'ies' : 'y'} At Risk`}
+              </p>
+              <p className="text-amber-300 text-xs">
+                {criticalTitleAlerts > 0 ? 'Suspicious property filings detected' : 'Low Title Security Score'}
+              </p>
+            </div>
+          </div>
+          <Link to={createPageUrl(criticalTitleAlerts > 0 ? "ViewAlerts" : "TitleProtection")}>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black">Review</Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Referral CTA */}
+      {myReferrals.length < 3 && (
+        <div className="rounded-md border border-fuchsia-500/30 bg-fuchsia-500/5 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-md bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center">
+              <Gift className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-slate-100 font-bold text-sm">Earn Free Premium by Referring</h3>
+              <p className="text-fuchsia-300 text-xs">1 month premium per friend who signs up — unlimited rewards.</p>
+            </div>
+          </div>
+          <Link to={createPageUrl("Referrals")}>
+            <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-pink-500">
+              <Gift className="w-3.5 h-3.5 mr-1.5" /> Start Referring
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Referral stats */}
+      {myReferrals.length > 0 && (
+        <Panel title="Referral Performance" bodyClass="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-slate-100 font-bold text-sm flex items-center gap-2">
+              <Users className="w-4 h-4 text-fuchsia-400" /> Your Referrals
+            </h3>
+            <Link to={createPageUrl("Referrals")}>
+              <Button variant="outline" size="sm" className="border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/10">
+                Details
               </Button>
             </Link>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Title Protection Alert */}
-      {properties.length > 0 && (criticalTitleAlerts > 0 || atRiskProperties > 0) && (
-        <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                  <Home className="w-6 h-6 text-orange-400 animate-pulse" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold">
-                    🏠 Title Protection: {criticalTitleAlerts > 0 
-                      ? `${criticalTitleAlerts} Critical Alert${criticalTitleAlerts > 1 ? 's' : ''}`
-                      : `${atRiskProperties} Propert${atRiskProperties > 1 ? 'ies' : 'y'} At Risk`}
-                  </p>
-                  <p className="text-orange-300 text-sm">
-                    {criticalTitleAlerts > 0 
-                      ? 'Suspicious property filings detected'
-                      : 'Low Title Security Score - review recommended'}
-                  </p>
-                </div>
-              </div>
-              <Link to={createPageUrl(criticalTitleAlerts > 0 ? "ViewAlerts" : "TitleProtection")}>
-                <Button className="bg-orange-500 hover:bg-orange-600">
-                  {criticalTitleAlerts > 0 ? 'View Alerts' : 'Review Properties'}
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricStat label="Total Sent" value={myReferrals.length} tone="slate" />
+            <MetricStat label="Completed" value={completedReferrals} tone="green" />
+            <MetricStat label="Pending" value={pendingReferrals} tone="amber" />
+            <MetricStat label="Months Earned" value={bonusMonthsEarned} tone="cyan" />
+          </div>
+        </Panel>
       )}
 
-      {/* Critical Alert Banner */}
-      {criticalAlerts > 0 && (
-        <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
-              </div>
-              <div>
-                <p className="text-white font-semibold">
-                  {criticalAlerts} Critical Alert{criticalAlerts > 1 ? 's' : ''} Require Immediate Attention
-                </p>
-                <p className="text-red-300 text-sm">Your identity may be at risk</p>
-              </div>
-            </div>
-            <Link to={createPageUrl("Alerts")}>
-              <Button variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
-                View Alerts <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Referral Program CTA */}
-      {myReferrals.length < 3 && (
-        <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Gift className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
-                    🎁 Earn FREE Premium by Referring Friends!
-                  </h3>
-                  <p className="text-purple-300 text-sm">
-                    Get 1 month premium for each friend who signs up. Unlimited rewards!
-                  </p>
-                </div>
-              </div>
-              <Link to={createPageUrl("Referrals")}>
-                <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-                  <Gift className="w-4 h-4 mr-2" />
-                  Start Referring
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Referral Stats Card */}
-      {myReferrals.length > 0 && (
-        <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-purple-500/20">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                <Users className="w-5 h-5 text-purple-400" />
-                Your Referral Performance
-              </h3>
-              <Link to={createPageUrl("Referrals")}>
-                <Button variant="outline" size="sm" className="border-purple-500/20 text-purple-400 hover:bg-purple-500/10">
-                  View Details
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-purple-500/10">
-                <p className="text-2xl font-bold text-white mb-1">{myReferrals.length}</p>
-                <p className="text-xs text-gray-400">Total Sent</p>
-              </div>
-              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-green-500/10">
-                <p className="text-2xl font-bold text-green-400 mb-1">{completedReferrals}</p>
-                <p className="text-xs text-gray-400">Completed</p>
-              </div>
-              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-yellow-500/10">
-                <p className="text-2xl font-bold text-yellow-400 mb-1">{pendingReferrals}</p>
-                <p className="text-xs text-gray-400">Pending</p>
-              </div>
-              <div className="text-center p-3 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                <p className="text-2xl font-bold text-cyan-400 mb-1">{bonusMonthsEarned}</p>
-                <p className="text-xs text-gray-400">Months Earned</p>
-              </div>
-            </div>
-
-            {bonusMonthsEarned > 0 && (
-              <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <p className="text-green-400 text-sm text-center">
-                  🎉 You've earned {bonusMonthsEarned} month{bonusMonthsEarned > 1 ? 's' : ''} of premium worth ${(bonusMonthsEarned * 9.99).toFixed(2)}!
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* AI Investigator Command Center — populated from local real-shaped data layer */}
-      <InvestigatorCommandCenter />
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          <SecurityScoreCard 
-            score={user.risk_score || 85} 
-            alerts={alerts}
-            passwords={passwords}
-            user={user}
-          />
-          
-          <QuickActionsGrid 
-            user={user}
-            alerts={alerts}
-            passwords={passwords}
-          />
+      {/* ── Multi-panel operational grid ──────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* LEFT — live investigation activity */}
+        <div className="lg:col-span-5 space-y-4">
+          <SectionLabel>Live Investigation Activity</SectionLabel>
+          <RecentAlertsCard alerts={alerts} isLoading={alertsLoading} />
+          <AuditPanel />
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          <UserDetailsCard 
-            user={user} 
-            onUpdate={() => base44.auth.me().then(setUser)} 
-          />
-          <MyCasesWidget user={user} />
-          <VPNControl user={user} />
-          <RecentAlertsCard alerts={alerts} isLoading={alertsLoading} />
+        {/* CENTER — case risk overview */}
+        <div className="lg:col-span-4 space-y-4">
+          <SectionLabel>Case Risk Overview</SectionLabel>
+          <SecurityScoreCard score={securityScore} alerts={alerts} passwords={passwords} user={user} />
+          <RiskPanel score={securityScore} title="RISK ANALYSIS" />
+        </div>
+
+        {/* RIGHT — AI agent status */}
+        <div className="lg:col-span-3 space-y-4">
+          <SectionLabel>AI Agent Status</SectionLabel>
           <MiaQuickChat user={user} />
+          <AgentGrid simulated />
         </div>
       </div>
 
-      {/* Contact Section */}
+      {/* ── Investigator command center (real local data) ─────────────── */}
+      <div className="space-y-3">
+        <SectionLabel>Investigator Command Center</SectionLabel>
+        <InvestigatorCommandCenter />
+      </div>
+
+      {/* ── Recent investigations ─────────────────────────────────────── */}
+      <div className="space-y-3">
+        <SectionLabel>Recent Investigations</SectionLabel>
+        <MyCasesWidget user={user} />
+      </div>
+
+      {/* ── Evidence queue + threat intelligence ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <SectionLabel>Evidence Queue</SectionLabel>
+          <QuickActionsGrid user={user} alerts={alerts} passwords={passwords} />
+        </div>
+        <div className="space-y-3">
+          <SectionLabel>Threat Intelligence</SectionLabel>
+          <ThreatIntelPanel simulated />
+        </div>
+      </div>
+
+      {/* ── Account row ───────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <UserDetailsCard user={user} onUpdate={() => base44.auth.me().then(setUser)} />
+        <VPNControl user={user} />
+      </div>
+
       <ContactSection />
 
-      {/* Upgrade Prompt Modal */}
       {showUpgradePrompt && (user?.subscription_plan === 'free' || user?.subscription_plan === 'trial') && (
-        <UpgradePrompt
-          feature="premium protection"
-          onClose={() => setShowUpgradePrompt(false)}
-        />
+        <UpgradePrompt feature="premium protection" onClose={() => setShowUpgradePrompt(false)} />
       )}
     </div>
   );
