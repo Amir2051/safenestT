@@ -29,7 +29,6 @@ const ROUTE_MAP = {
   "/AdminInvites": { section: "Admin", label: "Invite Manager" },
   "/AdminReports": { section: "Admin", label: "Reports & KPIs" },
   "/AdminSubscriptions": { section: "Admin", label: "Subscriptions" },
-  "/AdminDeedFraud": { section: "Admin", label: "Deed Fraud Cases" },
   "/UserExport": { section: "Admin", label: "Export Users" },
 };
 

@@ -31,10 +31,10 @@ import ClientAuthorizations from './pages/ClientAuthorizations';
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
   'AdminDashboard', 'AdminInvestigation',
-  'AdminInvites', 'AdminMonitoringDashboard', 'AdminReferralDashboard',
+  'AdminInvites', 'AdminReferralDashboard',
   'AdminReferrals', 'AdminReports', 'AdminSubscriptions', 'AdminSupport',
   'AdminUserApprovals',
-  'AdminDeedFraud', 'Cases', 'InvestigationDashboard', 'InvestigatorDashboard',
+  'Cases', 'InvestigationDashboard', 'InvestigatorDashboard',
 ]);
 
 const { Pages, Layout, mainPage } = pagesConfig;

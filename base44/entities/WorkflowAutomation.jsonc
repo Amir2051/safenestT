@@ -9,25 +9,23 @@
     "trigger_type": {
       "type": "string",
       "enum": [
-        "critical_alert_detected",
-        "document_status_changed",
-        "attorney_message_sent",
-        "attorney_document_updated",
-        "consultation_approved",
-        "property_locked",
-        "alert_resolved"
+        "auto_assign_cases",
+        "case_status_law_enforcement",
+        "priority_escalation",
+        "recovery_amount_updated",
+        "check_case_inactivity"
       ],
       "description": "What triggered the automation"
     },
     "action_type": {
       "type": "string",
       "enum": [
-        "create_document",
         "assign_task",
         "send_email",
         "send_notification",
-        "create_workspace",
-        "update_status"
+        "update_status",
+        "generate_report",
+        "create_task"
       ],
       "description": "Action performed"
     },
@@ -37,7 +35,7 @@
     },
     "trigger_entity_type": {
       "type": "string",
-      "description": "Type of entity (TitleAlert, CollaborativeDocument, etc.)"
+      "description": "Type of entity that triggered automation"
     },
     "result_entity_id": {
       "type": "string",
@@ -68,23 +66,6 @@
     },
     "execution_details": {
       "type": "object",
-      "properties": {
-        "user_email": {
-          "type": "string"
-        },
-        "workspace_id": {
-          "type": "string"
-        },
-        "document_name": {
-          "type": "string"
-        },
-        "task_id": {
-          "type": "string"
-        },
-        "notification_sent": {
-          "type": "boolean"
-        }
-      },
       "description": "Details about execution"
     }
   },

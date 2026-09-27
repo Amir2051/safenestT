@@ -113,24 +113,6 @@ export default function Dashboard() {
     refetchInterval: false
   });
 
-  const { data: properties = [] } = useQuery({
-    queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.list('-created_date'),
-    enabled: !!user,
-    initialData: [],
-    staleTime: 60000,
-    refetchInterval: false
-  });
-
-  const { data: titleAlerts = [] } = useQuery({
-    queryKey: ['title-alerts'],
-    queryFn: () => base44.entities.TitleAlert.list('-alert_date', 10),
-    enabled: !!user,
-    initialData: [],
-    staleTime: 60000,
-    refetchInterval: false
-  });
-
   const { data: subscriptionInfo } = useQuery({
     queryKey: ['subscription-info'],
     queryFn: async () => {
@@ -291,9 +273,6 @@ export default function Dashboard() {
   const completedReferrals = myReferrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
   const pendingReferrals = myReferrals.filter(r => r.status === 'pending').length;
   const bonusMonthsEarned = completedReferrals;
-
-  const criticalTitleAlerts = titleAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
-  const atRiskProperties = properties.filter(p => (p.title_security_score || 100) < 70).length;
 
   const securityScore = user.risk_score ?? 0;
 
@@ -464,30 +443,6 @@ export default function Dashboard() {
             <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
               View <ChevronRight className="w-3.5 h-3.5 ml-1" />
             </Button>
-          </Link>
-        </div>
-      )}
-
-      {/* Title protection alert */}
-      {properties.length > 0 && (criticalTitleAlerts > 0 || atRiskProperties > 0) && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-amber-500/15 rounded-md flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-slate-100 font-semibold text-sm">
-                Title Protection: {criticalTitleAlerts > 0
-                  ? `${criticalTitleAlerts} Critical Alert${criticalTitleAlerts > 1 ? 's' : ''}`
-                  : `${atRiskProperties} Propert${atRiskProperties > 1 ? 'ies' : 'y'} At Risk`}
-              </p>
-              <p className="text-amber-300 text-xs">
-                {criticalTitleAlerts > 0 ? 'Suspicious property filings detected' : 'Low Title Security Score'}
-              </p>
-            </div>
-          </div>
-          <Link to={createPageUrl(criticalTitleAlerts > 0 ? "ViewAlerts" : "TitleProtection")}>
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black">Review</Button>
           </Link>
         </div>
       )}

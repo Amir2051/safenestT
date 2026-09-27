@@ -15,7 +15,6 @@ import { toast } from "sonner";
  * Props:
  *  - caseId: string (required)
  *  - legacyFiles: array of {name, url, type, uploaded_date} (optional, from case record)
- *  - deedFraudDocuments: array of {name, url, type, uploaded_at} (optional, from DeedFraudCase.documents)
  *  - allowUpload: bool (default false)
  *  - onUploadComplete: callback
  *  - compact: bool (default false)
@@ -23,7 +22,6 @@ import { toast } from "sonner";
 export default function EvidenceFilesPanel({
   caseId,
   legacyFiles = [],
-  deedFraudDocuments = [],
   allowUpload = false,
   onUploadComplete,
   compact = false
@@ -58,20 +56,6 @@ export default function EvidenceFilesPanel({
       }
     }
 
-    // 2. DeedFraudCase.documents array
-    for (const d of deedFraudDocuments) {
-      if (d.url && !seen.has(d.url)) {
-        seen.add(d.url);
-        merged.push({
-          name: d.name || "Document",
-          url: d.url,
-          type: d.type || "",
-          date: d.uploaded_at || d.uploaded_date,
-          source: "deed"
-        });
-      }
-    }
-
     // 3. Legacy evidence_files array on case
     for (const f of legacyFiles) {
       if (f.url && !seen.has(f.url)) {
@@ -87,7 +71,7 @@ export default function EvidenceFilesPanel({
     }
 
     return merged;
-  }, [evidenceRecords, legacyFiles, deedFraudDocuments]);
+  }, [evidenceRecords, legacyFiles]);
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
