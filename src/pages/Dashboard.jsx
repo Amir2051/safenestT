@@ -18,7 +18,6 @@ import RecentAlertsCard from "../components/dashboard/RecentAlertsCard.jsx";
 import MiaQuickChat from "@/components/dashboard/MiaQuickChat.jsx";
 import InvestigatorCommandCenter from "@/components/dashboard/InvestigatorCommandCenter.jsx";
 import ContactSection from "../components/shared/ContactSection.jsx";
-import VPNControl from "../components/dashboard/VPNControl.jsx";
 import UpgradePrompt from "../components/shared/UpgradePrompt.jsx";
 import GettingStartedChecklist from "../components/onboarding/GettingStartedChecklist.jsx";
 import UserDetailsCard from "../components/dashboard/UserDetailsCard.jsx";
@@ -257,7 +256,6 @@ export default function Dashboard() {
       const weakPasswords = passwords.filter(p => p.password_strength === 'weak');
       score -= weakPasswords.length * 3;
 
-      if (!user?.vpn_enabled) score -= 5;
       if (!user?.two_factor_enabled) score -= 10;
 
       score = Math.max(0, Math.min(100, score));
@@ -588,10 +586,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Account row ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <UserDetailsCard user={user} onUpdate={() => base44.auth.me().then(setUser)} />
-        <VPNControl user={user} />
-      </div>
+      <UserDetailsCard user={user} onUpdate={() => base44.auth.me().then(setUser)} />
 
       <ContactSection />
 

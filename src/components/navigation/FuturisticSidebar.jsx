@@ -91,7 +91,6 @@ const USER_SECTIONS = [
     items: [
       { id: "my-cases", label: "My Cases", icon: Briefcase, path: "/MyCases", glow: "cyan" },
       { id: "report-scam", label: "Report a Scam", icon: ShieldAlert, path: "/ReportScam", glow: "red" },
-      { id: "vpn", label: "VPN Protection", icon: ShieldCheck, path: "/VPNPage", glow: "emerald", badge: "VPN" },
       { id: "my-auth", label: "My Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
     ],
   },
@@ -205,7 +204,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         { id: "analytics", label: "Analytics", icon: TrendingUp, path: "/AdminReports", glow: "blue" },
         { id: "subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
         { id: "monitoring", label: "Monitoring", icon: Server, path: "/AdminMonitoringDashboard", glow: "red" },
-        { id: "vpn-servers", label: "VPN Servers", icon: ShieldCheck, path: "/AdminVPNServers", glow: "blue" },
         { id: "deed-fraud", label: "Deed Fraud", icon: HomeIcon, path: "/AdminDeedFraud", glow: "amber" },
         { id: "user-export", label: "User Export", icon: FileBarChart, path: "/UserExport", glow: "cyan" },
         { id: "admin-support", label: "Support Queue", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },

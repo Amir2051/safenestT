@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 import {
-  CheckCircle, Circle, Lock, Smartphone, Wifi, Shield, User, ChevronRight, Sparkles
+  CheckCircle, Circle, Lock, Smartphone, Shield, User, ChevronRight, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -37,14 +37,6 @@ const checklistItems = [
     color: 'text-green-400'
   },
   {
-    id: 'vpn_connected',
-    title: 'Connect to VPN',
-    description: 'Protect your browsing with secure VPN',
-    icon: Wifi,
-    url: 'VPNPage',
-    color: 'text-indigo-400'
-  },
-  {
     id: 'two_factor_enabled',
     title: 'Enable Two-Factor Auth',
     description: 'Add an extra layer of account security',
@@ -59,7 +51,6 @@ export default function GettingStartedChecklist({ user, onUpdate }) {
     profile_completed: false,
     password_added: false,
     device_scanned: false,
-    vpn_connected: false,
     two_factor_enabled: false
   });
 
@@ -68,7 +59,6 @@ export default function GettingStartedChecklist({ user, onUpdate }) {
       profile_completed: !!(user?.username && user?.phone),
       password_added: user?.onboarding_checklist?.password_added || false,
       device_scanned: !!(user?.last_scan_date),
-      vpn_connected: user?.vpn_enabled || false,
       two_factor_enabled: user?.two_factor_enabled || false
     };
     

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Settings as SettingsIcon, Shield, User, Bell, Lock, 
-  Wifi, Mail, Phone, Calendar, CreditCard, Save, Loader2, AlertTriangle
+  Mail, Phone, Calendar, CreditCard, Save, Loader2, AlertTriangle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -40,7 +40,6 @@ export default function Settings() {
     wallet_address: '',
     profile_image: '',
     monitored_emails: [],
-    vpn_enabled: false,
     two_factor_enabled: false,
   });
 
@@ -57,7 +56,6 @@ export default function Settings() {
         wallet_address: userData.wallet_address || '',
         profile_image: userData.profile_image || '',
         monitored_emails: userData.monitored_emails || [],
-        vpn_enabled: userData.vpn_enabled || false,
         two_factor_enabled: userData.two_factor_enabled || false,
       });
     }).catch(() => {});
@@ -87,22 +85,6 @@ export default function Settings() {
       const result = response.data.user;
       
       const changes = [];
-      if (user && data.vpn_enabled !== user.vpn_enabled) { // Added user check
-        changes.push(`VPN ${data.vpn_enabled ? 'enabled' : 'disabled'}`);
-        
-        await base44.entities.AuditLog.create({
-          action_type: data.vpn_enabled ? 'vpn_enabled' : 'vpn_disabled',
-          action_category: 'settings',
-          description: `VPN protection ${data.vpn_enabled ? 'enabled' : 'disabled'} in settings`,
-          metadata: {
-            previous_value: user.vpn_enabled ? 'enabled' : 'disabled',
-            new_value: data.vpn_enabled ? 'enabled' : 'disabled'
-          },
-          severity: 'info',
-          status: 'success'
-        });
-      }
-      
       if (user && data.two_factor_enabled !== user.two_factor_enabled) { // Added user check
         changes.push(`2FA ${data.two_factor_enabled ? 'enabled' : 'disabled'}`);
         
@@ -156,7 +138,6 @@ export default function Settings() {
         wallet_address: updatedUser.wallet_address || '',
         profile_image: updatedUser.profile_image || '',
         monitored_emails: updatedUser.monitored_emails || [],
-        vpn_enabled: updatedUser.vpn_enabled || false,
         two_factor_enabled: updatedUser.two_factor_enabled || false,
       });
       queryClient.invalidateQueries({ queryKey: ['user'] });
@@ -529,7 +510,6 @@ export default function Settings() {
                   username: user.username || user.full_name || '',
                   phone: user.phone || '',
                   monitored_emails: user.monitored_emails || [],
-                  vpn_enabled: user.vpn_enabled || false,
                   two_factor_enabled: user.two_factor_enabled || false,
                 });
               }}
@@ -568,28 +548,6 @@ export default function Settings() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                    <Wifi className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold">VPN Protection</p>
-                    <p className="text-xs text-gray-400">Secure your internet connection</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${formData.vpn_enabled ? 'text-green-400' : 'text-gray-500'}`}>
-                    {formData.vpn_enabled ? 'ON' : 'OFF'}
-                  </span>
-                  <Switch
-                    checked={formData.vpn_enabled}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, vpn_enabled: checked }))}
-                    className="data-[state=checked]:bg-green-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                     <Lock className="w-5 h-5 text-white" />
                   </div>
@@ -616,7 +574,7 @@ export default function Settings() {
                   <div>
                     <p className="text-sm font-semibold text-yellow-400 mb-1">Security Recommendation</p>
                     <p className="text-xs text-gray-300">
-                      Enable both VPN and 2FA to maximize your security score and protect your data
+                      Enable 2FA to maximize your security score and protect your data
                     </p>
                   </div>
                 </div>
@@ -634,7 +592,6 @@ export default function Settings() {
                   username: user.username || user.full_name || '',
                   phone: user.phone || '',
                   monitored_emails: user.monitored_emails || [],
-                  vpn_enabled: user.vpn_enabled || false,
                   two_factor_enabled: user.two_factor_enabled || false,
                 });
               }}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Lock, Bell, FileText, Bot, Shield, Scan, Wifi, Globe } from 'lucide-react';
+import { Lock, Bell, FileText, Bot, Shield, Scan } from 'lucide-react';
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -30,22 +30,6 @@ export default function QuickActionsGrid({ user, alerts, passwords }) {
       color: 'from-green-500 to-emerald-500',
       url: createPageUrl('DeviceCare'),
       glow: 'shadow-green-500/20'
-    },
-    {
-      title: 'Web VPN',
-      description: 'Secure browsing',
-      icon: Globe,
-      color: 'from-cyan-500 to-blue-500',
-      url: createPageUrl('WebVPN'),
-      glow: 'shadow-cyan-500/20'
-    },
-    {
-      title: 'VPN Protection',
-      description: 'Full device VPN',
-      icon: Wifi,
-      color: 'from-indigo-500 to-purple-500',
-      url: createPageUrl('VPNPage'),
-      glow: 'shadow-indigo-500/20'
     },
     {
       title: 'Talk to Mia AI',

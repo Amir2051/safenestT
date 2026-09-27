@@ -119,7 +119,6 @@ export default function Upgrade() {
                   <li className="text-green-400">✅ Basic vault (10 items)</li>
                   <li className="text-green-400">✅ Optimization guide</li>
                   <li className="text-red-400">❌ Real-time monitoring</li>
-                  <li className="text-red-400">❌ VPN protection</li>
                   <li className="text-red-400">❌ Priority support</li>
                 </ul>
               </div>

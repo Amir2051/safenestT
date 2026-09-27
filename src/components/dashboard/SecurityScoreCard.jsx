@@ -90,7 +90,7 @@ export default function SecurityScoreCard({ score, alerts, passwords, user }) {
         </div>
 
         {/* Score Breakdown */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-[#0f1419] rounded-lg p-3 border border-cyan-500/20">
             <div className="text-xs text-gray-400 mb-1">Active Alerts</div>
             <div className="text-xl font-bold text-white">{alerts.length}</div>
@@ -111,13 +111,6 @@ export default function SecurityScoreCard({ score, alerts, passwords, user }) {
           </div>
           
           <div className="bg-[#0f1419] rounded-lg p-3 border border-cyan-500/20">
-            <div className="text-xs text-gray-400 mb-1">VPN Status</div>
-            <div className={`text-xl font-bold ${user?.vpn_enabled ? 'text-green-400' : 'text-red-400'}`}>
-              {user?.vpn_enabled ? 'ON' : 'OFF'}
-            </div>
-          </div>
-          
-          <div className="bg-[#0f1419] rounded-lg p-3 border border-cyan-500/20">
             <div className="text-xs text-gray-400 mb-1">2FA</div>
             <div className={`text-xl font-bold ${user?.two_factor_enabled ? 'text-green-400' : 'text-red-400'}`}>
               {user?.two_factor_enabled ? 'ON' : 'OFF'}
@@ -133,7 +126,6 @@ export default function SecurityScoreCard({ score, alerts, passwords, user }) {
               <div>
                 <p className="text-sm font-semibold text-yellow-400 mb-1">Quick Improvements</p>
                 <ul className="text-xs text-gray-300 space-y-1">
-                  {!user?.vpn_enabled && <li>• Enable VPN protection</li>}
                   {!user?.two_factor_enabled && <li>• Set up two-factor authentication</li>}
                   {weakPasswords > 0 && <li>• Update {weakPasswords} weak password{weakPasswords > 1 ? 's' : ''}</li>}
                   {criticalAlerts > 0 && <li>• Resolve {criticalAlerts} critical alert{criticalAlerts > 1 ? 's' : ''}</li>}

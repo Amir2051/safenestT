@@ -222,7 +222,6 @@ export default function Subscription() {
                     "Real-time scam detection & wallet monitoring",
                     "AI-powered security advisor (Mia)",
                     "Priority support & security updates",
-                    "Advanced VPN protection",
                     "Law enforcement report generation",
                     "Cancel anytime - no contracts"
                   ].map((feature, idx) => (
