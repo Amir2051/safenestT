@@ -30,11 +30,7 @@
     "referral_source": {
       "type": "string",
       "enum": [
-        "title_protection",
-        "legal_support",
-        "general",
-        "vpn",
-        "password_vault"
+        "general"
       ],
       "description": "Which service page was accessed"
     },

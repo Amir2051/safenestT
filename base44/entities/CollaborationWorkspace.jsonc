@@ -6,29 +6,21 @@
       "type": "string",
       "description": "Unique workspace identifier"
     },
-    "property_id": {
-      "type": "string",
-      "description": "Reference to Property entity"
-    },
-    "consultation_id": {
-      "type": "string",
-      "description": "Reference to AttorneyConsultation"
-    },
     "workspace_name": {
       "type": "string",
       "description": "Name of the workspace"
     },
     "owner_email": {
       "type": "string",
-      "description": "Property owner's email"
+      "description": "Workspace owner's email"
     },
     "attorney_email": {
       "type": "string",
-      "description": "Assigned attorney's email"
+      "description": "Assigned collaborator's email"
     },
     "attorney_name": {
       "type": "string",
-      "description": "Attorney's full name"
+      "description": "Collaborator's full name"
     },
     "status": {
       "type": "string",

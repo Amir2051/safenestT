@@ -21,11 +21,7 @@
     "referral_source": {
       "type": "string",
       "enum": [
-        "title_protection",
-        "legal_support",
-        "general",
-        "vpn",
-        "password_vault"
+        "general"
       ],
       "default": "general",
       "description": "What service the referral was for"
@@ -65,20 +61,10 @@
     "completion_action": {
       "type": "string",
       "enum": [
-        "property_added",
-        "legal_consultation",
         "vault_created",
         "subscription_purchased"
       ],
       "description": "Action that completed the referral"
-    },
-    "property_id": {
-      "type": "string",
-      "description": "Property ID if referral was for Title Protection"
-    },
-    "consultation_id": {
-      "type": "string",
-      "description": "Consultation ID if referral was for Legal Support"
     },
     "bonus_granted": {
       "type": "boolean",
@@ -140,14 +126,6 @@
     "referred_user_activity": {
       "type": "object",
       "properties": {
-        "properties_added": {
-          "type": "number",
-          "default": 0
-        },
-        "consultations_requested": {
-          "type": "number",
-          "default": 0
-        },
         "documents_uploaded": {
           "type": "number",
           "default": 0
