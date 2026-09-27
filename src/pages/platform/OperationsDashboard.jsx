@@ -53,10 +53,10 @@ export default function OperationsDashboard() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <main className="min-h-full bg-[#03070a] p-3 sm:p-5 lg:p-7 space-y-5 font-mono"><div className="max-w-[1600px] mx-auto space-y-5">
       <SectionHeader
-        title="Operations Dashboard"
-        description="Live overview of cases, evidence, and investigation activity — tenant-scoped, real data only."
+        title="MIA // INVESTIGATION OPERATIONS"
+        description="COMMAND CENTER // tenant-isolated // live case intelligence // evidence // findings // audit trail"
         icon={Gauge}
         actions={
           <div className="flex gap-2 flex-wrap">
@@ -69,13 +69,13 @@ export default function OperationsDashboard() {
 
       <EngineStatusBanner />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {stats.map((s) => <StatCard key={s.label} {...s} />)}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.75fr] gap-4">
         <div>
-          <SectionHeader title="Recent Activity" description="Latest audit events across all cases." icon={Activity}
+          <SectionHeader title="CASE ACTIVITY STREAM" description="Latest audit events across all cases." icon={Activity}
             actions={<Link to="/AuditLog"><Button variant="ghost" size="sm" className="text-cyan-400">View all</Button></Link>} />
           {auditLoading ? <EmptyState variant="loading" title="Loading activity…" /> : auditEvents.length === 0 ? (
             <EmptyState variant="empty" icon={ScrollText} title="No investigation activity yet" description="Investigator actions and AI run events appear here once investigations are performed." />
@@ -94,7 +94,7 @@ export default function OperationsDashboard() {
         </div>
 
         <div>
-          <SectionHeader title="Cases Requiring Attention" description="High-risk and active cases." icon={ShieldAlert}
+          <SectionHeader title="CASES REQUIRING ATTENTION" description="High-risk and active cases." icon={ShieldAlert}
             actions={<Link to="/CasesManagement"><Button variant="ghost" size="sm" className="text-cyan-400">View all</Button></Link>} />
           {casesLoading ? <EmptyState variant="loading" title="Loading cases…" /> : cases.length === 0 ? (
             <EmptyState variant="empty" icon={Briefcase} title="No cases yet" description="Create a case or import an existing SafeNestT case to begin an investigation."
