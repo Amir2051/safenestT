@@ -80,7 +80,7 @@ export default function OperationsDashboard() {
           {auditLoading ? <EmptyState variant="loading" title="Loading activity…" /> : auditEvents.length === 0 ? (
             <EmptyState variant="empty" icon={ScrollText} title="No investigation activity yet" description="Investigator actions and AI run events appear here once investigations are performed." />
           ) : (
-            <div className="rounded-lg border border-white/10 divide-y divide-white/5">
+            <div className="rounded-xl border border-white/10 bg-black/30 divide-y divide-white/5 overflow-hidden">
               {auditEvents.slice(0, 7).map((ev) => (
                 <div key={ev.id} className="flex items-center gap-3 p-3">
                   <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 text-[10px]">{ev.action?.replace(/_/g, " ")}</Badge>
@@ -111,11 +111,11 @@ export default function OperationsDashboard() {
       </div>
 
       <div>
-        <SectionHeader title="Recent Evidence" description="Latest uploaded evidence across all cases." icon={FileSearch} />
+        <SectionHeader title="EVIDENCE QUEUE" description="Latest uploaded artifacts across all cases." icon={FileSearch} />
         {evidenceLoading ? <EmptyState variant="loading" title="Loading evidence…" /> : evidenceItems.length === 0 ? (
           <EmptyState variant="empty" icon={FileSearch} title="No evidence uploaded yet" description="Evidence files will appear here once investigators upload them." />
         ) : (
-          <div className="rounded-lg border border-white/10 divide-y divide-white/5">
+          <div className="rounded-xl border border-white/10 bg-black/30 divide-y divide-white/5 overflow-hidden">
             {evidenceItems.slice(0, 6).map((e) => (
               <Link key={e.id} to={`/InvestigationWorkspace?case_id=${e.case_id}`} className="flex items-center gap-3 p-3 hover:bg-white/[0.02] transition-colors">
                 <FileText className="w-4 h-4 text-gray-500 shrink-0" />
@@ -131,6 +131,7 @@ export default function OperationsDashboard() {
         )}
       </div>
     </div>
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4"><div className="text-[10px] tracking-[0.16em] text-cyan-500/70">CASE EXECUTION // SIX PHASES</div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">{["Planning","Evidence","Analysis","Reality Check","Risk","Dossier"].map((phase,i) => <div key={phase} className="rounded-lg border border-white/8 bg-black/30 p-3"><span className="text-[9px] text-cyan-500/70">0{i+1}</span><p className="mt-1 text-xs text-slate-300">{phase}</p></div>)}</div></div></div></main>
   );
 }
 
