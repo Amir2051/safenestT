@@ -19,11 +19,6 @@ const tourSteps = [
     target: '[data-tour="vault"]',
     title: "Password Vault",
     description: "Store and manage all your passwords securely in one place."
-  },
-  {
-    target: '[data-tour="vpn"]',
-    title: "VPN Protection",
-    description: "Browse anonymously and protect your internet connection."
   }
 ];
 

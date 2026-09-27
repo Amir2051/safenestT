@@ -251,7 +251,7 @@ export default function Upgrade() {
                     <div className="text-center pt-4 border-t border-gray-700">
                       <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
                         <Lock className="w-4 h-4" />
-                        <span>Payments secured by Stripe • 30-day money-back guarantee</span>
+                        <span>Payments secured by Stripe • Cancel anytime</span>
                       </div>
                     </div>
                   </CardContent>
@@ -332,7 +332,7 @@ export default function Upgrade() {
             <div>
               <h4 className="text-white font-semibold mb-2">Do you offer refunds?</h4>
               <p className="text-gray-400 text-sm">
-                Yes! 30-day money-back guarantee. If you're not satisfied with premium features, contact support for a full refund.
+                Refunds are handled per our Refund Policy. You can cancel your subscription anytime from Billing.
               </p>
             </div>
             <div>

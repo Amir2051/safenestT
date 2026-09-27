@@ -404,9 +404,8 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <h3 className="text-slate-100 font-bold text-base capitalize">
-                    {subscriptionInfo.subscription_plan === 'elite' ? 'Elite Plan' :
-                     subscriptionInfo.subscription_plan === 'basic' ? 'Basic Plan' :
-                     subscriptionInfo.is_trial_active ? '14-Day Free Trial' : 'Free Plan'}
+                    {(subscriptionInfo.subscription_plan === 'elite' || subscriptionInfo.subscription_plan === 'basic') ? 'Premium Plan' :
+                     subscriptionInfo.is_trial_active ? '7-Day Free Trial' : 'Free Plan'}
                   </h3>
                   {subscriptionInfo.subscription_status === 'active' && (
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">Active</Badge>
@@ -418,11 +417,9 @@ export default function Dashboard() {
                 }`}>
                   {subscriptionInfo.is_trial_active
                     ? `${subscriptionInfo.days_left} days remaining in free trial`
-                    : subscriptionInfo.subscription_plan === 'elite'
-                      ? 'Multi-device · Advanced protection · Priority support'
-                      : subscriptionInfo.subscription_plan === 'basic'
-                        ? 'Full protection · Single device · Priority support'
-                        : 'Start your 14-day free trial today'}
+                    : (subscriptionInfo.subscription_plan === 'elite' || subscriptionInfo.subscription_plan === 'basic')
+                      ? 'Investigation, evidence & threat-intelligence tools'
+                      : 'Start your 7-day free trial today'}
                 </p>
               </div>
             </div>

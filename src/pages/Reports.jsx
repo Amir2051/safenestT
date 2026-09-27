@@ -54,7 +54,6 @@ export default function Reports() {
 - Total Alerts (30 days): ${recentAlerts.length}
 - Resolved Alerts: ${resolvedAlerts}
 - Active Alerts: ${recentAlerts.filter(a => a.status === 'active').length}
-- VPN Status: ${user?.vpn_enabled ? 'Enabled' : 'Disabled'}
 - 2FA Status: ${user?.two_factor_enabled ? 'Enabled' : 'Disabled'}
 
 Write a friendly 2-3 sentence summary of their security posture and progress.`;
@@ -65,7 +64,6 @@ Write a friendly 2-3 sentence summary of their security posture and progress.`;
 
       // Generate recommendations
       const recommendations = [];
-      if (!user?.vpn_enabled) recommendations.push("Enable VPN for enhanced privacy");
       if (!user?.two_factor_enabled) recommendations.push("Activate two-factor authentication");
       if (recentAlerts.filter(a => a.severity === 'critical' && a.status === 'active').length > 0) {
         recommendations.push("Address critical security alerts immediately");

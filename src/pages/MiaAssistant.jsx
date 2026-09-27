@@ -108,9 +108,8 @@ Current User Security Profile:
 • High Priority Alerts: ${alerts.filter(a => a.severity === 'high').length}
 • Saved Passwords: ${passwords.length}
 • Weak Passwords: ${passwords.filter(p => p.password_strength === 'weak' || p.password_strength === 'medium').length}
-• VPN Status: ${user?.vpn_enabled ? '✅ Enabled' : '❌ Disabled'}
 • 2FA Status: ${user?.two_factor_enabled ? '✅ Enabled' : '❌ Disabled'}
-• Subscription: ${user?.subscription_plan === 'elite' ? '✨ Elite' : user?.subscription_plan === 'basic' ? '💎 Basic' : '🆓 Free'}
+• Subscription: ${(user?.subscription_plan === 'elite' || user?.subscription_plan === 'basic') ? '✨ Premium' : '🆓 Free'}
 • Current Streak: ${user?.current_streak || 0} days
 • Level: ${user?.level || 1}
 

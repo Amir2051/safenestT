@@ -340,7 +340,7 @@ export default function SignalWatch() {
                   ⚠️ {suspiciousTowers} Suspicious Tower{suspiciousTowers > 1 ? 's' : ''} Detected
                 </p>
                 <p className="text-red-300 text-sm">
-                  Unverified towers nearby. Avoid sensitive transactions and enable VPN.
+                  Unverified towers nearby. Avoid sensitive transactions over untrusted connections.
                 </p>
               </div>
             </div>

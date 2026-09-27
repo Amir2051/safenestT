@@ -92,7 +92,6 @@ export default function Referrals() {
       `🛡️ Complete Cyber Protection\n` +
       `🔒 Identity Monitor - Dark web scanning\n` +
       `💰 Fraud Recovery Tools\n` +
-      `📱 VPN Protection - Secure browsing\n` +
       `🤖 AI Security Advisor\n\n` +
       `Plus: 1 MONTH FREE PREMIUM when you sign up!\n\n` +
       `Join now: https://safenestt.com?ref=${referralCode}\n\n` +

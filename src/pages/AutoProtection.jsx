@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Shield, Zap, Lock, Wifi, AlertTriangle, CheckCircle, 
+  Shield, Zap, Lock, AlertTriangle, CheckCircle,
   Clock, Bot, TrendingUp, Activity, Ban, Eye
 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import { toast } from "sonner";
 export default function AutoProtection() {
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState({
-    auto_vpn_enable: false,
     auto_2fa_enable: false,
     auto_password_fix: false,
     threat_blocking: false,
@@ -40,7 +39,6 @@ export default function AutoProtection() {
     base44.auth.me().then(userData => {
       setUser(userData);
       setSettings({
-        auto_vpn_enable: userData.auto_vpn_enable || false,
         auto_2fa_enable: userData.auto_2fa_enable || false,
         auto_password_fix: userData.auto_password_fix || false,
         threat_blocking: userData.threat_blocking || false,
@@ -170,20 +168,6 @@ export default function AutoProtection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
-              <div className="flex items-center gap-3 flex-1">
-                <Wifi className="w-5 h-5 text-green-400" />
-                <div>
-                  <p className="text-white font-semibold text-sm">Auto-Enable VPN</p>
-                  <p className="text-xs text-gray-400">Activate VPN on critical alerts</p>
-                </div>
-              </div>
-              <Switch
-                checked={settings.auto_vpn_enable}
-                onCheckedChange={(val) => toggleSetting('auto_vpn_enable', val)}
-              />
-            </div>
-
             <div className="flex items-center justify-between p-4 bg-[#0f1419] rounded-lg border border-cyan-500/10">
               <div className="flex items-center gap-3 flex-1">
                 <Lock className="w-5 h-5 text-purple-400" />

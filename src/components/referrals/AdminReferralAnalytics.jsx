@@ -53,7 +53,7 @@ export default function AdminReferralAnalytics({ referrals, users }) {
       .filter(r => r.bonus_granted)
       .reduce((sum, r) => sum + (r.bonus_months || 0), 0);
     
-    const bonusCost = totalBonusMonthsGranted * 9.99; // $9.99/month
+    const bonusCost = totalBonusMonthsGranted * 24.99; // $24.99/month
     const newUsersAcquired = completed;
     const avgLifetimeValue = 50; // Assuming $50 LTV per user
     const totalRevenue = newUsersAcquired * avgLifetimeValue;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -153,7 +152,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     category: 'advanced', 
     icon: '🌟', 
     points: 100, 
-    hint: 'Upgrade to Basic or Elite plan',
+    hint: 'Upgrade to Premium',
     taskType: 'navigate',
     taskAction: 'Upgrade',
     taskIcon: CreditCard,

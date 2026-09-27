@@ -262,15 +262,6 @@ export default function DeviceCare() {
         });
       }
 
-      if (user && !user.vpn_enabled) {
-        threats.push({
-          name: "VPN Protection Not Active",
-          severity: "medium",
-          type: "network",
-          action_taken: "flagged"
-        });
-      }
-
       // Check browser data size
       const totalKB = realBrowserData.totalSize / 1024;
       if (totalKB > 1000) {

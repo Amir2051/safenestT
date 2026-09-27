@@ -221,7 +221,7 @@ export default function PaymentSuccess() {
               <div>
                 <p className="text-gray-400 mb-1">Amount</p>
                 <p className="text-white font-semibold">
-                  {user.subscription_plan === 'basic' ? '$9.99' : '$14.99'}/month
+                  $24.99/month
                 </p>
               </div>
             </div>

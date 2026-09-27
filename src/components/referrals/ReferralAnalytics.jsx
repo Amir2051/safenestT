@@ -56,7 +56,7 @@ export default function ReferralAnalytics({ referrals, user }) {
     
     // Bonus earnings
     const totalBonusMonths = user?.referral_stats?.bonus_months_earned || 0;
-    const bonusValue = totalBonusMonths * 9.99; // Assuming $9.99/month
+    const bonusValue = totalBonusMonths * 24.99; // $24.99/month
     
     return {
       total,

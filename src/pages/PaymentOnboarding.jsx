@@ -136,11 +136,11 @@ export default function PaymentOnboarding() {
             <CardContent className="space-y-3">
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <span className="text-gray-300 text-sm">Complete identity protection</span>
+                <span className="text-gray-300 text-sm">Investigation & case management</span>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <span className="text-gray-300 text-sm">VPN & secure browsing</span>
+                <span className="text-gray-300 text-sm">Evidence & threat intelligence</span>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />

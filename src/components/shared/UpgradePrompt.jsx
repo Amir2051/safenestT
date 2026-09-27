@@ -73,7 +73,6 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
             <ul className="space-y-2 text-sm">
               <li className="text-gray-300">✅ Real-time breach monitoring</li>
               <li className="text-gray-300">✅ Unlimited vault storage</li>
-              <li className="text-gray-300">✅ VPN protection</li>
               <li className="text-gray-300">✅ Priority support</li>
             </ul>
           </div>
@@ -99,7 +98,7 @@ export default function UpgradePrompt({ feature, onClose, inline = false }) {
           </Link>
 
           <p className="text-center text-gray-500 text-xs mt-4">
-            14-day free trial • 30-day money-back guarantee • Cancel anytime
+            7-day free trial • Cancel anytime
           </p>
         </CardContent>
       </Card>
