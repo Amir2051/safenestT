@@ -138,7 +138,7 @@ export default function Onboarding() {
         onboarding_completed: true
       });
       
-      toast.success('Welcome to SafeNest! 🎉');
+      toast.success('Welcome to SafeNestT! 🎉');
       navigate(createPageUrl('Dashboard'));
     } catch (error) {
       console.error('Complete onboarding error:', error);
@@ -177,10 +177,10 @@ export default function Onboarding() {
             <Shield className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">
-            Welcome to SafeNest!
+            Welcome to SafeNestT!
           </h1>
           <p className="text-gray-400">
-            Let's get you started with world-class security
+            Let's get you started with Security Operations & Investigation Services
           </p>
         </div>
 
@@ -206,26 +206,26 @@ export default function Onboarding() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
                   <Shield className="w-8 h-8 text-cyan-400 mb-3" />
-                  <p className="text-white font-semibold mb-1">Title Protection</p>
-                  <p className="text-gray-400 text-sm">AI-powered property monitoring</p>
+                  <p className="text-white font-semibold mb-1">Investigations</p>
+                  <p className="text-gray-400 text-sm">Case-centric fraud & cyber investigations</p>
                 </div>
                 
                 <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
                   <Sparkles className="w-8 h-8 text-purple-400 mb-3" />
-                  <p className="text-white font-semibold mb-1">Legal AI Assistant</p>
-                  <p className="text-gray-400 text-sm">24/7 legal support</p>
+                  <p className="text-white font-semibold mb-1">Threat Intelligence</p>
+                  <p className="text-gray-400 text-sm">Scam, wallet & entity monitoring</p>
                 </div>
                 
                 <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
                   <CheckCircle className="w-8 h-8 text-green-400 mb-3" />
-                  <p className="text-white font-semibold mb-1">Identity Monitor</p>
-                  <p className="text-gray-400 text-sm">Dark web scanning</p>
+                  <p className="text-white font-semibold mb-1">MIA AI Assistant</p>
+                  <p className="text-gray-400 text-sm">AI-assisted investigation workflow</p>
                 </div>
               </div>
 
               <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
                 <p className="text-green-300 text-sm">
-                  ✅ <strong>All features are 100% FREE!</strong> No credit card required.
+                  ✅ <strong>Start with a 7-day free trial</strong> — no credit card required to begin.
                 </p>
               </div>
 

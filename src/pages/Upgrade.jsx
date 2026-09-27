@@ -73,18 +73,17 @@ export default function Upgrade() {
         <div className="text-center">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 px-4 py-2 rounded-full border border-cyan-500/30 mb-4">
             <Shield className="w-4 h-4 text-cyan-400" />
-            <span className="text-cyan-400 text-sm font-semibold">SafeNest Secure Plans</span>
+            <span className="text-cyan-400 text-sm font-semibold">SafeNestT — Security Operations & Investigation</span>
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            Choose Your Protection Level
+            SafeNestT Investigation Plans
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-6">
             Investigate fraud, manage evidence with provenance, and act on threat intelligence
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-1">🎁 14-Day Free Trial</span>
-            <span className="flex items-center gap-1">✅ 30-Day Money Back</span>
+            <span className="flex items-center gap-1">🎁 7-Day Free Trial</span>
             <span className="flex items-center gap-1">🔒 Secure via Stripe</span>
             <span className="flex items-center gap-1">❌ Cancel Anytime</span>
           </div>
@@ -127,7 +126,7 @@ export default function Upgrade() {
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 text-sm">
                     <Crown className="w-4 h-4 mr-1 inline" />
-                    ULTIMATE PROTECTION
+                    PREMIUM INVESTIGATION PLAN
                   </Badge>
                 </div>
                 <div className="text-center mb-6">
@@ -197,7 +196,7 @@ export default function Upgrade() {
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                       <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-2 text-md">
                         <Star className="w-4 h-4 mr-2" />
-                        ALL-IN-ONE SOLUTION
+                        INVESTIGATION PLATFORM
                       </Badge>
                     </div>
                   )}
@@ -244,7 +243,7 @@ export default function Upgrade() {
                       ) : (
                         <>
                           <CreditCard className="w-6 h-6 mr-3" />
-                          Get Full Protection Now
+                          Get Investigation Premium
                         </>
                       )}
                     </Button>
@@ -264,7 +263,7 @@ export default function Upgrade() {
 
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-cyan-500/20">
           <CardHeader>
-            <CardTitle className="text-white text-center">Why Upgrade to Premium?</CardTitle>
+            <CardTitle className="text-white text-center">Why SafeNestT Premium?</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -272,7 +271,7 @@ export default function Upgrade() {
                 <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                   <Zap className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-white font-semibold mb-2">Instant Protection</h3>
+                <h3 className="text-white font-semibold mb-2">Immediate Access</h3>
                 <p className="text-gray-400 text-sm">
                   Activate premium features immediately - no waiting
                 </p>
@@ -307,15 +306,15 @@ export default function Upgrade() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="text-white font-semibold mb-2">What's included in the 14-day free trial?</h4>
+              <h4 className="text-white font-semibold mb-2">What's included in the 7-day free trial?</h4>
               <p className="text-gray-400 text-sm">
-                You get full access to all features of your chosen plan for 14 days. No credit card required to start. Cancel anytime during the trial without being charged.
+                You get full access to all Premium investigation features for 7 days. No credit card required to start. Cancel anytime during the trial without being charged.
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-2">What's the difference between Basic and Elite?</h4>
+              <h4 className="text-white font-semibold mb-2">What plans does SafeNestT offer?</h4>
               <p className="text-gray-400 text-sm">
-                Basic Plan ($9.99/mo) includes full scam protection for single-device usage. Elite Plan ($19.99/mo) adds multi-device support (up to 5 devices), advanced scam pattern detection, priority alerts, and future AI-driven features.
+                SafeNestT offers a single Premium plan at $24.99/month or $249.99/year, with a 7-day free trial. There are no Basic or Elite tiers — all investigation, evidence, and threat-intelligence features are included in Premium.
               </p>
             </div>
             <div>

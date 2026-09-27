@@ -1,10 +1,9 @@
 import React from "react";
-import { Bell, Rocket, Shield, Eye, Lock, Globe } from "lucide-react";
+import { Bell, Rocket, Shield, Eye, Lock } from "lucide-react";
 
 const UPCOMING = [
   { icon: Shield, title: "AI Privacy Assistant", desc: "Chat-based advisor that guides you through privacy decisions in real-time", eta: "Q3 2025" },
   { icon: Eye, title: "Social Media Scrubber", desc: "Automatically scan and flag overshared posts across your social accounts", eta: "Q3 2025" },
-  { icon: Globe, title: "VPN Integration", desc: "One-click VPN activation tied to your Privacy Score for smart protection", eta: "Q4 2025" },
   { icon: Lock, title: "Password Breach Correlator", desc: "Link breached credentials directly to broker exposure for full risk view", eta: "Q4 2025" },
   { icon: Rocket, title: "Automated Opt-Out Bot", desc: "Fully automated browser-based opt-out that completes forms on your behalf", eta: "2026" },
 ];

@@ -76,7 +76,6 @@ import AdminReports from './pages/AdminReports';
 import AdminSubscriptions from './pages/AdminSubscriptions';
 import AdminSupport from './pages/AdminSupport';
 import AdminUserApprovals from './pages/AdminUserApprovals';
-import AdminVPNServers from './pages/AdminVPNServers';
 import AdminVerifiedCompanies from './pages/AdminVerifiedCompanies';
 import AdvancedSecurity from './pages/AdvancedSecurity';
 import AgenciesDirectory from './pages/AgenciesDirectory';
@@ -152,13 +151,9 @@ import TitleProtection from './pages/TitleProtection';
 import TrackingPage from './pages/TrackingPage';
 import USCybercrimeResources from './pages/USCybercrimeResources';
 import Upgrade from './pages/Upgrade';
-import VPNAnalytics from './pages/VPNAnalytics';
-import VPNDevices from './pages/VPNDevices';
-import VPNPage from './pages/VPNPage';
 import VerifiedHub from './pages/VerifiedHub';
 import VictimPortal from './pages/VictimPortal';
 import ViewAlerts from './pages/ViewAlerts';
-import WebVPN from './pages/WebVPN';
 import WelcomeOnboarding from './pages/WelcomeOnboarding';
 import __Layout from './Layout.jsx';
 
@@ -193,7 +188,6 @@ export const PAGES = {
     "AdminSubscriptions": AdminSubscriptions,
     "AdminSupport": AdminSupport,
     "AdminUserApprovals": AdminUserApprovals,
-    "AdminVPNServers": AdminVPNServers,
     "AdminVerifiedCompanies": AdminVerifiedCompanies,
     "AdvancedSecurity": AdvancedSecurity,
     "AgenciesDirectory": AgenciesDirectory,
@@ -269,13 +263,9 @@ export const PAGES = {
     "TrackingPage": TrackingPage,
     "USCybercrimeResources": USCybercrimeResources,
     "Upgrade": Upgrade,
-    "VPNAnalytics": VPNAnalytics,
-    "VPNDevices": VPNDevices,
-    "VPNPage": VPNPage,
     "VerifiedHub": VerifiedHub,
     "VictimPortal": VictimPortal,
     "ViewAlerts": ViewAlerts,
-    "WebVPN": WebVPN,
     "WelcomeOnboarding": WelcomeOnboarding,
 }
 

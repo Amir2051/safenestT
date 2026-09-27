@@ -33,7 +33,7 @@ const ADMIN_PAGE_KEYS = new Set([
   'AdminDashboard', 'AdminInvestigation',
   'AdminInvites', 'AdminMonitoringDashboard', 'AdminReferralDashboard',
   'AdminReferrals', 'AdminReports', 'AdminSubscriptions', 'AdminSupport',
-  'AdminUserApprovals', 'AdminVPNServers',
+  'AdminUserApprovals',
   'AdminDeedFraud', 'Cases', 'InvestigationDashboard', 'InvestigatorDashboard',
 ]);
 
