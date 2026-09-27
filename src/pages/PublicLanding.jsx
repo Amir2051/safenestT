@@ -229,7 +229,7 @@ export default function PublicLanding() {
         </div>
       </section>
 
-      {/* Principles */
+      {/* Principles */}
       <section className="relative z-10 px-6 pb-20 max-w-4xl mx-auto">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
           <h3 className="text-2xl font-bold text-white text-center">Built on evidence, not invention</h3>
