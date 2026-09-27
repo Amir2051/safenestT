@@ -131,7 +131,7 @@ export default function OperationsDashboard() {
         )}
       </div>
     </div>
-      <div className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4"><div className="text-[10px] tracking-[0.16em] text-cyan-500/70">CASE EXECUTION // SIX PHASES</div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">{["Planning","Evidence","Analysis","Reality Check","Risk","Dossier"].map((phase,i) => <div key={phase} className="rounded-lg border border-white/8 bg-black/30 p-3"><span className="text-[9px] text-cyan-500/70">0{i+1}</span><p className="mt-1 text-xs text-slate-300">{phase}</p></div>)}</div></div></div></main>
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4"><div className="text-[10px] tracking-[0.16em] text-cyan-500/70">CASE EXECUTION // SIX PHASES</div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">{["Planning","Evidence","Analysis","Reality Check","Risk","Dossier"].map((phase,i) => <div key={phase} className="rounded-lg border border-white/8 bg-black/30 p-3"><span className="text-[9px] text-cyan-500/70">0{i+1}</span><p className="mt-1 text-xs text-slate-300">{phase}</p></div>)}</div></div></main>
   );
 }
 
