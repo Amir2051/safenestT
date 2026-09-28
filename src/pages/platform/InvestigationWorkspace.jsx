@@ -18,6 +18,7 @@ import TargetsTab from "@/components/platform/tabs/TargetsTab";
 import BlockchainTab from "@/components/platform/tabs/BlockchainTab";
 import EntitiesTab from "@/components/platform/tabs/EntitiesTab";
 import TimelineTab from "@/components/platform/tabs/TimelineTab";
+import CorrelationTab from "@/components/platform/tabs/CorrelationTab";
 import FindingsTab from "@/components/platform/tabs/FindingsTab";
 import RiskTab from "@/components/platform/tabs/RiskTab";
 import ReportsTab from "@/components/platform/tabs/ReportsTab";
@@ -33,6 +34,7 @@ const TABS = [
   { key: "activity", label: "Activity", icon: ScrollText },
   { key: "blockchain", label: "Blockchain", icon: Network },
   { key: "entities", label: "Entities", icon: FileSearch },
+  { key: "correlation", label: "Correlation", icon: Network },
   { key: "osint", label: "OSINT", icon: Satellite },
   { key: "timeline", label: "Timeline", icon: GitBranch },
 ];
@@ -168,6 +170,7 @@ export default function InvestigationWorkspace() {
         {activeTab === "activity" && <ActivityTab caseId={caseId} hermesState={hermesState} />}
         {activeTab === "blockchain" && <BlockchainTab caseId={caseId} hermesState={hermesState} />}
         {activeTab === "entities" && <EntitiesTab caseId={caseId} hermesState={hermesState} />}
+        {activeTab === "correlation" && <CorrelationTab caseId={caseId} />}
         {activeTab === "timeline" && <TimelineTab caseId={caseId} hermesState={hermesState} />}
         {activeTab === "osint" && <OsintProvidersTab caseId={caseId} />}
       </div>
