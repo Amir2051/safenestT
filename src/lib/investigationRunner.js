@@ -659,10 +659,24 @@ export async function getRunHistory(caseId) {
   return base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 100).catch(() => []);
 }
 
-/** Provider/model health test — real ping, honest ok/fail. Never fakes success. */
+/** Provider/model health test — real ping, honest ok/fail. Never fakes success.
+ *
+ * For the Hermes provider this calls the gateway's REAL /v1/health endpoint
+ * (via hermesProxy action:"health"), NOT /v1/chat/completions — the Hermes
+ * gateway does not expose a chat-completions route, so an inference-based
+ * ping always returns HTTP 404 and falsely reports Hermes as down.
+ * OpenRouter still uses an inference ping (it has no /health endpoint). */
 export async function testProvider({ provider = DEFAULT_PROVIDER, model = DEFAULT_MODEL } = {}) {
   const t0 = Date.now();
   try {
+    if (provider === "hermes") {
+      const { pingHermes } = await import("@/lib/hermesClient");
+      const res = await withTimeout(pingHermes(), 30000, "health-test");
+      if (res.connected && res.state === "ok") {
+        return { status: "ok", provider, model, ms: res.ms ?? (Date.now() - t0) };
+      }
+      return { status: "failed", provider, model, ms: res.ms ?? (Date.now() - t0), error: res.error || `Hermes health check: ${res.state}` };
+    }
     const res = await withTimeout(
       runInference({
         provider,

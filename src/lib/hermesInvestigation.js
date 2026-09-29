@@ -106,17 +106,41 @@ async function gatherContext(caseId) {
 
 // ── Public low-level calls ────────────────────────────────────────────────
 export async function createHermesInvestigation(caseItem, ctx) {
+  // Hermes requires a SINGULAR primary `target` and an `investigation_type`
+  // field. The gateway rejects requests that only send the plural `targets`
+  // (HTTP 422 "Field required" for body.target / body.investigation_type).
+  // Derive the primary target from the first explicit target, then fall back
+  // to a scammer wallet or a transaction hash recorded on the case.
+  const targetObjs = (ctx.targets || []).map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label }));
+  const primaryTarget =
+    targetObjs[0] ||
+    (caseItem.scammer_info?.wallet_addresses?.[0]
+      ? { type: "wallet_address", value: caseItem.scammer_info.wallet_addresses[0] }
+      : null) ||
+    (Array.isArray(caseItem.transaction_hashes) && caseItem.transaction_hashes[0]
+      ? { type: "transaction_hash", value: caseItem.transaction_hashes[0] }
+      : null);
+
+  if (!primaryTarget) {
+    throw new HermesError(
+      "no_target",
+      "Cannot start a Hermes investigation without at least one target. Add a wallet address, transaction hash, domain, or other target to the case first."
+    );
+  }
+
   const body = {
     case_id: caseItem.id,
     case_title: caseItem.case_title || caseItem.client_name || "Investigation",
+    investigation_type: caseItem.fraud_type || "other",
     fraud_type: caseItem.fraud_type,
+    target: primaryTarget,
+    targets: targetObjs,
     victim_name: caseItem.victim_name,
     amount_stolen_usd: caseItem.amount_stolen_usd,
     description: caseItem.description,
     incident_date: caseItem.incident_date,
     suspect_details: caseItem.suspect_details,
     scammer_info: caseItem.scammer_info,
-    targets: (ctx.targets || []).map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label })),
     evidence: (ctx.evidence || []).map((e) => ({ filename: e.filename, type: e.evidence_type, description: e.description })),
     phases: PHASES.map((p) => p.id),
   };
