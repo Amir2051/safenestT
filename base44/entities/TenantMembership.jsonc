@@ -14,6 +14,10 @@
       "type": "string",
       "description": "Member email"
     },
+    "user_name": {
+      "type": "string",
+      "description": "Member display name (denormalized for roster views)"
+    },
     "role": {
       "type": "string",
       "enum": [
@@ -23,7 +27,20 @@
         "member"
       ],
       "default": "member",
-      "description": "Tenant-scoped role"
+      "description": "Legacy tenant-scoped role."
+    },
+    "organization_role": {
+      "type": "string",
+      "enum": [
+        "ORG_ADMIN",
+        "INVESTIGATOR",
+        "ANALYST",
+        "CASE_MANAGER",
+        "VIEWER",
+        "AUDITOR"
+      ],
+      "default": "VIEWER",
+      "description": "Assigned organization role for this member. Takes effect when the member completes organization setup. PLATFORM_ADMIN is never assigned here."
     },
     "status": {
       "type": "string",
@@ -41,6 +58,11 @@
     "joined_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "last_active": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp (if available)"
     }
   },
   "required": [

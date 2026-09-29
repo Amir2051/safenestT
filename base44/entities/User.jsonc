@@ -94,7 +94,71 @@
         "investigator",
         "member"
       ],
-      "description": "Role within the active tenant (owner/admin/investigator/member)."
+      "description": "Legacy tenant-scoped role (owner/admin/investigator/member)."
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "Name of the organization this user belongs to. Set during organization onboarding."
+    },
+    "organization_type": {
+      "type": "string",
+      "enum": [
+        "bank_financial",
+        "insurance",
+        "pi_firm",
+        "corporate_enterprise",
+        "law_enforcement_gov",
+        "security_investigation",
+        "individual_investigator",
+        "other"
+      ],
+      "description": "Type of organization the user represents."
+    },
+    "organization_role": {
+      "type": "string",
+      "enum": [
+        "PLATFORM_ADMIN",
+        "ORG_ADMIN",
+        "INVESTIGATOR",
+        "ANALYST",
+        "CASE_MANAGER",
+        "VIEWER",
+        "AUDITOR"
+      ],
+      "description": "Canonical UI role driving role-based navigation. PLATFORM_ADMIN is internal and never offered during public signup. Backend/Hermes enforces actual permissions separately."
+    },
+    "organization_contact_phone": {
+      "type": "string",
+      "description": "Organization primary contact phone."
+    },
+    "organization_contact_address": {
+      "type": "object",
+      "properties": {
+        "line1": {
+          "type": "string"
+        },
+        "line2": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      },
+      "description": "Organization contact address."
+    },
+    "last_login": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last login timestamp (if available)."
     }
   },
   "required": []

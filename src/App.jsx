@@ -27,6 +27,9 @@ import CookiePolicy from './pages/CookiePolicy';
 import DataRightsDeletion from './pages/DataRightsDeletion';
 import OAuthConsent from './pages/OAuthConsent';
 import ClientAuthorizations from './pages/ClientAuthorizations';
+import OrganizationOnboarding from './pages/OrganizationOnboarding';
+import Team from './pages/Team';
+import OrganizationSettings from './pages/OrganizationSettings';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -54,6 +57,12 @@ const AuthenticatedApp = () => {
   // base44/mcp/config.json (consent_path defaults to /oauth/consent).
   if (typeof window !== 'undefined' && window.location.pathname === '/oauth/consent') {
     return <OAuthConsent />;
+  }
+
+  // Organization onboarding is a full-screen flow (no app shell) so the user
+  // can set up their organization before entering the workspace.
+  if (typeof window !== 'undefined' && window.location.pathname === '/OrganizationOnboarding') {
+    return <OrganizationOnboarding />;
   }
 
   // Show loading spinner while checking app public settings or auth
@@ -130,6 +139,8 @@ const AuthenticatedApp = () => {
         <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
         <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
         <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
+        <Route path="/Team" element={<Team />} />
+        <Route path="/OrganizationSettings" element={<OrganizationSettings />} />
         <Route path="/CookiePolicy" element={<CookiePolicy />} />
         <Route path="/DataRightsDeletion" element={<DataRightsDeletion />} />
         <Route path="*" element={<PageNotFound />} />

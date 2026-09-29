@@ -7,11 +7,12 @@ import {
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power, Wallet,
   Command, Sparkles,
   UserCheck, UserPlus, FileBarChart, LifeBuoy, Users, TrendingUp,
-  Server, Gavel, Home as HomeIcon, Cookie, Scale,
+  Server, Gavel, Home as HomeIcon, Cookie, Scale, Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LiveClock from "@/components/shared/LiveClock";
+import { getEffectiveRole, ROLE_LABELS, ROLE_SHORT } from "@/lib/organizationRoles";
 
 /**
  * Investigation-focused sidebar.
@@ -118,6 +119,85 @@ const USER_SECTIONS = [
   },
 ];
 
+// Shared nav items reused across organization roles.
+const ORG_ITEMS = {
+  dashboard: { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
+  investigations: { id: "investigations", label: "Investigations", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI", prominent: true },
+  cases: { id: "cases", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
+  caseImport: { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
+  globalSearch: { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
+  evidence: { id: "ws-evidence", label: "Evidence", icon: FileSearch, path: "/InvestigationWorkspace", tab: "evidence", glow: "cyan" },
+  findings: { id: "ws-findings", label: "Findings & Risk", icon: ShieldAlert, path: "/InvestigationWorkspace", tab: "findings", glow: "amber" },
+  reports: { id: "reports", label: "Reports", icon: FileText, path: "/ReportsCenter", glow: "cyan" },
+  audit: { id: "audit", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
+  clientAuth: { id: "client-auth", label: "Client Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
+  team: { id: "team", label: "Team", icon: Users, path: "/Team", glow: "cyan" },
+  orgSettings: { id: "org-settings", label: "Organization", icon: Building2, path: "/OrganizationSettings", glow: "cyan" },
+  assistant: { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+  settings: { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+};
+
+const LEGAL_ITEMS = [
+  { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
+  { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
+  { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
+  { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
+  { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
+  { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
+  { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
+  { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
+  { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
+];
+const LEGAL_SECTION = { label: "Legal & Privacy", items: LEGAL_ITEMS };
+
+// Role-specific navigation for organization members. PLATFORM_ADMIN keeps
+// the ADMIN_SECTIONS defined inside the component (platform admin experience);
+// REGULAR_USER keeps USER_SECTIONS (victim/individual experience).
+const ORG_SECTIONS = {
+  ORG_ADMIN: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
+    { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.audit, ORG_ITEMS.clientAuth] },
+    { label: "Organization", items: [ORG_ITEMS.team, ORG_ITEMS.orgSettings] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+  INVESTIGATOR: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
+    { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+  ANALYST: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
+    { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+  CASE_MANAGER: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
+    { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+  VIEWER: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Investigations", items: [ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.globalSearch] },
+    { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
+    { label: "Account", items: [ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+  AUDITOR: [
+    { label: "Overview", items: [ORG_ITEMS.dashboard] },
+    { label: "Review", items: [ORG_ITEMS.audit, ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.evidence, ORG_ITEMS.reports] },
+    { label: "Account", items: [ORG_ITEMS.settings] },
+    LEGAL_SECTION,
+  ],
+};
+
 const glowBar = {
   cyan: "from-cyan-500 to-cyan-400",
   purple: "from-purple-500 to-fuchsia-500",
@@ -152,19 +232,14 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
     try { localStorage.setItem("sn-sidebar-collapsed", collapsed ? "1" : "0"); } catch { /* ignore */ }
   }, [collapsed]);
 
-  const isAdmin = user?.role === "admin" || user?.is_admin;
-  // Staff = admins + tenant investigators/owners — they get the full investigation OS.
-  // Regular users get the minimal USER_SECTIONS navigation.
-  const isStaff = isAdmin || ["owner", "admin", "investigator"].includes(user?.tenant_role);
+  const effectiveRole = getEffectiveRole(user);
+  const isAdmin = effectiveRole === "PLATFORM_ADMIN";
   // Case-Workspace deep links (Evidence / Findings / Reports) only make sense
   // when a case is actually open — hide that section entirely otherwise.
   const hasCaseContext = new URLSearchParams(location.search).get("case_id");
-  // Admins get a full multi-section administration sidebar covering all the
-  // admin pages registered in pages.config.js, plus the Security/Operations
-  // tools shared with investigators.
-  // Canonical admin navigation — ONE entry per administrative function.
-  // Legacy duplicate routes (/AdminDashboard, /AdminInvestigation) are redirected
-  // in App.jsx to their canonical equivalents and intentionally absent here.
+  // PLATFORM_ADMIN (SafeNestT internal) gets the platform administration sidebar.
+  // Organization members get role-specific navigation from ORG_SECTIONS.
+  // REGULAR_USER (no organization) keeps the minimal USER_SECTIONS navigation.
   const ADMIN_SECTIONS = [
     {
       label: "Overview",
@@ -215,7 +290,11 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       ],
     },
   ];
-  const navSections = isAdmin ? ADMIN_SECTIONS : isStaff ? SECTIONS : USER_SECTIONS;
+  const navSections = isAdmin
+    ? ADMIN_SECTIONS
+    : ORG_SECTIONS[effectiveRole]
+      ? ORG_SECTIONS[effectiveRole]
+      : USER_SECTIONS;
 
   const go = (item) => {
     let url = item.path;
@@ -287,7 +366,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
           </div>
           <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
             <p className="text-white font-bold text-sm tracking-wider leading-none">SafeNestT</p>
-            <p className="text-cyan-400 text-[10px] font-mono mt-0.5">{isAdmin ? "// ADMIN //" : "// SECURED //"}</p>
+            <p className="text-cyan-400 text-[10px] font-mono mt-0.5">{isAdmin ? "// ADMIN //" : `// ${ROLE_SHORT[effectiveRole] || "SECURED"} //`}</p>
           </div>
           <button
             onClick={() => setCollapsed((c) => !c)}
@@ -308,6 +387,12 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             <p className="text-[10px] text-gray-500 truncate mt-0.5">{user?.email || ""}</p>
           </div>
         </div>
+        {effectiveRole !== "REGULAR_USER" && !collapsed && (
+          <div className="flex items-center gap-1.5 mb-3 px-1">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-slate-500">Role</span>
+            <Badge className="text-[9px] px-1.5 py-0.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">{ROLE_LABELS[effectiveRole]}</Badge>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-4">

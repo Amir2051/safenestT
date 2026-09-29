@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Lock, ArrowRight, FileSearch, Wallet, Network,
@@ -62,6 +63,7 @@ function FeatureRow({ icon: Icon, title, desc }) {
 export default function PublicLanding() {
   const { navigateToLogin } = useAuth();
   const go = () => navigateToLogin();
+  const goOrg = () => base44.auth.redirectToLogin(`${window.location.origin}/OrganizationOnboarding`);
 
   return (
     <div className="min-h-screen bg-[#05080b] text-slate-200 relative overflow-hidden font-sans">
@@ -108,11 +110,17 @@ export default function PublicLanding() {
             </p>
             <div className="mt-7 flex flex-col sm:flex-row gap-3">
               <button
-                onClick={go}
+                onClick={goOrg}
                 className="group inline-flex items-center justify-center gap-2 h-12 px-6 rounded-md bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-shadow"
               >
-                Access the Platform
+                Create Organization Account
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <button
+                onClick={go}
+                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-md border border-slate-700/70 text-slate-300 font-semibold text-sm hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+              >
+                Sign In
               </button>
               <a
                 href="#workflow"
@@ -247,14 +255,17 @@ export default function PublicLanding() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
-              onClick={go}
+              onClick={goOrg}
               className="inline-flex items-center gap-2 h-11 px-6 rounded-md bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20"
             >
-              <Lock className="w-4 h-4" /> Authenticate
+              <Lock className="w-4 h-4" /> Create Organization Account
             </button>
-            <span className="text-[11px] font-mono text-slate-600 tracking-wider">
-              EMAIL + PASSWORD // GOOGLE AUTHENTICATION
-            </span>
+            <button
+              onClick={go}
+              className="inline-flex items-center gap-2 h-11 px-6 rounded-md border border-slate-700/70 text-slate-300 font-semibold text-sm hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+            >
+              Sign In
+            </button>
           </div>
         </div>
       </section>
