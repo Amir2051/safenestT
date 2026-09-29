@@ -187,6 +187,12 @@ Deno.serve(async (req) => {
 
         console.log('✅ VERIFIED - Case readable in database');
 
+        // Marketing KPI: Case reports filed
+        base44.analytics.track({
+            eventName: 'case_submitted',
+            properties: { case_id: newCase.id, case_number: newCase.case_number }
+        });
+
         // Create timeline event
         try {
             await base44.entities.CaseTimelineEvent.create({

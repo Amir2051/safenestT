@@ -156,6 +156,7 @@ export default function NewCaseModal({ onCaseCreated }) {
       return createdCase;
     },
     onSuccess: (data) => {
+      base44.analytics.track({ eventName: 'case_submitted', properties: { case_id: data.id, case_number: data.case_number } });
       queryClient.invalidateQueries({ queryKey: ['my-cases'] });
       queryClient.invalidateQueries({ queryKey: ['client-cases'] });
       queryClient.invalidateQueries({ queryKey: ['my-cases-admin'] });
