@@ -50,7 +50,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin, user } = useAuth();
 
   // MCP OAuth consent page — must render outside the app layout and any auth
   // guard. The page resolves the signed-in session itself via /consent-info and
@@ -64,6 +64,13 @@ const AuthenticatedApp = () => {
   // can set up their organization before entering the workspace.
   if (typeof window !== 'undefined' && window.location.pathname === '/OrganizationOnboarding') {
     return <OrganizationOnboarding />;
+  }
+
+  // Authenticated users who haven't set up an organization yet are routed to
+  // the onboarding flow (which asks for organization type) before entering the
+  // workspace. Platform admins skip this — they manage orgs directly.
+  if (isAuthenticated && user && user.role !== 'admin' && !user.is_admin && !user.organization_name) {
+    return <Navigate to="/OrganizationOnboarding" replace />;
   }
 
   // Show loading spinner while checking app public settings or auth
