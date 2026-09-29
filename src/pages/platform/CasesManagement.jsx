@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  Briefcase, Plus, Search, Trash2, Loader2, FileText, ChevronRight,
+  Briefcase, Plus, Search, Trash2, Loader2, FileText, ChevronRight, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ export default function CasesManagement() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showNew, setShowNew] = useState(false);
+  const [groupByUser, setGroupByUser] = useState(false);
   const queryClient = useQueryClient();
   const canMutate = useCanMutate();
 
@@ -43,6 +44,15 @@ export default function CasesManagement() {
     queryFn: () => base44.entities.InvestigationCase.list("-created_date", 200),
   });
 
+  // Resolve each case's creator (investigator/user) so cases can be shown
+  // and organized by user name/email. User.list is admin-only; for non-admins
+  // this silently falls back to an empty map and the page still works.
+  const { data: users = [] } = useQuery({
+    queryKey: ["cases-users"],
+    queryFn: async () => { try { return await base44.entities.User.list(); } catch { return []; } },
+  });
+  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+
   const filtered = cases.filter((c) => {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     const pri = c.priority || c.case_priority;
@@ -54,6 +64,20 @@ export default function CasesManagement() {
     }
     return true;
   });
+
+  const grouped = useMemo(() => {
+    const m = new Map();
+    for (const c of filtered) {
+      const k = c.created_by_id || "(unassigned)";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(c);
+    }
+    return [...m.entries()].map(([id, list]) => ({
+      id,
+      user: userMap.get(id),
+      cases: list,
+    }));
+  }, [filtered, userMap]);
 
   const handleDelete = async (id) => {
     if (!confirm("Delete this case? This cannot be undone.")) return;
@@ -71,7 +95,14 @@ export default function CasesManagement() {
         title="Cases"
         description="Create and manage fraud investigation cases. Each case can be submitted to Hermes for real investigation."
         icon={Briefcase}
-        actions={canMutate ? <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button> : null}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className={`border-white/15 text-gray-200 ${groupByUser ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/40" : ""}`} onClick={() => setGroupByUser((v) => !v)}>
+              <Users className="w-4 h-4 mr-1.5" />{groupByUser ? "Grouped by user" : "Group by user"}
+            </Button>
+            {canMutate && <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button>}
+          </div>
+        }
       />
 
       {/* Filters */}
@@ -117,10 +148,35 @@ export default function CasesManagement() {
             </div>
           ) : null}
         />
+      ) : groupByUser ? (
+        <div className="space-y-6">
+          {grouped.map((group) => (
+            <div key={group.id}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="w-7 h-7 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                  <Users className="w-3.5 h-3.5 text-cyan-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {group.user?.full_name || "Unassigned user"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {group.user?.email || group.id} • {group.cases.length} case{group.cases.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/10 divide-y divide-white/5">
+                {group.cases.map((c) => (
+                  <CaseListItem key={c.id} caseItem={c} creator={group.user} onDelete={handleDelete} canDelete={canMutate} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="rounded-lg border border-white/10 divide-y divide-white/5">
           {filtered.map((c) => (
-            <CaseListItem key={c.id} caseItem={c} onDelete={handleDelete} canDelete={canMutate} />
+            <CaseListItem key={c.id} caseItem={c} creator={userMap.get(c.created_by_id)} onDelete={handleDelete} canDelete={canMutate} />
           ))}
         </div>
       )}
@@ -130,7 +186,7 @@ export default function CasesManagement() {
   );
 }
 
-function CaseListItem({ caseItem, onDelete, canDelete }) {
+function CaseListItem({ caseItem, creator, onDelete, canDelete }) {
   const priority = caseItem.priority || caseItem.case_priority || "medium";
   const priTone = priority === "critical" ? "text-red-400 border-red-500/30" : priority === "high" ? "text-amber-400 border-amber-500/30" : priority === "medium" ? "text-cyan-400 border-cyan-500/30" : "text-gray-400 border-white/15";
   const risk = caseItem.workflow?.risk_score;
@@ -138,6 +194,7 @@ function CaseListItem({ caseItem, onDelete, canDelete }) {
   const riskTone = riskLevel === "critical" ? "border-red-500/30 text-red-400" : riskLevel === "high" ? "border-amber-500/30 text-amber-400" : riskLevel === "medium" ? "border-cyan-500/30 text-cyan-400" : "border-white/15 text-gray-400";
   const progress = Math.min(100, Math.max(0, Number(caseItem.investigation_progress) || 0));
   const amount = Number(caseItem.amount_stolen_usd) || 0;
+  const creatorLabel = creator ? `${creator.full_name || ""}${creator.email ? ` · ${creator.email}` : ""}`.trim() : (caseItem.created_by_id || null);
   return (
     <Link to={`/InvestigationWorkspace?case_id=${caseItem.id}`} className="flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors group">
       <div className="w-9 h-9 rounded-md border border-white/10 bg-white/[0.02] flex items-center justify-center shrink-0">
@@ -151,6 +208,11 @@ function CaseListItem({ caseItem, onDelete, canDelete }) {
         <p className="text-xs text-gray-500 truncate capitalize">
           {caseItem.fraud_type?.replace(/_/g, " ") || "investigation"} • {caseItem.victim_name || "—"} • {new Date(caseItem.created_date).toLocaleDateString()}{amount > 0 ? ` • $${amount.toLocaleString()}` : ""}
         </p>
+        {creatorLabel && (
+          <p className="text-[11px] text-cyan-400/70 truncate mt-1">
+            <Users className="w-3 h-3 inline mr-1 -translate-y-px" />{creatorLabel}
+          </p>
+        )}
         <div className="h-1 rounded-full bg-white/5 mt-2 overflow-hidden max-w-xs">
           <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500" style={{ width: `${progress}%` }} />
         </div>
