@@ -107,8 +107,9 @@ function buildInvestigationsUrl(root: string): string {
   return `${b}/v1/investigations`;
 }
 
-// Hermes investigation-lifecycle request. Uses X-API-Key authentication as
-// required by the investigation gateway. Returns a structured body so the
+// Hermes investigation-lifecycle request. Uses Authorization: Bearer
+// authentication (same scheme as /v1/models and /v1/chat) — the gateway
+// rejects X-API-Key with 401 invalid_key. Returns a structured body so the
 // SDK never collapses a 404/401 into a generic error and the UI gets the real
 // upstream status.
 async function investigationFetch(
@@ -117,7 +118,7 @@ async function investigationFetch(
 ) {
   const { controller, timer } = withTimeout(60000);
   try {
-    const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
+    const headers: Record<string, string> = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "Accept": "application/json" };
     const res = await fetch(url, {
       method,
       headers,
