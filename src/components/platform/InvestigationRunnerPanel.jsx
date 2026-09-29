@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2, Cpu, CheckCircle2, XCircle, History, Activity,
-  RotateCw, Lock, Zap,
+  RotateCw, Lock, Zap, Crosshair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ const TEST_TONE = {
   failed: "border-red-500/20 bg-red-500/[0.04] text-red-300",
 };
 
-export default function InvestigationRunnerPanel({ caseId, caseItem }) {
+export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, onGoToTargets }) {
   const qc = useQueryClient();
   const wf = caseItem?.workflow || {};
   // Hermes is mandatory for the investigation pipeline. Ignore any legacy
@@ -38,6 +38,16 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const [hermesInvestigationId, setHermesInvestigationId] = useState(
     caseItem?.workflow?.hermes_investigation_id || null
   );
+
+  // Pre-flight: a Hermes investigation requires at least one target. Fetch the
+  // case's InvestigationTarget records so the runner can disable Start and tell
+  // the investigator exactly what must be added when none exist.
+  const { data: targets = [] } = useQuery({
+    queryKey: ["targets", caseId],
+    queryFn: () => base44.entities.InvestigationTarget.filter({ case_id: caseId }, "-created_date", 200),
+    enabled: !!caseId,
+  });
+  const hasTargets = targets.length > 0;
 
   const providerDef = getProvider(provider);
   const models = providerDef.models;
@@ -136,6 +146,17 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const runAll = runPipeline;
   const runOne = runPipeline;
 
+  // Built-in Hermes test: when the workspace navigates in with ?run=1 (after
+  // creating the example.com test case), auto-start the pipeline once the case
+  // and its targets have loaded. Guarded so it only fires a single time.
+  const autoRunRef = useRef(false);
+  useEffect(() => {
+    if (!autoRun || autoRunRef.current || !hasTargets || anyRunning) return;
+    autoRunRef.current = true;
+    runPipeline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, hasTargets]);
+
   const phaseState = (id) => wf.phases?.[id]?.status || "pending";
   const anyRunning = !!running || runAllActive;
 
@@ -158,12 +179,29 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
           <Badge variant="outline" className={`text-[10px] ${providerDef.available ? "border-green-500/30 text-green-400" : "border-amber-500/30 text-amber-400"}`}>
             {providerDef.available ? "live" : "upgrade required"}
           </Badge>
-          <Button size="sm" onClick={runAll} disabled={anyRunning} className="bg-cyan-600 hover:bg-cyan-700 h-8">
+          <Button size="sm" onClick={runAll} disabled={anyRunning || !hasTargets} title={hasTargets ? "Run the Hermes investigation pipeline" : "Add at least one target before starting"} className="bg-cyan-600 hover:bg-cyan-700 h-8">
             {runAllActive ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
             Run full pipeline
           </Button>
         </div>
       </header>
+
+      {!hasTargets && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] p-3 flex items-start gap-2.5">
+          <Crosshair className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-amber-100">No investigation targets</p>
+            <p className="text-[11px] text-amber-200/70 mt-0.5 leading-relaxed">
+              A Hermes investigation requires at least one target. Add a <span className="font-medium">domain</span>, <span className="font-medium">IP address</span>, <span className="font-medium">wallet address</span>, <span className="font-medium">transaction hash</span>, <span className="font-medium">URL</span>, <span className="font-medium">email</span>, or other indicator in the Targets tab, then start the pipeline.
+            </p>
+            {onGoToTargets && (
+              <Button size="sm" variant="outline" onClick={onGoToTargets} className="mt-2 border-amber-500/40 text-amber-200 h-7 text-xs">
+                Go to Targets
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <InvestigationStageTimeline
         phases={PHASES}

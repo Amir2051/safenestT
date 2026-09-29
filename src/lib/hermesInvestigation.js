@@ -158,7 +158,16 @@ export async function createHermesInvestigation(caseItem, ctx) {
 
 export async function startHermesInvestigation(investigationId) {
   const resp = await proxyInvoke({ action: "start_investigation", investigation_id: investigationId, body: {} });
-  if (!resp || resp.ok === false) {
+  if (!resp) return { status: "running", _start_timed_out: true };
+  // A start TIMEOUT is not fatal. The Hermes /start endpoint blocks until the
+  // investigation finishes, and domain/OSINT-heavy targets can exceed the
+  // proxy's fetch window. The investigation continues running server-side, so
+  // return a "running" state and let the caller's poll loop (GET
+  // /v1/investigations/{id}) observe it through to COMPLETED.
+  if (resp.ok === false && resp.status === "timeout") {
+    return { status: "running", _start_timed_out: true };
+  }
+  if (resp.ok === false) {
     throw new HermesError(resp?.status || "error", resp?.error || "Failed to start Hermes investigation", resp?.upstream_status);
   }
   return resp.data || {};

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
   Target, FileSearch, Crosshair, Network, GitBranch, FlaskConical,
-  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase, Satellite,
+  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase, Satellite, Loader2, Zap,
 } from "lucide-react";
+import { createHermesTestCase } from "@/lib/hermesTest";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/platform/EmptyState";
 import { getHermesStatus, pingHermes } from "@/lib/hermesClient";
@@ -46,8 +48,28 @@ export default function InvestigationWorkspace() {
   const caseId = params.get("case_id");
   const requestedTab = params.get("tab");
   const [activeTab, setActiveTab] = useState(requestedTab || "overview");
+  const runFlag = params.get("run");
+  const navigate = useNavigate();
+  const [creatingTest, setCreatingTest] = useState(false);
   const canMutate = useCanMutate();
   const hermes = getHermesStatus();
+
+  // Built-in Hermes test: create a clearly-labeled test case seeded with the
+  // safe example.com DOMAIN target, then drop into the runner with ?run=1 so
+  // the pipeline auto-starts. The real Hermes investigation executes — nothing
+  // here is mocked.
+  const runHermesTest = async () => {
+    setCreatingTest(true);
+    try {
+      const { caseId: newId } = await createHermesTestCase();
+      toast.success("Hermes test case created with example.com target — starting investigation…");
+      navigate(`/InvestigationWorkspace?case_id=${newId}&run=1&tab=overview`);
+    } catch (e) {
+      toast.error("Failed to create test case: " + (e?.message || e));
+    } finally {
+      setCreatingTest(false);
+    }
+  };
   // Real Hermes reachability — pings the server-side proxy. Falls back to the
   // static "configured" state while the first check is in flight.
   const { data: hermesHealth } = useQuery({
@@ -96,6 +118,10 @@ export default function InvestigationWorkspace() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button onClick={runHermesTest} disabled={creatingTest} className="text-xs px-3 py-1.5 rounded-md border border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 transition-colors inline-flex items-center gap-1.5 disabled:opacity-60">
+              {creatingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              Run Hermes Test (example.com)
+            </button>
             <Link to="/CasesManagement" className="text-xs px-3 py-1.5 rounded-md border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 transition-colors">Browse all cases</Link>
             <Link to="/CaseImport" className="text-xs px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">Import a case</Link>
           </div>
@@ -142,7 +168,7 @@ export default function InvestigationWorkspace() {
       <CaseHeader caseItem={caseItem} hermesState={hermesState} hermesMs={hermesHealth?.ms} />
 
       {canMutate ? (
-        <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} />
+        <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} autoRun={runFlag === "1"} onGoToTargets={() => setActiveTab("targets")} />
       ) : (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-5 flex items-start gap-3">
           <div className="w-9 h-9 rounded-md bg-amber-500/15 border border-amber-500/40 flex items-center justify-center shrink-0">
