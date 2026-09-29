@@ -2,6 +2,11 @@
   "name": "ApprovalRule",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "rule_name": {
       "type": "string",
       "description": "Name of the approval rule"

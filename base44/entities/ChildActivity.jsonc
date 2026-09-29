@@ -2,6 +2,11 @@
   "name": "ChildActivity",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "group_id": {
       "type": "string",
       "description": "Reference to FamilyGroup"

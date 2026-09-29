@@ -2,6 +2,11 @@
   "name": "WalletMonitor",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "wallet_address": {
       "type": "string",
       "description": "Wallet address being monitored"

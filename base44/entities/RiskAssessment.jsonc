@@ -2,6 +2,11 @@
   "name": "RiskAssessment",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "target_id": {
       "type": "string",
       "description": "ID of the user, case, or admin being assessed"

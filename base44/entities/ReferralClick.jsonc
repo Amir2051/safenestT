@@ -2,6 +2,11 @@
   "name": "ReferralClick",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "referral_code": {
       "type": "string",
       "description": "The referral code clicked"

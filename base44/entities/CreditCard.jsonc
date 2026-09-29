@@ -2,6 +2,11 @@
   "name": "CreditCard",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "card_nickname": {
       "type": "string",
       "description": "User-friendly name for the card"

@@ -2,6 +2,11 @@
   "name": "ElectraWallet",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "label": {
       "type": "string",
       "description": "User-friendly label for the wallet"

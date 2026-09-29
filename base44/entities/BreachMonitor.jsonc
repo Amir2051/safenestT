@@ -2,6 +2,11 @@
   "name": "BreachMonitor",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "monitor_type": {
       "type": "string",
       "enum": [

@@ -2,6 +2,11 @@
   "name": "VPNDevice",
   "type": "object",
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this record, up to 1000 characters.",
+      "maxLength": 1000
+    },
     "device_id": {
       "type": "string",
       "description": "Unique device identifier (UUID)"
