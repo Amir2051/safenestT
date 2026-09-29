@@ -369,6 +369,22 @@
       "default": "new",
       "description": "Case status. 'queued' reflects a Hermes investigation that has been created but not yet started."
     },
+    "sync_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "synced",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Hermes synchronization state. pending = sync not yet attempted or retry needed; active = Hermes investigation created, awaiting run; synced = results synchronized; failed = sync could not complete."
+    },
+    "last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time this case was synchronized with the Hermes investigation engine."
+    },
     "priority": {
       "type": "string",
       "enum": [
@@ -506,7 +522,7 @@
         },
         "hermes_investigation_id": {
           "type": "string",
-          "description": "Hermes gateway investigation id linked to this case (create -> start -> poll lifecycle). Set by runHermesInvestigation after a successful POST /v1/investigations."
+          "description": "Canonical mapping: the Hermes gateway investigation id linked to this SafeNestT case (create -> start -> poll lifecycle). Set by syncCaseToHermes after a successful POST /v1/investigations. SafeNestT case_id is this record's id; this field is the Hermes investigation_id \u2014 never confuse them."
         },
         "hermes_status": {
           "type": "string",
@@ -514,7 +530,11 @@
         },
         "hermes_error": {
           "type": "string",
-          "description": "Error message reported by Hermes when the investigation failed, if any."
+          "description": "Error message reported by Hermes when the investigation failed, or when sync could not complete."
+        },
+        "has_external_indicators": {
+          "type": "boolean",
+          "description": "Whether the case submitted any external investigative indicator (wallet/domain/IP/email/phone/tx hash). False for narrative-only cases \u2014 Hermes investigates only the submitted narrative."
         },
         "phases": {
           "type": "object",
@@ -686,6 +706,9 @@
           "data.assigned_investigator": "{{user.email}}"
         },
         {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
@@ -702,6 +725,9 @@
         },
         {
           "data.assigned_investigator": "{{user.email}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {

@@ -48,6 +48,11 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     enabled: !!caseId,
   });
   const hasTargets = targets.length > 0;
+  // Narrative-tolerant: a case may contain only a description. Hermes must be
+  // allowed to investigate it (analyzing the narrative) without requiring a
+  // wallet/domain/IP/etc. first. No minimum target is enforced to start.
+  const hasNarrative = !!(caseItem?.description || caseItem?.case_title);
+  const canRun = hermesActive || hasTargets || hasNarrative;
 
   const providerDef = getProvider(provider);
   const models = providerDef.models;
@@ -241,8 +246,8 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           <Button
             size="sm"
             onClick={runAll}
-            disabled={anyRunning || (!hermesActive && !hasTargets)}
-            title={hermesActive ? "Resume polling the existing Hermes investigation" : hasTargets ? "Start a new Hermes investigation pipeline" : "Add at least one target before starting"}
+            disabled={anyRunning || (!hermesActive && !hasTargets && !hasNarrative)}
+            title={hermesActive ? "Resume polling the existing Hermes investigation" : hasTargets ? "Start a new Hermes investigation pipeline" : hasNarrative ? "Start a narrative-only investigation (Hermes analyzes the submitted description)" : "Add a target or description before starting"}
             className="bg-cyan-600 hover:bg-cyan-700 h-8"
           >
             {runAllActive ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : hermesActive ? <RotateCw className="w-3.5 h-3.5 mr-1.5" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
@@ -251,19 +256,30 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         </div>
       </header>
 
-      {!hasTargets && (
+      {!hasTargets && !hasNarrative && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] p-3 flex items-start gap-2.5">
           <Crosshair className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-xs font-medium text-amber-100">No investigation targets</p>
+            <p className="text-xs font-medium text-amber-100">Nothing to investigate yet</p>
             <p className="text-[11px] text-amber-200/70 mt-0.5 leading-relaxed">
-              A Hermes investigation requires at least one target. Add a <span className="font-medium">domain</span>, <span className="font-medium">IP address</span>, <span className="font-medium">wallet address</span>, <span className="font-medium">transaction hash</span>, <span className="font-medium">URL</span>, <span className="font-medium">email</span>, or other indicator in the Targets tab, then start the pipeline.
+              Add a <span className="font-medium">domain</span>, <span className="font-medium">IP address</span>, <span className="font-medium">wallet address</span>, <span className="font-medium">transaction hash</span>, <span className="font-medium">email</span>, a description, or other indicator, then start the pipeline.
             </p>
             {onGoToTargets && (
               <Button size="sm" variant="outline" onClick={onGoToTargets} className="mt-2 border-amber-500/40 text-amber-200 h-7 text-xs">
                 Go to Targets
               </Button>
             )}
+          </div>
+        </div>
+      )}
+      {!hasTargets && hasNarrative && (
+        <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.04] p-3 flex items-start gap-2.5">
+          <Crosshair className="w-4 h-4 text-cyan-300 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-cyan-100">Narrative-only investigation</p>
+            <p className="text-[11px] text-cyan-200/70 mt-0.5 leading-relaxed">
+              This case has no external indicator (wallet, domain, IP, email, or phone). Hermes will analyze the submitted description and report <span className="font-mono">INSUFFICIENT_EXTERNAL_INDICATORS</span> if no investigative lead exists. No targets are invented and no placeholders are substituted.
+            </p>
           </div>
         </div>
       )}

@@ -179,12 +179,25 @@ export default async function (req: Request): Promise<Response> {
     if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id is required" });
 
     // User-scoped read respects RLS — only authorized users can sync this case.
-    const caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+    let caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access" });
 
-    const investigationId = caseItem.workflow?.hermes_investigation_id || payload?.investigation_id;
+    let investigationId = caseItem.workflow?.hermes_investigation_id || payload?.investigation_id;
     if (!investigationId) {
-      return Response.json({ ok: true, status: "ok", action: "needs_creation", case_id: caseId, terminal: false });
+      // No Hermes investigation exists yet — create it idempotently via
+      // syncCaseToHermes (narrative-tolerant, RLS-enforced). This makes "every
+      // new case syncs" true even when the case was created without an
+      // immediate sync, without requiring a manual Hermes case creation step.
+      const syncRes = await base44.functions.invoke("syncCaseToHermes", { case_id: caseId });
+      const syncBody = syncRes?.data ?? syncRes;
+      if (!syncBody || syncBody.ok === false) {
+        return Response.json({ ok: false, status: syncBody?.status || "sync_failed", error: syncBody?.error || "Failed to sync case to Hermes", action: "needs_creation", case_id: caseId });
+      }
+      caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+      investigationId = caseItem?.workflow?.hermes_investigation_id;
+      if (!investigationId) {
+        return Response.json({ ok: true, status: "ok", action: "needs_creation", case_id: caseId, terminal: false });
+      }
     }
 
     // Read the LIVE Hermes status through the authenticated proxy.
@@ -266,6 +279,8 @@ export default async function (req: Request): Promise<Response> {
       workflow: workflowUpdate,
       investigation_progress: progress,
       last_activity: now,
+      last_synced_at: now,
+      sync_status: terminal ? (isFailed ? "failed" : "synced") : "active",
       ...(caseStatus ? { status: caseStatus } : {}),
     };
     await base44.entities.InvestigationCase.update(caseId, updatePatch).catch(() => null);
@@ -281,6 +296,29 @@ export default async function (req: Request): Promise<Response> {
     if (terminal && !resultsAlreadyPersisted && !isFailed) {
       const tenantId = caseItem.tenant_id;
       const invId = investigationId;
+
+      // ── Race-safe dedup guard. The 8s auto-sync poll can fire several
+      // concurrent syncs that all read the pre-marker workflow and each try to
+      // persist. The marker alone can't close that window. A fresh query for
+      // existing Hermes-derived evidence is the reliable guard: if any exists,
+      // a concurrent sync already persisted results for this investigation —
+      // skip duplicate creation. (Recreated investigations clear old evidence
+      // first in syncCaseToHermes, so this still allows fresh persistence.)
+      const existingHermesEv = await base44.entities.EvidenceItem.filter({ case_id: caseId, source: "hermes_extraction" }, "-created_date", 1).catch(() => []);
+      if (existingHermesEv && existingHermesEv.length > 0) {
+        const cSkip = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+        const wfSkip = cSkip?.workflow || workflowUpdate;
+        const phSkip = { ...(wfSkip.phases || {}) };
+        phSkip.dossier = { ...(phSkip.dossier || {}), status: "completed", completed_at: now, output: { ...(phSkip.dossier?.output || {}), results_persisted: true, skipped_duplicate: true } };
+        await base44.entities.InvestigationCase.update(caseId, { workflow: { ...wfSkip, phases: phSkip }, sync_status: "synced", last_synced_at: now }).catch(() => null);
+        return Response.json({
+          ok: true, status: "ok", case_id: caseId, hermes_investigation_id: investigationId,
+          hermes_status: hermesStatus, case_status: caseStatus || caseItem.status,
+          phases, progress, terminal,
+          persisted: { evidence: existingHermesEv.length, findings: 0, report_id: null, risk_score: wfSkip.risk_score, risk_level: wfSkip.risk_level, graph_nodes: 0, graph_edges: 0 },
+          action: "already_persisted",
+        });
+      }
 
       // ── Fetch the three Hermes result endpoints. The base GET
       // /v1/investigations/{id} only carries lifecycle metadata; the actual

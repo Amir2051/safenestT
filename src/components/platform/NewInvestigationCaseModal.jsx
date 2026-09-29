@@ -60,6 +60,11 @@ export default function NewInvestigationCaseModal({ open, onClose, onCreated }) 
         workflow: { current_phase: "planning", phases: {} },
       });
       toast.success("Case created");
+      // Auto-sync the new case to Hermes (idempotent, narrative-tolerant) so
+      // the Hermes investigation is created and the canonical case_id ↔
+      // hermes_investigation_id mapping is stored without a manual step.
+      // Best-effort: the Investigation Workspace also auto-syncs on open.
+      base44.functions.invoke("syncCaseToHermes", { case_id: created.id }).catch(() => {});
       onCreated?.(created);
       onClose?.();
     } catch (e) {

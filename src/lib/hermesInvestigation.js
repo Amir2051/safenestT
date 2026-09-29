@@ -192,13 +192,17 @@ export async function createHermesInvestigation(caseItem, ctx) {
   // complete footprint of the case.
   const allTargets = aggregateCaseTargets(caseItem, ctx.targets || [], ctx.evidence || []);
   const targetObjs = allTargets.map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label, source: t.source }));
-  const primaryTarget = targetObjs[0] || null;
+  let primaryTarget = targetObjs[0] || null;
 
+  // Narrative-tolerant: a case may contain only a description. When NO external
+  // indicator (wallet/domain/IP/email/phone/tx hash) was submitted, the case
+  // narrative is submitted as the investigation subject (type "narrative"). No
+  // target is invented and no placeholder wallet/domain/example.com is
+  // substituted — Hermes investigates only what was actually submitted.
   if (!primaryTarget) {
-    throw new HermesError(
-      "no_target",
-      "Cannot start a Hermes investigation without at least one target. Add a wallet address, transaction hash, domain, or other target to the case first."
-    );
+    const narrative = (caseItem.description || caseItem.case_title || "").trim();
+    primaryTarget = { type: "narrative", value: (caseItem.case_title || "narrative").slice(0, 200), description: narrative };
+    targetObjs.push(primaryTarget);
   }
 
   const body = {
@@ -363,6 +367,22 @@ export async function syncHermesInvestigationStep(caseId) {
 }
 
 /**
+ * Idempotently sync a SafeNestT case to Hermes — creates (or re-links) the
+ * Hermes investigation and stores the canonical case_id ↔ hermes_investigation_id
+ * mapping on the case. Narrative-tolerant: works with zero external targets.
+ * This is the "case creation" half of the lifecycle (the Run action starts +
+ * polls). SafeNestT is the canonical case system; Hermes is the investigation engine.
+ */
+export async function syncCaseToHermesStep(caseId) {
+  const res = await base44.functions.invoke("syncCaseToHermes", { case_id: caseId });
+  const body = res?.data ?? res;
+  if (!body || body.ok === false) {
+    throw new HermesError(body?.status || "error", body?.error || "Hermes case sync failed", body?.upstream_status);
+  }
+  return body;
+}
+
+/**
  * Resume polling an EXISTING Hermes investigation linked to a case — no new
  * investigation is created. Polls the server-side sync step until Hermes
  * reaches a terminal status, reflecting the real state in the case each tick.
@@ -459,20 +479,27 @@ export async function runHermesInvestigation({
     }
   };
 
-  // 1. Create + start.
+  // 1. Ensure a Hermes investigation EXISTS for this case (idempotent create
+  //    via the server-side syncCaseToHermes — narrative-tolerant,
+  //    RLS-enforced), then start it. SafeNestT is the canonical case system;
+  //    Hermes is the investigation engine. The mapping (case_id ↔
+  //    hermes_investigation_id) is stored on the case by syncCaseToHermes.
+  //    No minimum target is required — a narrative-only case is accepted.
   let investigationId;
   try {
-    const created = await createHermesInvestigation(caseItem, ctx);
-    investigationId = created.investigation_id;
-    await base44.entities.InvestigationCase.update(caseId, {
-      workflow: { ...(caseItem?.workflow || {}), hermes_investigation_id: investigationId, current_phase: "planning" },
-      last_activity: new Date().toISOString(),
-    }).catch(() => {});
+    investigationId = caseItem?.workflow?.hermes_investigation_id;
+    if (!investigationId) {
+      const synced = await syncCaseToHermesStep(caseId);
+      investigationId = synced.hermes_investigation_id;
+    }
+    if (!investigationId) {
+      throw new HermesError("no_investigation_id", "Hermes case sync did not produce an investigation_id.");
+    }
 
     // Initial progress: planning running.
     const initial = {};
     for (const p of PHASES) initial[p.id] = p.id === "planning" ? "running" : "pending";
-    emit(initial, "running", created.raw);
+    emit(initial, "running", { investigation_id: investigationId });
 
     await startHermesInvestigation(investigationId);
   } catch (e) {
