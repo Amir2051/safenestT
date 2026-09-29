@@ -28,6 +28,34 @@ const DEFAULT_MODEL = "hermes-agent";
 const TIMEOUT_MS = 60000;
 const MAX_ATTEMPTS = 2;
 
+// Non-leaking hint appended to auth errors when the stored secret contained
+// surrounding whitespace/quotes that we stripped before sending. The actual
+// key value is NEVER placed in this string or returned to the caller.
+let AUTH_HINT = "";
+
+/**
+ * Read a secret exactly as configured, then remove only the paste artifacts
+ * that cause silent 401s: surrounding whitespace (spaces/tabs/newlines/CR),
+ * a single layer of enclosing quotes/backticks, and an accidental leading
+ * "Bearer " prefix. There is no fallback, no hardcoded value, and no default —
+ * an empty result stays empty and fails loudly as not_configured.
+ *
+ * Returns the cleaned value plus `modified` (true iff artifacts were stripped)
+ * so the proxy can tell the builder the stored secret should be re-saved
+ * cleanly — without ever exposing the value itself.
+ */
+function sanitizeSecret(raw: any): { value: string; modified: boolean } {
+  let v = String(raw ?? "");
+  let modified = false;
+  const trimmed = v.trim();
+  if (trimmed !== v) { v = trimmed; modified = true; }
+  if (v.length >= 2 && /^["'`].*["'`]$/.test(v)) { v = v.slice(1, -1); modified = true; }
+  if (/^bearer\s+/i.test(v)) { v = v.replace(/^bearer\s+/i, ""); modified = true; }
+  // Reject any residual internal whitespace — a real key never contains it.
+  if (/\s/.test(v)) { v = v.replace(/\s+/g, ""); modified = true; }
+  return { value: v, modified };
+}
+
 // Normalize the configured base URL to the API ROOT (no trailing slash, no /v1).
 // Accepts both "https://hermes.example.com" and "https://hermes.example.com/v1".
 function normalizeRoot(configuredBase: string): string {
@@ -39,7 +67,7 @@ function normalizeRoot(configuredBase: string): string {
 function classifyUpstream(status: number, errText: string) {
   const t = (errText || "").slice(0, 300);
   if (status === 401 || status === 403)
-    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}). Verify HERMES_API_KEY.${t ? " " + t : ""}` };
+    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}). Verify HERMES_API_KEY.${t ? " " + t : ""}${AUTH_HINT}` };
   if (status === 404)
     return { status: "not_found", error: `Hermes endpoint not found (HTTP 404). Check HERMES_BASE_URL points to the gateway root.${t ? " " + t : ""}` };
   if (status === 429)
@@ -121,19 +149,29 @@ export default async function (req: Request): Promise<Response> {
     const payload = await req.json().catch(() => ({}));
     const { prompt, response_json_schema, model, temperature, max_tokens } = payload || {};
 
-    const apiKey = secrets.get("HERMES_API_KEY");
-    const configuredBase = secrets.get("HERMES_BASE_URL");
+    // Read the secrets exactly as configured and strip only paste artifacts.
+    // No fallback, no hardcoded value, no default. An empty/whitespace-only
+    // secret fails loudly below as not_configured so a bad value is never
+    // silently sent upstream.
+    const rawKey = secrets.get("HERMES_API_KEY");
+    const rawBase = secrets.get("HERMES_BASE_URL");
+    const { value: apiKey, modified: keySanitized } = sanitizeSecret(rawKey);
+    const { value: configuredBase } = sanitizeSecret(rawBase);
+
+    AUTH_HINT = keySanitized
+      ? " (the stored HERMES_API_KEY had surrounding whitespace/quotes and was cleaned before sending — re-save the secret cleanly in Secrets if this persists)"
+      : "";
 
     if (!apiKey) {
       return Response.json({
         ok: false, status: "not_configured", configured: false,
-        error: "HERMES_API_KEY secret is not configured.",
+        error: "HERMES_API_KEY secret is not configured (empty or whitespace-only). Set it in Secrets to the live Hermes gateway key.",
       });
     }
     if (!configuredBase) {
       return Response.json({
         ok: false, status: "not_configured", configured: false,
-        error: "HERMES_BASE_URL secret is not configured. Point it to the real Hermes Agent gateway (e.g. https://hermes.example.com). Do not use 127.0.0.1.",
+        error: "HERMES_BASE_URL secret is not configured (empty or whitespace-only). Point it to the real Hermes Agent gateway (e.g. https://hermes.example.com). Do not use 127.0.0.1.",
       });
     }
 
