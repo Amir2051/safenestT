@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { getProvider } from "@/lib/investigationAI";
+import { runHermesInvestigation, HermesError } from "@/lib/hermesInvestigation";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
 import { toast } from "sonner";
 
@@ -32,6 +33,11 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
   const [lastResult, setLastResult] = useState(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  // Live phase statuses + Hermes investigation id from the real pipeline.
+  const [liveStatuses, setLiveStatuses] = useState(null);
+  const [hermesInvestigationId, setHermesInvestigationId] = useState(
+    caseItem?.workflow?.hermes_investigation_id || null
+  );
 
   const providerDef = getProvider(provider);
   const models = providerDef.models;
@@ -86,41 +92,49 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
     qc.invalidateQueries({ queryKey: ["investigation-runs", caseId] });
   };
 
-  const runOne = async (phaseId) => {
-    setRunning(phaseId); setLastResult(null);
-    try {
-      const res = await runPhase({ caseId, phase: phaseId, provider, model });
-      setLastResult(res);
-      const label = PHASES.find((p) => p.id === phaseId).label;
-      if (res.status === "completed") toast.success(`${label} completed`);
-      else toast.error(`${label} failed: ${res.error}`);
-      invalidateAll();
-    } catch (e) {
-      setLastResult({ status: "failed", error: e?.message || String(e) });
-      toast.error("Run failed: " + (e?.message || e));
-    } finally { setRunning(null); }
-  };
-
-  const runAll = async () => {
+  // Run the REAL Hermes investigation lifecycle: create → start → poll the
+  // /v1/investigations status endpoint. The six-phase UI is driven from the
+  // real Hermes status response (onProgress), never simulated. Errors
+  // (401/404/5xx/network) are surfaced with their upstream HTTP status.
+  const runPipeline = async () => {
     setRunAllActive(true);
-    for (const ph of PHASES) {
-      setRunning(ph.id);
-      try {
-        const res = await runPhase({ caseId, phase: ph.id, provider, model });
-        setLastResult(res);
-        if (res.status !== "completed") {
-          toast.error(`Pipeline stopped at ${ph.label}: ${res.error}`);
-          break;
-        }
-        toast.success(`${ph.label} completed`);
-      } catch (e) {
-        toast.error(`Pipeline failed at ${ph.label}: ${e?.message || e}`);
-        break;
-      } finally { setRunning(null); }
+    setLastResult(null);
+    setLiveStatuses(null);
+    setRunning("planning");
+    try {
+      const res = await runHermesInvestigation({
+        caseId,
+        caseItem,
+        onProgress: (phases, overall, raw) => {
+          setLiveStatuses(phases);
+          const runPhaseId = Object.keys(phases).find((k) => phases[k] === "running");
+          setRunning(runPhaseId || null);
+          const hid = raw?.investigation_id || raw?.id;
+          if (hid) setHermesInvestigationId(hid);
+        },
+      });
+      setLastResult(res);
+      if (res.status === "completed") toast.success("Hermes investigation completed");
+      else toast.error(`Hermes investigation ${res.status}`);
+      if (res.investigation_id) setHermesInvestigationId(res.investigation_id);
+    } catch (e) {
+      const err = e instanceof HermesError ? e : { message: e?.message || String(e) };
+      setLastResult({
+        status: "failed",
+        error: err.message,
+        hermesStatus: err.hermesStatus,
+        upstreamStatus: err.upstreamStatus,
+      });
+      const code = err.upstreamStatus ? ` (HTTP ${err.upstreamStatus})` : "";
+      toast.error(`Hermes investigation failed${code}: ${err.message}`);
+    } finally {
+      setRunning(null);
+      setRunAllActive(false);
       invalidateAll();
     }
-    setRunAllActive(false);
   };
+  const runAll = runPipeline;
+  const runOne = runPipeline;
 
   const phaseState = (id) => wf.phases?.[id]?.status || "pending";
   const anyRunning = !!running || runAllActive;
@@ -135,6 +149,9 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
           <div>
             <p className="text-sm font-semibold text-white">Investigation Engine</p>
             <p className="text-[11px] text-gray-500">{providerDef.description}</p>
+            {hermesInvestigationId && (
+              <p className="text-[10px] text-cyan-400/80 font-mono mt-0.5">Hermes ID: {String(hermesInvestigationId).slice(0, 24)}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -150,7 +167,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem }) {
 
       <InvestigationStageTimeline
         phases={PHASES}
-        statuses={Object.fromEntries(PHASES.map((p) => [p.id, phaseState(p.id)]))}
+        statuses={Object.fromEntries(PHASES.map((p) => [p.id, liveStatuses?.[p.id] || phaseState(p.id)]))}
         running={running}
         current={wf.current_phase}
         onSelect={runOne}
@@ -185,11 +202,19 @@ function LastResult({ result }) {
       <div className="flex items-start gap-2">
         {ok ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-white">{ok ? "Phase completed" : "Phase failed"}</p>
+          <p className="text-xs font-medium text-white">{ok ? "Hermes investigation completed" : "Hermes investigation failed"}</p>
+          {!ok && (result.hermesStatus || result.upstreamStatus) && (
+            <p className="text-[11px] text-red-300 mt-0.5 font-mono">
+              {result.upstreamStatus ? `HTTP ${result.upstreamStatus} · ` : ""}{result.hermesStatus || "error"}
+            </p>
+          )}
           {ok ? (
-            <pre className="text-[11px] text-gray-400 mt-1 max-h-32 overflow-auto whitespace-pre-wrap">{JSON.stringify(result.output, null, 2).slice(0, 1200)}</pre>
+            <pre className="text-[11px] text-gray-400 mt-1 max-h-32 overflow-auto whitespace-pre-wrap">{JSON.stringify(result.output || result.phases, null, 2).slice(0, 1200)}</pre>
           ) : (
             <p className="text-[11px] text-red-300 mt-1">{result.error}</p>
+          )}
+          {result.investigation_id && (
+            <p className="text-[10px] text-gray-500 mt-1 font-mono">Hermes ID: {result.investigation_id}</p>
           )}
         </div>
       </div>

@@ -66,6 +66,52 @@ function withTimeout(ms: number) {
   return { controller, timer };
 }
 
+// Build the investigations endpoint URL from the normalized gateway ROOT.
+// Handles three HERMES_BASE_URL shapes without double-appending the path:
+//   - "https://host"                      → "https://host/v1/investigations"
+//   - "https://host/v1"                   → "https://host/v1/investigations"
+//   - "https://host/v1/investigations"    → used as-is (already the full path)
+// Any other trailing path is treated as part of the root and appended to.
+function buildInvestigationsUrl(root: string): string {
+  const b = (root || "").trim().replace(/\/+$/, "");
+  if (/\/v1\/investigations$/.test(b)) return b;
+  if (b.endsWith("/v1")) return `${b}/investigations`;
+  return `${b}/v1/investigations`;
+}
+
+// Hermes investigation-lifecycle request. Uses X-API-Key authentication as
+// required by the investigation gateway. Returns a structured body so the
+// SDK never collapses a 404/401 into a generic error and the UI gets the real
+// upstream status.
+async function investigationFetch(
+  url: string,
+  { method, body, apiKey }: { method: string; body?: any; apiKey: string }
+) {
+  const { controller, timer } = withTimeout(60000);
+  try {
+    const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const text = await res.text().catch(() => "");
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    if (res.ok) {
+      return { ok: true, status: "ok" as const, upstream_status: res.status, data: json ?? (text ? { raw: text.slice(0, 1000) } : {}) };
+    }
+    const cls = classifyUpstream(res.status, text);
+    return { ok: false, status: cls.status, upstream_status: res.status, error: cls.error, data: json };
+  } catch (e: any) {
+    clearTimeout(timer);
+    const cls = classifyNetwork(e);
+    return { ok: false, status: cls.status, error: cls.error };
+  }
+}
+
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -146,6 +192,36 @@ export default async function (req: Request): Promise<Response> {
         const cls = classifyNetwork(e);
         return Response.json({ ok: false, status: cls.status, configured: true, error: cls.error });
       }
+    }
+
+    // ── Investigation lifecycle (real Hermes pipeline) ──────────────────────
+    // POST /v1/investigations              → create
+    // POST /v1/investigations/{id}/start   → start
+    // GET  /v1/investigations/{id}         → status / results
+    // The browser never sees HERMES_BASE_URL or the key; it requests these
+    // actions and the proxy performs the authenticated call server-side.
+    if (payload?.action === "create_investigation") {
+      const investigationsUrl = buildInvestigationsUrl(root);
+      const result = await investigationFetch(investigationsUrl, {
+        method: "POST",
+        body: payload.body || payload.payload || {},
+        apiKey,
+      });
+      return Response.json({ ...result, configured: true, endpoint: investigationsUrl });
+    }
+    if (payload?.action === "start_investigation") {
+      const id = payload.investigation_id;
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/start`;
+      const result = await investigationFetch(url, { method: "POST", body: payload.body || {}, apiKey });
+      return Response.json({ ...result, configured: true });
+    }
+    if (payload?.action === "get_investigation") {
+      const id = payload.investigation_id;
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}`;
+      const result = await investigationFetch(url, { method: "GET", apiKey });
+      return Response.json({ ...result, configured: true });
     }
 
     // ── Inference ──────────────────────────────────────────────────────────
