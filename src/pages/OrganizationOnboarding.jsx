@@ -385,26 +385,16 @@ function Step2({ mode, setMode, orgName, setOrgName, orgType, setOrgType, select
           </div>
           <div>
             <Label className="text-slate-300 text-[12px]">Organization type</Label>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ORGANIZATION_TYPES.map((t) => {
-                const selected = orgType === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => setOrgType(t.value)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-md border text-left text-[13px] transition-colors ${
-                      selected
-                        ? "border-cyan-500/60 bg-cyan-500/10 text-slate-100"
-                        : "border-slate-700/60 bg-[#0a0e13] text-slate-400 hover:border-cyan-500/30 hover:text-slate-200"
-                    }`}
-                  >
-                    <Building2 className={`w-4 h-4 shrink-0 ${selected ? "text-cyan-300" : "text-slate-500"}`} />
-                    <span>{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <Select value={orgType} onValueChange={setOrgType}>
+              <SelectTrigger className="w-full mt-1 bg-[#0a0e13] border-slate-700/60 text-slate-100">
+                <SelectValue placeholder="Select an organization type…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ORGANIZATION_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">
             A SafeNestT administrator will verify your company before the organization is activated. You get read-only access until then.
