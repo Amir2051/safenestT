@@ -1,16 +1,22 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { getEffectiveRole } from '@/lib/organizationRoles';
 
 /**
  * Role-based access gate.
  *
- * - <AdminGate>: admin only (platform role "admin" or tenant owner/admin).
- * - <RoleGate allowInvestigator>: admin OR tenant investigator — used for the
- *   investigation platform pages so investigators keep working while regular
- *   users are blocked.
+ * - <AdminGate>: platform admin OR organization admin (enterprise admin
+ *   functionality). Organization admins manage their own tenant; the backend
+ *   still enforces tenant isolation and platform-only actions server-side.
+ * - <RoleGate allowInvestigator>: any role that can run investigations —
+ *   PLATFORM_ADMIN, ORG_ADMIN, INVESTIGATOR, ANALYST, CASE_MANAGER. Used for
+ *   the investigation platform pages (Operations, Cases, Workspace, Reports…)
+ *   so enterprise members can run the full 6-phase pipeline. VIEWER, AUDITOR,
+ *   and regular members are blocked from these pages.
  *
- * Non-privileged users are redirected to the regular dashboard.
+ * Non-privileged users are redirected to the regular dashboard. This is a
+ * UI gate only — not a security boundary.
  */
 
 function Loading() {
@@ -21,11 +27,14 @@ function Loading() {
   );
 }
 
+const INVESTIGATION_ROLES = ['ORG_ADMIN', 'INVESTIGATOR', 'ANALYST', 'CASE_MANAGER'];
+
 function isPrivileged(user, { allowInvestigator = false } = {}) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  const tr = user.tenant_role;
-  if (allowInvestigator && tr === 'investigator') return true;
+  const role = getEffectiveRole(user);
+  if (role === 'PLATFORM_ADMIN') return true;
+  if (role === 'ORG_ADMIN') return true; // enterprise admin functionality
+  if (allowInvestigator && INVESTIGATION_ROLES.includes(role)) return true;
   return false;
 }
 
