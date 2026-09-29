@@ -23,6 +23,8 @@ import FindingsTab from "@/components/platform/tabs/FindingsTab";
 import RiskTab from "@/components/platform/tabs/RiskTab";
 import ReportsTab from "@/components/platform/tabs/ReportsTab";
 import ActivityTab from "@/components/platform/tabs/ActivityTab";
+import { useCanMutate } from "@/components/shared/MutateGuard";
+import { Lock } from "lucide-react";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Target },
@@ -44,6 +46,7 @@ export default function InvestigationWorkspace() {
   const caseId = params.get("case_id");
   const requestedTab = params.get("tab");
   const [activeTab, setActiveTab] = useState(requestedTab || "overview");
+  const canMutate = useCanMutate();
   const hermes = getHermesStatus();
   // Real Hermes reachability — pings the server-side proxy. Falls back to the
   // static "configured" state while the first check is in flight.
@@ -138,7 +141,22 @@ export default function InvestigationWorkspace() {
 
       <CaseHeader caseItem={caseItem} hermesState={hermesState} hermesMs={hermesHealth?.ms} />
 
-      <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} />
+      {canMutate ? (
+        <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} />
+      ) : (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-5 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-md bg-amber-500/15 border border-amber-500/40 flex items-center justify-center shrink-0">
+            <Lock className="w-5 h-5 text-amber-300" />
+          </div>
+          <div>
+            <p className="text-amber-100 font-semibold text-sm">Read-only access</p>
+            <p className="text-amber-200/70 text-[13px] mt-1 leading-relaxed">
+              You can review this case's evidence, findings, risk, and reports. Investigation execution
+              (run phases) is not available for your role.
+            </p>
+          </div>
+        </div>
+      )}
 
       <nav className="sticky top-0 z-20 -mx-4 sm:mx-0 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/10">
         <div className="flex gap-1 overflow-x-auto px-4 sm:px-0 py-2 no-scrollbar" role="tablist" aria-label="Investigation sections">

@@ -16,6 +16,7 @@ import PaymentMethodPopup from "./components/popups/PaymentMethodPopup.jsx";
 import MessageNotifications from "./components/communication/MessageNotifications.jsx";
 import LegalFooter from "./components/shared/LegalFooter";
 import PrivacyConsentBanner from "./components/shared/PrivacyConsentBanner";
+import ReadOnlyBanner from "./components/shared/ReadOnlyBanner";
 import { isAnalyticsAllowed, isChatAllowed } from "./lib/PrivacyGuard";
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
@@ -272,6 +273,7 @@ export default function Layout({ children, currentPageName }) {
             <Breadcrumb />
             <NotificationCenter />
           </div>
+          <ReadOnlyBanner />
 
           {/* Page Content */}
           <div

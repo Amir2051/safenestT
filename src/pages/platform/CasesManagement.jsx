@@ -14,6 +14,7 @@ import {
 import EmptyState from "@/components/platform/EmptyState";
 import SectionHeader from "@/components/platform/SectionHeader";
 import NewInvestigationCaseModal from "@/components/platform/NewInvestigationCaseModal";
+import { useCanMutate } from "@/components/shared/MutateGuard";
 
 const CASE_STATUSES = ["new", "investigating", "documented", "submitted", "law_enforcement", "recovering", "recovered", "closed"];
 const PRIORITIES = ["low", "medium", "high", "critical"];
@@ -31,6 +32,7 @@ export default function CasesManagement() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showNew, setShowNew] = useState(false);
   const queryClient = useQueryClient();
+  const canMutate = useCanMutate();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -69,7 +71,7 @@ export default function CasesManagement() {
         title="Cases"
         description="Create and manage fraud investigation cases. Each case can be submitted to Hermes for real investigation."
         icon={Briefcase}
-        actions={<Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button>}
+        actions={canMutate ? <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button> : null}
       />
 
       {/* Filters */}
@@ -110,15 +112,15 @@ export default function CasesManagement() {
           description={cases.length === 0 ? "Create a new case or import an existing SafeNestT case to begin." : "Try adjusting your search or filters."}
           action={cases.length === 0 ? (
             <div className="flex gap-2">
-              <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button>
-              <Link to="/CaseImport"><Button size="sm" variant="outline" className="border-white/15 text-gray-200">Import Case</Button></Link>
+              {canMutate && <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setShowNew(true)}><Plus className="w-4 h-4 mr-1.5" />New Case</Button>}
+              {canMutate && <Link to="/CaseImport"><Button size="sm" variant="outline" className="border-white/15 text-gray-200">Import Case</Button></Link>}
             </div>
           ) : null}
         />
       ) : (
         <div className="rounded-lg border border-white/10 divide-y divide-white/5">
           {filtered.map((c) => (
-            <CaseListItem key={c.id} caseItem={c} onDelete={handleDelete} />
+            <CaseListItem key={c.id} caseItem={c} onDelete={handleDelete} canDelete={canMutate} />
           ))}
         </div>
       )}
@@ -128,7 +130,7 @@ export default function CasesManagement() {
   );
 }
 
-function CaseListItem({ caseItem, onDelete }) {
+function CaseListItem({ caseItem, onDelete, canDelete }) {
   const priority = caseItem.priority || caseItem.case_priority || "medium";
   const priTone = priority === "critical" ? "text-red-400 border-red-500/30" : priority === "high" ? "text-amber-400 border-amber-500/30" : priority === "medium" ? "text-cyan-400 border-cyan-500/30" : "text-gray-400 border-white/15";
   const risk = caseItem.workflow?.risk_score;
@@ -156,13 +158,15 @@ function CaseListItem({ caseItem, onDelete }) {
       {risk != null && <Badge variant="outline" className={`text-[10px] ${riskTone}`}>Risk {risk}</Badge>}
       <Badge variant="outline" className={`capitalize ${priTone}`}>{priority}</Badge>
       <Badge variant="outline" className="capitalize border-white/10 text-gray-400 hidden sm:inline-flex">{(caseItem.status || "new").replace(/_/g, " ")}</Badge>
-      <button
-        onClick={(e) => { e.preventDefault(); onDelete(caseItem.id); }}
-        className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 transition-colors"
-        title="Delete case"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {canDelete && (
+        <button
+          onClick={(e) => { e.preventDefault(); onDelete(caseItem.id); }}
+          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+          title="Delete case"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
       <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400" />
     </Link>
   );
