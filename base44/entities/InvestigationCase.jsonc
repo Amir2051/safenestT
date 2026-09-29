@@ -357,6 +357,7 @@
       "type": "string",
       "enum": [
         "new",
+        "queued",
         "investigating",
         "documented",
         "submitted",
@@ -366,7 +367,7 @@
         "closed"
       ],
       "default": "new",
-      "description": "Case status"
+      "description": "Case status. 'queued' reflects a Hermes investigation that has been created but not yet started."
     },
     "priority": {
       "type": "string",
@@ -506,6 +507,14 @@
         "hermes_investigation_id": {
           "type": "string",
           "description": "Hermes gateway investigation id linked to this case (create -> start -> poll lifecycle). Set by runHermesInvestigation after a successful POST /v1/investigations."
+        },
+        "hermes_status": {
+          "type": "string",
+          "description": "Live Hermes investigation status mirrored from GET /v1/investigations/{id} (queued/running/completed/failed/...). The UI displays this value truthfully rather than assuming completion on start."
+        },
+        "hermes_error": {
+          "type": "string",
+          "description": "Error message reported by Hermes when the investigation failed, if any."
         },
         "phases": {
           "type": "object",

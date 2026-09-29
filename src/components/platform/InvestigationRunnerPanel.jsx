@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { getProvider } from "@/lib/investigationAI";
-import { runHermesInvestigation, HermesError } from "@/lib/hermesInvestigation";
+import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, HermesError } from "@/lib/hermesInvestigation";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
 import { toast } from "sonner";
 
@@ -102,6 +102,44 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     qc.invalidateQueries({ queryKey: ["investigation-runs", caseId] });
   };
 
+  // ── Existing-investigation auto-sync ────────────────────────────────────
+  // When this case already has a Hermes investigation that hasn't reached a
+  // terminal state, poll the server-side sync step on an interval so the case
+  // reflects the REAL Hermes status even without a manual button press. This
+  // is what un-stucks cases whose earlier client-side polling loop died on
+  // navigation/unmount.
+  const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
+  const hermesTerminal = wf.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wf.hermes_status).toLowerCase());
+  const manualRunning = !!running || runAllActive;
+  const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
+    caseItem?.status === "investigating" || caseItem?.status === "queued" ||
+    wf.hermes_status === "running" || wf.hermes_status === "queued" || wf.hermes_status === "pending" || !wf.hermes_status
+  );
+
+  const { data: autoSync } = useQuery({
+    queryKey: ["hermes-sync", caseId],
+    queryFn: () => syncHermesInvestigationStep(caseId),
+    enabled: hermesActive,
+    refetchInterval: hermesActive ? 8000 : false,
+    refetchIntervalInBackground: false,
+  });
+
+  useEffect(() => {
+    if (!autoSync) return;
+    setLiveStatuses(autoSync.phases || null);
+    if (autoSync.hermes_investigation_id) setHermesInvestigationId(autoSync.hermes_investigation_id);
+    qc.invalidateQueries({ queryKey: ["investigation-case", caseId] });
+    if (autoSync.terminal) {
+      invalidateAll();
+      if (autoSync.hermes_status === "completed" || autoSync.hermes_status === "done") {
+        toast.success("Hermes investigation completed — results attached to this case");
+      } else if (autoSync.hermes_status === "failed" || autoSync.hermes_status === "error") {
+        toast.error("Hermes investigation failed — failure recorded on this case");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSync]);
+
   // Run the REAL Hermes investigation lifecycle: create → start → poll the
   // /v1/investigations status endpoint. The six-phase UI is driven from the
   // real Hermes status response (onProgress), never simulated. Errors
@@ -112,21 +150,35 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     setLiveStatuses(null);
     setRunning("planning");
     try {
-      const res = await runHermesInvestigation({
-        caseId,
-        caseItem,
-        onProgress: (phases, overall, raw) => {
-          setLiveStatuses(phases);
-          const runPhaseId = Object.keys(phases).find((k) => phases[k] === "running");
-          setRunning(runPhaseId || null);
-          const hid = raw?.investigation_id || raw?.id;
-          if (hid) setHermesInvestigationId(hid);
-        },
-      });
+      // If this case already has a Hermes investigation that hasn't reached a
+      // terminal state, RESUME polling it — do NOT create a new one. This keeps
+      // the case/user/organization relationship intact and re-syncs the real
+      // Hermes status into the same case.
+      const existingId = hermesInvestigationId || caseItem?.workflow?.hermes_investigation_id;
+      const wfNow = caseItem?.workflow || {};
+      const existingTerminal = wfNow.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wfNow.hermes_status).toLowerCase());
+      const shouldResume = existingId && !existingTerminal && (
+        caseItem?.status === "investigating" || caseItem?.status === "queued" ||
+        wfNow.hermes_status === "running" || wfNow.hermes_status === "queued" || wfNow.hermes_status === "pending"
+      );
+
+      const onProgress = (phases, overall, raw) => {
+        setLiveStatuses(phases);
+        const runPhaseId = Object.keys(phases).find((k) => phases[k] === "running");
+        setRunning(runPhaseId || null);
+        const hid = raw?.investigation_id || raw?.id || raw?.hermes_investigation_id;
+        if (hid) setHermesInvestigationId(hid);
+      };
+
+      const res = shouldResume
+        ? await resumeHermesInvestigation({ caseId, onProgress })
+        : await runHermesInvestigation({ caseId, caseItem, onProgress });
+
       setLastResult(res);
       if (res.status === "completed") toast.success("Hermes investigation completed");
       else toast.error(`Hermes investigation ${res.status}`);
       if (res.investigation_id) setHermesInvestigationId(res.investigation_id);
+      invalidateAll();
     } catch (e) {
       const err = e instanceof HermesError ? e : { message: e?.message || String(e) };
       setLastResult({
@@ -171,7 +223,14 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
             <p className="text-sm font-semibold text-white">Investigation Engine</p>
             <p className="text-[11px] text-gray-500">{providerDef.description}</p>
             {hermesInvestigationId && (
-              <p className="text-[10px] text-cyan-400/80 font-mono mt-0.5">Hermes ID: {String(hermesInvestigationId).slice(0, 24)}</p>
+              <p className="text-[10px] text-cyan-400/80 font-mono mt-0.5">
+                Hermes ID: {String(hermesInvestigationId).slice(0, 24)}
+                {wf.hermes_status && (
+                  <span className={`ml-2 ${wf.hermes_status === "completed" ? "text-green-400" : wf.hermes_status === "failed" || wf.hermes_status === "error" ? "text-red-400" : "text-cyan-300"}`}>
+                    · {String(wf.hermes_status).toUpperCase()}
+                  </span>
+                )}
+              </p>
             )}
           </div>
         </div>
@@ -179,9 +238,15 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           <Badge variant="outline" className={`text-[10px] ${providerDef.available ? "border-green-500/30 text-green-400" : "border-amber-500/30 text-amber-400"}`}>
             {providerDef.available ? "live" : "upgrade required"}
           </Badge>
-          <Button size="sm" onClick={runAll} disabled={anyRunning || !hasTargets} title={hasTargets ? "Run the Hermes investigation pipeline" : "Add at least one target before starting"} className="bg-cyan-600 hover:bg-cyan-700 h-8">
-            {runAllActive ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
-            Run full pipeline
+          <Button
+            size="sm"
+            onClick={runAll}
+            disabled={anyRunning || (!hermesActive && !hasTargets)}
+            title={hermesActive ? "Resume polling the existing Hermes investigation" : hasTargets ? "Start a new Hermes investigation pipeline" : "Add at least one target before starting"}
+            className="bg-cyan-600 hover:bg-cyan-700 h-8"
+          >
+            {runAllActive ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : hermesActive ? <RotateCw className="w-3.5 h-3.5 mr-1.5" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
+            {hermesActive ? "Resume / Sync" : allComplete ? "Re-run investigation" : "Run full pipeline"}
           </Button>
         </div>
       </header>

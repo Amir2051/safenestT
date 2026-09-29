@@ -349,6 +349,68 @@ async function persistHermesResults({ caseId, tenantId, runId, user, statusData 
 }
 
 /**
+ * One server-side sync step — reads the LIVE Hermes status for the case's
+ * hermes_investigation_id and persists the real status/results back into the
+ * SAME case (authoritative, RLS-enforced). Returns the mapped state.
+ */
+export async function syncHermesInvestigationStep(caseId) {
+  const res = await base44.functions.invoke("syncHermesInvestigation", { case_id: caseId });
+  const body = res?.data ?? res;
+  if (!body || body.ok === false) {
+    throw new HermesError(body?.status || "error", body?.error || "Hermes sync failed", body?.upstream_status);
+  }
+  return body;
+}
+
+/**
+ * Resume polling an EXISTING Hermes investigation linked to a case — no new
+ * investigation is created. Polls the server-side sync step until Hermes
+ * reaches a terminal status, reflecting the real state in the case each tick.
+ */
+export async function resumeHermesInvestigation({
+  caseId,
+  onProgress,
+  shouldStop,
+  pollIntervalMs = 4000,
+  maxPollMs = 600000,
+}) {
+  const emit = (phases, overall, raw) => {
+    if (onProgress) { try { onProgress(phases, overall, raw); } catch { /* listener error is non-fatal */ } }
+  };
+  const startedAt = Date.now();
+  let last = { status: "running", phases: {}, raw: {} };
+  let consecutiveErrors = 0;
+
+  while (true) {
+    if (shouldStop && shouldStop()) break;
+    if (Date.now() - startedAt > maxPollMs) {
+      throw new HermesError("timeout", `Hermes resume polling timed out after ${Math.round(maxPollMs / 1000)}s`);
+    }
+    let sync;
+    try {
+      sync = await syncHermesInvestigationStep(caseId);
+      consecutiveErrors = 0;
+    } catch (e) {
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= 5) {
+        throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+      }
+      await sleep(pollIntervalMs);
+      continue;
+    }
+    const overall = sync.hermes_status || "running";
+    const phases = sync.phases || {};
+    last = { status: overall, phases, raw: sync };
+    emit(phases, overall, sync);
+    if (sync.terminal) break;
+    await sleep(pollIntervalMs);
+  }
+
+  const finalStatus = last.status === "failed" || last.status === "error" ? "failed" : "completed";
+  return { status: finalStatus, phases: last.phases, output: last.raw, persisted: last.raw?.persisted || {} };
+}
+
+/**
  * Execute the real Hermes investigation pipeline for a case.
  *
  * @param {object} opts
@@ -432,10 +494,14 @@ export async function runHermesInvestigation({
     throw e;
   }
 
-  // 2. Poll the real status endpoint.
+  // 2. Poll the real status via the server-side sync step — each tick reads
+  //    the live Hermes status AND persists it (phases, case status, progress)
+  //    back into the same case. Results are persisted on the terminal
+  //    transition. This is authoritative; the browser does no direct entity
+  //    writes during polling.
   const startedAt = Date.now();
   let last = { investigation_id: investigationId, status: "running", phases: {}, raw: {} };
-  let consecutivePollErrors = 0;
+  let consecutiveErrors = 0;
 
   while (true) {
     if (shouldStop && shouldStop()) break;
@@ -443,35 +509,32 @@ export async function runHermesInvestigation({
       throw new HermesError("timeout", `Hermes investigation polling timed out after ${Math.round(maxPollMs / 1000)}s`);
     }
 
-    let statusData;
+    let sync;
     try {
-      statusData = await getHermesInvestigationStatus(investigationId);
-      consecutivePollErrors = 0;
+      sync = await syncHermesInvestigationStep(caseId);
+      consecutiveErrors = 0;
     } catch (e) {
-      consecutivePollErrors += 1;
-      // Surface transient poll failures but keep polling (up to a limit).
-      if (consecutivePollErrors >= 5) {
-        throw new HermesError(e?.hermesStatus || "poll_failed", `Hermes status polling repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= 5) {
+        throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
       }
       await sleep(pollIntervalMs);
       continue;
     }
 
-    const phaseStatuses = extractPhaseStatuses(statusData);
-    const overall = extractStatus(statusData);
-    const merged = {};
-    for (const p of PHASES) merged[p.id] = phaseStatuses[p.id] || (p.id === "planning" ? "running" : "pending");
-    last = { investigation_id: investigationId, status: overall, phases: merged, raw: statusData };
+    const overall = sync.hermes_status || "running";
+    const phases = sync.phases || {};
+    last = { investigation_id: investigationId, status: overall, phases, raw: sync };
 
-    emit(merged, overall, statusData);
-    await persistPhaseProgress(caseId, merged, overall, investigationId).catch(() => {});
+    emit(phases, overall, sync);
 
-    if (isTerminal(overall)) break;
+    if (sync.terminal) break;
     await sleep(pollIntervalMs);
   }
 
-  // 3. Persist final results returned by Hermes.
-  const persisted = await persistHermesResults({ caseId, tenantId, runId: run?.id, user, statusData: last.raw }).catch(() => ({}));
+  // 3. Finalize the run record (results were already persisted server-side on
+  //    the terminal transition).
+  const persisted = last.raw?.persisted || {};
   const finalStatus = last.status === "failed" || last.status === "error" ? "failed" : "completed";
 
   if (run) {
