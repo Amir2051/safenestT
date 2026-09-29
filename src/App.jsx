@@ -30,6 +30,7 @@ import ClientAuthorizations from './pages/ClientAuthorizations';
 import OrganizationOnboarding from './pages/OrganizationOnboarding';
 import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
+import OrganizationVerifications from './pages/OrganizationVerifications';
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -141,6 +142,7 @@ const AuthenticatedApp = () => {
         <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
         <Route path="/Team" element={<Team />} />
         <Route path="/OrganizationSettings" element={<OrganizationSettings />} />
+        <Route path="/OrganizationVerifications" element={<AdminGate><OrganizationVerifications /></AdminGate>} />
         <Route path="/CookiePolicy" element={<CookiePolicy />} />
         <Route path="/DataRightsDeletion" element={<DataRightsDeletion />} />
         <Route path="*" element={<PageNotFound />} />

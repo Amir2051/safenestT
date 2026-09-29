@@ -40,7 +40,8 @@ export default function Team() {
     setLoading(true);
     try {
       const list = await base44.entities.TenantMembership.filter({ tenant_id: tenantId });
-      list.sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1));
+      const rank = (s) => (s === "pending_role_assignment" ? 0 : s === "pending_verification" ? 1 : s === "invited" ? 2 : s === "active" ? 3 : 4);
+      list.sort((a, b) => rank(a.status) - rank(b.status));
       setMembers(list);
     } catch (e) {
       setError(e?.message || "Unable to load team members.");
@@ -121,6 +122,7 @@ export default function Team() {
       {roleTarget && (
         <ChangeRoleDialog
           member={roleTarget}
+          actorId={user?.id}
           onClose={() => setRoleTarget(null)}
           onChanged={() => { setRoleTarget(null); loadMembers(); }}
         />
@@ -143,7 +145,7 @@ function isOrgRole(r) {
 function MemberRow({ m, canManage, onChangeRole, onRemove }) {
   const roleLabel = ROLE_LABELS[m.organization_role] || ROLE_LABELS[m.role] || "Member";
   const status = m.status || "active";
-  const statusTone = status === "active" ? "emerald" : status === "invited" ? "amber" : "red";
+  const statusTone = status === "active" ? "emerald" : (status === "pending_role_assignment" || status === "pending_verification" || status === "invited") ? "amber" : "red";
   return (
     <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-slate-800/60 items-center text-sm hover:bg-white/[0.02]">
       <div className="col-span-4 sm:col-span-3 flex items-center gap-2 min-w-0">
@@ -233,26 +235,39 @@ function InviteDialog({ onClose, onInvited, tenantId, inviterEmail }) {
   );
 }
 
-function ChangeRoleDialog({ member, onClose, onChanged }) {
-  const [orgRole, setOrgRole] = useState(member.organization_role || "VIEWER");
+function ChangeRoleDialog({ member, onClose, onChanged, actorId }) {
+  const [orgRole, setOrgRole] = useState(member.organization_role === "VIEWER" && member.status === "pending_role_assignment" ? "INVESTIGATOR" : (member.organization_role || "VIEWER"));
   const [submitting, setSubmitting] = useState(false);
+  const isPending = member.status === "pending_role_assignment" || member.status === "pending_verification";
   const submit = async () => {
     setSubmitting(true);
     try {
-      await base44.entities.TenantMembership.update(member.id, { organization_role: orgRole });
+      const patch = { organization_role: orgRole };
+      // Activating a pending member: company was already verified by the
+      // platform admin — assigning the role here flips the membership active.
+      if (isPending) {
+        patch.status = "active";
+        patch.assigned_by = actorId;
+        patch.assigned_at = new Date().toISOString();
+      }
+      await base44.entities.TenantMembership.update(member.id, patch);
       onChanged();
     } catch (e) { /* ignore */ } finally { setSubmitting(false); }
   };
   return (
-    <Modal onClose={onClose} title="Change Role">
-      <p className="text-slate-400 text-[13px] mb-3">Update the assigned role for <span className="text-slate-200">{member.user_name || member.user_email}</span>.</p>
+    <Modal onClose={onClose} title={isPending ? "Approve & Assign Role" : "Change Role"}>
+      <p className="text-slate-400 text-[13px] mb-3">
+        {isPending
+          ? <>Company verified. Assign a role to activate <span className="text-slate-200">{member.user_name || member.user_email}</span> in the organization.</>
+          : <>Update the assigned role for <span className="text-slate-200">{member.user_name || member.user_email}</span>.</>}
+      </p>
       <select value={orgRole} onChange={(e) => setOrgRole(e.target.value)} className="w-full h-9 rounded-md bg-[#0a0e13] border border-slate-700/60 text-slate-200 text-sm px-2">
         {ORG_ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="flex justify-end gap-2 mt-5">
         <Button variant="outline" onClick={onClose} disabled={submitting} className="border-slate-700 text-slate-300">Cancel</Button>
         <Button onClick={submit} disabled={submitting} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Save Role
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {isPending ? "Activate Member" : "Save Role"}
         </Button>
       </div>
     </Modal>

@@ -17,6 +17,7 @@ import MessageNotifications from "./components/communication/MessageNotification
 import LegalFooter from "./components/shared/LegalFooter";
 import PrivacyConsentBanner from "./components/shared/PrivacyConsentBanner";
 import ReadOnlyBanner from "./components/shared/ReadOnlyBanner";
+import PendingVerificationBanner from "./components/shared/PendingVerificationBanner";
 import { isAnalyticsAllowed, isChatAllowed } from "./lib/PrivacyGuard";
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
@@ -274,6 +275,7 @@ export default function Layout({ children, currentPageName }) {
             <NotificationCenter />
           </div>
           <ReadOnlyBanner />
+          <PendingVerificationBanner />
 
           {/* Page Content */}
           <div

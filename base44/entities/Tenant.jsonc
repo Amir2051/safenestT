@@ -31,11 +31,14 @@
     "status": {
       "type": "string",
       "enum": [
+        "pending_verification",
         "active",
+        "verified",
         "suspended",
         "deleted"
       ],
-      "default": "active"
+      "default": "active",
+      "description": "Organization lifecycle status. 'pending_verification' = new org awaiting platform-admin company verification."
     },
     "members": {
       "type": "array",
@@ -45,6 +48,53 @@
       "description": "User ids of members (denormalized for RLS read access)"
     },
     "description": {
+      "type": "string"
+    },
+    "organization_type": {
+      "type": "string",
+      "enum": [
+        "bank_financial",
+        "insurance",
+        "pi_firm",
+        "corporate_enterprise",
+        "law_enforcement_gov",
+        "security_investigation",
+        "individual_investigator",
+        "other"
+      ],
+      "description": "Type of organization. For new-org requests this is the requested type, approved by a platform admin after company verification."
+    },
+    "requested_by_user_id": {
+      "type": "string",
+      "description": "User id of the account that requested this organization (new-org requests)"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified_by": {
+      "type": "string",
+      "description": "User id of the platform admin who verified the company/org"
+    },
+    "verified_by_email": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verification_notes": {
+      "type": "string",
+      "description": "Platform-admin notes from company verification"
+    },
+    "rejected_by": {
+      "type": "string"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
       "type": "string"
     }
   },

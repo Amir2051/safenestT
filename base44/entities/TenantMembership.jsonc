@@ -40,16 +40,19 @@
         "AUDITOR"
       ],
       "default": "VIEWER",
-      "description": "Assigned organization role for this member. Takes effect when the member completes organization setup. PLATFORM_ADMIN is never assigned here."
+      "description": "Assigned organization role for this member. Takes effect once the membership is active. PLATFORM_ADMIN is never assigned here."
     },
     "status": {
       "type": "string",
       "enum": [
+        "pending_verification",
+        "pending_role_assignment",
         "active",
         "invited",
         "revoked"
       ],
-      "default": "active"
+      "default": "active",
+      "description": "Membership lifecycle. pending_verification = awaiting platform-admin company verification; pending_role_assignment = company verified, awaiting org-admin role assignment; active = role assigned, full access."
     },
     "invited_by": {
       "type": "string",
@@ -63,6 +66,47 @@
       "type": "string",
       "format": "date-time",
       "description": "Last activity timestamp (if available)"
+    },
+    "requested_org_name": {
+      "type": "string",
+      "description": "For new-org requests: the requested organization name (captured at request time)"
+    },
+    "requested_org_type": {
+      "type": "string",
+      "description": "For new-org requests: the requested organization type"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified_by": {
+      "type": "string",
+      "description": "User id of the platform admin who verified the company for this membership"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verification_notes": {
+      "type": "string"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "User id of the org admin who assigned the role"
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejected_by": {
+      "type": "string"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
     }
   },
   "required": [
@@ -102,6 +146,9 @@
       "$or": [
         {
           "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {

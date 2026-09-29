@@ -92,7 +92,31 @@ export const AuthProvider = ({ children }) => {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      setUser(currentUser);
+      // Merge the user's TenantMembership so the effective role reflects the
+      // org admin's assignment and pending users get read-only access. The
+      // platform admin (role: admin) has no membership and is unaffected.
+      let merged = currentUser;
+      try {
+        if (currentUser && currentUser.role !== 'admin' && !currentUser.is_admin) {
+          const memberships = await base44.entities.TenantMembership.filter({ user_id: currentUser.id });
+          const mem = (memberships || []).find((m) => m.tenant_id === currentUser.tenant_id) || (memberships || [])[0];
+          if (mem) {
+            merged = { ...currentUser, membership_status: mem.status };
+            if (mem.status === 'active') {
+              merged.organization_role = mem.organization_role || currentUser.organization_role || 'VIEWER';
+              merged.account_status = 'active';
+            } else if (mem.status === 'pending_verification' || mem.status === 'pending_role_assignment' || mem.status === 'invited') {
+              merged.organization_role = 'VIEWER'; // read-only while pending
+              merged.account_status = 'pending';
+            } else if (mem.status === 'revoked') {
+              merged.organization_role = 'VIEWER';
+              merged.account_status = 'pending';
+              merged.membership_revoked = true;
+            }
+          }
+        }
+      } catch (e) { /* keep currentUser as-is */ }
+      setUser(merged);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
     } catch (error) {
