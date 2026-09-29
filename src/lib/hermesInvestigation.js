@@ -104,6 +104,79 @@ async function gatherContext(caseId) {
   return { evidence, targets, findings };
 }
 
+// ── Target aggregation ───────────────────────────────────────────────────
+// Hermes should be able to read EVERY target embedded in a case, not just the
+// explicitly-created InvestigationTarget records. This merges all target
+// sources on the case (and from evidence auto-detection) into a single
+// deduplicated list keyed by `type|value`, so the full target set is sent to
+// Hermes in the `targets` field while a single `target` remains primary.
+const TARGET_TYPE_RANK = {
+  wallet_address: 1, transaction_hash: 2, domain: 3, url: 4, ip_address: 5,
+  email: 6, phone: 7, username: 8, social_identifier: 9, token_contract: 10,
+  blockchain_network: 11, other: 12,
+};
+
+function makeTarget(type, value, extra = {}) {
+  if (!value || typeof value !== "string") return null;
+  const v = value.trim();
+  if (!v) return null;
+  return { type: type || "other", value: v, ...extra };
+}
+
+function pushUnique(map, t) {
+  if (!t || !t.value) return;
+  const key = `${(t.type || "other")}|${t.value.toLowerCase()}`;
+  if (map.has(key)) return;
+  map.set(key, t);
+}
+
+export function aggregateCaseTargets(caseItem, explicitTargets = [], evidence = []) {
+  const map = new Map();
+
+  // 1. Explicitly-created InvestigationTarget records (highest fidelity).
+  for (const t of explicitTargets || []) {
+    pushUnique(map, makeTarget(t.type, t.value, { network: t.network, label: t.label, source: t.source || "manual" }));
+  }
+
+  // 2. Suspect details — wallets, domains, IPs, social profiles.
+  const sd = caseItem?.suspect_details || {};
+  for (const w of sd.wallet_addresses || []) pushUnique(map, makeTarget("wallet_address", w, { source: "suspect_details" }));
+  for (const d of sd.websites_domains || []) pushUnique(map, makeTarget(/^(https?:)?\/\//i.test(d) ? "url" : "domain", d, { source: "suspect_details" }));
+  for (const ip of sd.ip_addresses || []) pushUnique(map, makeTarget("ip_address", ip, { source: "suspect_details" }));
+  if (sd.primary_suspect?.email) pushUnique(map, makeTarget("email", sd.primary_suspect.email, { source: "suspect_details" }));
+  if (sd.primary_suspect?.phone) pushUnique(map, makeTarget("phone", sd.primary_suspect.phone, { source: "suspect_details" }));
+  for (const s of sd.social_profiles || []) pushUnique(map, makeTarget("social_identifier", s.url || s.platform, { source: "suspect_details", platform: s.platform }));
+
+  // 3. Scammer info — wallets, email, phone, website, social media.
+  const si = caseItem?.scammer_info || {};
+  for (const w of si.wallet_addresses || []) pushUnique(map, makeTarget("wallet_address", w, { source: "scammer_info" }));
+  if (si.email) pushUnique(map, makeTarget("email", si.email, { source: "scammer_info" }));
+  if (si.phone) pushUnique(map, makeTarget("phone", si.phone, { source: "scammer_info" }));
+  if (si.website) pushUnique(map, makeTarget(/^(https?:)?\/\//i.test(si.website) ? "url" : "domain", si.website, { source: "scammer_info" }));
+  for (const s of si.social_media || []) pushUnique(map, makeTarget("social_identifier", typeof s === "string" ? s : s?.url, { source: "scammer_info" }));
+
+  // 4. Case-level crypto fields.
+  for (const w of caseItem?.monitored_wallets || []) pushUnique(map, makeTarget("wallet_address", w, { source: "monitored_wallets" }));
+  for (const h of caseItem?.transaction_hashes || []) pushUnique(map, makeTarget("transaction_hash", h, { source: "transaction_hashes" }));
+  if (caseItem?.scammer_wallet) pushUnique(map, makeTarget("wallet_address", caseItem.scammer_wallet, { source: "scammer_wallet" }));
+  if (caseItem?.victim_wallet) pushUnique(map, makeTarget("wallet_address", caseItem.victim_wallet, { source: "victim_wallet" }));
+  if (caseItem?.transaction_hash) pushUnique(map, makeTarget("transaction_hash", caseItem.transaction_hash, { source: "transaction_hash" }));
+
+  // 5. Evidence auto-detected targets.
+  for (const ev of evidence || []) {
+    const dt = ev?.detected_targets || [];
+    for (const d of dt) {
+      const val = d?.value || d?.address || d?.hash || d?.domain || d?.url || d?.email || d?.ip;
+      pushUnique(map, makeTarget(d?.type || "other", val, { source: "evidence_extraction", evidence_id: ev?.id }));
+    }
+  }
+
+  const all = Array.from(map.values());
+  // Stable, sensible ordering: wallets & txs first.
+  all.sort((a, b) => (TARGET_TYPE_RANK[a.type] ?? 99) - (TARGET_TYPE_RANK[b.type] ?? 99));
+  return all;
+}
+
 // ── Public low-level calls ────────────────────────────────────────────────
 export async function createHermesInvestigation(caseItem, ctx) {
   // Hermes requires a SINGULAR primary `target` and an `investigation_type`
@@ -111,15 +184,15 @@ export async function createHermesInvestigation(caseItem, ctx) {
   // (HTTP 422 "Field required" for body.target / body.investigation_type).
   // Derive the primary target from the first explicit target, then fall back
   // to a scammer wallet or a transaction hash recorded on the case.
-  const targetObjs = (ctx.targets || []).map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label }));
-  const primaryTarget =
-    targetObjs[0] ||
-    (caseItem.scammer_info?.wallet_addresses?.[0]
-      ? { type: "wallet_address", value: caseItem.scammer_info.wallet_addresses[0] }
-      : null) ||
-    (Array.isArray(caseItem.transaction_hashes) && caseItem.transaction_hashes[0]
-      ? { type: "transaction_hash", value: caseItem.transaction_hashes[0] }
-      : null);
+  // Hermes should read EVERY target embedded in the case. Aggregate from
+  // explicit InvestigationTarget records, suspect/scammer fields, monitored
+  // wallets, transaction hashes, and evidence auto-detection into one
+  // deduplicated set. The singular `target` is the highest-priority entry
+  // (wallet/tx preferred); the full `targets` array lets Hermes trace the
+  // complete footprint of the case.
+  const allTargets = aggregateCaseTargets(caseItem, ctx.targets || [], ctx.evidence || []);
+  const targetObjs = allTargets.map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label, source: t.source }));
+  const primaryTarget = targetObjs[0] || null;
 
   if (!primaryTarget) {
     throw new HermesError(
