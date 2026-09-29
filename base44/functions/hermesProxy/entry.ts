@@ -269,6 +269,24 @@ export default async function (req: Request): Promise<Response> {
       const result = await investigationFetch(url, { method: "GET", apiKey });
       return Response.json({ ...result, configured: true });
     }
+    // Result sub-resources of a COMPLETED investigation. Hermes exposes the
+    // investigation results on separate endpoints under the investigation id:
+    //   GET /v1/investigations/{id}/evidence
+    //   GET /v1/investigations/{id}/findings
+    //   GET /v1/investigations/{id}/report
+    // The base GET /v1/investigations/{id} only carries lifecycle metadata
+    // (status/timestamps), so these actions are required to actually retrieve
+    // the evidence, findings, and dossier/report that Hermes produced.
+    if (payload?.action === "get_investigation_evidence" ||
+        payload?.action === "get_investigation_findings" ||
+        payload?.action === "get_investigation_report") {
+      const id = payload.investigation_id;
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      const sub = payload.action.replace("get_investigation_", "");
+      const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/${sub}`;
+      const result = await investigationFetch(url, { method: "GET", apiKey });
+      return Response.json({ ...result, configured: true, endpoint: url });
+    }
 
     // ── Inference ──────────────────────────────────────────────────────────
     if (!prompt || typeof prompt !== "string") {

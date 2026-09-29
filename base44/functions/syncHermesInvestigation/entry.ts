@@ -62,6 +62,92 @@ function extractStatus(data) {
   return String(data?.status || data?.state || "pending").toLowerCase();
 }
 
+// ── Hermes result → SafeNestT entity mappers ────────────────────────────────
+// These map the ACTUAL Hermes /report response schema (inspected live) into
+// the SafeNestT entity enums. No fields are invented — only translated.
+
+function mapEvidenceType(source) {
+  const s = String(source || "").toLowerCase();
+  if (s.includes("blockchain") || s.includes("wallet") || s.includes("chain")) return "blockchain";
+  if (s.includes("transaction") || s.includes("tx_")) return "transaction";
+  if (s.includes("email") || s.includes("message") || s.includes("comm")) return "communication";
+  return "other";
+}
+
+function mapFindingCategory(findingType) {
+  const s = String(findingType || "").toUpperCase();
+  if (s.includes("WALLET") || s.includes("FUNDS")) return "wallet_activity";
+  if (s.includes("ENTITY") || s.includes("CONNECT")) return "entity_connection";
+  if (s.includes("TRANSACTION") || s.includes("FLOW")) return "transaction_pattern";
+  if (s.includes("CORRELAT")) return "evidence_correlation";
+  if (s.includes("RISK")) return "risk_factor";
+  if (s.includes("FRAUD") || s.includes("INDICATOR")) return "fraud_indicator";
+  return "other";
+}
+
+function severityFromScore(score) {
+  if (score == null) return "medium";
+  if (score >= 0.85) return "critical";
+  if (score >= 0.6) return "high";
+  if (score >= 0.3) return "medium";
+  return "low";
+}
+
+function confidenceFromReality(realityStatus) {
+  const s = String(realityStatus || "").toUpperCase();
+  if (s.includes("VERIFIED") || s.includes("FACT") || s.includes("CONFIRMED")) return "high";
+  if (s.includes("UNKNOWN") || s.includes("UNVERIFIED") || s.includes("SPECULATIVE")) return "low";
+  return "medium"; // AI_INFERENCE and most tool-derived findings
+}
+
+// Hermes findings use a `claim` field that is usually a string, but synthesis
+// findings can carry an object (e.g. { investigation_synthesis: "..." }).
+// InvestigationFinding.title and risk_factors[].factor are both strings, so
+// coerce to a meaningful string here — never pass the raw object through.
+function findingTitle(f) {
+  const c = f?.claim;
+  if (typeof c === "string" && c.trim()) return c;
+  if (c && typeof c === "object") {
+    return c.investigation_synthesis || c.summary || c.title || c.conclusion || JSON.stringify(c).slice(0, 140);
+  }
+  return f?.finding_id || "Hermes finding";
+}
+
+function confidenceFrom01(v) {
+  if (v == null) return "medium";
+  if (v >= 0.7) return "high";
+  if (v >= 0.4) return "medium";
+  return "low";
+}
+
+function mapNodeType(t) {
+  const s = String(t || "").toLowerCase();
+  if (s.includes("wallet")) return "wallet";
+  if (s.includes("person")) return "person";
+  if (s.includes("exchange")) return "exchange";
+  if (s.includes("domain")) return "domain";
+  if (s.includes("ip")) return "ip";
+  if (s.includes("email")) return "email";
+  if (s.includes("phone")) return "phone";
+  if (s.includes("transaction") || s.includes("tx")) return "transaction";
+  if (s.includes("token") || s.includes("contract")) return "token_contract";
+  if (s.includes("service")) return "service";
+  if (s.includes("org")) return "organization";
+  return "other";
+}
+
+function mapRelationship(rel) {
+  const s = String(rel || "").toLowerCase();
+  if (s.includes("send")) return "sends_funds";
+  if (s.includes("receiv")) return "receives_funds";
+  if (s.includes("control")) return "controls";
+  if (s.includes("owned")) return "owned_by";
+  if (s.includes("communicat")) return "communicates_with";
+  if (s.includes("transact")) return "transacted_with";
+  if (s.includes("support") || s.includes("link") || s.includes("relat")) return "linked_to";
+  return "other";
+}
+
 function extractPhaseStatuses(data) {
   const out = {};
   const phases = data?.phases || data?.phase_progress || data?.stages || data?.pipeline || [];
@@ -184,83 +270,190 @@ export default async function (req: Request): Promise<Response> {
     };
     await base44.entities.InvestigationCase.update(caseId, updatePatch).catch(() => null);
 
-    const persisted = { findings: 0, report_id: null, risk_score: null, graph_nodes: 0 };
+    const persisted = { evidence: 0, findings: 0, report_id: null, risk_score: null, risk_level: null, graph_nodes: 0, graph_edges: 0 };
 
-    // Persist results only on the terminal transition.
-    if (terminal && !wasTerminal) {
+    // Idempotency: persist results once. The marker lives on the existing
+    // workflow.phases.dossier.output object (already declared in the schema as
+    // a free-form object), so no schema change is needed and re-polling a
+    // completed investigation never creates duplicate records.
+    const resultsAlreadyPersisted = !!(wf.phases?.dossier?.output?.results_persisted);
+
+    if (terminal && !resultsAlreadyPersisted && !isFailed) {
       const tenantId = caseItem.tenant_id;
+      const invId = investigationId;
 
-      // Findings
-      const findings = statusData?.findings || statusData?.results?.findings || [];
-      if (Array.isArray(findings) && findings.length) {
-        for (const f of findings) {
-          const rec = await base44.entities.InvestigationFinding.create({
+      // ── Fetch the three Hermes result endpoints. The base GET
+      // /v1/investigations/{id} only carries lifecycle metadata; the actual
+      // evidence, findings, and dossier/report live on separate sub-resources.
+      // /report is the canonical, richest source (it embeds evidence[],
+      // findings[], dossier{}, intelligence{entity_graph, risk}). /evidence and
+      // /findings are fetched too for count cross-verification.
+      const [reportRes, evidenceRes, findingsRes] = await Promise.all([
+        base44.functions.invoke("hermesProxy", { action: "get_investigation_report", investigation_id: invId }).catch(() => null),
+        base44.functions.invoke("hermesProxy", { action: "get_investigation_evidence", investigation_id: invId }).catch(() => null),
+        base44.functions.invoke("hermesProxy", { action: "get_investigation_findings", investigation_id: invId }).catch(() => null),
+      ]);
+      const reportData = (reportRes?.data ?? reportRes)?.data;
+      const standaloneEvidence = (evidenceRes?.data ?? evidenceRes)?.data;
+      const standaloneFindings = (findingsRes?.data ?? findingsRes)?.data;
+      if (!reportData) {
+        // No report retrievable — record the gap truthfully without fabricating.
+        await base44.entities.AuditEvent.create({
+          tenant_id: tenantId, actor: user.email, actor_name: user.full_name || user.email,
+          timestamp: now, action: "hermes_results_unavailable", object_type: "case",
+          object_id: caseId, case_id: caseId,
+          description: `Hermes investigation ${invId} completed but /report returned no data`,
+          metadata: { investigation_id: invId }, source: "hermes",
+        }).catch(() => null);
+      } else {
+        // Canonical arrays from /report (richest schema: confidence, provenance, metadata).
+        const hermesEvidence = Array.isArray(reportData.evidence) ? reportData.evidence : [];
+        const hermesFindings = Array.isArray(reportData.findings) ? reportData.findings : [];
+        const dossier = reportData.dossier || reportData.intelligence?.dossier || {};
+        const risk = dossier.risk || reportData.intelligence?.risk || {};
+        const graph = reportData.intelligence?.entity_graph || dossier.graph || {};
+        const graphNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+        const graphEdges = Array.isArray(graph.edges) ? graph.edges : [];
+
+        // ── 1. Evidence → EvidenceItem. Capture hermes_evidence_id → SafeNestT id
+        // so findings can link via evidence_refs (FindingsTab joins on
+        // EvidenceItem.id, not the Hermes id).
+        const evidencePayloads = hermesEvidence.map((e) => {
+          const hermesEid = e.evidence_id;
+          const toolCall = e.data?.tool_call || {};
+          return {
             tenant_id: tenantId,
             case_id: caseId,
-            title: f.title || "Hermes finding",
-            description: f.description || "",
-            category: f.category || "other",
-            severity: f.severity || "medium",
-            confidence: f.confidence || "medium",
-            status: "proposed",
-            source: "hermes",
-            hermes_raw: f,
-          }).catch(() => null);
-          if (rec) persisted.findings += 1;
+            filename: String(e.source || hermesEid).split(".").pop() || e.source || hermesEid,
+            file_url: `hermes://evidence/${hermesEid}`,
+            evidence_type: mapEvidenceType(e.source),
+            source: "hermes_extraction",
+            uploaded_by: user.email,
+            uploaded_by_name: user.full_name || user.email,
+            uploaded_at: e.observed_at || now,
+            file_hash: hermesEid,
+            description: `${e.source || "Hermes evidence"} · target: ${e.target || "—"}`,
+            tags: [e.source_type, e.source].filter(Boolean),
+            processing_status: "processed",
+            processing_notes: JSON.stringify({ capability: toolCall.capability, status: toolCall.status, tool_status: toolCall.tool_status }).slice(0, 1000),
+            detected_targets: e.target ? [{ type: "domain", value: e.target }] : [],
+            original_import: false,
+          };
+        });
+        const evidenceRecs = evidencePayloads.length
+          ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch(() => [])
+          : [];
+        const evidenceMap = {};
+        for (const rec of evidenceRecs) {
+          if (rec?.file_hash) evidenceMap[rec.file_hash] = rec.id;
         }
-      }
+        persisted.evidence = evidenceRecs.length;
 
-      // Risk assessment
-      const risk = statusData?.risk || statusData?.risk_assessment || statusData?.results?.risk;
-      if (risk && typeof (risk.risk_score ?? risk.score) === "number") {
-        const c2 = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
-        const wf2 = c2?.workflow || workflowUpdate;
-        await base44.entities.InvestigationCase.update(caseId, {
-          workflow: {
-            ...wf2,
-            risk_score: risk.risk_score ?? risk.score,
-            risk_level: risk.risk_level || risk.level,
-            risk_factors: risk.risk_factors || risk.factors,
-          },
-        }).catch(() => null);
-        persisted.risk_score = risk.risk_score ?? risk.score;
-      }
+        // ── 2. Findings → InvestigationFinding (evidence_refs mapped to SafeNestT ids).
+        const findingPayloads = hermesFindings.map((f) => {
+          const payload = {
+            tenant_id: tenantId,
+            case_id: caseId,
+            title: findingTitle(f),
+            description: [f.factors?.finding_type, f.factors?.capability && `capability: ${f.factors.capability}`, f.factors?.limitations?.length && `limitations: ${f.factors.limitations.join("; ")}`].filter(Boolean).join(" · "),
+            category: mapFindingCategory(f.factors?.finding_type),
+            severity: severityFromScore(f.risk_score),
+            confidence: confidenceFromReality(f.reality_status),
+            status: "proposed", // AI findings are never auto-verified
+            source: "hermes",
+            evidence_refs: (f.evidence_ids || []).map((id) => evidenceMap[id]).filter(Boolean),
+            hermes_raw: f,
+          };
+          // confidence_score is a number field — only set it when Hermes
+          // provided a numeric risk_score (omit rather than pass null).
+          if (typeof f.risk_score === "number") payload.confidence_score = Math.round(f.risk_score * 100);
+          return payload;
+        });
+        const findingRecs = findingPayloads.length
+          ? await base44.entities.InvestigationFinding.bulkCreate(findingPayloads).catch(() => [])
+          : [];
+        persisted.findings = findingRecs.length;
 
-      // Report / dossier
-      const report = statusData?.report || statusData?.dossier || statusData?.results?.report;
-      if (report) {
-        const rec = await base44.entities.InvestigationReport.create({
+        // ── 3. Report / dossier → InvestigationReport.
+        const reportRec = await base44.entities.InvestigationReport.create({
           tenant_id: tenantId,
           case_id: caseId,
-          title: report.title || "Hermes Investigation Dossier",
+          title: `Hermes Investigation Dossier — ${reportData.target || invId}`,
           report_type: "dossier",
           status: "generated",
           generated_by: "hermes",
-          generated_date: now,
-          content: report,
-          sections: report.sections,
-          conclusion: report.conclusion,
-          recommended_actions: report.recommended_actions,
+          generated_date: reportData.intelligence?.generated_at || now,
+          content: dossier,
+          sections: [
+            { title: "Executive Summary", classification: "analysis", content: dossier.executive_summary || "" },
+            { title: "Risk Assessment", classification: "analysis", content: `Score: ${risk.score ?? "—"} · Level: ${risk.level ?? "—"} · Method: ${risk.method || "—"}` },
+            { title: "Findings", classification: "evidence", content: `${hermesFindings.length} findings` },
+            { title: "Evidence", classification: "evidence", content: `${hermesEvidence.length} evidence items` },
+          ],
+          evidence_register: hermesEvidence.map((e) => ({ evidence_id: e.evidence_id, filename: e.source, type: e.source_type, source: "hermes", timestamp: e.observed_at })),
+          conclusion: dossier.executive_summary || "",
+          recommended_actions: [],
           created_by: user.email,
         }).catch(() => null);
-        if (rec) persisted.report_id = rec.id;
-      }
+        persisted.report_id = reportRec?.id || null;
 
-      // Graph entities / nodes
-      const entities = statusData?.entities || statusData?.graph || statusData?.results?.entities || statusData?.nodes;
-      if (Array.isArray(entities) && entities.length) {
-        for (const node of entities) {
-          const rec = await base44.entities.GraphNode.create({
-            tenant_id: tenantId,
-            case_id: caseId,
-            node_type: node.type || node.node_type || "other",
-            label: node.label || node.value || node.address || "Hermes entity",
-            value: node.value || node.address || node.label || "",
-            source: "hermes_extraction",
-            hermes_raw: node,
-          }).catch(() => null);
-          if (rec) persisted.graph_nodes += 1;
+        // ── 4. Risk → case workflow.
+        if (typeof risk.score === "number") {
+          persisted.risk_score = risk.score;
+          persisted.risk_level = String(risk.level || "").toLowerCase() || null;
         }
+
+        // ── 5. Entity graph → GraphNode / GraphEdge.
+        const nodePayloads = graphNodes.map((n) => ({
+          tenant_id: tenantId, case_id: caseId,
+          node_type: mapNodeType(n.type), label: n.label || n.id,
+          value: n.id, source: "hermes_extraction", hermes_raw: n, confidence: "medium",
+        }));
+        const nodeRecs = nodePayloads.length ? await base44.entities.GraphNode.bulkCreate(nodePayloads).catch(() => []) : [];
+        persisted.graph_nodes = nodeRecs.length;
+
+        const edgePayloads = graphEdges.map((ed) => ({
+          tenant_id: tenantId, case_id: caseId,
+          source_node: ed.source, target_node: ed.target,
+          relationship_type: mapRelationship(ed.relationship), label: ed.relationship,
+          confidence: confidenceFrom01(ed.confidence), hermes_raw: ed,
+          evidence_refs: (ed.evidence_ids || []).map((id) => evidenceMap[id]).filter(Boolean),
+        }));
+        const edgeRecs = edgePayloads.length ? await base44.entities.GraphEdge.bulkCreate(edgePayloads).catch(() => []) : [];
+        persisted.graph_edges = edgeRecs.length;
+
+        // ── Mark results persisted on the dossier phase output (idempotency marker)
+        // AND write the risk score/level/factors onto the case workflow.
+        const c2 = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+        const wf2 = c2?.workflow || workflowUpdate;
+        const mergedPhases2 = { ...(wf2.phases || {}) };
+        mergedPhases2.dossier = {
+          ...(mergedPhases2.dossier || {}),
+          status: "completed",
+          completed_at: now,
+          output: {
+            results_persisted: true,
+            evidence_count: persisted.evidence,
+            findings_count: persisted.findings,
+            report_id: persisted.report_id,
+            risk_score: persisted.risk_score,
+            graph_nodes: persisted.graph_nodes,
+            graph_edges: persisted.graph_edges,
+            hermes_evidence_count: reportData.evidence_count,
+            hermes_finding_count: reportData.finding_count,
+            standalone_evidence_count: Array.isArray(standaloneEvidence) ? standaloneEvidence.length : null,
+            standalone_findings_count: Array.isArray(standaloneFindings) ? standaloneFindings.length : null,
+          },
+        };
+        await base44.entities.InvestigationCase.update(caseId, {
+          workflow: {
+            ...wf2,
+            phases: mergedPhases2,
+            risk_score: persisted.risk_score,
+            risk_level: persisted.risk_level,
+            risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
+          },
+        }).catch(() => null);
       }
 
       // Mark the active InvestigationRun terminal.
@@ -268,8 +461,8 @@ export default async function (req: Request): Promise<Response> {
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: (hermesStatus === "failed" || hermesStatus === "error") ? "failed" : "completed",
-          output: statusData,
+          status: "completed",
+          output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,
         }).catch(() => null);
@@ -277,16 +470,30 @@ export default async function (req: Request): Promise<Response> {
 
       // Immutable audit trail.
       await base44.entities.AuditEvent.create({
-        tenant_id: tenantId,
-        actor: user.email,
-        actor_name: user.full_name || user.email,
+        tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
         timestamp: now,
-        action: (hermesStatus === "failed" || hermesStatus === "error") ? "hermes_investigation_failed" : "hermes_investigation_completed",
-        object_type: "case",
-        object_id: caseId,
-        case_id: caseId,
-        description: `Hermes investigation ${investigationId} ${hermesStatus}`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, persisted },
+        action: "hermes_investigation_completed",
+        object_type: "case", object_id: caseId, case_id: caseId,
+        description: `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report ${persisted.report_id ? "present" : "absent"}`,
+        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
+        source: "hermes",
+      }).catch(() => null);
+    } else if (terminal && isFailed && !wasTerminal) {
+      // First time we see a FAILED investigation — mark the run failed + audit.
+      const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 5).catch(() => []);
+      const activeRun = (runs || []).find((r) => r.status === "running");
+      if (activeRun) {
+        await base44.entities.InvestigationRun.update(activeRun.id, {
+          status: "failed", error: statusData?.error || "Hermes investigation failed",
+          completed_at: now, persisted_outputs: persisted,
+        }).catch(() => null);
+      }
+      await base44.entities.AuditEvent.create({
+        tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
+        timestamp: now, action: "hermes_investigation_failed", object_type: "case",
+        object_id: caseId, case_id: caseId,
+        description: `Hermes investigation ${investigationId} failed: ${statusData?.error || "unknown"}`,
+        metadata: { investigation_id: investigationId, status: hermesStatus, error: statusData?.error },
         source: "hermes",
       }).catch(() => null);
     }
