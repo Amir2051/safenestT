@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
   Target, FileSearch, Crosshair, Network, GitBranch, FlaskConical,
-  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase, Satellite, Loader2, Zap,
+  ShieldAlert, FileText, ScrollText, ArrowLeft, User, DollarSign, Gauge, Sparkles, Briefcase, Satellite, Loader2, Zap, Edit3,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { createHermesTestCase } from "@/lib/hermesTest";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { getHermesStatus, pingHermes } from "@/lib/hermesClient";
 import OsintProvidersTab from "@/components/platform/tabs/OsintProvidersTab";
 import { PHASES } from "@/lib/investigationRunner";
 import InvestigationRunnerPanel from "@/components/platform/InvestigationRunnerPanel";
+import EditInvestigationCaseModal from "@/components/platform/EditInvestigationCaseModal";
 import OverviewTab from "@/components/platform/tabs/OverviewTab";
 import EvidenceVaultTab from "@/components/platform/tabs/EvidenceVaultTab";
 import TargetsTab from "@/components/platform/tabs/TargetsTab";
@@ -51,6 +53,7 @@ export default function InvestigationWorkspace() {
   const runFlag = params.get("run");
   const navigate = useNavigate();
   const [creatingTest, setCreatingTest] = useState(false);
+  const [editing, setEditing] = useState(false);
   const canMutate = useCanMutate();
   const hermes = getHermesStatus();
 
@@ -92,6 +95,8 @@ export default function InvestigationWorkspace() {
     },
     enabled: !!caseId,
   });
+  const qc = useQueryClient();
+  const refreshCase = () => qc.invalidateQueries({ queryKey: ["investigation-case", caseId] });
 
   // Recent cases for the AI Investigations landing (shown when no case is open).
   const { data: recentCases = [] } = useQuery({
@@ -165,7 +170,15 @@ export default function InvestigationWorkspace() {
         <ArrowLeft className="w-4 h-4 mr-1.5" />Back to cases
       </Link>
 
-      <CaseHeader caseItem={caseItem} hermesState={hermesState} hermesMs={hermesHealth?.ms} />
+      <CaseHeader caseItem={caseItem} hermesState={hermesState} hermesMs={hermesHealth?.ms} canEdit={canMutate} onEdit={() => setEditing(true)} />
+
+      {editing && (
+        <EditInvestigationCaseModal
+          caseItem={caseItem}
+          onClose={() => setEditing(false)}
+          onSaved={refreshCase}
+        />
+      )}
 
       {canMutate ? (
         <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} autoRun={runFlag === "1"} onGoToTargets={() => setActiveTab("targets")} />
@@ -235,7 +248,7 @@ const RISK_TONE = {
   low: "text-green-400",
 };
 
-function CaseHeader({ caseItem, hermesState, hermesMs }) {
+function CaseHeader({ caseItem, hermesState, hermesMs, canEdit, onEdit }) {
   const priority = caseItem.priority || caseItem.case_priority || "medium";
   const wf = caseItem.workflow || {};
   const phase = wf.current_phase || "planning";
@@ -258,6 +271,11 @@ function CaseHeader({ caseItem, hermesState, hermesMs }) {
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{caseItem.case_title || "Untitled case"}</h1>
           <p className="text-sm text-gray-500 mt-1 capitalize">{caseItem.fraud_type?.replace(/_/g, " ") || "investigation"}</p>
         </div>
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={onEdit} className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 shrink-0">
+            <Edit3 className="w-3.5 h-3.5 mr-1.5" />Edit Case
+          </Button>
+        )}
         <div className="flex items-center gap-4 text-xs">
           {riskScore != null && (
             <div className="text-center">
