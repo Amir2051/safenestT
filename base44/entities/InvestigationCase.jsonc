@@ -484,6 +484,29 @@
           "type": "number",
           "description": "Overall computed risk score 0-100"
         },
+        "risk_level": {
+          "type": "string",
+          "description": "Risk level label (low/medium/high/critical) from the Hermes risk assessment"
+        },
+        "risk_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "factor": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Weighted risk factors contributing to the overall risk score"
+        },
+        "hermes_investigation_id": {
+          "type": "string",
+          "description": "Hermes gateway investigation id linked to this case (create -> start -> poll lifecycle). Set by runHermesInvestigation after a successful POST /v1/investigations."
+        },
         "phases": {
           "type": "object",
           "properties": {
