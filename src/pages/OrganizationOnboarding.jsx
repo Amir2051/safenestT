@@ -76,7 +76,7 @@ export default function OrganizationOnboarding() {
   const selectedOrg = joinable.find((o) => o.id === selectedOrgId);
   const canContinueStep2 = mode === "join"
     ? !!selectedOrgId
-    : !!orgName.trim() && !!orgType;
+    : !!orgName.trim();
   const finalOrgName = mode === "join" ? selectedOrg?.name : orgName.trim();
   const finalOrgType = mode === "join" ? selectedOrg?.organization_type : orgType;
 
@@ -193,6 +193,8 @@ export default function OrganizationOnboarding() {
             <Step1
               fullName={fullName}
               email={user?.email}
+              orgType={orgType}
+              setOrgType={setOrgType}
               onNext={() => setStep(2)}
             />
           )}
@@ -202,8 +204,6 @@ export default function OrganizationOnboarding() {
               setMode={setMode}
               orgName={orgName}
               setOrgName={setOrgName}
-              orgType={orgType}
-              setOrgType={setOrgType}
               selectedOrgId={selectedOrgId}
               setSelectedOrgId={setSelectedOrgId}
               joinable={joinable}
@@ -288,13 +288,13 @@ function Stepper({ step }) {
   );
 }
 
-function Step1({ fullName, email, onNext }) {
+function Step1({ fullName, email, orgType, setOrgType, onNext }) {
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-slate-100">Account</h2>
         <p className="text-slate-500 text-[13px] mt-1">
-          Your account was created through SafeNestT authentication. Confirm your details below.
+          Your account was created through SafeNestT authentication. Tell us what kind of organization you belong to so an administrator can verify it.
         </p>
       </div>
       <div className="space-y-3">
@@ -315,13 +315,29 @@ function Step1({ fullName, email, onNext }) {
             className="mt-1 bg-[#0a0e13] border-slate-700/60 text-slate-400"
           />
         </div>
+        <div>
+          <Label className="text-slate-300 text-[12px]">Organization type <span className="text-red-400">*</span></Label>
+          <Select value={orgType} onValueChange={setOrgType}>
+            <SelectTrigger className="w-full mt-1 bg-[#0a0e13] border-slate-700/60 text-slate-100">
+              <SelectValue placeholder="Select an organization type…" />
+            </SelectTrigger>
+            <SelectContent>
+              {ORGANIZATION_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+            Required for verification. An administrator reviews this before activating your organization.
+          </p>
+        </div>
         <p className="text-[11px] text-slate-600 leading-relaxed">
           Password and authentication credentials are managed by SafeNestT. Use the platform password
           reset flow to change them.
         </p>
       </div>
       <div className="flex justify-end">
-        <Button onClick={onNext} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+        <Button onClick={onNext} disabled={!orgType} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
           Continue <ArrowRight className="w-4 h-4" />
         </Button>
       </div>
@@ -329,7 +345,7 @@ function Step1({ fullName, email, onNext }) {
   );
 }
 
-function Step2({ mode, setMode, orgName, setOrgName, orgType, setOrgType, selectedOrgId, setSelectedOrgId, joinable, joinableLoading, canContinue, onBack, onNext }) {
+function Step2({ mode, setMode, orgName, setOrgName, selectedOrgId, setSelectedOrgId, joinable, joinableLoading, canContinue, onBack, onNext }) {
   return (
     <div className="space-y-5">
       <div>
@@ -382,19 +398,6 @@ function Step2({ mode, setMode, orgName, setOrgName, orgType, setOrgType, select
               placeholder="e.g. Acme Financial Investigations"
               className="mt-1 bg-[#0a0e13] border-slate-700/60 text-slate-100"
             />
-          </div>
-          <div>
-            <Label className="text-slate-300 text-[12px]">Organization type</Label>
-            <Select value={orgType} onValueChange={setOrgType}>
-              <SelectTrigger className="w-full mt-1 bg-[#0a0e13] border-slate-700/60 text-slate-100">
-                <SelectValue placeholder="Select an organization type…" />
-              </SelectTrigger>
-              <SelectContent>
-                {ORGANIZATION_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">
             A SafeNestT administrator will verify your company before the organization is activated. You get read-only access until then.
