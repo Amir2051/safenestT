@@ -9,7 +9,9 @@ import { secrets } from "base44:runtime";
  *   GET  <HERMES_BASE_URL>/v1/models
  *   GET  <HERMES_BASE_URL>/health   (and /v1/health as a fallback)
  *
- * HERMES_API_KEY and HERMES_BASE_URL are read from app secrets and NEVER
+ * The Hermes investigation credential is the secret named "hermes-api_key"
+ * (sent via the X-API-Key header). HERMES_BASE_URL is read from app secrets.
+ * Neither value is EVER returned to the browser or logs. All non-success
  * returned to the browser or logs. All non-success cases are returned as
  * HTTP 200 with a structured { ok:false, status, error, configured } body so
  * the SDK does not collapse them into a generic "503" and the real reason
@@ -67,7 +69,7 @@ function normalizeRoot(configuredBase: string): string {
 function classifyUpstream(status: number, errText: string) {
   const t = (errText || "").slice(0, 300);
   if (status === 401 || status === 403)
-    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}). Verify HERMES_API_KEY.${t ? " " + t : ""}${AUTH_HINT}` };
+    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}). Verify the hermes-api_key secret.${t ? " " + t : ""}${AUTH_HINT}` };
   if (status === 404)
     return { status: "not_found", error: `Hermes endpoint not found (HTTP 404). Check HERMES_BASE_URL points to the gateway root.${t ? " " + t : ""}` };
   if (status === 429)
@@ -107,9 +109,10 @@ function buildInvestigationsUrl(root: string): string {
   return `${b}/v1/investigations`;
 }
 
-// Hermes investigation-lifecycle request. Uses Authorization: Bearer
-// authentication (same scheme as /v1/models and /v1/chat) — the gateway
-// rejects X-API-Key with 401 invalid_key. Returns a structured body so the
+// Hermes investigation-lifecycle request. Uses the X-API-Key header with the
+// value from the "hermes-api_key" secret, as required by the Hermes gateway
+// for POST /v1/investigations, POST /v1/investigations/{id}/start, and
+// GET /v1/investigations/{id} (polling). Returns a structured body so the
 // SDK never collapses a 404/401 into a generic error and the UI gets the real
 // upstream status.
 async function investigationFetch(
@@ -118,7 +121,7 @@ async function investigationFetch(
 ) {
   const { controller, timer } = withTimeout(60000);
   try {
-    const headers: Record<string, string> = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "Accept": "application/json" };
+    const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
     const res = await fetch(url, {
       method,
       headers,
@@ -151,22 +154,26 @@ export default async function (req: Request): Promise<Response> {
     const { prompt, response_json_schema, model, temperature, max_tokens } = payload || {};
 
     // Read the secrets exactly as configured and strip only paste artifacts.
-    // No fallback, no hardcoded value, no default. An empty/whitespace-only
-    // secret fails loudly below as not_configured so a bad value is never
-    // silently sent upstream.
-    const rawKey = secrets.get("HERMES_API_KEY");
+    // No fallback, no hardcoded value, no default, no legacy secret. An
+    // empty/whitespace-only secret fails loudly below as not_configured so a
+    // bad value is never silently sent upstream.
+    //
+    // The sole credential source for Hermes investigation requests is the
+    // Base44 secret named "hermes-api_key". We deliberately do NOT read
+    // HERMES_API_KEY or any other/legacy/fallback key.
+    const rawKey = secrets.get("hermes-api_key");
     const rawBase = secrets.get("HERMES_BASE_URL");
     const { value: apiKey, modified: keySanitized } = sanitizeSecret(rawKey);
     const { value: configuredBase } = sanitizeSecret(rawBase);
 
     AUTH_HINT = keySanitized
-      ? " (the stored HERMES_API_KEY had surrounding whitespace/quotes and was cleaned before sending — re-save the secret cleanly in Secrets if this persists)"
+      ? " (the stored hermes-api_key had surrounding whitespace/quotes and was cleaned before sending — re-save the secret cleanly in Secrets if this persists)"
       : "";
 
     if (!apiKey) {
       return Response.json({
         ok: false, status: "not_configured", configured: false,
-        error: "HERMES_API_KEY secret is not configured (empty or whitespace-only). Set it in Secrets to the live Hermes gateway key.",
+        error: "hermes-api_key secret is not configured (empty or whitespace-only). Set it in Secrets to the live Hermes gateway key.",
       });
     }
     if (!configuredBase) {
