@@ -70,12 +70,47 @@ export default async function (req: Request): Promise<Response> {
     const source = found.record;
     const sourceType = found.type;
 
+    const normalizeFraudType = (value: any) => {
+      const v = String(value || "").toLowerCase().trim();
+      const aliases: Record<string, string> = {
+        crypto_theft: "crypto_theft",
+        cryptocurrency_fraud: "crypto_theft",
+        crypto_fraud: "crypto_theft",
+        phishing: "phishing",
+        fake_exchange: "fake_exchange",
+        rug_pull: "rug_pull",
+        romance_scam: "romance_scam",
+        investment_scam: "investment_scam",
+        investment_fraud: "investment_scam",
+        pig_butchering: "pig_butchering",
+        ransomware: "ransomware",
+        scam: "other",
+        hacked_account: "other",
+        impersonation_scam: "other",
+        identity_theft: "other",
+        business_email_compromise: "other",
+        other_cyber_fraud: "other",
+      };
+      return aliases[v] || "other";
+    };
+
+    const normalizePriority = (value: any) => {
+      const v = String(value || "medium").toLowerCase();
+      return ["low", "medium", "high", "critical"].includes(v) ? v : "medium";
+    };
+
     // Resolve the tenant from the source owner when possible. This prevents a
     // platform admin from accidentally projecting an old record into their own
     // tenant. If the source has no owner, fall back to the current user's tenant.
     let ownerUser: any = null;
     const ownerId = source.user_id || source.created_by_id || null;
-    if (ownerId) ownerUser = await base44.entities.User.get(ownerId).catch(() => null);
+    if (ownerId) {
+      ownerUser = await base44.entities.User.get(ownerId).catch(() => null);
+      if (!ownerUser && String(ownerId).includes("@")) {
+        const byEmail = await base44.entities.User.filter({ email: ownerId }, "-created_date", 1).catch(() => []);
+        ownerUser = byEmail?.[0] || null;
+      }
+    }
 
     const tenantId =
       source.tenant_id ||
@@ -150,7 +185,7 @@ export default async function (req: Request): Promise<Response> {
       victim_email: victimEmail || undefined,
       victim_phone: source.victim_phone || source.phone_number || undefined,
       victim_contact_info: contact,
-      fraud_type: fraudType,
+      fraud_type: normalizeFraudType(fraudType),
       scammer_info: source.scammer_info || (source.alleged_actor_information ? {
         name: source.alleged_actor_information.name,
         email: (source.alleged_actor_information.email_addresses || [])[0],
@@ -176,8 +211,8 @@ export default async function (req: Request): Promise<Response> {
       linked_case_ids: source.linked_case_ids || [],
       status: ["closed", "resolved", "recovered"].includes(String(source.status || "").toLowerCase()) ? "closed" :
         String(source.status || "").toLowerCase().includes("investig") ? "investigating" : "new",
-      priority: String(source.priority || source.urgency || "medium").toLowerCase(),
-      case_priority: String(source.case_priority || source.priority || source.urgency || "medium").toLowerCase(),
+      priority: normalizePriority(source.priority || source.urgency),
+      case_priority: normalizePriority(source.case_priority || source.priority || source.urgency),
       investigation_progress: Number(source.investigation_progress || 0),
       assigned_investigator: source.assigned_investigator || source.assigned_to || undefined,
       case_notes: source.case_notes || [],
