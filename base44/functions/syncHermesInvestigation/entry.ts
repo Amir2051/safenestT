@@ -175,7 +175,7 @@ export default async function (req: Request): Promise<Response> {
     if (!user) return Response.json({ ok: false, status: "unauthorized", error: "Unauthorized" }, { status: 401 });
 
     const payload = await req.json().catch(() => ({}));
-    const caseId = payload?.case_id;
+    let caseId = payload?.case_id;
     if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id is required" });
 
     // Resolve both canonical and legacy/client case ids. This is the same
