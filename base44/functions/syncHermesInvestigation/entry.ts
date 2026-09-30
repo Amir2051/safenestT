@@ -311,29 +311,10 @@ export default async function (req: Request): Promise<Response> {
       const tenantId = caseItem.tenant_id;
       const invId = investigationId;
 
-      // ── Race-safe dedup guard. The 8s auto-sync poll can fire several
-      // concurrent syncs that all read the pre-marker workflow and each try to
-      // persist. The marker alone can't close that window. A fresh query for
-      // existing Hermes-derived evidence is the reliable guard: if any exists,
-      // a concurrent sync already persisted results for this investigation —
-      // skip duplicate creation. (Recreated investigations clear old evidence
-      // first in syncCaseToHermes, so this still allows fresh persistence.)
-      const existingHermesEv = await base44.entities.EvidenceItem.filter({ case_id: caseId, source: "hermes_extraction" }, "-created_date", 1).catch(() => []);
-      if (existingHermesEv && existingHermesEv.length > 0) {
-        const cSkip = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
-        const wfSkip = cSkip?.workflow || workflowUpdate;
-        const phSkip = { ...(wfSkip.phases || {}) };
-        phSkip.dossier = { ...(phSkip.dossier || {}), status: "completed", completed_at: now, output: { ...(phSkip.dossier?.output || {}), results_persisted: true, skipped_duplicate: true } };
-        await base44.entities.InvestigationCase.update(caseId, { workflow: { ...wfSkip, phases: phSkip }, sync_status: "synced", last_synced_at: now }).catch(() => null);
-        return Response.json({
-          ok: true, status: "ok", case_id: caseId, hermes_investigation_id: investigationId,
-          hermes_status: hermesStatus, case_status: caseStatus || caseItem.status,
-          phases, progress, terminal,
-          persisted: { evidence: existingHermesEv.length, findings: 0, report_id: null, risk_score: wfSkip.risk_score, risk_level: wfSkip.risk_level, graph_nodes: 0, graph_edges: 0 },
-          action: "already_persisted",
-        });
-      }
-
+      // Do not use "any Hermes evidence exists for this case" as the dedup
+      // condition. A case can legitimately have many Hermes runs. The
+      // workflow.dossier.results_persisted marker is scoped to the active
+      // hermes_investigation_id and is reset when a new run is created.
       // ── Fetch the three Hermes result endpoints. The base GET
       // /v1/investigations/{id} only carries lifecycle metadata; the actual
       // evidence, findings, and dossier/report live on separate sub-resources.
