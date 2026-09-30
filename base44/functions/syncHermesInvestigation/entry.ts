@@ -178,9 +178,23 @@ export default async function (req: Request): Promise<Response> {
     const caseId = payload?.case_id;
     if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id is required" });
 
-    // User-scoped read respects RLS — only authorized users can sync this case.
-    let caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
-    if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access" });
+    // Resolve both canonical and legacy/client case ids. This is the same
+    // canonicalization path used by syncCaseToHermes, so polling a case opened
+    // from the legacy Cases inventory cannot fail merely because its id belongs
+    // to MyCase/ClientCase/MasterCase.
+    const resolveRes = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseId });
+    const resolveBody = resolveRes?.data ?? resolveRes;
+    if (!resolveBody || resolveBody.ok === false) {
+      return Response.json({
+        ok: false,
+        status: resolveBody?.status || "not_found",
+        error: resolveBody?.error || "Case not found or no access",
+        case_id: caseId,
+      });
+    }
+    caseId = resolveBody.case_id;
+    let caseItem = resolveBody.case || await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+    if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: caseId });
 
     let investigationId = caseItem.workflow?.hermes_investigation_id || payload?.investigation_id;
     if (!investigationId) {
