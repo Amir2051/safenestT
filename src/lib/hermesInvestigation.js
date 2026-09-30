@@ -487,11 +487,11 @@ export async function runHermesInvestigation({
   //    No minimum target is required — a narrative-only case is accepted.
   let investigationId;
   try {
-    investigationId = caseItem?.workflow?.hermes_investigation_id;
-    if (!investigationId) {
-      const synced = await syncCaseToHermesStep(caseId);
-      investigationId = synced.hermes_investigation_id;
-    }
+    // Every Run is a new execution. syncCaseToHermes reuses an active
+    // investigation, but creates a fresh Hermes investigation after a terminal
+    // run. This allows unlimited reruns and includes newly-added case data.
+    const synced = await syncCaseToHermesStep(caseId);
+    investigationId = synced.hermes_investigation_id;
     if (!investigationId) {
       throw new HermesError("no_investigation_id", "Hermes case sync did not produce an investigation_id.");
     }

@@ -152,24 +152,58 @@ export default async function (req: Request): Promise<Response> {
       const verify = await investigationFetch(`${investigationsUrl}/${encodeURIComponent(String(existingId))}`, { method: "GET", apiKey });
       if (verify.ok) {
         const vStatus = String(verify.data?.status || "").toLowerCase();
-        const isFailed = ["failed", "error", "errored", "aborted", "cancelled", "canceled"].includes(vStatus);
-        if (!isFailed) {
-          // Existing mapping is live and not failed — keep it (no duplicate).
+        const isActive = ["queued", "running", "waiting_for_tool", "analyzing", "verifying", "calculating_risk", "pending", "processing"].includes(vStatus);
+        const isTerminal = ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "errored", "aborted", "cancelled", "canceled"].includes(vStatus);
+        if (isActive) {
+          // Do not create duplicates while the current Hermes execution is active.
           await base44.entities.InvestigationCase.update(caseId, {
-            sync_status: "synced",
+            sync_status: "active",
             last_synced_at: now,
             workflow: { ...(caseItem.workflow || {}), hermes_investigation_id: existingId, hermes_status: vStatus, provider: "hermes" },
           }).catch(() => null);
           return Response.json({
             ok: true, action: "existing", case_id: caseId, hermes_investigation_id: existingId,
-            sync_status: "synced", last_synced_at: now, hermes_status: vStatus,
+            sync_status: "active", last_synced_at: now, hermes_status: vStatus,
           });
         }
-        // Existing investigation is in a FAILED terminal state — clear the
-        // mapping and fall through to recreate so the case can be re-investigated.
-        await base44.entities.InvestigationCase.update(caseId, {
-          workflow: { ...(caseItem.workflow || {}), hermes_investigation_id: null, hermes_status: null, hermes_error: `prior investigation ${existingId} failed; cleared for re-sync` },
-        }).catch(() => null);
+
+        // A terminal Hermes investigation is a completed RUN, not a permanent
+        // case lock. Every subsequent Run action creates a fresh Hermes
+        // investigation for the same SafeNestT case. This is what allows a case
+        // to be rerun after adding new targets/information or after a failure.
+        if (isTerminal) {
+          const history = Array.isArray(caseItem.workflow?.hermes_runs) ? [...caseItem.workflow.hermes_runs] : [];
+          history.push({
+            investigation_id: existingId,
+            status: vStatus,
+            archived_at: now,
+          });
+          while (history.length > 25) history.shift();
+
+          await base44.entities.InvestigationCase.update(caseId, {
+            sync_status: "pending",
+            last_synced_at: now,
+            workflow: {
+              ...(caseItem.workflow || {}),
+              hermes_investigation_id: null,
+              hermes_status: null,
+              hermes_error: null,
+              hermes_runs: history,
+              current_phase: "planning",
+              phases: {
+                planning: { status: "pending" },
+                evidence: { status: "pending" },
+                analysis: { status: "pending" },
+                reality_check: { status: "pending" },
+                risk: { status: "pending" },
+                dossier: { status: "pending", output: null },
+              },
+              risk_score: null,
+              risk_level: null,
+              risk_factors: [],
+            },
+          }).catch(() => null);
+        }
       } else if (verify.status === "not_found") {
         // Stale mapping (Hermes no longer has it) — clear and recreate below.
         await base44.entities.InvestigationCase.update(caseId, {
@@ -182,19 +216,9 @@ export default async function (req: Request): Promise<Response> {
       }
     }
 
-    // When recreating (prior mapping was stale/failed), clear any old
-    // Hermes-derived results so the sync dedup guard allows fresh persistence
-    // instead of treating leftover evidence as "already persisted".
-    if (existingId) {
-      await Promise.all([
-        base44.entities.EvidenceItem.deleteMany({ case_id: caseId, source: "hermes_extraction" }).catch(() => null),
-        base44.entities.InvestigationFinding.deleteMany({ case_id: caseId, source: "hermes" }).catch(() => null),
-        base44.entities.InvestigationReport.deleteMany({ case_id: caseId, generated_by: "hermes" }).catch(() => null),
-        base44.entities.GraphNode.deleteMany({ case_id: caseId, source: "hermes_extraction" }).catch(() => null),
-        base44.entities.GraphEdge.deleteMany({ case_id: caseId }).catch(() => null),
-      ]);
-    }
-
+    // Keep prior run evidence/findings/reports. Each Hermes execution has
+    // its own investigation id and remains auditable in hermes_runs.
+    // The active workflow below points to the newest run.
     // ── Build the investigation input from the ACTUAL case data.
     const allTargets = await aggregateCaseTargets(base44, caseItem);
     const hasExternalIndicator = allTargets.length > 0;
