@@ -22,23 +22,6 @@
     "role"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "job_title": "Media Director"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
-        }
-      ]
-    },
     "create": {
       "$or": [
         {
@@ -47,8 +30,15 @@
           }
         },
         {
+          "created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
           "user_condition": {
-            "job_title": "Media Director"
+            "role": "admin"
           }
         },
         {

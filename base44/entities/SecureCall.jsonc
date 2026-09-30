@@ -199,20 +199,20 @@
     "read": {
       "$or": [
         {
-          "caller_email": "{{user.email}}"
+          "data.caller_email": "{{user.email}}"
         },
         {
-          "callee_email": "{{user.email}}"
+          "data.callee_email": "{{user.email}}"
         }
       ]
     },
     "update": {
       "$or": [
         {
-          "caller_email": "{{user.email}}"
+          "data.caller_email": "{{user.email}}"
         },
         {
-          "callee_email": "{{user.email}}"
+          "data.callee_email": "{{user.email}}"
         }
       ]
     },

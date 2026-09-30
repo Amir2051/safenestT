@@ -697,6 +697,9 @@
     "amount_stolen_usd"
   ],
   "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
+    },
     "read": {
       "$or": [
         {
@@ -714,9 +717,6 @@
           }
         }
       ]
-    },
-    "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "$or": [

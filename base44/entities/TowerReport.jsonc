@@ -139,11 +139,11 @@
     "report_reason"
   ],
   "rls": {
-    "create": true,
+    "create": null,
     "read": {
       "$or": [
         {
-          "reporter_email": "{{user.email}}"
+          "data.reporter_email": "{{user.email}}"
         },
         {
           "user_condition": {

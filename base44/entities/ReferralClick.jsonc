@@ -103,11 +103,11 @@
     "click_timestamp"
   ],
   "rls": {
-    "create": true,
+    "create": null,
     "read": {
       "$or": [
         {
-          "referrer_email": "{{user.email}}"
+          "data.referrer_email": "{{user.email}}"
         },
         {
           "user_condition": {

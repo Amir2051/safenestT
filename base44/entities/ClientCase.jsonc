@@ -341,18 +341,6 @@
     "issue_type"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
     "create": {
       "$or": [
         {
@@ -364,18 +352,41 @@
           "user_condition": {
             "role": "user"
           }
+        },
+        {
+          "user_condition": {
+            "role": "authenticated"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "data.created_by_email": "{{user.email}}"
         }
       ]
     },
     "update": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "data.created_by_email": "{{user.email}}"
         }
       ]
     },

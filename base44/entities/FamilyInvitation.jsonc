@@ -108,7 +108,7 @@
           "created_by": "{{user.email}}"
         },
         {
-          "invitee_email": "{{user.email}}"
+          "data.invitee_email": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -121,9 +121,6 @@
       "created_by": "{{user.email}}"
     },
     "delete": {
-      "created_by": "{{user.email}}"
-    },
-    "write": {
       "created_by": "{{user.email}}"
     }
   }

@@ -52,58 +52,39 @@
     "status"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "user_id": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        }
-      ]
-    },
     "create": {
       "user_condition": {
         "role": "authenticated"
       }
     },
-    "update": {
+    "read": {
       "$or": [
         {
-          "user_id": "{{user.email}}"
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {
             "role": "admin"
           }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {
-            "is_admin": true
+            "role": "admin"
           }
         }
       ]
     },
     "delete": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }

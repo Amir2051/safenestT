@@ -102,10 +102,13 @@
     "value"
   ],
   "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}"
+    },
     "read": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
           "user_condition": {
@@ -113,9 +116,6 @@
           }
         }
       ]
-    },
-    "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "$or": [

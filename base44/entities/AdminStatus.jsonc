@@ -23,51 +23,28 @@
     "admin_id"
   ],
   "rls": {
-    "read": true,
     "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
+    "read": null,
     "update": {
       "$or": [
         {
+          "data.admin_id": "{{user.email}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        },
-        {
-          "admin_id": "{{user.email}}"
         }
       ]
     },
     "delete": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }

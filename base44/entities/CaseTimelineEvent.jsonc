@@ -77,19 +77,19 @@
     "event_title"
   ],
   "rls": {
+    "create": null,
     "read": {
       "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
         {
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "created_by": "{{user.email}}"
         }
       ]
     },
-    "create": true,
     "update": {
       "user_condition": {
         "role": "admin"

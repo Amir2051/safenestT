@@ -88,11 +88,11 @@
     "identifier_type"
   ],
   "rls": {
-    "create": true,
+    "create": null,
     "read": {
       "$or": [
         {
-          "user_id": "{{user.email}}"
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -104,7 +104,7 @@
     "update": {
       "$or": [
         {
-          "user_id": "{{user.email}}"
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {

@@ -107,28 +107,19 @@
     "linked_case_ids"
   ],
   "rls": {
+    "create": {
+      "user_condition": {
+        "role": "authenticated"
+      }
+    },
     "read": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {
             "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "user"
           }
         }
       ]
@@ -136,7 +127,7 @@
     "update": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.user_id": "{{user.email}}"
         },
         {
           "user_condition": {

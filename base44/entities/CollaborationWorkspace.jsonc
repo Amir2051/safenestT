@@ -140,10 +140,10 @@
     "read": {
       "$or": [
         {
-          "owner_email": "{{user.email}}"
+          "data.owner_email": "{{user.email}}"
         },
         {
-          "attorney_email": "{{user.email}}"
+          "data.attorney_email": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -155,10 +155,10 @@
     "update": {
       "$or": [
         {
-          "owner_email": "{{user.email}}"
+          "data.owner_email": "{{user.email}}"
         },
         {
-          "attorney_email": "{{user.email}}"
+          "data.attorney_email": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -170,7 +170,10 @@
     "delete": {
       "$or": [
         {
-          "owner_email": "{{user.email}}"
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "data.attorney_email": "{{user.email}}"
         },
         {
           "user_condition": {

@@ -36,22 +36,13 @@
     "sender_id"
   ],
   "rls": {
-    "read": true,
-    "create": true,
-    "update": true,
+    "create": null,
+    "read": null,
+    "update": null,
     "delete": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "is_admin": true
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }

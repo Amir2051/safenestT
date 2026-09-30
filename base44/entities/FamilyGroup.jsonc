@@ -107,9 +107,19 @@
     "primary_account_holder"
   ],
   "rls": {
-    "create": true,
-    "read": true,
-    "update": true,
-    "delete": true
+    "create": {
+      "user_condition": {
+        "role": "authenticated"
+      }
+    },
+    "read": {
+      "data.primary_account_holder": "{{user.email}}"
+    },
+    "update": {
+      "data.primary_account_holder": "{{user.email}}"
+    },
+    "delete": {
+      "data.primary_account_holder": "{{user.email}}"
+    }
   }
 }

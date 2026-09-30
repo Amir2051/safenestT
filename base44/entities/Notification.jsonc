@@ -50,19 +50,19 @@
     "message"
   ],
   "rls": {
-    "read": {
-      "user_id": "{{user.email}}"
-    },
     "create": {
       "user_condition": {
         "role": "admin"
       }
     },
+    "read": {
+      "data.user_id": "{{user.email}}"
+    },
     "update": {
-      "user_id": "{{user.email}}"
+      "data.user_id": "{{user.email}}"
     },
     "delete": {
-      "user_id": "{{user.email}}"
+      "data.user_id": "{{user.email}}"
     }
   }
 }
