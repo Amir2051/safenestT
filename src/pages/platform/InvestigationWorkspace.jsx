@@ -107,9 +107,9 @@ export default function InvestigationWorkspace() {
   const { data: recentCases = [] } = useQuery({
     queryKey: ["investigation-cases-recent"],
     queryFn: async () => {
-      const myCases = await base44.entities.MyCase.list("-created_date", 12).catch(() => []);
-      if (myCases.length) return myCases;
-      return base44.entities.InvestigationCase.list("-last_activity", 12);
+      const res = await base44.functions.invoke("getInvestigationCaseInventory", {});
+      const body = res?.data ?? res;
+      return body?.ok ? (body.cases || []).slice(0, 12) : [];
     },
     enabled: !caseId,
   });
