@@ -4,11 +4,22 @@ import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
+        const user = await base44.auth.me();
+        if (!user) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { masterCaseId, profileData, caseData } = await req.json();
 
         if (!masterCaseId || !profileData) {
             return Response.json({ error: 'Missing required data' }, { status: 400 });
+        }
+
+        // Authorize: confirm the caller owns (or is admin of) the master case
+        // via the user-scoped client (RLS-enforced) before any service-role write.
+        const masterCase = await base44.entities.MasterCase.get(masterCaseId).catch(() => null);
+        if (!masterCase) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // 1. GENERATE PDF using pdf-lib (More robust for backend)

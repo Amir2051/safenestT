@@ -2,18 +2,48 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
     try {
-        // Log incoming webhook request
+        // Read the raw body once — needed for HMAC signature verification.
+        const rawBody = await req.text();
+
+        // Verify the caller. This is a webhook receiver called by Alchemy
+        // without a login, so instead of an auth check we verify the request
+        // signature. Alchemy signs the raw body with HMAC-SHA256 using the
+        // webhook signing key and sends it in the `x-alchemy-signature` header.
+        const signature = req.headers.get('x-alchemy-signature');
+        const signingKey = Deno.env.get('ALCHEMY_WEBHOOK_SECRET');
+
+        if (!signingKey) {
+            console.error('ALCHEMY_WEBHOOK_SECRET is not configured');
+            return Response.json({ error: 'Webhook not configured' }, { status: 500 });
+        }
+
+        if (!signature) {
+            return Response.json({ error: 'Missing signature' }, { status: 401 });
+        }
+
+        const key = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(signingKey),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+        const expected = [...new Uint8Array(mac)]
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+
+        if (signature !== expected) {
+            return Response.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+
         console.log('🔔 ALCHEMY WEBHOOK RECEIVED:', new Date().toISOString());
-        
-        // Parse the incoming payload from Alchemy
-        const payload = await req.json();
-        
-        // Log the full payload for debugging
+
+        const payload = JSON.parse(rawBody);
         console.log('📦 ALCHEMY PAYLOAD:', JSON.stringify(payload, null, 2));
-        
-        // Extract wallet activity data
+
         const { event } = payload;
-        
+
         if (event) {
             console.log('📊 WALLET ACTIVITY:', {
                 type: event.activity?.type || 'unknown',
@@ -27,27 +57,21 @@ Deno.serve(async (req) => {
                 timestamp: event.activity?.timestamp || new Date().toISOString()
             });
         }
-        
-        // Initialize Base44 client for potential database operations
+
         const base44 = createClientFromRequest(req);
-        
-        // TODO: Store wallet activity in database if needed
-        // Example: await base44.asServiceRole.entities.WalletActivity.create({...})
-        
-        // Immediately return 200 OK to Alchemy
-        return Response.json({ 
-            success: true, 
+
+        return Response.json({
+            success: true,
             received: true,
             timestamp: new Date().toISOString(),
             message: 'Webhook received and processed'
         }, { status: 200 });
-        
+
     } catch (error) {
         console.error('❌ ALCHEMY WEBHOOK ERROR:', error);
-        
         // Still return 200 to prevent Alchemy from retrying
-        return Response.json({ 
-            success: false, 
+        return Response.json({
+            success: false,
             error: error.message,
             timestamp: new Date().toISOString()
         }, { status: 200 });

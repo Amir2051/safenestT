@@ -1,5 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// HTML-entity-encode untrusted strings before interpolating into email HTML.
+const escapeHtml = (str) => String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -145,7 +153,7 @@ Deno.serve(async (req) => {
               <p>Hi ${targetUser.full_name || 'there'},</p>
               <p>Great news! Your SafeNestt account has been approved by our team.</p>
               <p>You can now access all features and start protecting your digital life.</p>
-              ${reason ? `<p style="background: #f0f9ff; padding: 15px; border-left: 4px solid #06b6d4; margin: 20px 0;"><strong>Admin Note:</strong> ${reason}</p>` : ''}
+              ${reason ? `<p style="background: #f0f9ff; padding: 15px; border-left: 4px solid #06b6d4; margin: 20px 0;"><strong>Admin Note:</strong> ${escapeHtml(reason)}</p>` : ''}
               <p>Get started by:</p>
               <ul>
                 <li>Setting up your password vault</li>
@@ -212,7 +220,7 @@ Deno.serve(async (req) => {
               <p>Hi ${targetUser.full_name || 'there'},</p>
               <p>Thank you for your interest in SafeNestt.</p>
               <p>Unfortunately, we're unable to approve your account at this time.</p>
-              ${reason ? `<p style="background: #fef2f2; padding: 15px; border-left: 4px solid #ef4444; margin: 20px 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+              ${reason ? `<p style="background: #fef2f2; padding: 15px; border-left: 4px solid #ef4444; margin: 20px 0;"><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ''}
               <p>If you believe this is a mistake or have questions, please contact our support team.</p>
               <p><strong>The SafeNestt Team</strong></p>
             </div>
@@ -269,7 +277,7 @@ Deno.serve(async (req) => {
               <h1 style="color: #f97316;">Account Suspended</h1>
               <p>Hi ${targetUser.full_name || 'there'},</p>
               <p>Your SafeNestt account has been temporarily suspended.</p>
-              ${reason ? `<p style="background: #fff7ed; padding: 15px; border-left: 4px solid #f97316; margin: 20px 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+              ${reason ? `<p style="background: #fff7ed; padding: 15px; border-left: 4px solid #f97316; margin: 20px 0;"><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ''}
               <p>If you believe this is a mistake, please contact our support team.</p>
               <p><strong>The SafeNestt Team</strong></p>
             </div>

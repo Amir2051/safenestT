@@ -25,17 +25,23 @@ Deno.serve(async (req) => {
         userIdToUpdate = target_user_id;
     }
 
-    // Filter allowed fields to prevent overwriting critical system fields
+    // Filter allowed fields to prevent overwriting critical system fields.
+    // job_title is a privileged role field (it grants elevated access in
+    // admin endpoints) — only admins may set it. Self-service updates cannot.
     const allowedFields = [
         'full_name', 'username', 'phone', 'country', 'wallet_address', 
         'profile_image', 'monitored_emails', 'vpn_enabled', 'two_factor_enabled',
         'address', 'city', 'state', 'zip_code', 'onboarding_checklist', 'onboarding_completed',
-        'employee_id', 'job_title', 'risk_score', 'last_check_in', 'check_in_streak'
+        'employee_id', 'risk_score', 'last_check_in', 'check_in_streak'
     ];
+    const adminOnlyFields = ['job_title'];
+    const isAdmin = authUser.role === 'admin' || authUser.is_admin;
 
     const cleanUpdates = {};
     Object.keys(updates).forEach(key => {
         if (allowedFields.includes(key)) {
+            cleanUpdates[key] = updates[key];
+        } else if (adminOnlyFields.includes(key) && isAdmin) {
             cleanUpdates[key] = updates[key];
         }
     });

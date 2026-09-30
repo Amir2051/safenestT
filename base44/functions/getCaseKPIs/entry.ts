@@ -6,8 +6,7 @@ Deno.serve(async (req) => {
   try {
     const user = await base44.auth.me();
     if (!user) {
-        // Allow service role usage if needed, but usually stats are for dashboard
-        // return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Fetch all cases (InvestigationCase + MyCase)
