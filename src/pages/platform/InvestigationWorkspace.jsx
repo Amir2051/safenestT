@@ -90,8 +90,13 @@ export default function InvestigationWorkspace() {
   const { data: caseItem, isLoading } = useQuery({
     queryKey: ["investigation-case", caseId],
     queryFn: async () => {
-      const myCase = await base44.entities.MyCase.get(caseId).catch(() => null);
-      return myCase || base44.entities.InvestigationCase.get(caseId);
+      // A case opened from the legacy Cases/My Cases inventory may have a
+      // MyCase/ClientCase/MasterCase id. Resolve it server-side to the canonical
+      // InvestigationCase before rendering or running Hermes.
+      const res = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseId });
+      const body = res?.data ?? res;
+      if (body?.ok && body.case) return body.case;
+      return null;
     },
     enabled: !!caseId,
   });
@@ -102,9 +107,9 @@ export default function InvestigationWorkspace() {
   const { data: recentCases = [] } = useQuery({
     queryKey: ["investigation-cases-recent"],
     queryFn: async () => {
-      const myCases = await base44.entities.MyCase.list("-created_date", 12).catch(() => []);
-      if (myCases.length) return myCases;
-      return base44.entities.InvestigationCase.list("-last_activity", 12);
+      const res = await base44.functions.invoke("getInvestigationCaseInventory", {});
+      const body = res?.data ?? res;
+      return body?.ok ? (body.cases || []).slice(0, 12) : [];
     },
     enabled: !caseId,
   });

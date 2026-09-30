@@ -2,6 +2,15 @@
   "name": "InvestigationCase",
   "type": "object",
   "properties": {
+    "source_case_id": {
+      "type": "string",
+      "description": "Original legacy/client case id when this InvestigationCase is a canonical projection."
+    },
+    "source_case_type": {
+      "type": "string",
+      "enum": ["InvestigationCase", "MyCase", "ClientCase", "MasterCase"],
+      "description": "Original source entity type for canonical case projection."
+    },
     "tenant_id": {
       "type": "string",
       "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."

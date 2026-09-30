@@ -112,12 +112,31 @@ export default async function (req: Request): Promise<Response> {
     if (!user) return Response.json({ ok: false, status: "unauthorized", error: "Unauthorized" }, { status: 401 });
 
     const payload = await req.json().catch(() => ({}));
-    const caseId = payload?.case_id;
+    let caseId = payload?.case_id;
     if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id is required" });
 
-    // RLS-enforced read — only users who can read this case may sync it.
-    const caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
-    if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access" });
+    // Resolve both canonical InvestigationCase ids and legacy/client case ids.
+    // Cases created before the InvestigationCase inventory was introduced may
+    // still live in MyCase/ClientCase/MasterCase. The resolver creates an
+    // idempotent canonical projection and returns the canonical id, preserving
+    // tenant isolation and source provenance.
+    let sourceCaseId = caseId;
+    let resolveRes = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseId });
+    let resolveBody = resolveRes?.data ?? resolveRes;
+    if (!resolveBody || resolveBody.ok === false) {
+      return Response.json({
+        ok: false,
+        status: resolveBody?.status || "not_found",
+        error: resolveBody?.error || "Case not found or no access",
+        case_id: caseId,
+      });
+    }
+    caseId = resolveBody.case_id;
+    let caseItem = resolveBody.case;
+    if (!caseItem) {
+      caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+    }
+    if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: sourceCaseId });
 
     const { apiKey, configuredBase, keySanitized } = loadHermesCredentials(secrets);
     if (!apiKey) return Response.json({ ok: false, status: "not_configured", error: "hermes-api_key secret is not configured" });

@@ -41,7 +41,12 @@ export default function CasesManagement() {
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ["cases-management"],
-    queryFn: () => base44.entities.InvestigationCase.list("-created_date", 200),
+    queryFn: async () => {
+      const res = await base44.functions.invoke("getInvestigationCaseInventory", {});
+      const body = res?.data ?? res;
+      if (!body?.ok) throw new Error(body?.error || "Failed to load case inventory");
+      return body.cases || [];
+    },
   });
 
   // Resolve each case's creator (investigator/user) so cases can be shown
@@ -79,10 +84,19 @@ export default function CasesManagement() {
     }));
   }, [filtered, userMap]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (caseItem) => {
     if (!confirm("Delete this case? This cannot be undone.")) return;
     try {
-      await base44.entities.InvestigationCase.delete(id);
+      if (caseItem?._legacy_source) {
+        const sourceEntity = caseItem.source_case_type === "MyCase"
+          ? base44.entities.MyCase
+          : caseItem.source_case_type === "ClientCase"
+            ? base44.entities.ClientCase
+            : base44.entities.MasterCase;
+        await sourceEntity.delete(caseItem.source_case_id || caseItem.id);
+      } else {
+        await base44.entities.InvestigationCase.delete(caseItem.id);
+      }
       queryClient.invalidateQueries({ queryKey: ["cases-management"] });
     } catch (e) {
       alert("Failed to delete case: " + (e.message || e));
@@ -167,7 +181,7 @@ export default function CasesManagement() {
               </div>
               <div className="rounded-lg border border-white/10 divide-y divide-white/5">
                 {group.cases.map((c) => (
-                  <CaseListItem key={c.id} caseItem={c} creator={group.user} onDelete={handleDelete} canDelete={canMutate} />
+                  <CaseListItem key={c.id} caseItem={c} creator={group.user} onDelete={() => handleDelete(c)} canDelete={canMutate} />
                 ))}
               </div>
             </div>
@@ -222,7 +236,7 @@ function CaseListItem({ caseItem, creator, onDelete, canDelete }) {
       <Badge variant="outline" className="capitalize border-white/10 text-gray-400 hidden sm:inline-flex">{(caseItem.status || "new").replace(/_/g, " ")}</Badge>
       {canDelete && (
         <button
-          onClick={(e) => { e.preventDefault(); onDelete(caseItem.id); }}
+          onClick={(e) => { e.preventDefault(); onDelete(); }}
           className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 transition-colors"
           title="Delete case"
         >
