@@ -11,7 +11,26 @@
       "type": "string",
       "description": "Tenant id (multi-tenant isolation)"
     },
-    "case_id": {
+        "hermes_investigation_id": {
+      "type": "string",
+      "description": "SENTRA investigation_id for THIS run. Authoritative run identity; InvestigationCase.workflow.hermes_investigation_id is only a pointer to the latest run."
+    },
+    "target_fingerprint": {
+      "type": "string",
+      "description": "Deterministic sha256 over the normalised target set for this run. Drives rerun-vs-reuse decisions; never derived from the SENTRA id."
+    },
+    "target_snapshot": {
+      "type": "object",
+      "description": "Normalised copy of the investigative inputs this run was started with, so history stays inspectable when targets change later.",
+      "additionalProperties": true
+    },
+    "sync_status": {
+      "type": "string",
+      "enum": ["pending", "active", "synced", "failed"],
+      "default": "pending",
+      "description": "Synchronization state for THIS run only."
+    },
+"case_id": {
       "type": "string",
       "description": "Related investigation case id"
     },

@@ -176,7 +176,24 @@ export default async function (req: Request): Promise<Response> {
 
     const payload = await req.json().catch(() => ({}));
     let caseId = payload?.case_id;
-    if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id is required" });
+    // run_id scopes every write below to ONE investigation run. Without it we fall
+    // back to the latest run for the case, so Run 2's results can never be written
+    // under Run 1.
+    let runId = payload?.run_id || null;
+    let run = null;
+    if (runId) {
+      run = await base44.entities.InvestigationRun.get(runId).catch(() => null);
+      if (!run) {
+        return Response.json({ ok: false, status: "not_found", error: "run_id not found", run_id: runId });
+      }
+      // Ownership: the run must belong to the same case we were asked about.
+      if (caseId && String(run.case_id) !== String(caseId)) {
+        return Response.json({ ok: false, status: "forbidden", error: "run_id does not belong to this case" }, { status: 403 });
+      }
+      caseId = caseId || run.case_id;
+      investigationId = run.hermes_investigation_id || investigationId;
+    }
+    if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id or run_id is required" });
 
     // Resolve both canonical and legacy/client case ids. This is the same
     // canonicalization path used by syncCaseToHermes, so polling a case opened

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 import { secrets } from "base44:runtime";
+import { targetFingerprint, decideRun } from "../../shared/targetFingerprint.js";
 import {
   loadHermesCredentials, normalizeRoot, buildInvestigationsUrl, investigationFetch, extractInvestigationId,
 } from "../../shared/hermesHttp.ts";
@@ -147,6 +148,44 @@ export default async function (req: Request): Promise<Response> {
     const now = new Date().toISOString();
 
     // ── Idempotency: if a mapping already exists, verify it against Hermes.
+    // ------------------------------------------------------------------
+    // MULTI-RUN: a CASE may hold many InvestigationRuns. A completed RUN is
+    // immutable; the CASE is rerunnable when its investigative INPUTS change.
+    // Previously any existing hermes_investigation_id short-circuited to
+    // action:"existing", so a newly added target could never start a new run.
+    // ------------------------------------------------------------------
+    const targetRows = (await base44.entities.InvestigationTarget.list(caseId).catch(() => [])) || [];
+    const fingerprint = targetFingerprint(targetRows);
+    const latestRuns = (await base44.entities.InvestigationRun.filter(
+      { case_id: caseId, tenant_id: String(caseItem.tenant_id || user?.id || "") },
+      "created_date", false, 1,
+    ).catch(() => [])) || [];
+    const latestRun = latestRuns[0] || null;
+    const decision = decideRun({
+      fingerprint,
+      latest: latestRun && {
+        fingerprint: latestRun.target_fingerprint || null,
+        hermes_investigation_id: latestRun.hermes_investigation_id || null,
+        status: latestRun.status || null,
+        sync_status: latestRun.sync_status || null,
+      },
+    });
+
+    // C: an identical-input run is already in flight -> never double-start it.
+    if (decision === "reuse_active" || decision === "reuse_completed") {
+      return Response.json({
+        ok: true, action: "existing", decision,
+        case_id: caseId,
+        run_id: latestRun?.id || null,
+        hermes_investigation_id: latestRun?.hermes_investigation_id || null,
+        sync_status: latestRun?.sync_status || "synced",
+        target_fingerprint: fingerprint,
+        last_synced_at: new Date().toISOString(),
+      });
+    }
+    // decision === "create_new_run" | "allow_after_failure" -> fall through and
+    // create a NEW run. A prior FAILED run is preserved, never mutated.
+
     const existingId = caseItem.workflow?.hermes_investigation_id;
     if (existingId) {
       const verify = await investigationFetch(`${investigationsUrl}/${encodeURIComponent(String(existingId))}`, { method: "GET", apiKey });
@@ -252,6 +291,32 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ ok: false, status: "no_investigation_id", error: "Hermes accepted the request but did not return an investigation_id", action: "create_failed", case_id: caseId });
     }
 
+    // ── Persist the authoritative RUN record. The case keeps
+    //    workflow.hermes_investigation_id only as a backward-compatible pointer
+    //    to the CURRENT run; InvestigationRun is the source of truth per run.
+    let runId = null;
+    try {
+      const run = await base44.entities.InvestigationRun.create({
+        tenant_id: String(caseItem.tenant_id || user?.id || ""),
+        case_id: caseId,
+        hermes_investigation_id: investigationId,
+        target_fingerprint: fingerprint,
+        target_snapshot: (targetRows || []).map((t) => ({
+          type: t.type, value: t.value, network: t.network || null,
+        })),
+        sync_status: "pending",
+        phase: "planning",
+        provider: "hermes",
+        model: "hermes-sentra",
+        status: "running",
+        description: `Hermes investigation run for case ${caseId}`,
+        started_at: now,
+      });
+      runId = run?.id || null;
+    } catch (e) {
+      console.warn("Hermes run persist failed (investigation still started):", e?.message);
+    }
+
     // ── Store the canonical mapping on the SafeNestT case.
     await base44.entities.InvestigationCase.update(caseId, {
       sync_status: "active",
@@ -276,6 +341,7 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({
       ok: true, action: existingId ? "recreated" : "created", case_id: caseId,
+      run_id: runId, target_fingerprint: fingerprint,
       hermes_investigation_id: investigationId, sync_status: "active", last_synced_at: now,
       target_count: targetObjs.length, has_external_indicators: hasExternalIndicator,
     });
