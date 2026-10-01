@@ -258,9 +258,21 @@ export default async function (req: Request): Promise<Response> {
     if (payload?.action === "start_investigation") {
       const id = payload.investigation_id;
       if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
-      const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/start`;
-      const result = await investigationFetch(url, { method: "POST", body: payload.body || {}, apiKey });
-      return Response.json({ ...result, configured: true });
+
+      // Investigations can run for several minutes. Async start is the safe
+      // default for Base44/serverless callers so the invocation returns before
+      // Cloudflare/serverless edge timeouts. Synchronous completion remains an
+      // explicit opt-in for controlled callers that set wait_for_completion=true.
+      const baseUrl = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/start`;
+      const waitForCompletion = payload?.wait_for_completion === true;
+      const url = waitForCompletion ? baseUrl : `${baseUrl}?wait=false`;
+
+      const result = await investigationFetch(url, {
+        method: "POST",
+        body: payload.body || {},
+        apiKey,
+      });
+      return Response.json({ ...result, configured: true, async_start: !waitForCompletion });
     }
     if (payload?.action === "get_investigation") {
       const id = payload.investigation_id;
