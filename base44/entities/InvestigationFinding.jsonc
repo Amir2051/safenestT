@@ -6,6 +6,14 @@
       "type": "string",
       "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
     },
+        "investigation_run_id": {
+      "type": "string",
+      "description": "Owning InvestigationRun id. Artifacts without this are case-level only; a run drill-down MUST filter on it so Run 2 never shows Run 1 results."
+    },
+    "hermes_investigation_id": {
+      "type": "string",
+      "description": "SENTRA investigation_id that produced THIS artifact. Together with investigation_run_id + case_id this is the full scoping key for per-run reads."
+    },
     "case_id": {
       "type": "string",
       "description": "ID of the related investigation case"

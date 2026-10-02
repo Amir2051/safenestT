@@ -194,6 +194,10 @@ export default async function (req: Request): Promise<Response> {
       investigationId = run.hermes_investigation_id || investigationId;
     }
     if (!caseId) return Response.json({ ok: false, status: "bad_request", error: "case_id or run_id is required" });
+    // Every artifact written below is stamped with the owning run. runId is null only
+    // when no run_id was supplied (legacy callers); in that case artifacts stay
+    // case-level and MUST NOT be presented as belonging to a specific run.
+    const runStamp = (o) => ({ ...o, investigation_run_id: runId, hermes_investigation_id: investigationId });
 
     // Resolve both canonical and legacy/client case ids. This is the same
     // canonicalization path used by syncCaseToHermes, so polling a case opened
@@ -410,7 +414,9 @@ export default async function (req: Request): Promise<Response> {
           };
         });
         const evidenceRecs = evidencePayloads.length
-          ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch(() => [])
+          ? await base44.entities.EvidenceItem.bulkCreate(
+              evidencePayloads.map((e) => ({ ...e, investigation_run_id: runId, hermes_investigation_id: invId })),
+            ).catch(() => [])
           : [];
         const evidenceMap = {};
         for (const rec of evidenceRecs) {
@@ -419,7 +425,9 @@ export default async function (req: Request): Promise<Response> {
         persisted.evidence = evidenceRecs.length;
 
         // ── 2. Findings → InvestigationFinding (evidence_refs mapped to SafeNestT ids).
-        const findingPayloads = hermesFindings.map((f) => {
+        const findingPayloads = hermesFindings.map((f) => ({
+          investigation_run_id: runId,
+          hermes_investigation_id: invId,
           const payload = {
             tenant_id: tenantId,
             case_id: caseId,
@@ -447,6 +455,10 @@ export default async function (req: Request): Promise<Response> {
         const reportRec = await base44.entities.InvestigationReport.create({
           tenant_id: tenantId,
           case_id: caseId,
+          // Run scoping: a report belongs to ONE run. Without these a drill-down for
+          // Run 2 could surface Run 1's dossier.
+          investigation_run_id: runId,
+          hermes_investigation_id: invId,
           title: `Hermes Investigation Dossier — ${reportData.target || invId}`,
           report_type: "dossier",
           status: "generated",

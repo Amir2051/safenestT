@@ -386,6 +386,49 @@ export async function currentInvestigationRun(caseId) {
   return active || runs[0] || null;
 }
 
+/**
+ * Per-run artifact readers. EVERY read is scoped by case_id AND investigation_run_id,
+ * so selecting Run 1 can never surface Run 2's artifacts. We deliberately do NOT fall
+ * back to the case-level or "latest" investigation: a silent fallback is exactly how
+ * run A's report ends up shown for run B.
+ */
+const NO_RUN = Symbol("no-run");
+const runScope = (caseId, runId) => (runId
+  ? { case_id: caseId, investigation_run_id: runId }
+  // Fail CLOSED. Returning {investigation_run_id: null} here would match legacy
+  // case-level rows and reintroduce the silent fallback where a run drill-down
+  // shows the wrong investigation's artifacts. A missing run must match NOTHING.
+  : { case_id: caseId, investigation_run_id: NO_RUN });
+
+export async function listRunFindings(caseId, runId) {
+  if (!caseId || !runId) return [];
+  return (await base44.entities.InvestigationFinding.filter(
+    runScope(caseId, runId), "-created_date", 200).catch(() => [])) || [];
+}
+
+export async function listRunEvidence(caseId, runId) {
+  if (!caseId || !runId) return [];
+  return (await base44.entities.EvidenceItem.filter(
+    runScope(caseId, runId), "-created_date", 500).catch(() => [])) || [];
+}
+
+export async function listRunReports(caseId, runId) {
+  if (!caseId || !runId) return [];
+  return (await base44.entities.InvestigationReport.filter(
+    runScope(caseId, runId), "-generated_date", 50).catch(() => [])) || [];
+}
+
+/** One call for a run drill-down: every artifact, all scoped to that run. */
+export async function getRunArtifacts(caseId, runId) {
+  if (!caseId || !runId) {
+    return { run_id: runId || null, findings: [], evidence: [], reports: [], scoped: false };
+  }
+  const [findings, evidence, reports] = await Promise.all([
+    listRunFindings(caseId, runId), listRunEvidence(caseId, runId), listRunReports(caseId, runId),
+  ]);
+  return { run_id: runId, findings, evidence, reports, scoped: true };
+}
+
 export async function syncHermesInvestigationStep(caseId) {
   const res = await base44.functions.invoke("syncHermesInvestigation", { case_id: caseId });
   const body = res?.data ?? res;

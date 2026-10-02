@@ -6,6 +6,14 @@
       "type": "string",
       "description": "Admin who performed action"
     },
+    "investigation_run_id": {
+      "type": "string",
+      "description": "Owning InvestigationRun id, when the log entry belongs to one investigation run."
+    },
+    "hermes_investigation_id": {
+      "type": "string",
+      "description": "SENTRA investigation_id this log entry relates to."
+    },
     "action_type": {
       "type": "string",
       "enum": [
