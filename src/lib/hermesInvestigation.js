@@ -357,6 +357,35 @@ async function persistHermesResults({ caseId, tenantId, runId, user, statusData 
  * hermes_investigation_id and persists the real status/results back into the
  * SAME case (authoritative, RLS-enforced). Returns the mapped state.
  */
+/**
+ * listInvestigationRuns(caseId) -> all runs for a case, newest first.
+ *
+ * A CASE is a long-lived container and may hold many runs. InvestigationRun is the
+ * authoritative per-run record; InvestigationCase.workflow.hermes_investigation_id is
+ * only a pointer to the CURRENT run and must never be read as "the" investigation.
+ */
+export async function listInvestigationRuns(caseId) {
+  if (!caseId) return [];
+  const rows = (await base44.entities.InvestigationRun.filter(
+    { case_id: caseId },
+    "created_date",
+    false,
+  ).catch(() => [])) || [];
+  return [...rows].sort((a, b) =>
+    String(b.created_date || "").localeCompare(String(a.created_date || "")),
+  );
+}
+
+/** Which run is currently in flight (or most recently started). */
+export async function currentInvestigationRun(caseId) {
+  const runs = await listInvestigationRuns(caseId);
+  const active = runs.find((r) =>
+    ["queued", "running", "pending", "active"].includes(
+      String(r.status || "").toLowerCase(),
+    ) || ["pending", "active"].includes(String(r.sync_status || "").toLowerCase()));
+  return active || runs[0] || null;
+}
+
 export async function syncHermesInvestigationStep(caseId) {
   const res = await base44.functions.invoke("syncHermesInvestigation", { case_id: caseId });
   const body = res?.data ?? res;

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { getProvider } from "@/lib/investigationAI";
-import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, HermesError } from "@/lib/hermesInvestigation";
+import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, listInvestigationRuns, HermesError } from "@/lib/hermesInvestigation";
+import InvestigationRunTree from "./InvestigationRunTree";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
 import { toast } from "sonner";
 
@@ -48,6 +49,15 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     enabled: !!caseId,
   });
   const hasTargets = targets.length > 0;
+
+  // All investigation runs for this case. A CASE may hold many runs; the case-level
+  // workflow.hermes_investigation_id is only a pointer to the current one.
+  const { data: runs = [] } = useQuery({
+    queryKey: ["investigation-runs", caseId],
+    queryFn: () => listInvestigationRuns(caseId),
+    enabled: !!caseId,
+    refetchInterval: 10000,
+  });
   // Narrative-tolerant: a case may contain only a description. Hermes must be
   // allowed to investigate it (analyzing the narrative) without requiring a
   // wallet/domain/IP/etc. first. No minimum target is enforced to start.
@@ -219,6 +229,10 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
 
   return (
     <section className="rounded-xl border border-cyan-500/15 bg-gradient-to-br from-[#0a0f1a]/80 to-[#0f1419]/80 p-4 sm:p-5 space-y-4">
+      {/* All investigation runs for this case, newest first. Read-only: the UI never
+          mutates a run, and the case-level pointer is not treated as "the" run. */}
+      <InvestigationRunTree runs={runs} caseId={caseId} />
+
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center">
