@@ -1,5 +1,4 @@
 import React from "react";
-import { Tag } from "./panelPrimitives";
 import { Crosshair, ClipboardList, Download, FileSearch, GitCompare, ShieldCheck, Gauge, FolderOpen } from "lucide-react";
 
 /**
@@ -25,14 +24,13 @@ const toneRing = {
   green: "border-emerald-500/40 text-emerald-300",
 };
 
-export default function InvestigationPipeline({ activeIndex = 2, simulated = false }) {
+export default function InvestigationPipeline({ activeIndex = 2 }) {
   return (
     <div className="rounded-md border border-slate-700/60 bg-[#0a0e13]/80 ic-grid-bg">
       <div className="flex items-center justify-between px-3 h-9 border-b border-slate-700/50">
         <h3 className="text-[11px] font-mono font-semibold tracking-[0.2em] text-slate-300 uppercase">
           INVESTIGATION PIPELINE
         </h3>
-        {simulated && <Tag tone="amber">SIMULATED</Tag>}
       </div>
 
       <div className="p-3 overflow-x-auto no-scrollbar">

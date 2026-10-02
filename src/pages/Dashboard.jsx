@@ -509,7 +509,7 @@ export default function Dashboard() {
         <div className="lg:col-span-3 space-y-4">
           <SectionLabel>AI Agent Status</SectionLabel>
           <MiaQuickChat user={user} />
-          <AgentGrid simulated />
+          <AgentGrid />
         </div>
       </div>
 
@@ -533,7 +533,7 @@ export default function Dashboard() {
         </div>
         <div className="space-y-3">
           <SectionLabel>Threat Intelligence</SectionLabel>
-          <ThreatIntelPanel simulated />
+          <ThreatIntelPanel />
         </div>
       </div>
 

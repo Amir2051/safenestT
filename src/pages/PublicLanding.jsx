@@ -173,7 +173,7 @@ export default function PublicLanding() {
           run that produced it.
         </p>
         <div className="rounded-md border border-slate-800/60 bg-[#06090d]/60 p-4 sm:p-6">
-          <InvestigationPipeline activeIndex={2} simulated />
+          <InvestigationPipeline activeIndex={2} />
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {WORKFLOW.map((w) => (
               <div key={w.label} className="flex items-start gap-3 p-3 rounded-md bg-slate-900/30 border border-slate-800/50">
@@ -221,8 +221,8 @@ export default function PublicLanding() {
       <section className="relative z-10 px-4 sm:px-6 pb-14 max-w-7xl mx-auto">
         <SectionLabel className="mb-3">Threat Intelligence & Entity Graphs</SectionLabel>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ThreatIntelPanel simulated />
-          <EntityGraph simulated />
+          <ThreatIntelPanel />
+          <EntityGraph />
         </div>
       </section>
 
@@ -233,7 +233,7 @@ export default function PublicLanding() {
           Specialized agents assist across the investigation lifecycle — always operating under human
           review and against the evidence in your case.
         </p>
-        <AgentGrid simulated />
+        <AgentGrid />
       </section>
 
       {/* ENTERPRISE */}

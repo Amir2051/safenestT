@@ -5,7 +5,7 @@ import React from "react";
  * Graphite panels, thin borders, monospace telemetry, restrained accents.
  */
 
-export function Panel({ title, actions, className = "", bodyClass = "p-3", children }) {
+export function Panel({ title, actions = null, className = "", bodyClass = "p-3", children }) {
   return (
     <div className={`relative rounded-md border border-slate-700/60 bg-[#0a0e13]/80 backdrop-blur-sm ic-grid-bg ${className}`}>
       {(title || actions) && (

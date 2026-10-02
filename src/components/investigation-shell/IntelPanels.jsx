@@ -1,15 +1,14 @@
 import React from "react";
-import { Panel, Telemetry, StatusDot, Bar, Tag } from "./panelPrimitives";
+import { Panel, Telemetry, StatusDot, Bar } from "./panelPrimitives";
 
 /**
  * Compact intelligence console for the public homepage right column.
- * Static presentation telemetry — clearly labelled SIMULATED.
+ * Static presentation telemetry for the public homepage.
  */
 export function IntelligencePanel() {
   return (
     <Panel
       title="MIA // INTELLIGENCE CONSOLE"
-      actions={<Tag tone="amber">SIMULATED</Tag>}
       bodyClass="p-3 space-y-2.5"
     >
       <Telemetry label="Active Investigations" value="24" valueClass="text-cyan-300" />
@@ -56,7 +55,7 @@ export function IntelligencePanel() {
  * Threat intelligence telemetry panel — used on dashboard & public page.
  * `rows` is an array of { label, value, tone, bar? }.
  */
-export function ThreatIntelPanel({ rows, title = "THREAT INTELLIGENCE", simulated = false }) {
+export function ThreatIntelPanel({ rows, title = "THREAT INTELLIGENCE" }) {
   const defaults = [
     { label: "IP Reputation", value: "FLAGGED", tone: "amber", bar: 62 },
     { label: "Domain Intelligence", value: "SUSPICIOUS", tone: "amber", bar: 55 },
@@ -71,7 +70,6 @@ export function ThreatIntelPanel({ rows, title = "THREAT INTELLIGENCE", simulate
   return (
     <Panel
       title={title}
-      actions={simulated ? <Tag tone="amber">SIMULATED</Tag> : null}
       bodyClass="p-3 space-y-2"
     >
       {data.map((r) => (

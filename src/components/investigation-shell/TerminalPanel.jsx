@@ -1,9 +1,8 @@
 import React from "react";
-import { Tag } from "./panelPrimitives";
 
 /**
  * Simulated live investigation terminal for the public homepage.
- * Static presentation data — clearly labelled SIMULATED. Not real case data.
+ * Static presentation data for the marketing surface. Not real case data.
  */
 const BOOT_LINES = [
   "> INITIALIZING CASE INTELLIGENCE...",
@@ -42,7 +41,6 @@ export default function TerminalPanel() {
             MIA // INVESTIGATION TERMINAL
           </span>
         </div>
-        <Tag tone="amber">SIMULATED</Tag>
       </div>
 
       {/* body */}

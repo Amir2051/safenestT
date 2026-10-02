@@ -1,5 +1,5 @@
 import React from "react";
-import { Panel, Tag } from "./panelPrimitives";
+import { Panel } from "./panelPrimitives";
 import { User, AtSign, Globe, Bitcoin, ArrowLeftRight, Building2 } from "lucide-react";
 
 /**
@@ -29,14 +29,13 @@ const toneFill = {
   green: "border-emerald-500/50 text-emerald-300 bg-emerald-500/10",
 };
 
-export default function EntityGraph({ nodes, edges, title = "ENTITY GRAPH", simulated = false }) {
+export default function EntityGraph({ nodes, edges, title = "ENTITY GRAPH" }) {
   const n = nodes || DEFAULT_NODES;
   const e = edges || DEFAULT_EDGES;
   const byId = Object.fromEntries(n.map((x) => [x.id, x]));
   return (
     <Panel
       title={title}
-      actions={simulated ? <Tag tone="amber">SIMULATED</Tag> : null}
       bodyClass="p-3"
     >
       <div className="relative w-full overflow-x-auto no-scrollbar">

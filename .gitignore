@@ -30,3 +30,7 @@ dist-ssr
 .env
 base44/.app.jsonc
 pat.env
+
+# Local Base44 access token — never commit (defensive; file lives outside the repo)
+base44Accesstoken.env
+*.accessToken.env
