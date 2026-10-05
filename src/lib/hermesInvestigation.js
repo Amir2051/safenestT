@@ -487,14 +487,20 @@ export async function runHermesInvestigation({
   //    No minimum target is required — a narrative-only case is accepted.
   let investigationId;
   try {
-    investigationId = caseItem?.workflow?.hermes_investigation_id;
-    if (!investigationId) {
-      const synced = await syncCaseToHermesStep(caseId);
-      investigationId = synced.hermes_investigation_id;
+    // ALWAYS reconcile through the server-side sync before starting.
+    // syncCaseToHermesStep verifies any stored Hermes ID against the live
+    // gateway and automatically clears/recreates stale 404 mappings.
+    // Never trust caseItem.workflow.hermes_investigation_id blindly: it may
+    // be a stale ID from a previous Hermes database lifecycle.
+    const synced = await syncCaseToHermesStep(caseId);
+    if (!synced?.ok || !synced?.hermes_investigation_id) {
+      throw new HermesError(
+        synced?.status || "sync_failed",
+        synced?.error || "Hermes case sync did not produce an investigation_id.",
+        synced?.upstream_status
+      );
     }
-    if (!investigationId) {
-      throw new HermesError("no_investigation_id", "Hermes case sync did not produce an investigation_id.");
-    }
+    investigationId = synced.hermes_investigation_id;
 
     // Initial progress: planning running.
     const initial = {};
