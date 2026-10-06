@@ -490,35 +490,33 @@ async function runDatenoEnrichment(caseItem, ctx) {
     recorded = 0;
   }
 
-  // Persist each hit as an EvidenceItem type='dateno_ledger' (no LLM, no claims).
-  // Attach dataset provenance to already-created EvidenceItem records.
-  // (The base44 SDK's entities.EvidenceItem.create supports arbitrary fields.)
-  const EvidenceItem = base44.entities.EvidenceItem;
-  const evidenceIds = [];
-  for (const hit of (body?.data?.hits || [])) {
-    try {
-      const ev = await EvidenceItem.create({
-        case_id: caseItem.id,
-        target_id: null,
-        evidence_type: "dateno_ledger",
-        // Proxies for the actual field names used by the SDK; real field names
-        // are determined by the entities schema at creation time.
-        dataset_id: hit?.dataset_id || null,
-        source_name: hit?.source_name || null,
-        source_url: hit?.source_url || null,
-        source_record_id: hit?.hit_id || null,
-        jurisdiction: jurisdiction || null,
-        country: country || null,
-        confidence: "lead_only",
-        classification: "unconfirmed",
-      }).catch(() => null);
-      if (ev && ev.id) evidenceIds.push(ev.id);
-    } catch (_) {
-      // One bad hit must never break the whole investigation.
-    }
+  // Persist each normalized/validated hit into the dedicated Dateno ledger.
+  // This is intelligence provenance (source, dataset, hit, jurisdiction),
+  // not EvidenceItem (which is designed for uploaded/processed evidence).
+  // The Dateno API key is NOT involved here — only server-side writes.
+  // Extend with investigation context (jurisdiction/country lookup).
+  const lookup = { jurisdiction, country };
+  const { toLedgerRecord } = await import("@/data/ume").then((m) => m);
+  const records = (body?.data?.hits || [])
+    .map((h) => toLedgerRecord(h, lookup))
+    .filter(Boolean);
+  // Cap the number of records this enrichment batch writes so a single
+  // enrichment run cannot create unbounded ledger volume.
+  const capped = records.slice(0, 6);
+  if (!capped.length) {
+    return { recorded: records.length, warnings: ["no valid ledger records produced"], evidence_ids: [] };
   }
+  const ledWriteRes = await base44.functions.invoke("datenoLedger", {
+    action: "write",
+    records: capped,
+  }).catch(() => null);
+  const ledWriteBody = ledWriteRes?.data ?? ledWriteRes;
+  const ledIds = Array.isArray(ledWriteBody?.ids) ? ledWriteBody.ids : [];
+  const ledWarnings = Array.isArray(ledWriteBody?.warnings) ? ledWriteBody.warnings : [];
+  if (typeof ledWriteBody?.created === "number") recorded = ledWriteBody.created;
+  if (typeof ledWriteBody?.error === "string") warnings.push(ledWriteBody.error);
 
-  return { recorded, warnings, evidence_ids: evidenceIds };
+  return { recorded: records.length, warnings, evidence_ids: ledIds };
 }
 
 /**

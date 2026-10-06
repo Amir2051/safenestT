@@ -161,6 +161,70 @@ export function normaliseDatenoHit(hit) {
   return mapDatenoHitToEntity(hit);
 }
 
+/**
+ /** Build a complete, schema-validated DatenoLedger record from a normalized
+  *  Dateno enrichment hit (the flat record shape returned by the
+  *  dateno-enrich function as data.hits).
+  *
+  *  The flat hit shape follows the documented API shapes: { dataset: {...} },
+  *  but enrichment strips nested lookups out. This builder reassembles the
+  *  full provenance record from the flattened fields so every schema field
+  *  is materialised from the enrichment output, not from raw API internals.
+  *
+  *  mapDatenoHitToEntity() serialises the full nested hit object so it can be
+  *  materialised as a DatenoLedger entity; raw non-serialisable values are
+  *  JSON-stringified. Objects always pass through (caller must mask values).
+  */
+ export function toLedgerRecord(hit, lookup = {}) {
+   // The enrichment output is a flattened record (no nested _source);
+   // reassemble from the flat fields.
+   const dataset = hit?.dataset || {};
+
+   return {
+     // Source system that produced the enrichment record.
+     source: "dateno",
+     // Provenance
+     source_name: hit?.source_name || hit?._source?.source?.name || null,
+     source_url: hit?.source_url || hit?._source?.source?.url || null,
+     source_record_id: dataset?.id || hit?.dataset_id || null,
+     source_record_order: null,
+     retrieved_at: new Date().toISOString(),
+     // Dataset
+     dataset_id: dataset?.id || hit?.dataset_id || null,
+     dataset_int_id: dataset?.int_id || hit?.dataset_int_id || null,
+     dataset_title: dataset?.title || hit?.dataset_title || null,
+     dataset_url: dataset?.url || hit?.dataset_url || null,
+     dataset_description: dataset?.description || hit?.dataset_description || null,
+     dataset_datatypes: dataset?.datatypes || hit?.dataset_datatypes || [],
+     dataset_formats: dataset?.formats || hit?.dataset_formats || [],
+     dataset_tags: dataset?.tags || hit?.dataset_tags || [],
+     dataset_topics: dataset?.topics || hit?.dataset_topics || [],
+     dataset_topics_original: dataset?.topics_original || hit?.dataset_topics_original || [],
+     dataset_license_id: dataset?.license_id || hit?.dataset_license_id || null,
+     dataset_num_resources: dataset?.num_resources ?? hit?.dataset_num_resources ?? null,
+     dataset_has_archive: dataset?.has_archive ?? hit?.dataset_has_archive ?? false,
+     // Source metadata
+     source_uid: hit?.source_uid || hit?._source?.uid || null,
+     source_countries: Array.isArray(hit?.source_countries) ? hit.source_countries : Array.isArray(hit?._source?.countries) ? hit._source.countries : [],
+     source_macroregions: Array.isArray(hit?.source_macroregions) ? hit.source_macroregions : Array.isArray(hit?._source?.macroregions) ? hit._source.macroregions : [],
+     source_software: hit?.source_software || hit?._source?.software || null,
+     source_langs: Array.isArray(hit?.source_langs) ? hit.source_langs : Array.isArray(hit?._source?.langs) ? hit._source.langs : [],
+     // Hit metadata
+     hit_id: hit?._id || hit?.hit_id || null,
+     hit_score: hit?._score ?? hit?.hit_score ?? null,
+     hit_index: hit?._index || hit?.hit_index || null,
+     // Jurisdiction / country
+     jurisdiction: lookup?.jurisdiction || hit?.jurisdiction || null,
+     country: lookup?.country || hit?.country || null,
+     // Matching
+     match_type: hit?.match_type || "catalog_search",
+     matched_fields: hit?.matched_fields || [],
+     // Intelligence status (never auto-fraud)
+     confidence: hit?.confidence || "lead_only",
+     classification: hit?.classification || "unconfirmed",
+   };
+ }
+
 // ── Masking / redaction helpers (for UI / logs) ─────────────────────────────
 
 /** Mask a string value for display in logs or non-moderated UI (e.g. emails). */

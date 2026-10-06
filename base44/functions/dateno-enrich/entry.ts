@@ -376,7 +376,7 @@ export default async function (req: Request) {
         source_record_order: null,
         jurisdiction: countryCode || jurisdiction || null,
         retrieved_at: new Date().toISOString(),
-        confidence: "low",
+        confidence: "lead_only",
         confidence_score: 0,
         evidence_refs: [],
         entity_refs: [],
