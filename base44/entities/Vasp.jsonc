@@ -1,0 +1,138 @@
+{
+  "name": "Vasp",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Full legal name of the VASP"
+    },
+    "commercial_name": {
+      "type": "string",
+      "description": "Trading/trade name of the VASP, if different from the registered name"
+    },
+    "vara_reference": {
+      "type": "string",
+      "description": "VARA licence reference number (e.g. VL/23/07/002)"
+    },
+    "licence_type": {
+      "type": "string",
+      "description": "VARA licence type (e.g. VASP Licence)",
+      "enum": ["VASP Licence", "In-Principle Approval", "IPA", "Licence"],
+      "default": "VASP Licence"
+    },
+    "licence_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the licence was issued (YYYY-MM-DD)"
+    },
+    "status": {
+      "type": "string",
+      "description": "VARA licence status",
+      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired", "IPA", "Pending"],
+      "default": "Active"
+    },
+    "cma_registration": {
+      "type": "string",
+      "description": "CMA registration number (e.g. CMA-VASP-0100000-0010)"
+    },
+    "licensed_activities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Licensed activities (broker-dealer, exchange, custody, advisory, etc.)"
+    },
+    "regulated_on": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the VASP became regulated (YYYY-MM-DD)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Source URL where the record was retrieved"
+    },
+    "source_name": {
+      "type": "string",
+      "description": "Name of the source (e.g. VARA Public Register)"
+    },
+    "retrieved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp the record was retrieved"
+    },
+    "source_record_order": {
+      "type": "string",
+      "description": "Row order in the original source table (for provenance)"
+    },
+    "source_record_id": {
+      "type": "string",
+      "description": "Source-native identifier for the record"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Linked Entity id (owner / principal body)"
+    },
+    "investigation_case_id": {
+      "type": "string",
+      "description": "Linked InvestigationCase id",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "required": ["name", "vara_reference", "licence_type", "status", "source_url", "retrieved_at"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

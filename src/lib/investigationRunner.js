@@ -17,6 +17,7 @@ export const PHASES = [
   { id: "planning", label: "Planning", description: "Build the investigation plan: objectives, scope, hypotheses, priority targets." },
   { id: "evidence", label: "Evidence Collection", description: "Summarize collected evidence and surface key indicators + gaps." },
   { id: "analysis", label: "Multi-Agent Analysis", description: "Three specialist analysts (blockchain, financial, behavioral) propose findings." },
+  { id: "dateno_enrichment", label: "Dateno Enrichment", description: "Server-side public-data discovery: search the Dateno catalog for case identifiers (company, domain, email, phone, country). Results are stored as provenance-enriched lead records only — never as fraud determinations. No LLM. Never breaks the investigation." },
   { id: "reality_check", label: "Reality-Check", description: "Verify proposed findings against evidence; flag unsupported claims." },
   { id: "risk", label: "Risk Scoring", description: "Deterministic risk score computed from findings + case attributes (no LLM)." },
   { id: "dossier", label: "Dossier / Report", description: "Generate a structured case dossier with classification labels." },
@@ -60,6 +61,7 @@ const DOSSIER_SCHEMA = { type: "object", properties: { title: { type: "string" }
 const PHASE_SPECS = {
   planning: { instr: "Produce an investigation plan: objectives, scope, key hypotheses, priority targets, and a step-by-step plan. Respond as JSON.", schema: PLAN_SCHEMA },
   evidence: { instr: "Summarize the collected evidence, surface key indicators, note gaps, and flag evidence that needs verification. Respond as JSON.", schema: EVIDENCE_SCHEMA },
+  dateno_enrichment: { instr: "Server-side data enrichment. NO LLM call. Call base44.functions.invoke('dateno-enrich', { targets: [...], jurisdiction, country }). Persist any yielded records as EvidenceItem type='dateno_ledger'. Return { recorded: number, warnings: string[] }.", schema: null },
   reality_check: { instr: "Review the existing findings. For each, mark verification status (supported / partially_supported / unsupported) with reasoning. Flag any unsupported claims. Do not upgrade a claim beyond the supplied evidence. Respond as JSON.", schema: REALITY_SCHEMA },
   dossier: { instr: "The dossier is evidence-gated. Use ONLY the verified and partially-supported findings supplied in the prompt. Do not invent identities, locations, transaction paths, exchange use, laundering, motives, or other facts. Unsupported claims must not appear as FACT or EVIDENCE. Respond as JSON.", schema: DOSSIER_SCHEMA },
 };
@@ -384,6 +386,12 @@ async function computePhaseOutput(phase, caseItem, ctx, provider, model) {
   if (phase === "analysis") {
     return runAnalysisMultiAgent(caseItem, ctx, provider, model);
   }
+  if (phase === "dateno_enrichment") {
+    // Dateno enrichment is server-side only. It must never break the
+    // investigation: if the key is missing or the call fails, we record a
+    // warning and return an empty enrichment result — the workflow continues.
+    return runDatenoEnrichment(caseItem, ctx);
+  }
   if (phase === "risk") {
     return computeRiskScore(caseItem, ctx); // deterministic, no LLM, no timeout
   }
@@ -400,6 +408,117 @@ async function computePhaseOutput(phase, caseItem, ctx, provider, model) {
     `phase:${phase}`
   );
   return typeof out === "string" ? safeParse(out) || { text: out } : out;
+}
+
+/** Run the Dateno enrichment phase. Does NOT call the LLM. */
+async function runDatenoEnrichment(caseItem, ctx) {
+  const { base44 } = await import("@/api/base44Client");
+  const warnings = [];
+  let recorded = 0;
+  let targets = [];
+
+  // Build a controlled target list from case + targets. Never explode the query.
+  const jurisdiction = caseItem.fraud_type || null;
+  const country = caseItem.victim_contact_info?.country || null;
+  const suspects = (caseItem.scammer_info?.names || []).slice(0, 2);
+  const suspectEmails = (caseItem.scammer_info?.emails || []).slice(0, 2);
+  const suspectPhones = (caseItem.scammer_info?.phones || []).slice(0, 2);
+  const suspectWebsites = (caseItem.scammer_info?.websites || []).slice(0, 2);
+
+  // Include case-level identifiers.
+  const candidateTargets = [];
+  if (caseItem.case_title) candidateTargets.push(caseItem.case_title);
+  if (caseItem.description) candidateTargets.push(caseItem.description);
+  if (caseItem.victim_email) candidateTargets.push(caseItem.victim_email);
+  if (caseItem.victim_phone) candidateTargets.push(caseItem.victim_phone);
+  if (caseItem.scammer_info?.name) candidateTargets.push(caseItem.scammer_info.name);
+  if (suspects.length) candidateTargets.push(suspects[0]);
+  if (suspectEmails.length) candidateTargets.push(suspectEmails[0]);
+  if (suspectPhones.length) candidateTargets.push(suspectPhones[0]);
+  if (suspectWebsites.length) candidateTargets.push(suspectWebsites[0]);
+  // Explicitly created investigation targets (domains, emails, phones, etc.).
+  for (const t of ctx.targets || []) {
+    if (t.value && typeof t.value === "string") candidateTargets.push(t.value);
+  }
+
+  // Deduplicate targets; cap the number of parallel enrichment searches.
+  const deduped = [];
+  const seenTargets = new Set();
+  for (const t of candidateTargets) {
+    const k = String(t).trim().toLowerCase();
+    if (!k || seenTargets.has(k)) continue;
+    seenTargets.add(k);
+    deduped.push(t);
+    if (deduped.length >= 8) break;
+  }
+  targets = deduped;
+
+  if (!targets.length) {
+    return { recorded: 0, warnings: [], evidence_ids: [] };
+  }
+
+  // Build a controlled enrichment payload with jurisdiction + country where
+  // available. The Dateno API key is loaded server-side from Deno secrets only.
+  const action = "search";
+  const payload = {
+    action,
+    targets: targets.slice(0, 8),
+    jurisdiction,
+    country,
+    // maxSearches caps the total number of Dateno queries (default 6).
+    maxSearches: 6,
+  };
+
+  try {
+    const res = await base44.functions.invoke("dateno-enrich", payload);
+    const body = res?.data ?? res;
+    if (body && body.ok === false) {
+      warnings.push(`Dateno enrichment reported error: ${body.error || "unknown"}`);
+    }
+    if (body && body.warnings) {
+      for (const w of body.warnings) {
+        if (typeof w === "string") warnings.push(w);
+      }
+    }
+    if (body && Array.isArray(body.data?.hits)) {
+      recorded = body.data.hits.length;
+    }
+  } catch (e) {
+    const msg = String(e?.message || e || "unknown error");
+    // A Dateno outage must NOT break the investigation.
+    warnings.push(`Dateno enrichment unavailable: ${msg}`);
+    recorded = 0;
+  }
+
+  // Persist each hit as an EvidenceItem type='dateno_ledger' (no LLM, no claims).
+  // Attach dataset provenance to already-created EvidenceItem records.
+  // (The base44 SDK's entities.EvidenceItem.create supports arbitrary fields.)
+  const EvidenceItem = base44.entities.EvidenceItem;
+  const evidenceIds = [];
+  for (const hit of (body?.data?.hits || [])) {
+    try {
+      const ev = await EvidenceItem.create({
+        case_id: caseItem.id,
+        target_id: null,
+        evidence_type: "dateno_ledger",
+        // Proxies for the actual field names used by the SDK; real field names
+        // are determined by the entities schema at creation time.
+        dataset_id: hit?.dataset_id || null,
+        source_name: hit?.source_name || null,
+        source_url: hit?.source_url || null,
+        source_record_id: hit?.hit_id || null,
+        jurisdiction: jurisdiction || null,
+        country: country || null,
+        confidence: "lead_only",
+        classification: "unconfirmed",
+      }).catch(() => null);
+      if (ev && ev.id) evidenceIds.push(ev.id);
+    } catch (_) {
+      // One bad hit must never break the whole investigation.
+    }
+  }
+
+  return { recorded, warnings, evidence_ids: evidenceIds };
 }
 
 /**

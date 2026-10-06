@@ -1,0 +1,141 @@
+{
+  "name": "Entity",
+  "type": "object",
+  "properties": {
+    "legal_name": {
+      "type": "string",
+      "description": "Legal name of the UAE entity / person / organisation"
+    },
+    "trading_name": {
+      "type": "string",
+      "description": "Trading or brand name, if different"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Type of entity",
+      "enum": ["VASP", "Financial Institution", "Regulator", "Government Authority", "Person", "State-Centric Entity", "Other"],
+      "default": "VASP"
+    },
+    "nature_of_business": {
+      "type": "string",
+      "description": "Nature of business / licensed activities"
+    },
+    "country_of_incorporation": {
+      "type": "string",
+      "description": "Country of incorporation (UAE emirate if applicable)"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Regulatory jurisdiction (e.g. Dubai, DIFC, ADGM)"
+    },
+    "licensee_identification": {
+      "type": "string",
+      "description": "Subsidiary / branch / licencee identification"
+    },
+    "identification_number": {
+      "type": "string",
+      "description": "Entity/identification number"
+    },
+    "identification_type": {
+      "type": "string",
+      "description": "Type of identification number (e.g. national ID, trade license, CMA, VARA)",
+      "default": "VARA licence"
+    },
+    "var_license_ref": {
+      "type": "string",
+      "description": "VARA licence reference associated with this entity"
+    },
+    "cma_registration": {
+      "type": "string",
+      "description": "CMA registration number"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status",
+      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired", "Pending"],
+      "default": "Active"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Source URL"
+    },
+    "source_name": {
+      "type": "string",
+      "description": "Source name"
+    },
+    "retrieved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp retrieved"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 last-updated timestamp"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Database primary key (auto-generated)",
+      "rls": {
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "url": {
+      "type": "string",
+      "description": "Website URL"
+    }
+  },
+  "required": ["legal_name", "entity_type", "created_at"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

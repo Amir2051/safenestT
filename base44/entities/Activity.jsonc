@@ -1,0 +1,100 @@
+{
+  "name": "Activity",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Licensed activity name (broker-dealer services, exchange services, custody services, etc.)"
+    },
+    "activity_type": {
+      "type": "string",
+      "description": "Activity category",
+      "enum": ["broker-dealer", "exchange", "custody", "advisory", "management-and-investment", "lending-and-borrowing", "issuance", "trading", "other"],
+      "default": "broker-dealer"
+    },
+    "descriptive_licensed_activities": {
+      "type": "string",
+      "description": "Free-text licensed activities from the source record"
+    },
+    "vasp_license_ref": {
+      "type": "string",
+      "description": "Linked VARA licence reference",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Linked Entity id",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "required": ["name", "vasp_license_ref"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

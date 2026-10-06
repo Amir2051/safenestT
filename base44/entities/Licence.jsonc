@@ -1,0 +1,124 @@
+{
+  "name": "Licence",
+  "type": "object",
+  "properties": {
+    "var_license_ref": {
+      "type": "string",
+      "description": "VARA licence reference number",
+      "example": "VL/23/07/002"
+    },
+    "cma_registration": {
+      "type": "string",
+      "description": "CMA registration number",
+      "example": "CMA-VASP-0100000-0010"
+    },
+    "licence_type": {
+      "type": "string",
+      "description": "Licence type (VASP Licence, IPA, etc.)",
+      "default": "VASP Licence"
+    },
+    "licence_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the licence was issued (YYYY-MM-DD)"
+    },
+    "status": {
+      "type": "string",
+      "description": "Licence status",
+      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired"],
+      "default": "Active"
+    },
+    "licensed_activities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Licensed activities"
+    },
+    "vasp_id": {
+      "type": "string",
+      "description": "Linked VASP id",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        },
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Linked Entity id (owner/principal body)",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "required": ["var_license_ref", "vasp_id"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

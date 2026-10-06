@@ -1,0 +1,212 @@
+{
+  "name": "Investigation",
+  "type": "object",
+  "properties": {
+    "investigation_case_id": {
+      "type": "string",
+      "description": "Linked InvestigationCase id (SafeNestT investigation engine)",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "case_type": {
+      "type": "string",
+      "description": "Case type",
+      "enum": ["VASP Licence Intelligence", "VASP Watchlist Correlation", "Entity Risk Assessment", "Transaction Pattern Analysis", "Witness / Subject Tracking", "Other"],
+      "default": "VASP Licence Intelligence"
+    },
+    "case_title": {
+      "type": "string",
+      "description": "Investigation case title"
+    },
+    "victim_name": {
+      "type": "string",
+      "description": "Victim / subject name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Details of the investigation (source of intelligence, findings, open questions)"
+    },
+    "status": {
+      "type": "string",
+      "description": "Investigation status",
+      "enum": ["new", "queued", "investigating", "documented", "submitted", "law_enforcement", "recovering", "recovered", "closed", "open", "pending"],
+      "default": "open"
+    },
+    "priority": {
+      "type": "string",
+      "description": "Priority",
+      "enum": ["low", "medium", "high", "critical"],
+      "default": "medium"
+    },
+    "fraud_type": {
+      "type": "string",
+      "description": "Fraud / concern type",
+      "enum": ["VASP Licence", "VASP Watchlist Correlation", "Entity Risk", "Unknown Scammer Wallet", "Scammer Website", "Wallet / Address", "VASP Financial Intelligence", "Other"],
+      "default": "VASP Licence"
+    },
+    "origin": {
+      "type": "string",
+      "description": "Source of the intelligence",
+      "enum": ["VARA Public Register", "Dubai Pulse", "Hermes", "User Submission", "Other"],
+      "default": "VARA Public Register"
+    },
+    "origin_id": {
+      "type": "string",
+      "description": "Source-native identifier (VARA reference number)"
+    },
+    "entity_subject_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked entity/public-body IDs"
+    },
+    "transaction_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked transaction hashes / wallet addresses"
+    },
+    "investigation_targets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Linked InvestigationTarget ids"
+    },
+    "investigation_findings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Linked InvestigationFindings"
+    },
+    "monitored_wallets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Monitored wallet addresses"
+    },
+    "linked_case_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked SafeNestT case IDs"
+    },
+    "evidence_files": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Linked evidence file urls"
+    },
+    "workflow": {
+      "type": "object",
+      "description": "Investigation workflow state",
+      "properties": {
+        "current_phase": {
+          "type": "string",
+          "enum": ["planning", "evidence", "analysis", "reality_check", "risk", "dossier", "closed"],
+          "default": "planning"
+        },
+        "provider": {
+          "type": "string",
+          "default": "Hermes Engine"
+        },
+        "model": {
+          "type": "string",
+          "description": "Preferred model id"
+        },
+        "risk_score": {
+          "type": "number",
+          "description": "Overall risk score 0-100"
+        },
+        "risk_level": {
+          "type": "string",
+          "description": "Risk level label"
+        },
+        "risk_factors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Weighted risk factors"
+        }
+      }
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last investigation activity"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 last-updated timestamp"
+    }
+  },
+  "required": ["case_title", "description", "status", "origin", "created_at"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
