@@ -31,6 +31,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
 
 // Node ≥20.11 provides import.meta.dirname; fall back for older runtimes.
 const importMetaDirname = (import.meta.dirname ?? new URL('.', import.meta.url).pathname);

@@ -52,6 +52,16 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   // allowed to investigate it (analyzing the narrative) without requiring a
   // wallet/domain/IP/etc. first. No minimum target is enforced to start.
   const hasNarrative = !!(caseItem?.description || caseItem?.case_title);
+
+  // Live Hermes state — must be computed before canRun references hermesActive.
+  const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
+  const hermesTerminal = wf.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wf.hermes_status).toLowerCase());
+  const manualRunning = !!running || runAllActive;
+  const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
+    caseItem?.status === "investigating" || caseItem?.status === "queued" ||
+    wf.hermes_status === "running" || wf.hermes_status === "queued" || wf.hermes_status === "pending" || !wf.hermes_status
+  );
+
   const canRun = hermesActive || hasTargets || hasNarrative;
 
   const providerDef = getProvider(provider);
@@ -113,14 +123,6 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   // reflects the REAL Hermes status even without a manual button press. This
   // is what un-stucks cases whose earlier client-side polling loop died on
   // navigation/unmount.
-  const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
-  const hermesTerminal = wf.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wf.hermes_status).toLowerCase());
-  const manualRunning = !!running || runAllActive;
-  const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
-    caseItem?.status === "investigating" || caseItem?.status === "queued" ||
-    wf.hermes_status === "running" || wf.hermes_status === "queued" || wf.hermes_status === "pending" || !wf.hermes_status
-  );
-
   const { data: autoSync } = useQuery({
     queryKey: ["hermes-sync", caseId],
     queryFn: () => syncHermesInvestigationStep(caseId),
