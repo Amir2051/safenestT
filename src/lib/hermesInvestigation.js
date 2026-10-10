@@ -234,20 +234,24 @@ export async function createHermesInvestigation(caseItem, ctx) {
 }
 
 export async function startHermesInvestigation(investigationId) {
-  const resp = await proxyInvoke({ action: "start_investigation", investigation_id: investigationId, body: {} });
-  if (!resp) return { status: "running", _start_timed_out: true };
-  // A start TIMEOUT is not fatal. The Hermes /start endpoint blocks until the
-  // investigation finishes, and domain/OSINT-heavy targets can exceed the
-  // proxy's fetch window. The investigation continues running server-side, so
-  // return a "running" state and let the caller's poll loop (GET
-  // /v1/investigations/{id}) observe it through to COMPLETED.
-  if (resp.ok === false && resp.status === "timeout") {
-    return { status: "running", _start_timed_out: true };
-  }
+  // Non-blocking resume pattern: pass `wait_for_completion: false` so Hermes
+  // /start endpoint returns immediately without blocking until the investigation
+  // completes. The investigation runs server-side; polling (resumeHermesInvestigation)
+  // tracks real-time progress and persists results.
+  //
+  // This eliminates the 600s serverless function timeout that occurred when
+  // startHermesInvestigation blocked waiting for Hermes to finish processing.
+  const resp = await proxyInvoke({
+    action: "start_investigation",
+    investigation_id: investigationId,
+    wait_for_completion: false,
+    body: {}
+  });
+  if (!resp) return { status: "running", async_start: true };
   if (resp.ok === false) {
     throw new HermesError(resp?.status || "error", resp?.error || "Failed to start Hermes investigation", resp?.upstream_status);
   }
-  return resp.data || {};
+  return { ...resp.data, async_start: true } || { status: "running", async_start: true };
 }
 
 export async function getHermesInvestigationStatus(investigationId) {
@@ -447,8 +451,8 @@ export async function runHermesInvestigation({
   caseItem,
   onProgress,
   shouldStop,
-  pollIntervalMs = 3000,
-  maxPollMs = 300000,
+  pollIntervalMs = 4000,
+  maxPollMs = 1800000, // 30 minutes — allows complex multi-phase investigations
 }) {
   const tenantId = await ensureTenant();
   const user = await getCurrentUser();
