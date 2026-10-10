@@ -415,6 +415,7 @@ async function runDatenoEnrichment(caseItem, ctx) {
   const { base44 } = await import("@/api/base44Client");
   const warnings = [];
   let recorded = 0;
+  let body = null;
   let targets = [];
 
   // Build a controlled target list from case + targets. Never explode the query.
@@ -471,7 +472,7 @@ async function runDatenoEnrichment(caseItem, ctx) {
 
   try {
     const res = await base44.functions.invoke("dateno-enrich", payload);
-    const body = res?.data ?? res;
+    body = res?.data ?? res;
     if (body && body.ok === false) {
       warnings.push(`Dateno enrichment reported error: ${body.error || "unknown"}`);
     }
