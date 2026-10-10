@@ -3,6 +3,20 @@ import { ensureTenant, getCurrentUser } from "@/lib/tenantContext";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { PHASES } from "@/lib/investigationRunner";
 
+// ---------------------------------------------------------------------------
+// Polling timeout configuration
+// ---------------------------------------------------------------------------
+// Default max poll window for resume polling. Increased from 600s to 1800s
+// (30 minutes) to accommodate complex multi-phase investigations that
+// legitimately take longer to complete.
+// Can be overridden via the HERMES_MAX_POLL_MS environment variable
+// (Vite-supported: VITE_HERMES_MAX_POLL_MS).
+// ---------------------------------------------------------------------------
+const HERMES_MAX_POLL_MS = parseInt(
+  import.meta.env.VITE_HERMES_MAX_POLL_MS || "1800000",
+  10
+); // 30 minutes default
+
 /**
  * Hermes investigation lifecycle client — real pipeline only.
  *
@@ -392,7 +406,7 @@ export async function resumeHermesInvestigation({
   onProgress,
   shouldStop,
   pollIntervalMs = 4000,
-  maxPollMs = 600000,
+  maxPollMs = 1800000, // 1800s = 30 minutes default (was 600s = 10 minutes)
 }) {
   const emit = (phases, overall, raw) => {
     if (onProgress) { try { onProgress(phases, overall, raw); } catch { /* listener error is non-fatal */ } }
@@ -420,9 +434,15 @@ export async function resumeHermesInvestigation({
     }
     const overall = sync.hermes_status || "running";
     const phases = sync.phases || {};
+    const terminal = Boolean(sync.terminal);
     last = { status: overall, phases, raw: sync };
     emit(phases, overall, sync);
-    if (sync.terminal) break;
+    // Log progress during development to help operators see where the
+    // investigation is stuck (e.g., still QUEUED vs COMPLETED).
+    if (import.meta.env.DEV) {
+      console.log(`[hermes-resume] case=${caseId} status=${overall} terminal=${terminal}`);
+    }
+    if (terminal) break;
     await sleep(pollIntervalMs);
   }
 

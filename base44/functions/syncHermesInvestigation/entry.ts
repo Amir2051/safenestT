@@ -235,7 +235,10 @@ export default async function (req: Request): Promise<Response> {
       phases[p] = phaseStatuses[p] || (p === "planning" ? "running" : "pending");
     }
     const terminal = isTerminal(hermesStatus);
-    // Hermes' investigation status response carries only lifecycle metadata
+    // Log status for debugging — helps operators see if the investigation is
+    // stuck in QUEUED (not started yet), RUNNING, or COMPLETED.
+    console.log(`[hermes-sync] case=${caseId} hermes_status=${hermesStatus} terminal=${terminal}`);
+    // Hermes investigation status response carries only lifecycle metadata
     // (no per-phase breakdown). When Hermes reports COMPLETED, the whole
     // pipeline is done — reflect that truthfully by marking every phase
     // completed. On FAILED, mark the in-flight phase failed. This is lifecycle
