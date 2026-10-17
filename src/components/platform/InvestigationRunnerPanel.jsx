@@ -144,7 +144,6 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         toast.error("Hermes investigation failed — failure recorded on this case");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSync]);
 
   // Run the REAL Hermes investigation lifecycle: create → start → poll the
@@ -213,7 +212,6 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     if (!autoRun || autoRunRef.current || !hasTargets || anyRunning) return;
     autoRunRef.current = true;
     runPipeline();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRun, hasTargets]);
 
   const phaseState = (id) => wf.phases?.[id]?.status || "pending";
