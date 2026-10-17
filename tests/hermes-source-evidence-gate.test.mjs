@@ -13,7 +13,7 @@ assert.notEqual(start, -1, "source-backed gate must exist in sync function");
 assert.notEqual(end, -1, "source-backed gate must have a clear end boundary");
 const gateSource = source.slice(start, end);
 const hasSourceBackedEvidence = vm.runInNewContext(
-  `(${gateSource}; hasSourceBackedEvidence)`,
+  `(() => { ${gateSource}; return hasSourceBackedEvidence; })()`,
 );
 
 const evidence = (status, payload) => ({
