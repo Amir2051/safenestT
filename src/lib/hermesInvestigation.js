@@ -69,8 +69,14 @@ function normalizeStatus(st) {
 }
 
 function isTerminal(status) {
-  const s = String(status || "").toLowerCase();
-  return ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "cancelled", "canceled", "aborted"].includes(s);
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return [
+    "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+    "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+    "partial_success", "partially_completed", "partial_failure", "partially_failed",
+    "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+    "aborted", "expired", "timeout", "timed_out",
+  ].includes(s);
 }
 
 function extractInvestigationId(data) {
