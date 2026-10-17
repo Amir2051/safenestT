@@ -1,3 +1,4 @@
+// @ts-check
 import { base44 } from "@/api/base44Client";
 import { ensureTenant, getCurrentUser } from "@/lib/tenantContext";
 import { logAuditEvent } from "@/lib/auditLogger";
