@@ -156,7 +156,14 @@ export default async function (req: Request): Promise<Response> {
       if (verify.ok) {
         const vStatus = String(verify.data?.status || "").toLowerCase();
         const isActive = ["queued", "running", "waiting_for_tool", "analyzing", "verifying", "calculating_risk", "pending", "processing"].includes(vStatus);
-        const isTerminal = ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "errored", "aborted", "cancelled", "canceled"].includes(vStatus);
+        const normalizedStatus = vStatus.trim().replace(/[\s-]+/g, "_");
+        const isTerminal = [
+          "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+          "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+          "partial_success", "partially_completed", "partial_failure", "partially_failed",
+          "failed", "error", "errored", "failed_with_results", "aborted", "cancelled",
+          "canceled", "expired", "timeout", "timed_out",
+        ].includes(normalizedStatus);
         if (isActive) {
           // Do not create duplicates while the current Hermes execution is active.
           await base44.entities.InvestigationCase.update(caseId, {
