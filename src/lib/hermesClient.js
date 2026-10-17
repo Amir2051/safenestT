@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Hermes Investigation Engine — Integration Layer
  *
