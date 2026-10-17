@@ -68,9 +68,29 @@ function isFailedStatus(status) {
   const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
   return [
     "failed", "error", "errored", "failed_with_results", "completed_with_errors",
-    "completed_with_failures", "partial_failure", "partially_failed", "cancelled",
+    "completed_with_warnings", "completed_with_failures", "partial_success",
+    "partially_completed", "partial_failure", "partially_failed", "cancelled",
     "canceled", "aborted", "expired", "timeout", "timed_out",
   ].includes(s);
+}
+
+// A successful HTTP/tool invocation is not evidence by itself. Reject empty
+// provider responses (e.g. echoed query strings with empty DNS/WHOIS results).
+function hasSourceBackedEvidence(reportData) {
+  const evidence = Array.isArray(reportData?.evidence) ? reportData.evidence : [];
+  return evidence.some((item) => {
+    const call = item?.data?.tool_call;
+    const result = call?.result;
+    const payload = result?.data ?? item?.data?.data;
+    if (!call || !["success", "ok"].includes(String(call.status || "").toLowerCase())) return false;
+    if (!payload || typeof payload !== "object") return false;
+    return Object.entries(payload).some(([key, value]) => {
+      if (["domain", "target", "source", "query", "status"].includes(key.toLowerCase())) return false;
+      if (Array.isArray(value)) return value.length > 0;
+      if (value && typeof value === "object") return Object.keys(value).length > 0;
+      return value !== null && value !== undefined && String(value).trim() !== "";
+    });
+  });
 }
 
 function extractStatus(data) {
