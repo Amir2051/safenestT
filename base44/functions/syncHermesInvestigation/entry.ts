@@ -102,6 +102,12 @@ function hasSourceBackedEvidence(reportData) {
   });
 }
 
+// A case may close only after both a report and at least one source-backed
+// evidence record have actually been persisted to SafeNestT entities.
+function hasPersistedResults(persisted) {
+  return Number(persisted?.evidence) > 0 && typeof persisted?.report_id === "string" && persisted.report_id.trim().length > 0;
+}
+
 function extractStatus(data) {
   return String(data?.status || data?.state || "pending").toLowerCase();
 }
