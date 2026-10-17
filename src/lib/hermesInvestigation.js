@@ -410,7 +410,7 @@ export async function resumeHermesInvestigation({
   onProgress,
   shouldStop,
   pollIntervalMs = 4000,
-  maxPollMs = 1800000, // 1800s = 30 minutes default (was 600s = 10 minutes)
+  maxPollMs = HERMES_MAX_POLL_MS, // 30 minutes by default; configurable via VITE_HERMES_MAX_POLL_MS
 }) {
   const emit = (phases, overall, raw) => {
     if (onProgress) { try { onProgress(phases, overall, raw); } catch { /* listener error is non-fatal */ } }
@@ -472,7 +472,7 @@ export async function runHermesInvestigation({
   onProgress,
   shouldStop,
   pollIntervalMs = 4000,
-  maxPollMs = 1800000, // 30 minutes — allows complex multi-phase investigations
+  maxPollMs = HERMES_MAX_POLL_MS, // 30 minutes — allows complex multi-phase investigations
 }) {
   const tenantId = await ensureTenant();
   const user = await getCurrentUser();
