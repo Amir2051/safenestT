@@ -14,10 +14,10 @@ import { PHASES } from "@/lib/investigationRunner";
 // (Vite-supported: VITE_HERMES_MAX_POLL_MS).
 // ---------------------------------------------------------------------------
 const viteMeta = /** @type {{ env?: { DEV?: boolean, VITE_HERMES_MAX_POLL_MS?: string } }} */ (/** @type {any} */ (import.meta));
-const HERMES_MAX_POLL_MS = Number.parseInt(
-  viteMeta.env?.VITE_HERMES_MAX_POLL_MS || "1800000",
-  10
-); // 30 minutes default
+const configuredMaxPollMs = Number.parseInt(viteMeta.env?.VITE_HERMES_MAX_POLL_MS || "1800000", 10);
+const HERMES_MAX_POLL_MS = Number.isFinite(configuredMaxPollMs) && configuredMaxPollMs > 0
+  ? configuredMaxPollMs
+  : 1800000; // 30 minutes default; invalid configuration safely falls back
 
 /**
  * Hermes investigation lifecycle client — real pipeline only.
@@ -417,7 +417,7 @@ export async function syncCaseToHermesStep(caseId) {
 export async function resumeHermesInvestigation({
   caseId,
   onProgress,
-  shouldStop,
+  shouldStop = null,
   pollIntervalMs = 4000,
   maxPollMs = HERMES_MAX_POLL_MS, // 30 minutes by default; configurable via VITE_HERMES_MAX_POLL_MS
 }) {
@@ -484,7 +484,7 @@ export async function runHermesInvestigation({
   caseId,
   caseItem,
   onProgress,
-  shouldStop,
+  shouldStop = null,
   pollIntervalMs = 4000,
   maxPollMs = HERMES_MAX_POLL_MS, // 30 minutes — allows complex multi-phase investigations
 }) {
