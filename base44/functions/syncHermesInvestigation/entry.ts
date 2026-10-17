@@ -367,14 +367,30 @@ export default async function (req: Request): Promise<Response> {
       const reportData = (reportRes?.data ?? reportRes)?.data;
       const standaloneEvidence = (evidenceRes?.data ?? evidenceRes)?.data;
       const standaloneFindings = (findingsRes?.data ?? findingsRes)?.data;
-      if (!reportData) {
-        // No report retrievable — record the gap truthfully without fabricating.
+      const sourceBacked = !!reportData && hasSourceBackedEvidence(reportData);
+      if (!sourceBacked) {
+        // Do not close a case or publish a completed run on empty/echo-only
+        // provider output. Keep the real Hermes status, but flag SafeNestT's
+        // investigation as requiring evidence/source remediation.
+        const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+        const latestWorkflow = latestCase?.workflow || workflowUpdate;
+        const latestPhases = { ...(latestWorkflow.phases || {}) };
+        latestPhases.evidence = { ...(latestPhases.evidence || {}), status: "failed" };
+        latestPhases.dossier = { ...(latestPhases.dossier || {}), status: "blocked", output: { results_persisted: false, reason: !reportData ? "Hermes report unavailable" : "No source-backed evidence returned" } };
+        await base44.entities.InvestigationCase.update(caseId, {
+          status: "investigating",
+          sync_status: "failed",
+          investigation_progress: Math.round((CANONICAL_PHASES.filter((p) => latestPhases[p]?.status === "completed").length / CANONICAL_PHASES.length) * 100),
+          workflow: { ...latestWorkflow, current_phase: "evidence", phases: latestPhases, hermes_error: !reportData ? "Hermes report unavailable; results were not marked complete." : "No source-backed evidence returned; results were not marked complete." },
+        }).catch(() => null);
         await base44.entities.AuditEvent.create({
           tenant_id: tenantId, actor: user.email, actor_name: user.full_name || user.email,
           timestamp: now, action: "hermes_results_unavailable", object_type: "case",
           object_id: caseId, case_id: caseId,
-          description: `Hermes investigation ${invId} completed but /report returned no data`,
-          metadata: { investigation_id: invId }, source: "hermes",
+          description: !reportData
+            ? `Hermes investigation ${invId} returned no report; case left incomplete`
+            : `Hermes investigation ${invId} returned no source-backed evidence; case left incomplete`,
+          metadata: { investigation_id: invId, report_available: !!reportData, source_backed_evidence: false }, source: "hermes",
         }).catch(() => null);
       } else {
         // Canonical arrays from /report (richest schema: confidence, provenance, metadata).
@@ -532,21 +548,25 @@ export default async function (req: Request): Promise<Response> {
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: "completed",
+          status: reportData && hasSourceBackedEvidence(reportData) ? "completed" : "failed",
+          error: reportData && hasSourceBackedEvidence(reportData) ? undefined : "No source-backed evidence returned; run cannot be marked complete.",
           output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,
         }).catch(() => null);
       }
 
-      // Immutable audit trail.
+      // Immutable audit trail distinguishes successful source-backed results
+      // from a terminal engine response with unusable evidence.
       await base44.entities.AuditEvent.create({
         tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
         timestamp: now,
-        action: "hermes_investigation_completed",
+        action: reportData && hasSourceBackedEvidence(reportData) ? "hermes_investigation_completed" : "hermes_investigation_failed",
         object_type: "case", object_id: caseId, case_id: caseId,
-        description: `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report ${persisted.report_id ? "present" : "absent"}`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
+        description: reportData && hasSourceBackedEvidence(reportData)
+          ? `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report ${persisted.report_id ? "present" : "absent"}`
+          : `Hermes investigation ${investigationId} did not produce source-backed evidence; SafeNestT left the case incomplete`,
+        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, source_backed_evidence: !!reportData && hasSourceBackedEvidence(reportData), hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
         source: "hermes",
       }).catch(() => null);
     } else if (terminal && isFailed) {
