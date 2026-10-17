@@ -174,7 +174,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
       // Hermes status into the same case.
       const existingId = hermesInvestigationId || caseItem?.workflow?.hermes_investigation_id;
       const wfNow = caseItem?.workflow || {};
-      const existingTerminal = wfNow.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wfNow.hermes_status).toLowerCase());
+      const existingTerminal = wfNow.hermes_status && [
+        "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+        "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+        "partial_success", "partially_completed", "partial_failure", "partially_failed",
+        "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+        "aborted", "expired", "timeout", "timed_out",
+      ].includes(String(wfNow.hermes_status).toLowerCase().trim().replace(/[\s-]+/g, "_"));
       const shouldResume = existingId && !existingTerminal && (
         caseItem?.status === "investigating" || caseItem?.status === "queued" ||
         wfNow.hermes_status === "running" || wfNow.hermes_status === "queued" || wfNow.hermes_status === "pending"
