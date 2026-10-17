@@ -86,6 +86,10 @@ export async function pingHermes() {
  *
  * DO NOT bypass this by calling Hermes directly from the browser.
  */
+/**
+ * @param {string} path
+ * @param {{ method?: string, body?: unknown }} [options]
+ */
 export async function hermesRequest(path, { method = "GET", body } = {}) {
   // The proxy is the only supported transport. The browser does not know
   // the real gateway URL and must never attempt to call it directly.
