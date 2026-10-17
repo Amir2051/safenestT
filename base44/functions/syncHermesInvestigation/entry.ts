@@ -277,11 +277,10 @@ export default async function (req: Request): Promise<Response> {
     // (no per-phase breakdown). When Hermes reports COMPLETED, the whole
     // pipeline is done — reflect that truthfully by marking every phase
     // completed. On FAILED, mark the in-flight phase failed. This is lifecycle
-    // status only; no findings/evidence/report are fabricated — those are
-    // persisted only when Hermes actually returns them (below).
-    if (terminal && !isFailed) {
-      for (const p of CANONICAL_PHASES) phases[p] = "completed";
-    } else if (terminal && isFailed) {
+    // A terminal lifecycle status is not proof of a successful investigation.
+    // Keep phases incomplete until the report has source-backed evidence.
+    // Only the validated-results branch below may close the case.
+    if (terminal && isFailed) {
       const inflight = CANONICAL_PHASES.find((p) => phases[p] === "running") || "planning";
       phases[inflight] = "failed";
     }
@@ -308,8 +307,9 @@ export default async function (req: Request): Promise<Response> {
     let currentPhase = runningPhase || wf.current_phase || "planning";
     let caseStatus;
     if (terminal && !isFailed) {
-      currentPhase = "closed";
-      caseStatus = "closed";
+      // Candidate success only; report/evidence validation happens below.
+      currentPhase = "evidence";
+      caseStatus = "investigating";
     } else if (hermesStatus === "queued" || hermesStatus === "queue" || hermesStatus === "pending" || hermesStatus === "waiting" || hermesStatus === "not_started") {
       // Reflect QUEUED truthfully when nothing is running yet.
       caseStatus = (hermesStatus === "queued" || hermesStatus === "queue") ? "queued" : "investigating";
@@ -532,10 +532,24 @@ export default async function (req: Request): Promise<Response> {
             standalone_findings_count: Array.isArray(standaloneFindings) ? standaloneFindings.length : null,
           },
         };
+        // Close only after the report passed the source-backed evidence gate.
+        // A terminal Hermes status by itself never closes a SafeNestT case.
+        const completedPhases = { ...mergedPhases2 };
+        for (const phase of CANONICAL_PHASES) {
+          completedPhases[phase] = {
+            ...(completedPhases[phase] || {}),
+            status: "completed",
+            completed_at: completedPhases[phase]?.completed_at || now,
+          };
+        }
         await base44.entities.InvestigationCase.update(caseId, {
+          status: "closed",
+          sync_status: "synced",
+          investigation_progress: 100,
           workflow: {
             ...wf2,
-            phases: mergedPhases2,
+            current_phase: "closed",
+            phases: completedPhases,
             risk_score: persisted.risk_score,
             risk_level: persisted.risk_level,
             risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
