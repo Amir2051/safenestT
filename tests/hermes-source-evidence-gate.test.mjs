@@ -17,7 +17,7 @@ const hasSourceBackedEvidence = vm.runInNewContext(
 );
 
 const persistenceStart = source.indexOf("function hasPersistedResults(persisted) {");
-const persistenceEnd = source.indexOf("\\nfunction extractStatus(data)", persistenceStart);
+const persistenceEnd = source.indexOf("\nfunction extractStatus(data)", persistenceStart);
 assert.notEqual(persistenceStart, -1, "persistence-success gate must exist in sync function");
 assert.notEqual(persistenceEnd, -1, "persistence-success gate must have a clear end boundary");
 const persistenceGateSource = source.slice(persistenceStart, persistenceEnd);
