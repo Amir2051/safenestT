@@ -524,8 +524,13 @@ export default async function (req: Request): Promise<Response> {
         const edgeRecs = edgePayloads.length ? await base44.entities.GraphEdge.bulkCreate(edgePayloads).catch(() => []) : [];
         persisted.graph_edges = edgeRecs.length;
 
+        // A source-backed upstream report is insufficient if SafeNestT failed
+        // to persist its report or evidence records. Never close on partial writes.
+        const persistenceSucceeded = hasPersistedResults(persisted);
+
         // ── Mark results persisted on the dossier phase output (idempotency marker)
         // AND write the risk score/level/factors onto the case workflow.
+        if (persistenceSucceeded) {
         const c2 = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
         const wf2 = c2?.workflow || workflowUpdate;
         const mergedPhases2 = { ...(wf2.phases || {}) };
@@ -570,6 +575,27 @@ export default async function (req: Request): Promise<Response> {
             risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
           },
         }).catch(() => null);
+        } else {
+          const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+          const latestWorkflow = latestCase?.workflow || workflowUpdate;
+          const latestPhases = { ...(latestWorkflow.phases || {}) };
+          latestPhases.evidence = { ...(latestPhases.evidence || {}), status: "failed" };
+          latestPhases.dossier = {
+            ...(latestPhases.dossier || {}),
+            status: "blocked",
+            output: { results_persisted: false, reason: "SafeNestT report/evidence persistence incomplete", persisted },
+          };
+          await base44.entities.InvestigationCase.update(caseId, {
+            status: "investigating",
+            sync_status: "failed",
+            workflow: {
+              ...latestWorkflow,
+              current_phase: "evidence",
+              phases: latestPhases,
+              hermes_error: "Hermes returned source-backed evidence, but SafeNestT could not persist the report and evidence records.",
+            },
+          }).catch(() => null);
+        }
       }
 
       // Mark the active InvestigationRun terminal.
@@ -577,8 +603,8 @@ export default async function (req: Request): Promise<Response> {
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: reportData && hasSourceBackedEvidence(reportData) ? "completed" : "failed",
-          error: reportData && hasSourceBackedEvidence(reportData) ? undefined : "No source-backed evidence returned; run cannot be marked complete.",
+          status: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "completed" : "failed",
+          error: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? undefined : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete.",
           output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,
@@ -590,12 +616,12 @@ export default async function (req: Request): Promise<Response> {
       await base44.entities.AuditEvent.create({
         tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
         timestamp: now,
-        action: reportData && hasSourceBackedEvidence(reportData) ? "hermes_investigation_completed" : "hermes_investigation_failed",
+        action: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "hermes_investigation_completed" : "hermes_investigation_failed",
         object_type: "case", object_id: caseId, case_id: caseId,
-        description: reportData && hasSourceBackedEvidence(reportData)
-          ? `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report ${persisted.report_id ? "present" : "absent"}`
-          : `Hermes investigation ${investigationId} did not produce source-backed evidence; SafeNestT left the case incomplete`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, source_backed_evidence: !!reportData && hasSourceBackedEvidence(reportData), hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
+        description: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted)
+          ? `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report present`
+          : `Hermes investigation ${investigationId} did not fully persist source-backed results; SafeNestT left the case incomplete`,
+        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, source_backed_evidence: !!reportData && hasSourceBackedEvidence(reportData), persistence_succeeded: hasPersistedResults(persisted), hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
         source: "hermes",
       }).catch(() => null);
     } else if (terminal && isFailed) {
