@@ -147,6 +147,9 @@ export default async function (req: Request): Promise<Response> {
     const now = new Date().toISOString();
 
     // ── Idempotency: if a mapping already exists, verify it against Hermes.
+    // Keep a mutable workflow base so rerun resets are not overwritten by the
+    // stale caseItem snapshot when the new Hermes ID is stored below.
+    let workflowBase = { ...(caseItem.workflow || {}) };
     const existingId = caseItem.workflow?.hermes_investigation_id;
     if (existingId) {
       const verify = await investigationFetch(`${investigationsUrl}/${encodeURIComponent(String(existingId))}`, { method: "GET", apiKey });
@@ -180,35 +183,33 @@ export default async function (req: Request): Promise<Response> {
           });
           while (history.length > 25) history.shift();
 
-          await base44.entities.InvestigationCase.update(caseId, {
-            sync_status: "pending",
-            last_synced_at: now,
-            workflow: {
-              ...(caseItem.workflow || {}),
-              hermes_investigation_id: null,
-              hermes_status: null,
-              hermes_error: null,
-              hermes_runs: history,
-              current_phase: "planning",
-              phases: {
-                planning: { status: "pending" },
-                evidence: { status: "pending" },
-                analysis: { status: "pending" },
-                reality_check: { status: "pending" },
-                risk: { status: "pending" },
-                dossier: { status: "pending", output: null },
-              },
-              risk_score: null,
-              risk_level: null,
-              risk_factors: [],
+          workflowBase = {
+            ...workflowBase,
+            hermes_investigation_id: null,
+            hermes_status: null,
+            hermes_error: null,
+            hermes_runs: history,
+            current_phase: "planning",
+            phases: {
+              planning: { status: "pending" },
+              evidence: { status: "pending" },
+              analysis: { status: "pending" },
+              reality_check: { status: "pending" },
+              risk: { status: "pending" },
+              dossier: { status: "pending", output: null },
             },
+            risk_score: null,
+            risk_level: null,
+            risk_factors: [],
+          };
+          await base44.entities.InvestigationCase.update(caseId, {
+            sync_status: "pending", last_synced_at: now, workflow: workflowBase,
           }).catch(() => null);
         }
       } else if (verify.status === "not_found") {
         // Stale mapping (Hermes no longer has it) — clear and recreate below.
-        await base44.entities.InvestigationCase.update(caseId, {
-          workflow: { ...(caseItem.workflow || {}), hermes_investigation_id: null, hermes_status: null, hermes_error: "stale mapping cleared" },
-        }).catch(() => null);
+        workflowBase = { ...workflowBase, hermes_investigation_id: null, hermes_status: null, hermes_error: "stale mapping cleared" };
+        await base44.entities.InvestigationCase.update(caseId, { workflow: workflowBase }).catch(() => null);
       } else {
         // Transient Hermes error — mark pending/retry, do not recreate.
         await base44.entities.InvestigationCase.update(caseId, { sync_status: "pending", last_synced_at: now }).catch(() => null);
@@ -265,7 +266,7 @@ export default async function (req: Request): Promise<Response> {
       const hint = keySanitized ? " (hermes-api_key had whitespace/quotes — cleaned before sending; re-save the secret if this persists)" : "";
       await base44.entities.InvestigationCase.update(caseId, {
         sync_status: "failed", last_synced_at: now,
-        workflow: { ...(caseItem.workflow || {}), hermes_error: createRes.error },
+        workflow: { ...workflowBase, hermes_error: createRes.error },
       }).catch(() => null);
       return Response.json({ ok: false, status: createRes.status, upstream_status: createRes.upstream_status, error: createRes.error + hint, action: "create_failed", case_id: caseId });
     }
@@ -282,7 +283,7 @@ export default async function (req: Request): Promise<Response> {
       last_synced_at: now,
       status: caseItem.status === "new" ? "queued" : caseItem.status,
       workflow: {
-        ...(caseItem.workflow || { current_phase: "planning", phases: {} }),
+        ...workflowBase,
         hermes_investigation_id: investigationId,
         hermes_status: createRes.data?.status || "queued",
         hermes_error: null,
