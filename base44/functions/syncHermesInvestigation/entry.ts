@@ -77,6 +77,20 @@ function isFailedStatus(status) {
 // A successful HTTP/tool invocation is not evidence by itself. Reject empty
 // provider responses (e.g. echoed query strings with empty DNS/WHOIS results).
 function hasSourceBackedEvidence(reportData) {
+  const metadataKeys = new Set(["domain", "target", "source", "query", "status"]);
+  function hasSubstantiveValue(value, key = "") {
+    if (metadataKeys.has(String(key).toLowerCase())) return false;
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "boolean") return value;
+    if (Array.isArray(value)) return value.some((item) => hasSubstantiveValue(item));
+    if (typeof value === "object") {
+      return Object.entries(value).some(([childKey, childValue]) => hasSubstantiveValue(childValue, childKey));
+    }
+    return false;
+  }
+
   const evidence = Array.isArray(reportData?.evidence) ? reportData.evidence : [];
   return evidence.some((item) => {
     const call = item?.data?.tool_call;
@@ -84,12 +98,7 @@ function hasSourceBackedEvidence(reportData) {
     const payload = result?.data ?? item?.data?.data;
     if (!call || !["success", "ok"].includes(String(call.status || "").toLowerCase())) return false;
     if (!payload || typeof payload !== "object") return false;
-    return Object.entries(payload).some(([key, value]) => {
-      if (["domain", "target", "source", "query", "status"].includes(key.toLowerCase())) return false;
-      if (Array.isArray(value)) return value.length > 0;
-      if (value && typeof value === "object") return Object.keys(value).length > 0;
-      return value !== null && value !== undefined && String(value).trim() !== "";
-    });
+    return hasSubstantiveValue(payload);
   });
 }
 
