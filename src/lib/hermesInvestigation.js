@@ -523,8 +523,6 @@ export async function runHermesInvestigation({
       );
     }
     investigationId = synced.hermes_investigation_id;
-    }
-    investigationId = synced.hermes_investigation_id;
 
     // Initial progress: planning running.
     const initial = {};
