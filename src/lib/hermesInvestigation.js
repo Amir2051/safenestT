@@ -12,8 +12,9 @@ import { PHASES } from "@/lib/investigationRunner";
 // Can be overridden via the HERMES_MAX_POLL_MS environment variable
 // (Vite-supported: VITE_HERMES_MAX_POLL_MS).
 // ---------------------------------------------------------------------------
-const HERMES_MAX_POLL_MS = parseInt(
-  import.meta.env.VITE_HERMES_MAX_POLL_MS || "1800000",
+const viteMeta = /** @type {{ env?: { DEV?: boolean, VITE_HERMES_MAX_POLL_MS?: string } }} */ (/** @type {any} */ (import.meta));
+const HERMES_MAX_POLL_MS = Number.parseInt(
+  viteMeta.env?.VITE_HERMES_MAX_POLL_MS || "1800000",
   10
 ); // 30 minutes default
 
@@ -205,6 +206,7 @@ export async function createHermesInvestigation(caseItem, ctx) {
   // (wallet/tx preferred); the full `targets` array lets Hermes trace the
   // complete footprint of the case.
   const allTargets = aggregateCaseTargets(caseItem, ctx.targets || [], ctx.evidence || []);
+  /** @type {Array<{ type: string, value: string, network?: string, label?: string, source?: string, description?: string }>} */
   const targetObjs = allTargets.map((t) => ({ type: t.type, value: t.value, network: t.network, label: t.label, source: t.source }));
   let primaryTarget = targetObjs[0] || null;
 
@@ -261,11 +263,17 @@ export async function startHermesInvestigation(investigationId) {
     wait_for_completion: false,
     body: {}
   });
-  if (!resp) return { status: "running", async_start: true };
+  if (!resp || typeof resp !== "object") {
+    throw new HermesError("empty_start_response", "Hermes start returned no response; the investigation was not confirmed as started.");
+  }
   if (resp.ok === false) {
     throw new HermesError(resp?.status || "error", resp?.error || "Failed to start Hermes investigation", resp?.upstream_status);
   }
-  return { ...resp.data, async_start: true } || { status: "running", async_start: true };
+  const data = resp.data;
+  if (!data || typeof data !== "object" || Object.keys(data).length === 0) {
+    throw new HermesError("empty_start_response", "Hermes start returned an empty response; the investigation was not confirmed as started.", resp?.upstream_status);
+  }
+  return { ...data, status: data.status || data.state || "running", async_start: true };
 }
 
 export async function getHermesInvestigationStatus(investigationId) {
@@ -416,11 +424,13 @@ export async function resumeHermesInvestigation({
     if (onProgress) { try { onProgress(phases, overall, raw); } catch { /* listener error is non-fatal */ } }
   };
   const startedAt = Date.now();
-  let last = { status: "running", phases: {}, raw: {} };
+  let last = { investigation_id: null, status: "running", phases: {}, raw: {} };
   let consecutiveErrors = 0;
 
   while (true) {
-    if (shouldStop && shouldStop()) break;
+    if (shouldStop && shouldStop()) {
+      throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
+    }
     if (Date.now() - startedAt > maxPollMs) {
       throw new HermesError("timeout", `Hermes resume polling timed out after ${Math.round(maxPollMs / 1000)}s`);
     }
@@ -439,19 +449,22 @@ export async function resumeHermesInvestigation({
     const overall = sync.hermes_status || "running";
     const phases = sync.phases || {};
     const terminal = Boolean(sync.terminal);
-    last = { status: overall, phases, raw: sync };
+    last = { investigation_id: sync.hermes_investigation_id || sync.investigation_id || last.investigation_id, status: overall, phases, raw: sync };
     emit(phases, overall, sync);
     // Log progress during development to help operators see where the
     // investigation is stuck (e.g., still QUEUED vs COMPLETED).
-    if (import.meta.env.DEV) {
+    if (viteMeta.env?.DEV) {
       console.log(`[hermes-resume] case=${caseId} status=${overall} terminal=${terminal}`);
     }
     if (terminal) break;
     await sleep(pollIntervalMs);
   }
 
-  const finalStatus = last.status === "failed" || last.status === "error" ? "failed" : "completed";
-  return { status: finalStatus, phases: last.phases, output: last.raw, persisted: last.raw?.persisted || {} };
+  const normalizedFinalStatus = String(last.status || "").toLowerCase();
+  const finalStatus = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"].includes(normalizedFinalStatus)
+    ? "completed"
+    : "failed";
+  return { status: finalStatus, investigation_id: last.investigation_id, phases: last.phases, output: last.raw, persisted: last.raw?.persisted || {} };
 }
 
 /**
@@ -559,7 +572,9 @@ export async function runHermesInvestigation({
   let consecutiveErrors = 0;
 
   while (true) {
-    if (shouldStop && shouldStop()) break;
+    if (shouldStop && shouldStop()) {
+      throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
+    }
     if (Date.now() - startedAt > maxPollMs) {
       throw new HermesError("timeout", `Hermes investigation polling timed out after ${Math.round(maxPollMs / 1000)}s`);
     }
@@ -590,7 +605,10 @@ export async function runHermesInvestigation({
   // 3. Finalize the run record (results were already persisted server-side on
   //    the terminal transition).
   const persisted = last.raw?.persisted || {};
-  const finalStatus = last.status === "failed" || last.status === "error" ? "failed" : "completed";
+  const normalizedFinalStatus = String(last.status || "").toLowerCase();
+  const finalStatus = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"].includes(normalizedFinalStatus)
+    ? "completed"
+    : "failed";
 
   if (run) {
     await base44.entities.InvestigationRun.update(run.id, {
