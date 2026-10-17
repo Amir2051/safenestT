@@ -55,7 +55,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
 
   // Live Hermes state — must be computed before canRun references hermesActive.
   const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
-  const hermesTerminal = wf.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wf.hermes_status).toLowerCase());
+  const hermesTerminal = wf.hermes_status && [
+    "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+    "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+    "partial_success", "partially_completed", "partial_failure", "partially_failed",
+    "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+    "aborted", "expired", "timeout", "timed_out",
+  ].includes(String(wf.hermes_status).toLowerCase().trim().replace(/[\s-]+/g, "_"));
   const manualRunning = !!running || runAllActive;
   const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
     caseItem?.status === "investigating" || caseItem?.status === "queued" ||
@@ -140,8 +146,14 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
       invalidateAll();
       if (autoSync.hermes_status === "completed" || autoSync.hermes_status === "done") {
         toast.success("Hermes investigation completed — results attached to this case");
-      } else if (autoSync.hermes_status === "failed" || autoSync.hermes_status === "error") {
-        toast.error("Hermes investigation failed — failure recorded on this case");
+      } else if ([
+        "failed", "error", "errored", "failed_with_results", "completed_with_errors",
+        "completed_with_failures", "partial_failure", "partially_failed", "cancelled",
+        "canceled", "aborted", "expired", "timeout", "timed_out",
+      ].includes(String(autoSync.hermes_status || "").toLowerCase().trim().replace(/[\s-]+/g, "_"))) {
+        toast.error(`Hermes investigation ended with status: ${autoSync.hermes_status}`);
+      } else if (["completed_with_warnings", "partial_success", "partially_completed"].includes(String(autoSync.hermes_status || "").toLowerCase().trim().replace(/[\s-]+/g, "_"))) {
+        toast.warning(`Hermes finished with partial results: ${autoSync.hermes_status}`);
       }
     }
   }, [autoSync]);
