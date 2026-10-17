@@ -287,7 +287,7 @@ export default async function (req: Request): Promise<Response> {
     const runningPhase = CANONICAL_PHASES.find((p) => mergedPhases[p]?.status === "running");
     let currentPhase = runningPhase || wf.current_phase || "planning";
     let caseStatus;
-    if (terminal && hermesStatus !== "failed" && hermesStatus !== "error") {
+    if (terminal && !isFailed) {
       currentPhase = "closed";
       caseStatus = "closed";
     } else if (hermesStatus === "queued" || hermesStatus === "queue" || hermesStatus === "pending" || hermesStatus === "waiting" || hermesStatus === "not_started") {
