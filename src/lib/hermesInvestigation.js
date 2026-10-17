@@ -511,6 +511,7 @@ export async function runHermesInvestigation({
   //    No minimum target is required — a narrative-only case is accepted.
   let investigationId;
   try {
+<<<<<<< HEAD
     // ALWAYS reconcile through the server-side sync before starting.
     // syncCaseToHermesStep verifies any stored Hermes ID against the live
     // gateway and automatically clears/recreates stale 404 mappings.
@@ -523,6 +524,15 @@ export async function runHermesInvestigation({
         synced?.error || "Hermes case sync did not produce an investigation_id.",
         synced?.upstream_status
       );
+=======
+    // Every Run is a new execution. syncCaseToHermes reuses an active
+    // investigation, but creates a fresh Hermes investigation after a terminal
+    // run. This allows unlimited reruns and includes newly-added case data.
+    const synced = await syncCaseToHermesStep(caseId);
+    investigationId = synced.hermes_investigation_id;
+    if (!investigationId) {
+      throw new HermesError("no_investigation_id", "Hermes case sync did not produce an investigation_id.");
+>>>>>>> 6244fb431b947abc488f308c97f4868dbc3860e5
     }
     investigationId = synced.hermes_investigation_id;
 
