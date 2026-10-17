@@ -54,8 +54,23 @@ function normalizeStatus(st) {
 }
 
 function isTerminal(status) {
-  const s = String(status || "").toLowerCase();
-  return ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "cancelled", "canceled", "aborted"].includes(s);
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return [
+    "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+    "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+    "partial_success", "partially_completed", "partial_failure", "partially_failed",
+    "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+    "aborted", "expired", "timeout", "timed_out",
+  ].includes(s);
+}
+
+function isFailedStatus(status) {
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return [
+    "failed", "error", "errored", "failed_with_results", "completed_with_errors",
+    "completed_with_failures", "partial_failure", "partially_failed", "cancelled",
+    "canceled", "aborted", "expired", "timeout", "timed_out",
+  ].includes(s);
 }
 
 function extractStatus(data) {
@@ -229,7 +244,7 @@ export default async function (req: Request): Promise<Response> {
 
     const hermesStatus = extractStatus(statusData);
     const phaseStatuses = extractPhaseStatuses(statusData);
-    const isFailed = hermesStatus === "failed" || hermesStatus === "error";
+    const isFailed = isFailedStatus(hermesStatus);
     const phases = {};
     for (const p of CANONICAL_PHASES) {
       phases[p] = phaseStatuses[p] || (p === "planning" ? "running" : "pending");
@@ -514,24 +529,30 @@ export default async function (req: Request): Promise<Response> {
         metadata: { investigation_id: investigationId, status: hermesStatus, persisted, hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
         source: "hermes",
       }).catch(() => null);
-    } else if (terminal && isFailed && !wasTerminal) {
-      // First time we see a FAILED investigation — mark the run failed + audit.
-      const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 5).catch(() => []);
+    } else if (terminal && isFailed) {
+      // A terminal error may have been written to workflow before this version
+      // learned that status name (for example, completed_with_errors). Always
+      // close any still-running run record, but only emit the audit event once.
+      const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 10).catch(() => []);
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: "failed", error: statusData?.error || "Hermes investigation failed",
-          completed_at: now, persisted_outputs: persisted,
+          status: "failed",
+          error: statusData?.error || `Hermes reached terminal status: ${hermesStatus}`,
+          completed_at: now,
+          persisted_outputs: persisted,
         }).catch(() => null);
       }
-      await base44.entities.AuditEvent.create({
-        tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
-        timestamp: now, action: "hermes_investigation_failed", object_type: "case",
-        object_id: caseId, case_id: caseId,
-        description: `Hermes investigation ${investigationId} failed: ${statusData?.error || "unknown"}`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, error: statusData?.error },
-        source: "hermes",
-      }).catch(() => null);
+      if (!wasTerminal) {
+        await base44.entities.AuditEvent.create({
+          tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
+          timestamp: now, action: "hermes_investigation_failed", object_type: "case",
+          object_id: caseId, case_id: caseId,
+          description: `Hermes investigation ${investigationId} ended with status ${hermesStatus}: ${statusData?.error || "no error details returned"}`,
+          metadata: { investigation_id: investigationId, status: hermesStatus, error: statusData?.error },
+          source: "hermes",
+        }).catch(() => null);
+      }
     }
 
     return Response.json({
