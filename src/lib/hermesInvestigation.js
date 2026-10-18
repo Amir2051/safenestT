@@ -113,6 +113,27 @@ async function proxyInvoke(payload) {
   return res?.data ?? res;
 }
 
+// Finalize any orphaned "running" InvestigationRun for a case — the client
+// polling loop may have died on timeout, cancel, navigation, or repeated
+// sync failure before the backend sync step observed a terminal Hermes
+// status. Without this the AI Run History spinner spins forever because
+// the run record stays "running". Best-effort: never throws.
+async function finalizeActiveRun(caseId, { status, error, output, startedAt, persisted } = {}) {
+  try {
+    const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 10).catch(() => []);
+    const active = (runs || []).find((r) => r.status === "running");
+    if (!active) return;
+    await base44.entities.InvestigationRun.update(active.id, {
+      status,
+      error: error ? String(error).slice(0, 4000) : undefined,
+      output: output || undefined,
+      completed_at: new Date().toISOString(),
+      duration_ms: startedAt ? Date.now() - startedAt : undefined,
+      persisted_outputs: persisted || {},
+    }).catch(() => {});
+  } catch { /* best-effort cleanup — never throw */ }
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -434,43 +455,61 @@ export async function resumeHermesInvestigation({
   let last = { investigation_id: null, status: "running", phases: {}, raw: {} };
   let consecutiveErrors = 0;
 
-  while (true) {
-    if (shouldStop && shouldStop()) {
-      throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
-    }
-    if (Date.now() - startedAt > maxPollMs) {
-      throw new HermesError("timeout", `Hermes resume polling timed out after ${Math.round(maxPollMs / 1000)}s`);
-    }
-    let sync;
-    try {
-      sync = await syncHermesInvestigationStep(caseId);
-      consecutiveErrors = 0;
-    } catch (e) {
-      consecutiveErrors += 1;
-      if (consecutiveErrors >= 5) {
-        throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+  let pollingError = null;
+  try {
+    while (true) {
+      if (shouldStop && shouldStop()) {
+        throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
       }
+      if (Date.now() - startedAt > maxPollMs) {
+        throw new HermesError("timeout", `Hermes resume polling timed out after ${Math.round(maxPollMs / 1000)}s`);
+      }
+      let sync;
+      try {
+        sync = await syncHermesInvestigationStep(caseId);
+        consecutiveErrors = 0;
+      } catch (e) {
+        consecutiveErrors += 1;
+        if (consecutiveErrors >= 5) {
+          throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+        }
+        await sleep(pollIntervalMs);
+        continue;
+      }
+      const overall = sync.hermes_status || "running";
+      const phases = sync.phases || {};
+      const terminal = Boolean(sync.terminal);
+      last = { investigation_id: sync.hermes_investigation_id || sync.investigation_id || last.investigation_id, status: overall, phases, raw: sync };
+      emit(phases, overall, sync);
+      // Log progress during development to help operators see where the
+      // investigation is stuck (e.g., still QUEUED vs COMPLETED).
+      if (viteMeta.env?.DEV) {
+        console.log(`[hermes-resume] case=${caseId} status=${overall} terminal=${terminal} error=${pollingError ? "pending" : "none"}`);
+      }
+      if (terminal) break;
       await sleep(pollIntervalMs);
-      continue;
     }
-    const overall = sync.hermes_status || "running";
-    const phases = sync.phases || {};
-    const terminal = Boolean(sync.terminal);
-    last = { investigation_id: sync.hermes_investigation_id || sync.investigation_id || last.investigation_id, status: overall, phases, raw: sync };
-    emit(phases, overall, sync);
-    // Log progress during development to help operators see where the
-    // investigation is stuck (e.g., still QUEUED vs COMPLETED).
-    if (viteMeta.env?.DEV) {
-      console.log(`[hermes-resume] case=${caseId} status=${overall} terminal=${terminal}`);
-    }
-    if (terminal) break;
-    await sleep(pollIntervalMs);
+  } catch (e) {
+    pollingError = e;
   }
 
+  // Always finalize any orphaned "running" run so the AI Run History spinner
+  // clears on timeout, cancel, or repeated sync failure — not only on success.
+  // The backend sync step may have already finalized it; finalizeActiveRun is a
+  // no-op when no "running" run remains.
   const normalizedFinalStatus = String(last.status || "").toLowerCase();
-  const finalStatus = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"].includes(normalizedFinalStatus)
-    ? "completed"
-    : "failed";
+  const successStatuses = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"];
+  const finalStatus = pollingError
+    ? (pollingError?.hermesStatus === "cancelled" ? "cancelled" : "failed")
+    : (successStatuses.includes(normalizedFinalStatus) ? "completed" : "failed");
+  await finalizeActiveRun(caseId, {
+    status: finalStatus,
+    error: pollingError ? String(pollingError?.message || pollingError) : (finalStatus === "failed" ? `Hermes ended with status: ${last.status}` : undefined),
+    output: pollingError ? { error: String(pollingError?.message || pollingError), last_status: last.status } : last.raw,
+    startedAt,
+    persisted: last.raw?.persisted || {},
+  });
+  if (pollingError) throw pollingError;
   return { status: finalStatus, investigation_id: last.investigation_id, phases: last.phases, output: last.raw, persisted: last.raw?.persisted || {} };
 }
 
@@ -578,49 +617,58 @@ export async function runHermesInvestigation({
   let last = { investigation_id: investigationId, status: "running", phases: {}, raw: {} };
   let consecutiveErrors = 0;
 
-  while (true) {
-    if (shouldStop && shouldStop()) {
-      throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
-    }
-    if (Date.now() - startedAt > maxPollMs) {
-      throw new HermesError("timeout", `Hermes investigation polling timed out after ${Math.round(maxPollMs / 1000)}s`);
-    }
-
-    let sync;
-    try {
-      sync = await syncHermesInvestigationStep(caseId);
-      consecutiveErrors = 0;
-    } catch (e) {
-      consecutiveErrors += 1;
-      if (consecutiveErrors >= 5) {
-        throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+  let pollingError = null;
+  try {
+    while (true) {
+      if (shouldStop && shouldStop()) {
+        throw new HermesError("cancelled", "Hermes polling was stopped before the investigation reached a terminal state.");
       }
+      if (Date.now() - startedAt > maxPollMs) {
+        throw new HermesError("timeout", `Hermes investigation polling timed out after ${Math.round(maxPollMs / 1000)}s`);
+      }
+
+      let sync;
+      try {
+        sync = await syncHermesInvestigationStep(caseId);
+        consecutiveErrors = 0;
+      } catch (e) {
+        consecutiveErrors += 1;
+        if (consecutiveErrors >= 5) {
+          throw new HermesError(e?.hermesStatus || "sync_failed", `Hermes sync repeatedly failed: ${e?.message || e}`, e?.upstreamStatus);
+        }
+        await sleep(pollIntervalMs);
+        continue;
+      }
+
+      const overall = sync.hermes_status || "running";
+      const phases = sync.phases || {};
+      last = { investigation_id: investigationId, status: overall, phases, raw: sync };
+
+      emit(phases, overall, sync);
+
+      if (sync.terminal) break;
       await sleep(pollIntervalMs);
-      continue;
     }
-
-    const overall = sync.hermes_status || "running";
-    const phases = sync.phases || {};
-    last = { investigation_id: investigationId, status: overall, phases, raw: sync };
-
-    emit(phases, overall, sync);
-
-    if (sync.terminal) break;
-    await sleep(pollIntervalMs);
+  } catch (e) {
+    pollingError = e;
   }
 
-  // 3. Finalize the run record (results were already persisted server-side on
-  //    the terminal transition).
+  // 3. ALWAYS finalize the run record — on success, timeout, cancel, or
+  //    repeated sync failure. Previously the finalization sat after the loop
+  //    and was skipped whenever the loop threw, leaving a perpetual "running"
+  //    run that made the AI Run History spinner spin forever.
   const persisted = last.raw?.persisted || {};
   const normalizedFinalStatus = String(last.status || "").toLowerCase();
-  const finalStatus = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"].includes(normalizedFinalStatus)
-    ? "completed"
-    : "failed";
+  const successStatuses = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"];
+  const finalStatus = pollingError
+    ? (pollingError?.hermesStatus === "cancelled" ? "cancelled" : "failed")
+    : (successStatuses.includes(normalizedFinalStatus) ? "completed" : "failed");
 
   if (run) {
     await base44.entities.InvestigationRun.update(run.id, {
       status: finalStatus,
-      output: last.raw,
+      error: pollingError ? String(pollingError?.message || pollingError).slice(0, 4000) : (finalStatus === "failed" ? `Hermes ended with non-success status: ${last.status}` : undefined),
+      output: pollingError ? { error: String(pollingError?.message || pollingError), last_status: last.status } : last.raw,
       completed_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
       persisted_outputs: persisted,
@@ -632,9 +680,13 @@ export async function runHermesInvestigation({
     objectType: "case",
     objectId: caseId,
     caseId,
-    description: `Hermes investigation ${investigationId} ${finalStatus}: ${last.status}`,
-    metadata: { investigation_id: investigationId, status: last.status, persisted },
+    description: pollingError
+      ? `Hermes investigation ${investigationId} failed during polling: ${pollingError?.message || pollingError}`
+      : `Hermes investigation ${investigationId} ${finalStatus}: ${last.status}`,
+    metadata: { investigation_id: investigationId, status: last.status, persisted, error: pollingError ? String(pollingError?.message || pollingError) : undefined },
   }).catch(() => {});
+
+  if (pollingError) throw pollingError;
 
   return { status: finalStatus, investigation_id: investigationId, phases: last.phases, output: last.raw, persisted };
 }

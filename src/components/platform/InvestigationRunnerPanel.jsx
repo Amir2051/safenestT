@@ -162,11 +162,18 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   // /v1/investigations status endpoint. The six-phase UI is driven from the
   // real Hermes status response (onProgress), never simulated. Errors
   // (401/404/5xx/network) are surfaced with their upstream HTTP status.
+  // Cancel polling when the panel unmounts (navigation/refresh) so the
+  // InvestigationRun is finalized immediately as "cancelled" instead of
+  // orphaning in "running" for up to 30 minutes.
+  const cancelledRef = useRef(false);
+  useEffect(() => () => { cancelledRef.current = true; }, []);
+
   const runPipeline = async () => {
     setRunAllActive(true);
     setLastResult(null);
     setLiveStatuses(null);
     setRunning("planning");
+    cancelledRef.current = false;
     try {
       // If this case already has a Hermes investigation that hasn't reached a
       // terminal state, RESUME polling it — do NOT create a new one. This keeps
@@ -194,9 +201,10 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         if (hid) setHermesInvestigationId(hid);
       };
 
+      const shouldStop = () => cancelledRef.current;
       const res = shouldResume
-        ? await resumeHermesInvestigation({ caseId, onProgress })
-        : await runHermesInvestigation({ caseId, caseItem, onProgress });
+        ? await resumeHermesInvestigation({ caseId, onProgress, shouldStop })
+        : await runHermesInvestigation({ caseId, caseItem, onProgress, shouldStop });
 
       setLastResult(res);
       if (res.status === "completed") toast.success("Hermes investigation completed");
