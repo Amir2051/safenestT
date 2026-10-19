@@ -1,0 +1,34 @@
+name: Hermes Recovery Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "base44/functions/syncHermesInvestigation/**"
+      - "base44/functions/syncPendingHermes/**"
+      - "tests/hermes-sync-recovery.test.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/hermes-recovery-tests.yml"
+  push:
+    branches: [fix/hermes-result-recovery]
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Hermes recovery regression tests
+        run: node --test tests/hermes-sync-recovery.test.mjs
