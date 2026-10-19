@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { classifyBase44FunctionError } from "../src/lib/base44FunctionErrors.js";
 
 const syncSource = readFileSync(
   new URL("../base44/functions/syncHermesInvestigation/entry.ts", import.meta.url),
@@ -51,4 +52,22 @@ test("background dispatcher retries failed nonterminal and partial-result synchr
   assert.ok(dispatcherSource.includes('syncStatus !== "pending" && syncStatus !== "active" && syncStatus !== "failed"'));
   assert.ok(dispatcherSource.includes("recoverableTerminalStatuses"));
   assert.ok(dispatcherSource.includes("hasPersistedMarker"));
+});
+
+
+test("Base44 function capability HTTP 402 is reported as a platform blocker", () => {
+  const result = classifyBase44FunctionError({
+    response: { status: 402, data: { message: "Functions are blocked - app owner lacks backend functions capability" } },
+  }, "hermesProxy");
+  assert.equal(result.status, "backend_functions_blocked");
+  assert.equal(result.upstreamStatus, 402);
+  assert.match(result.message, /Enable backend-function capability/);
+  assert.match(result.message, /No successful Hermes start was confirmed/);
+});
+
+test("unknown HTTP 402 is not falsely labelled as a provider billing failure", () => {
+  const result = classifyBase44FunctionError({ response: { status: 402, data: { message: "Request failed" } } }, "syncCaseToHermes");
+  assert.equal(result.status, "base44_http_402");
+  assert.match(result.message, /Base44 returned HTTP 402/);
+  assert.match(result.message, /before treating this as an AI-provider billing error/);
 });
