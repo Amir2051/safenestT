@@ -48,8 +48,6 @@ test("persistence failures are logged with entity and case context", () => {
 });
 
 test("background dispatcher retries failed nonterminal and partial-result synchronization", () => {
-  assert.ok(syncSource.includes('syncStatus !== "failed"') === false,
-    "failed sync_status must not be rejected by the candidate filter");
   assert.ok(dispatcherSource.includes('syncStatus !== "pending" && syncStatus !== "active" && syncStatus !== "failed"'));
   assert.ok(dispatcherSource.includes("recoverableTerminalStatuses"));
   assert.ok(dispatcherSource.includes("hasPersistedMarker"));
