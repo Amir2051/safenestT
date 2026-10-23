@@ -350,7 +350,7 @@ export default async function (req: Request): Promise<Response> {
       sync_status: terminal ? (isFailed ? "failed" : "synced") : "active",
       ...(caseStatus ? { status: caseStatus } : {}),
     };
-    await base44.entities.InvestigationCase.update(caseId, updatePatch).catch(() => null);
+    await base44.entities.InvestigationCase.update(caseId, updatePatch);
 
     const persisted = { evidence: 0, findings: 0, report_id: null, risk_score: null, risk_level: null, graph_nodes: 0, graph_edges: 0 };
 
@@ -360,7 +360,7 @@ export default async function (req: Request): Promise<Response> {
     // completed investigation never creates duplicate records.
     const resultsAlreadyPersisted = !!(wf.phases?.dossier?.output?.results_persisted);
 
-    if (terminal && !resultsAlreadyPersisted && !isFailed) {
+    if (terminal && !resultsAlreadyPersisted) {
       const tenantId = caseItem.tenant_id;
       const invId = investigationId;
 
@@ -443,7 +443,7 @@ export default async function (req: Request): Promise<Response> {
           };
         });
         const evidenceRecs = evidencePayloads.length
-          ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch(() => [])
+          ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch((error) => { console.error("[hermes-sync] EvidenceItem persistence failed", { caseId, count: evidencePayloads.length, error: error?.message || String(error) }); return []; })
           : [];
         const evidenceMap = {};
         for (const rec of evidenceRecs) {
@@ -472,7 +472,7 @@ export default async function (req: Request): Promise<Response> {
           return payload;
         });
         const findingRecs = findingPayloads.length
-          ? await base44.entities.InvestigationFinding.bulkCreate(findingPayloads).catch(() => [])
+          ? await base44.entities.InvestigationFinding.bulkCreate(findingPayloads).catch((error) => { console.error("[hermes-sync] InvestigationFinding persistence failed", { caseId, count: findingPayloads.length, error: error?.message || String(error) }); return []; })
           : [];
         persisted.findings = findingRecs.length;
 
@@ -496,7 +496,7 @@ export default async function (req: Request): Promise<Response> {
           conclusion: dossier.executive_summary || "",
           recommended_actions: [],
           created_by: user.email,
-        }).catch(() => null);
+        }).catch((error) => { console.error("[hermes-sync] InvestigationReport persistence failed", { caseId, error: error?.message || String(error) }); return null; });
         persisted.report_id = reportRec?.id || null;
 
         // ── 4. Risk → case workflow.
@@ -511,7 +511,7 @@ export default async function (req: Request): Promise<Response> {
           node_type: mapNodeType(n.type), label: n.label || n.id,
           value: n.id, source: "hermes_extraction", hermes_raw: n, confidence: "medium",
         }));
-        const nodeRecs = nodePayloads.length ? await base44.entities.GraphNode.bulkCreate(nodePayloads).catch(() => []) : [];
+        const nodeRecs = nodePayloads.length ? await base44.entities.GraphNode.bulkCreate(nodePayloads).catch((error) => { console.error("[hermes-sync] GraphNode persistence failed", { caseId, count: nodePayloads.length, error: error?.message || String(error) }); return []; }) : [];
         persisted.graph_nodes = nodeRecs.length;
 
         const edgePayloads = graphEdges.map((ed) => ({
@@ -521,7 +521,7 @@ export default async function (req: Request): Promise<Response> {
           confidence: confidenceFrom01(ed.confidence), hermes_raw: ed,
           evidence_refs: (ed.evidence_ids || []).map((id) => evidenceMap[id]).filter(Boolean),
         }));
-        const edgeRecs = edgePayloads.length ? await base44.entities.GraphEdge.bulkCreate(edgePayloads).catch(() => []) : [];
+        const edgeRecs = edgePayloads.length ? await base44.entities.GraphEdge.bulkCreate(edgePayloads).catch((error) => { console.error("[hermes-sync] GraphEdge persistence failed", { caseId, count: edgePayloads.length, error: error?.message || String(error) }); return []; }) : [];
         persisted.graph_edges = edgeRecs.length;
 
         // A source-backed upstream report is insufficient if SafeNestT failed
@@ -530,7 +530,7 @@ export default async function (req: Request): Promise<Response> {
 
         // ── Mark results persisted on the dossier phase output (idempotency marker)
         // AND write the risk score/level/factors onto the case workflow.
-        if (persistenceSucceeded) {
+        if (persistenceSucceeded && !isFailed) {
         const c2 = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
         const wf2 = c2?.workflow || workflowUpdate;
         const mergedPhases2 = { ...(wf2.phases || {}) };
@@ -575,6 +575,31 @@ export default async function (req: Request): Promise<Response> {
             risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
           },
         }).catch(() => null);
+        } else if (persistenceSucceeded && isFailed) {
+          // Keep validated partial outputs from a terminal error run without
+          // falsely closing the case. The marker prevents duplicate writes.
+          const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+          const latestWorkflow = latestCase?.workflow || workflowUpdate;
+          const latestPhases = { ...(latestWorkflow.phases || {}) };
+          latestPhases.dossier = {
+            ...(latestPhases.dossier || {}),
+            status: "blocked",
+            output: {
+              results_persisted: true,
+              partial_results: true,
+              hermes_status: hermesStatus,
+              evidence_count: persisted.evidence,
+              findings_count: persisted.findings,
+              report_id: persisted.report_id,
+              graph_nodes: persisted.graph_nodes,
+              graph_edges: persisted.graph_edges,
+            },
+          };
+          await base44.entities.InvestigationCase.update(caseId, {
+            status: "investigating",
+            sync_status: "failed",
+            workflow: { ...latestWorkflow, current_phase: "evidence", phases: latestPhases, hermes_error: statusData?.error || `Hermes ended with ${hermesStatus}; partial results were saved.` },
+          });
         } else {
           const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
           const latestWorkflow = latestCase?.workflow || workflowUpdate;
@@ -603,8 +628,8 @@ export default async function (req: Request): Promise<Response> {
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "completed" : "failed",
-          error: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? undefined : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete.",
+          status: !isFailed && reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "completed" : "failed",
+          error: !isFailed && reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? undefined : (isFailed ? `Hermes ended with status ${hermesStatus}; case remains incomplete.` : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete."),
           output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,
@@ -616,11 +641,11 @@ export default async function (req: Request): Promise<Response> {
       await base44.entities.AuditEvent.create({
         tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
         timestamp: now,
-        action: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "hermes_investigation_completed" : "hermes_investigation_failed",
+        action: !isFailed && reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) ? "hermes_investigation_completed" : "hermes_investigation_failed",
         object_type: "case", object_id: caseId, case_id: caseId,
-        description: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted)
+        description: !isFailed && reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted)
           ? `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report present`
-          : `Hermes investigation ${investigationId} did not fully persist source-backed results; SafeNestT left the case incomplete`,
+          : `Hermes investigation ${investigationId} ended with ${hermesStatus}; validated partial outputs, if any, were saved and the case remains incomplete`,
         metadata: { investigation_id: investigationId, status: hermesStatus, persisted, source_backed_evidence: !!reportData && hasSourceBackedEvidence(reportData), persistence_succeeded: hasPersistedResults(persisted), hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
         source: "hermes",
       }).catch(() => null);

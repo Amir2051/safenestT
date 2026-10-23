@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { ensureTenant, getCurrentUser } from "@/lib/tenantContext";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { PHASES } from "@/lib/investigationRunner";
+import { classifyBase44FunctionError } from "@/lib/base44FunctionErrors";
 
 // ---------------------------------------------------------------------------
 // Polling timeout configuration
@@ -108,8 +109,17 @@ function extractPhaseStatuses(data) {
   return out;
 }
 
+async function invokeBase44Function(functionName, payload) {
+  try {
+    return await base44.functions.invoke(functionName, payload);
+  } catch (error) {
+    const detail = classifyBase44FunctionError(error, functionName);
+    throw new HermesError(detail.status, detail.message, detail.upstreamStatus);
+  }
+}
+
 async function proxyInvoke(payload) {
-  const res = await base44.functions.invoke("hermesProxy", payload);
+  const res = await invokeBase44Function("hermesProxy", payload);
   return res?.data ?? res;
 }
 
@@ -412,7 +422,7 @@ async function persistHermesResults({ caseId, tenantId, runId, user, statusData 
  * SAME case (authoritative, RLS-enforced). Returns the mapped state.
  */
 export async function syncHermesInvestigationStep(caseId) {
-  const res = await base44.functions.invoke("syncHermesInvestigation", { case_id: caseId });
+  const res = await invokeBase44Function("syncHermesInvestigation", { case_id: caseId });
   const body = res?.data ?? res;
   if (!body || body.ok === false) {
     throw new HermesError(body?.status || "error", body?.error || "Hermes sync failed", body?.upstream_status);
@@ -428,7 +438,7 @@ export async function syncHermesInvestigationStep(caseId) {
  * polls). SafeNestT is the canonical case system; Hermes is the investigation engine.
  */
 export async function syncCaseToHermesStep(caseId) {
-  const res = await base44.functions.invoke("syncCaseToHermes", { case_id: caseId });
+  const res = await invokeBase44Function("syncCaseToHermes", { case_id: caseId });
   const body = res?.data ?? res;
   if (!body || body.ok === false) {
     throw new HermesError(body?.status || "error", body?.error || "Hermes case sync failed", body?.upstream_status);

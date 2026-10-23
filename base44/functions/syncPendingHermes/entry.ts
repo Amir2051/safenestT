@@ -24,10 +24,30 @@ Deno.serve(async (req) => {
       const hermesStatus = String(c?.workflow?.hermes_status || "").toLowerCase();
 
       if (!investigationId) return false;
-      if (syncStatus !== "pending" && syncStatus !== "active") return false;
+      if (syncStatus !== "pending" && syncStatus !== "active" && syncStatus !== "failed") return false;
 
-      // Do not keep dispatching investigations that are already terminal.
-      if (["completed", "failed", "error", "cancelled"].includes(hermesStatus)) {
+      const terminalStatuses = [
+        "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+        "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+        "partial_success", "partially_completed", "partial_failure", "partially_failed",
+        "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+        "aborted", "expired", "timeout", "timed_out",
+      ];
+      const isTerminal = terminalStatuses.includes(hermesStatus);
+      const hasPersistedMarker = Boolean(c?.workflow?.phases?.dossier?.output?.results_persisted);
+
+      // Retry failed synchronization when the engine may still be running, or
+      // when Hermes ended with a partial-result status. A terminal case whose
+      // outputs were already recorded is not dispatched again.
+      if (syncStatus === "failed") {
+        if (hasPersistedMarker) return false;
+        const recoverableTerminalStatuses = [
+          "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+          "partial_success", "partially_completed", "partial_failure", "partially_failed",
+          "failed_with_results",
+        ];
+        if (isTerminal && !recoverableTerminalStatuses.includes(hermesStatus)) return false;
+      } else if (isTerminal && hasPersistedMarker) {
         return false;
       }
 
