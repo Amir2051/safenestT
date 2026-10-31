@@ -268,11 +268,41 @@ export default async function (req: Request): Promise<Response> {
     const proxyRes = await base44.functions.invoke("hermesProxy", { action: "get_investigation", investigation_id: investigationId });
     const proxyBody = proxyRes && proxyRes.data ? proxyRes.data : proxyRes;
     if (!proxyBody || proxyBody.ok === false) {
+      const failedStatus = proxyBody?.status || "error";
+
+      // A 404 means Hermes no longer recognises the stored investigation id.
+      // Leaving the case in "pending"/"active" made the scheduled dispatcher
+      // retry the same dead id forever, so the case never progressed and never
+      // reported why. Clear the stale mapping and record the real reason; the
+      // next Run creates a fresh investigation via syncCaseToHermes.
+      if (failedStatus === "not_found") {
+        const wf = caseItem.workflow || {};
+        await base44.entities.InvestigationCase.update(caseId, {
+          sync_status: "failed",
+          last_synced_at: new Date().toISOString(),
+          workflow: {
+            ...wf,
+            hermes_investigation_id: null,
+            hermes_status: "not_found",
+            hermes_error: "Hermes no longer recognises the stored investigation id (404 investigation_not_found). The mapping was cleared; run the investigation again to create a new one.",
+          },
+        }).catch(() => null);
+        return Response.json({
+          ok: false,
+          status: "not_found",
+          action: "stale_mapping_cleared",
+          case_id: caseId,
+          hermes_investigation_id: investigationId,
+          error: "Hermes investigation not found; stale mapping cleared.",
+        });
+      }
+
       return Response.json({
         ok: false,
-        status: proxyBody?.status || "error",
+        status: failedStatus,
         error: proxyBody?.error || "Hermes status fetch failed",
         upstream_status: proxyBody?.upstream_status,
+        correlation_id: proxyBody?.correlation_id,
       });
     }
     const statusData = proxyBody.data || {};

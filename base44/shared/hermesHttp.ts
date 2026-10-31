@@ -2,14 +2,21 @@
  * Shared Hermes gateway HTTP helpers.
  *
  * Used by every backend function that talks to the Hermes investigation
- * gateway (hermesProxy, syncCaseToHermes, syncHermesInvestigation). Keeping
- * the URL/key sanitization + authenticated fetch in one place guarantees the
- * credential is never leaked and the endpoint path is built consistently.
+ * gateway (hermesProxy, syncCaseToHermes). Keeping URL/key sanitization, the
+ * authenticated fetch, error classification, correlation ids and logging in one
+ * place guarantees:
+ *   - one authoritative auth implementation (X-API-Key + "hermes-api_key"),
+ *   - consistent endpoint construction,
+ *   - the credential never reaches the browser or the logs,
+ *   - every failure carries a correlation id and the upstream body.
  *
- * The Hermes credential is the secret named "hermes-api_key", sent via the
- * X-API-Key header. HERMES_BASE_URL points to the gateway root. Neither value
- * is ever returned to the browser or logs.
+ * HERMES_BASE_URL points to the gateway root (https://host or https://host/v1).
  */
+
+/** Correlation id used to trace one logical Hermes request across logs. */
+export function correlationId(prefix = "hm"): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function sanitizeSecret(raw: any): { value: string; modified: boolean } {
   let v = String(raw ?? "");
@@ -37,10 +44,10 @@ export function buildInvestigationsUrl(root: string): string {
   return `${b}/v1/investigations`;
 }
 
-export function classifyUpstream(status: number, errText: string) {
+export function classifyUpstream(status: number, errText: string, authHint = "") {
   const t = (errText || "").slice(0, 300);
   if (status === 401 || status === 403)
-    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}).${t ? " " + t : ""}` };
+    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}).${t ? " " + t : ""}${authHint}` };
   if (status === 404)
     return { status: "not_found", error: `Hermes endpoint or investigation not found (HTTP 404).${t ? " " + t : ""}` };
   if (status === 429)
@@ -66,40 +73,101 @@ export function withTimeout(ms: number) {
   return { controller, timer };
 }
 
-// Hermes investigation-lifecycle request. Uses the X-API-Key header with the
-// value from the "hermes-api_key" secret. Returns a structured body so callers
-// can branch on status without the SDK collapsing a 404/401 into a generic error.
-export async function investigationFetch(
-  url: string,
-  { method, body, apiKey, timeoutMs = 60000 }: { method: string; body?: any; apiKey: string; timeoutMs?: number }
-) {
-  const { controller, timer } = withTimeout(timeoutMs);
-  try {
-    const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    const text = await res.text().catch(() => "");
-    let json: any = null;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
-    if (res.ok) {
-      return { ok: true, status: "ok" as const, upstream_status: res.status, data: json ?? (text ? { raw: text.slice(0, 1000) } : {}) };
-    }
-    const cls = classifyUpstream(res.status, text);
-    return { ok: false, status: cls.status, upstream_status: res.status, error: cls.error, data: json };
-  } catch (e: any) {
-    clearTimeout(timer);
-    const cls = classifyNetwork(e);
-    return { ok: false, status: cls.status, error: cls.error };
-  }
+function pathOf(url: string): string {
+  try { return new URL(url).pathname; } catch { return String(url); }
 }
 
-// Load + sanitize the Hermes credentials from app secrets. Returns null for
-// either piece if not configured so the caller can fail loudly.
+/**
+ * Hermes investigation-lifecycle request.
+ *
+ * Retries are OPT-IN and default to none, because replaying a POST that creates
+ * or starts an investigation can duplicate work on the gateway. GET polling is
+ * retried by the caller's own loop. Callers that must retry set `retry`.
+ */
+export async function investigationFetch(
+  url: string,
+  { method, body, apiKey, timeoutMs = 60000, corrId, retry = 0, authHint = "" }: {
+    method: string;
+    body?: any;
+    apiKey: string;
+    timeoutMs?: number;
+    corrId?: string;
+    retry?: number;
+    authHint?: string;
+  }
+) {
+  const correlation = corrId || correlationId();
+  const path = pathOf(url);
+  const attempts = Math.max(1, Math.floor(retry) + 1);
+  let last: any = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const { controller, timer } = withTimeout(timeoutMs);
+    const started = Date.now();
+    try {
+      const headers: Record<string, string> = {
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Correlation-ID": correlation,
+      };
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const text = await res.text().catch(() => "");
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+      const ms = Date.now() - started;
+
+      if (res.ok) {
+        console.log(`[hermes] ${correlation} ${method} ${path} -> ${res.status} (${ms}ms)`);
+        return {
+          ok: true,
+          status: "ok" as const,
+          upstream_status: res.status,
+          data: json ?? (text ? { raw: text.slice(0, 1000) } : {}),
+          correlation_id: correlation,
+        };
+      }
+
+      const cls = classifyUpstream(res.status, text, authHint);
+      console.error(`[hermes] ${correlation} ${method} ${path} -> ${res.status} ${cls.status} (${ms}ms)`);
+      last = {
+        ok: false,
+        status: cls.status,
+        upstream_status: res.status,
+        upstream_body: json ?? (text ? text.slice(0, 1000) : null),
+        error: cls.error,
+        data: json,
+        correlation_id: correlation,
+      };
+
+      if ((res.status === 429 || res.status >= 500) && attempt < attempts) {
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      return last;
+    } catch (e: any) {
+      clearTimeout(timer);
+      const cls = classifyNetwork(e);
+      console.error(`[hermes] ${correlation} ${method} ${path} -> ${cls.status} (${Date.now() - started}ms)`);
+      last = { ok: false, status: cls.status, error: cls.error, correlation_id: correlation };
+      if (attempt < attempts && cls.status !== "timeout") {
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      return last;
+    }
+  }
+  return last;
+}
+
+// Load + sanitize the Hermes credentials from app secrets. Returns an empty
+// value for either piece if not configured so the caller can fail loudly.
 export function loadHermesCredentials(secrets: { get: (name: string) => any }) {
   const rawKey = secrets.get("hermes-api_key");
   const rawBase = secrets.get("HERMES_BASE_URL");

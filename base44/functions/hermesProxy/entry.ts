@@ -1,206 +1,109 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.51";
 import { secrets } from "base44:runtime";
+import {
+  loadHermesCredentials,
+  normalizeRoot,
+  buildInvestigationsUrl,
+  investigationFetch,
+  classifyUpstream,
+  classifyNetwork,
+  withTimeout,
+  correlationId,
+} from "../../shared/hermesHttp.ts";
 
 /**
- * hermesProxy — server-side proxy to the Hermes Agent investigation gateway.
+ * hermesProxy — server-side proxy to the Hermes investigation gateway.
  *
- * Hermes exposes an OpenAI-compatible API:
- *   POST <HERMES_BASE_URL>/v1/chat/completions
- *   GET  <HERMES_BASE_URL>/v1/models
- *   GET  <HERMES_BASE_URL>/health   (and /v1/health as a fallback)
+ * The gateway (HERMES_BASE_URL) exposes exactly these routes (verified against
+ * its own /openapi.json):
+ *   GET  /v1/ready
+ *   GET  /v1/health
+ *   POST /v1/investigations
+ *   POST /v1/investigations/{id}/start
+ *   GET  /v1/investigations/{id}
+ *   GET  /v1/investigations/{id}/evidence
+ *   GET  /v1/investigations/{id}/findings
+ *   GET  /v1/investigations/{id}/report
+ *   GET  /v1/approvals
+ *   POST /v1/approvals/{id}/decision
  *
- * The Hermes investigation credential is the secret named "hermes-api_key"
- * (sent via the X-API-Key header). HERMES_BASE_URL is read from app secrets.
- * Neither value is EVER returned to the browser or logs. All non-success
- * returned to the browser or logs. All non-success cases are returned as
- * HTTP 200 with a structured { ok:false, status, error, configured } body so
- * the SDK does not collapse them into a generic "503" and the real reason
- * reaches the UI. Only unauthenticated (401) and true internal (500) errors
- * use non-200 status codes.
+ * There is NO /v1/models and NO /v1/chat/completions route. Model/provider
+ * information comes from /v1/health, and inference is only performed by the
+ * gateway as part of an investigation run.
+ *
+ * Authentication: a single authoritative implementation lives in
+ * ../../shared/hermesHttp.ts — the secret "hermes-api_key" sent as X-API-Key.
+ * Neither the key nor the gateway URL is ever returned to the browser or logs.
+ *
+ * All non-success cases are returned as HTTP 200 with a structured
+ * { ok:false, status, error, correlation_id } body so the SDK does not collapse
+ * them into a generic 503 and the real reason reaches the UI. Only
+ * unauthenticated (401) and true internal (500) errors use non-200 status codes.
  *
  * Contract:
  *   IN  { prompt, response_json_schema?, model?, temperature?, max_tokens?, action? }
- *   OUT { ok: true, data, model } | { ok: false, status, error, configured?, upstream_status? }
+ *   OUT { ok: true, data, model } | { ok: false, status, error, correlation_id, upstream_status? }
  *
  * status values: not_configured | auth_error | not_found | rate_limited |
  *   gateway_error | http_error | timeout | dns_error | connection_error |
- *   network_error | bad_request | internal_error | ok
+ *   network_error | bad_request | endpoint_not_supported | internal_error | ok
  */
 const DEFAULT_MODEL = "hermes-agent";
 const TIMEOUT_MS = 60000;
 const MAX_ATTEMPTS = 2;
 
-// Non-leaking hint appended to auth errors when the stored secret contained
-// surrounding whitespace/quotes that we stripped before sending. The actual
-// key value is NEVER placed in this string or returned to the caller.
-let AUTH_HINT = "";
-
-/**
- * Read a secret exactly as configured, then remove only the paste artifacts
- * that cause silent 401s: surrounding whitespace (spaces/tabs/newlines/CR),
- * a single layer of enclosing quotes/backticks, and an accidental leading
- * "Bearer " prefix. There is no fallback, no hardcoded value, and no default —
- * an empty result stays empty and fails loudly as not_configured.
- *
- * Returns the cleaned value plus `modified` (true iff artifacts were stripped)
- * so the proxy can tell the builder the stored secret should be re-saved
- * cleanly — without ever exposing the value itself.
- */
-function sanitizeSecret(raw: any): { value: string; modified: boolean } {
-  let v = String(raw ?? "");
-  let modified = false;
-  const trimmed = v.trim();
-  if (trimmed !== v) { v = trimmed; modified = true; }
-  if (v.length >= 2 && /^["'`].*["'`]$/.test(v)) { v = v.slice(1, -1); modified = true; }
-  if (/^bearer\s+/i.test(v)) { v = v.replace(/^bearer\s+/i, ""); modified = true; }
-  // Reject any residual internal whitespace — a real key never contains it.
-  if (/\s/.test(v)) { v = v.replace(/\s+/g, ""); modified = true; }
-  return { value: v, modified };
-}
-
-// Normalize the configured base URL to the API ROOT (no trailing slash, no /v1).
-// Accepts both "https://hermes.example.com" and "https://hermes.example.com/v1".
-function normalizeRoot(configuredBase: string): string {
-  let b = (configuredBase || "").trim().replace(/\/+$/, "");
-  if (b.endsWith("/v1")) b = b.slice(0, -3);
-  return b;
-}
-
-function classifyUpstream(status: number, errText: string) {
-  const t = (errText || "").slice(0, 300);
-  if (status === 401 || status === 403)
-    return { status: "auth_error", error: `Hermes rejected credentials (HTTP ${status}). Verify the hermes-api_key secret.${t ? " " + t : ""}${AUTH_HINT}` };
-  if (status === 404)
-    return { status: "not_found", error: `Hermes endpoint not found (HTTP 404). Check HERMES_BASE_URL points to the gateway root.${t ? " " + t : ""}` };
-  if (status === 429)
-    return { status: "rate_limited", error: `Hermes rate limit (HTTP 429). Retry later.${t ? " " + t : ""}` };
-  if (status >= 500)
-    return { status: "gateway_error", error: `Hermes gateway error (HTTP ${status}).${t ? " " + t : ""}` };
-  return { status: "http_error", error: `Hermes HTTP ${status}.${t ? " " + t : ""}` };
-}
-
-function classifyNetwork(e: any) {
-  const msg = String(e?.message || e || "");
-  if (e?.name === "AbortError")
-    return { status: "timeout", error: `Hermes request timed out after ${TIMEOUT_MS / 1000}s` };
-  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo|resolve|dns/i.test(msg))
-    return { status: "dns_error", error: `DNS resolution failed for Hermes gateway: ${msg}` };
-  if (/ECONNREFUSED|ECONNRESET|ECONNABORTED|connect|socket|network/i.test(msg))
-    return { status: "connection_error", error: `Connection to Hermes gateway failed: ${msg}` };
-  return { status: "network_error", error: msg };
-}
-
-function withTimeout(ms: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return { controller, timer };
-}
-
-// Build the investigations endpoint URL from the normalized gateway ROOT.
-// Handles three HERMES_BASE_URL shapes without double-appending the path:
-//   - "https://host"                      → "https://host/v1/investigations"
-//   - "https://host/v1"                   → "https://host/v1/investigations"
-//   - "https://host/v1/investigations"    → used as-is (already the full path)
-// Any other trailing path is treated as part of the root and appended to.
-function buildInvestigationsUrl(root: string): string {
-  const b = (root || "").trim().replace(/\/+$/, "");
-  if (/\/v1\/investigations$/.test(b)) return b;
-  if (b.endsWith("/v1")) return `${b}/investigations`;
-  return `${b}/v1/investigations`;
-}
-
-// Hermes investigation-lifecycle request. Uses the X-API-Key header with the
-// value from the "hermes-api_key" secret, as required by the Hermes gateway
-// for POST /v1/investigations, POST /v1/investigations/{id}/start, and
-// GET /v1/investigations/{id} (polling). Returns a structured body so the
-// SDK never collapses a 404/401 into a generic error and the UI gets the real
-// upstream status.
-async function investigationFetch(
-  url: string,
-  { method, body, apiKey }: { method: string; body?: any; apiKey: string }
-) {
-  const { controller, timer } = withTimeout(60000);
-  try {
-    const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    const text = await res.text().catch(() => "");
-    let json: any = null;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
-    if (res.ok) {
-      return { ok: true, status: "ok" as const, upstream_status: res.status, data: json ?? (text ? { raw: text.slice(0, 1000) } : {}) };
-    }
-    const cls = classifyUpstream(res.status, text);
-    return { ok: false, status: cls.status, upstream_status: res.status, error: cls.error, data: json };
-  } catch (e: any) {
-    clearTimeout(timer);
-    const cls = classifyNetwork(e);
-    return { ok: false, status: cls.status, error: cls.error };
-  }
-}
-
 export default async function (req: Request): Promise<Response> {
+  const correlation = correlationId("hm");
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ ok: false, status: "unauthorized", error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return Response.json({ ok: false, status: "unauthorized", error: "Unauthorized", correlation_id: correlation }, { status: 401 });
+    }
 
     const payload = await req.json().catch(() => ({}));
     const { prompt, response_json_schema, model, temperature, max_tokens } = payload || {};
 
-    // Read the secrets exactly as configured and strip only paste artifacts.
-    // No fallback, no hardcoded value, no default, no legacy secret. An
-    // empty/whitespace-only secret fails loudly below as not_configured so a
-    // bad value is never silently sent upstream.
-    //
-    // The sole credential source for Hermes investigation requests is the
-    // Base44 secret named "hermes-api_key". We deliberately do NOT read
-    // HERMES_API_KEY or any other/legacy/fallback key.
-    const rawKey = secrets.get("hermes-api_key");
-    const rawBase = secrets.get("HERMES_BASE_URL");
-    const { value: apiKey, modified: keySanitized } = sanitizeSecret(rawKey);
-    const { value: configuredBase } = sanitizeSecret(rawBase);
-
-    AUTH_HINT = keySanitized
+    const { apiKey, configuredBase, keySanitized } = loadHermesCredentials(secrets);
+    const authHint = keySanitized
       ? " (the stored hermes-api_key had surrounding whitespace/quotes and was cleaned before sending — re-save the secret cleanly in Secrets if this persists)"
       : "";
 
     if (!apiKey) {
       return Response.json({
-        ok: false, status: "not_configured", configured: false,
+        ok: false, status: "not_configured", configured: false, correlation_id: correlation,
         error: "hermes-api_key secret is not configured (empty or whitespace-only). Set it in Secrets to the live Hermes gateway key.",
       });
     }
     if (!configuredBase) {
       return Response.json({
-        ok: false, status: "not_configured", configured: false,
-        error: "HERMES_BASE_URL secret is not configured (empty or whitespace-only). Point it to the real Hermes Agent gateway (e.g. https://hermes.example.com). Do not use 127.0.0.1.",
+        ok: false, status: "not_configured", configured: false, correlation_id: correlation,
+        error: "HERMES_BASE_URL secret is not configured (empty or whitespace-only). Point it to the real Hermes gateway root (e.g. https://api.example.com). Do not use 127.0.0.1.",
       });
     }
 
     const root = normalizeRoot(configuredBase);
-    const chatUrl = `${root}/v1/chat/completions`;
-    const modelsUrl = `${root}/v1/models`;
 
-    // ── Health ─────────────────────────────────────────────────────────────
-    if (payload?.action === "health") {
+    // ── Public liveness probe ──────────────────────────────────────────────
+    // /v1/health is a public status route; it reports the live model provider,
+    // available tools and environment. It is the authoritative source for
+    // "is the engine reachable and which model is configured".
+    const probeHealth = async (): Promise<{ ok: boolean; endpoint?: string; data?: any; last?: any }> => {
       const healthUrls = [`${root}/health`, `${root}/v1/health`];
       let last: any = null;
       for (const url of healthUrls) {
         const { controller, timer } = withTimeout(15000);
         try {
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
+          const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json", "X-Correlation-ID": correlation },
+            signal: controller.signal,
+          });
           clearTimeout(timer);
           const text = await res.text().catch(() => "");
           if (res.ok) {
             let json: any = null;
             try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
-            return Response.json({ ok: true, status: "ok", configured: true, data: json, endpoint: url });
+            return { ok: true, endpoint: url, data: json };
           }
           last = { kind: "upstream", status: res.status, text };
         } catch (e: any) {
@@ -208,61 +111,73 @@ export default async function (req: Request): Promise<Response> {
           last = { kind: "network", text: e?.message || String(e) };
         }
       }
-      const cls = last?.kind === "upstream"
-        ? classifyUpstream(last.status, last.text)
-        : classifyNetwork({ message: last?.text });
+      return { ok: false, last };
+    };
+
+    if (payload?.action === "health") {
+      const h = await probeHealth();
+      if (h.ok) {
+        return Response.json({ ok: true, status: "ok", configured: true, data: h.data, endpoint: h.endpoint, correlation_id: correlation });
+      }
+      const cls = h.last?.kind === "upstream"
+        ? classifyUpstream(h.last.status, h.last.text, authHint)
+        : classifyNetwork({ message: h.last?.text });
       return Response.json({
-        ok: false, status: cls.status, configured: true,
-        upstream_status: last?.kind === "upstream" ? last.status : undefined,
+        ok: false, status: cls.status, configured: true, correlation_id: correlation,
+        upstream_status: h.last?.kind === "upstream" ? h.last.status : undefined,
         error: `Hermes gateway health check failed: ${cls.error}`,
-        tried: healthUrls,
+        tried: [`${root}/health`, `${root}/v1/health`],
       });
     }
 
     // ── Model discovery ────────────────────────────────────────────────────
+    // The gateway has no /v1/models route (it returns 404). The live model and
+    // provider it runs on are reported by /v1/health, so that is the catalog.
     if (payload?.action === "models") {
-      const { controller, timer } = withTimeout(15000);
-      try {
-        const res = await fetch(modelsUrl, { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
-        clearTimeout(timer);
-        const text = await res.text().catch(() => "");
-        if (!res.ok) {
-          const cls = classifyUpstream(res.status, text);
-          return Response.json({ ok: false, status: cls.status, configured: true, upstream_status: res.status, error: cls.error });
-        }
-        let json: any = null;
-        try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
-        return Response.json({ ok: true, status: "ok", data: json });
-      } catch (e: any) {
-        clearTimeout(timer);
-        const cls = classifyNetwork(e);
-        return Response.json({ ok: false, status: cls.status, configured: true, error: cls.error });
+      const h = await probeHealth();
+      if (!h.ok) {
+        const cls = h.last?.kind === "upstream"
+          ? classifyUpstream(h.last.status, h.last.text, authHint)
+          : classifyNetwork({ message: h.last?.text });
+        return Response.json({ ok: false, status: cls.status, configured: true, correlation_id: correlation, error: `Model discovery failed: ${cls.error}` });
       }
+      const m = h.data?.model || {};
+      const id = m.model || m.id || null;
+      if (!id) {
+        return Response.json({
+          ok: false, status: "endpoint_not_supported", configured: true, correlation_id: correlation,
+          error: "The Hermes gateway exposes no model catalog (/v1/models returns 404) and its /v1/health response carried no model information.",
+        });
+      }
+      return Response.json({
+        ok: true, status: "ok", configured: true, source: "health", correlation_id: correlation,
+        data: { object: "list", data: [{ id, provider: m.provider || null, status: m.status || null }] },
+      });
     }
 
     // ── Investigation lifecycle (real Hermes pipeline) ──────────────────────
-    // POST /v1/investigations              → create
-    // POST /v1/investigations/{id}/start   → start
-    // GET  /v1/investigations/{id}         → status / results
-    // The browser never sees HERMES_BASE_URL or the key; it requests these
-    // actions and the proxy performs the authenticated call server-side.
+    // Creates and starts are NEVER retried: replaying them can create duplicate
+    // investigations on the gateway. The caller's polling loop owns retries.
     if (payload?.action === "create_investigation") {
       const investigationsUrl = buildInvestigationsUrl(root);
       const result = await investigationFetch(investigationsUrl, {
         method: "POST",
         body: payload.body || payload.payload || {},
         apiKey,
+        corrId: correlation,
+        retry: 0,
+        authHint,
       });
       return Response.json({ ...result, configured: true, endpoint: investigationsUrl });
     }
+
     if (payload?.action === "start_investigation") {
       const id = payload.investigation_id;
-      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required", correlation_id: correlation });
 
-      // Investigations can run for several minutes. Async start is the safe
-      // default for Base44/serverless callers so the invocation returns before
-      // Cloudflare/serverless edge timeouts. Synchronous completion remains an
-      // explicit opt-in for controlled callers that set wait_for_completion=true.
+      // Async start is the safe default so the invocation returns before the
+      // serverless edge timeout. Synchronous completion remains an explicit
+      // opt-in for controlled callers that set wait_for_completion=true.
       const baseUrl = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/start`;
       const waitForCompletion = payload?.wait_for_completion === true;
       const url = waitForCompletion ? baseUrl : `${baseUrl}?wait=false`;
@@ -271,38 +186,41 @@ export default async function (req: Request): Promise<Response> {
         method: "POST",
         body: payload.body || {},
         apiKey,
+        corrId: correlation,
+        retry: 0,
+        authHint,
       });
       return Response.json({ ...result, configured: true, async_start: !waitForCompletion });
     }
+
     if (payload?.action === "get_investigation") {
       const id = payload.investigation_id;
-      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required", correlation_id: correlation });
       const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}`;
-      const result = await investigationFetch(url, { method: "GET", apiKey });
+      const result = await investigationFetch(url, { method: "GET", apiKey, corrId: correlation, retry: 0, authHint });
       return Response.json({ ...result, configured: true });
     }
-    // Result sub-resources of a COMPLETED investigation. Hermes exposes the
-    // investigation results on separate endpoints under the investigation id:
-    //   GET /v1/investigations/{id}/evidence
-    //   GET /v1/investigations/{id}/findings
-    //   GET /v1/investigations/{id}/report
-    // The base GET /v1/investigations/{id} only carries lifecycle metadata
-    // (status/timestamps), so these actions are required to actually retrieve
-    // the evidence, findings, and dossier/report that Hermes produced.
+
+    // Result sub-resources of a completed investigation. The base
+    // GET /v1/investigations/{id} carries only lifecycle metadata, so the
+    // evidence/findings/report are read from their own endpoints.
     if (payload?.action === "get_investigation_evidence" ||
         payload?.action === "get_investigation_findings" ||
         payload?.action === "get_investigation_report") {
       const id = payload.investigation_id;
-      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required" });
+      if (!id) return Response.json({ ok: false, status: "bad_request", error: "investigation_id is required", correlation_id: correlation });
       const sub = payload.action.replace("get_investigation_", "");
       const url = `${buildInvestigationsUrl(root)}/${encodeURIComponent(String(id))}/${sub}`;
-      const result = await investigationFetch(url, { method: "GET", apiKey });
+      const result = await investigationFetch(url, { method: "GET", apiKey, corrId: correlation, retry: 0, authHint });
       return Response.json({ ...result, configured: true, endpoint: url });
     }
 
     // ── Inference ──────────────────────────────────────────────────────────
+    // The gateway does not currently expose an OpenAI-compatible inference
+    // route. This path is kept for forward compatibility and reports the
+    // real upstream result instead of pretending the model ran.
     if (!prompt || typeof prompt !== "string") {
-      return Response.json({ ok: false, status: "bad_request", error: "prompt is required" });
+      return Response.json({ ok: false, status: "bad_request", error: "prompt is required", correlation_id: correlation });
     }
     const useModel = model || DEFAULT_MODEL;
 
@@ -319,49 +237,76 @@ export default async function (req: Request): Promise<Response> {
     };
     if (typeof max_tokens === "number") body.max_tokens = max_tokens;
 
+    const chatUrl = `${root}/v1/chat/completions`;
     let lastDiag: any = null;
+
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const { controller, timer } = withTimeout(TIMEOUT_MS);
+      const started = Date.now();
       try {
         const res = await fetch(chatUrl, {
           method: "POST",
-          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "X-Correlation-ID": correlation,
+          },
           body: JSON.stringify(body),
           signal: controller.signal,
         });
         clearTimeout(timer);
+
         if (res.ok) {
           const json = await res.json().catch(() => null);
           const content = json?.choices?.[0]?.message?.content;
+          console.log(`[hermes] ${correlation} POST /v1/chat/completions -> 200 (${Date.now() - started}ms)`);
           if (response_json_schema && content) {
             const parsed = tryParseJson(content);
-            if (parsed) return Response.json({ ok: true, data: parsed, model: useModel });
+            if (parsed) return Response.json({ ok: true, data: parsed, model: useModel, correlation_id: correlation });
           }
-          return Response.json({ ok: true, data: content, model: useModel });
+          return Response.json({ ok: true, data: content, model: useModel, correlation_id: correlation });
         }
+
         const text = await res.text().catch(() => "");
-        const cls = classifyUpstream(res.status, text);
+
+        // The gateway has no inference route — report that precisely rather
+        // than a misleading generic 404.
+        if (res.status === 404) {
+          console.error(`[hermes] ${correlation} POST /v1/chat/completions -> 404 endpoint_not_supported`);
+          return Response.json({
+            ok: false,
+            status: "endpoint_not_supported",
+            configured: true,
+            upstream_status: 404,
+            correlation_id: correlation,
+            error: "The Hermes gateway does not expose an inference endpoint (POST /v1/chat/completions returned 404). It currently exposes only the investigations lifecycle (/v1/investigations), so standalone LLM inference cannot run against this gateway.",
+          });
+        }
+
+        const cls = classifyUpstream(res.status, text, authHint);
         lastDiag = cls;
-        // Retry transient upstream errors once.
+        console.error(`[hermes] ${correlation} POST /v1/chat/completions -> ${res.status} ${cls.status} (${Date.now() - started}ms)`);
+
         if ((res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
           await new Promise((r) => setTimeout(r, 1200));
           continue;
         }
-        return Response.json({ ok: false, status: cls.status, configured: true, upstream_status: res.status, error: cls.error });
+        return Response.json({ ok: false, status: cls.status, configured: true, upstream_status: res.status, error: cls.error, correlation_id: correlation });
       } catch (e: any) {
         clearTimeout(timer);
         const cls = classifyNetwork(e);
         lastDiag = cls;
-        if (attempt < MAX_ATTEMPTS) {
+        console.error(`[hermes] ${correlation} POST /v1/chat/completions -> ${cls.status} (${Date.now() - started}ms)`);
+        if (attempt < MAX_ATTEMPTS && cls.status !== "timeout") {
           await new Promise((r) => setTimeout(r, 1200));
           continue;
         }
-        return Response.json({ ok: false, status: cls.status, configured: true, error: cls.error });
+        return Response.json({ ok: false, status: cls.status, configured: true, error: cls.error, correlation_id: correlation });
       }
     }
-    return Response.json({ ok: false, status: lastDiag?.status || "error", configured: true, error: lastDiag?.error || "Hermes request failed" });
+    return Response.json({ ok: false, status: lastDiag?.status || "error", configured: true, error: lastDiag?.error || "Hermes request failed", correlation_id: correlation });
   } catch (error: any) {
-    return Response.json({ ok: false, status: "internal_error", error: error?.message || String(error) }, { status: 500 });
+    return Response.json({ ok: false, status: "internal_error", error: error?.message || String(error), correlation_id: correlation }, { status: 500 });
   }
 }
 

@@ -7,15 +7,14 @@
  * timeline, findings, risk, reports, and agent execution.
  *
  * API: Hermes Gateway / OpenAI-compatible inference endpoint.
- *   Base URL is configured server-side via HERMES_BASE_URL (or HERMES_API_URL).
- *   Models:   hermes-agent by default; the live catalog can be queried via
- *             hermesProxy { action: "models" }.
- *   Auth:     Bearer token (stored as HERMES_API_KEY secret — server-side only)
+ *   Base URL is configured server-side via HERMES_BASE_URL.
+ *   Models:   the live model/provider is reported by the gateway's /v1/health
+ *             and surfaced through hermesProxy { action: "models" }.
+ *   Auth:     X-API-Key, from the secret named "hermes-api_key" — server-side only.
  *
  * SECURITY RULES (enforced by design):
- *  - The HERMES_API_KEY is stored as an app secret and is NEVER exposed
- *    to the browser. It is only accessible in backend functions via
- *    process.env.HERMES_API_KEY.
+ *  - The hermes-api_key secret is NEVER exposed to the browser. It is read
+ *    only by backend functions, which use the shared hermesHttp client.
  *  - All Hermes calls are proxied through a Base44 backend function
  *    (`hermesProxy`) so the key stays server-side.
  *
