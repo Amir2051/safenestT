@@ -25,6 +25,34 @@ const hasPersistedResults = vm.runInNewContext(
   `(() => { ${persistenceGateSource}; return hasPersistedResults; })()`,
 );
 
+const statusStart = source.indexOf("function isFailedStatus(status) {");
+const statusEnd = source.indexOf("\n// A successful HTTP/tool invocation", statusStart);
+assert.notEqual(statusStart, -1, "Hermes status classification helpers must exist");
+assert.notEqual(statusEnd, -1, "Hermes status helpers must have a clear end boundary");
+const statusHelpers = source.slice(statusStart, statusEnd);
+const { isFailedStatus, isPartialStatus } = vm.runInNewContext(
+  `(() => { ${statusHelpers}; return { isFailedStatus, isPartialStatus }; })()`,
+);
+
+test("classifies completed_with_errors as partial, not a hard failure", () => {
+  assert.equal(isFailedStatus("COMPLETED_WITH_ERRORS"), false);
+  assert.equal(isPartialStatus("COMPLETED_WITH_ERRORS"), true);
+});
+
+test("classifies partial_success and failed_with_results as result-bearing partial states", () => {
+  for (const status of ["partial_success", "failed_with_results", "partially_completed"]) {
+    assert.equal(isFailedStatus(status), false, status);
+    assert.equal(isPartialStatus(status), true, status);
+  }
+});
+
+test("keeps hard failures distinct from partial results", () => {
+  for (const status of ["failed", "error", "cancelled", "timeout"]) {
+    assert.equal(isFailedStatus(status), true, status);
+    assert.equal(isPartialStatus(status), false, status);
+  }
+});
+
 const evidence = (status, payload) => ({
   evidence_id: "ev-1",
   data: { tool_call: { status, result: { data: payload } } },
