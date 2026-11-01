@@ -52,7 +52,6 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   // allowed to investigate it (analyzing the narrative) without requiring a
   // wallet/domain/IP/etc. first. No minimum target is enforced to start.
   const hasNarrative = !!(caseItem?.description || caseItem?.case_title);
-  const canRun = hermesActive || hasTargets || hasNarrative;
 
   const providerDef = getProvider(provider);
   const models = providerDef.models;
