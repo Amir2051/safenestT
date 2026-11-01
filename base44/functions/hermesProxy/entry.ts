@@ -313,7 +313,7 @@ export default async function (req: Request): Promise<Response> {
       try {
         const res = await fetch(chatUrl, {
           method: "POST",
-          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
           body: JSON.stringify(body),
           signal: controller.signal,
         });
