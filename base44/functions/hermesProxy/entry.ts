@@ -200,7 +200,27 @@ export default async function (req: Request): Promise<Response> {
           if (res.ok) {
             let json: any = null;
             try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 500) }; }
-            return Response.json({ ok: true, status: "ok", configured: true, data: json, endpoint: url });
+
+            // /v1/health is intentionally public on the engine. A 200 here
+            // proves network reachability, NOT that the configured API key is
+            // accepted. Probe a deliberately nonexistent investigation id:
+            // the gateway returns 401/403 for a bad key and 404 only after
+            // authentication succeeds. This keeps the UI's "connected" state
+            // honest without reading or creating any investigation data.
+            const authProbe = await investigationFetch(
+              `${buildInvestigationsUrl(root)}/__safenestt_auth_probe__`,
+              { method: "GET", apiKey },
+            );
+            if (!authProbe.ok && authProbe.upstream_status !== 404) {
+              return Response.json({
+                ok: false,
+                status: authProbe.status,
+                configured: true,
+                upstream_status: authProbe.upstream_status,
+                error: `Hermes health endpoint is reachable, but API-key verification failed: ${authProbe.error}`,
+              });
+            }
+            return Response.json({ ok: true, status: "ok", configured: true, auth_verified: true, data: json, endpoint: url });
           }
           last = { kind: "upstream", status: res.status, text };
         } catch (e: any) {
