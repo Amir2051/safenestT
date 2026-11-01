@@ -122,7 +122,7 @@ const AuthenticatedApp = () => {
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
-        <Route path="/" element={<MainPage />} />
+        <Route path="/" element={<AdminGate><HermesSyntheticTest /></AdminGate>} />
         {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
         <Route path="/AdminInvestigation" element={<Navigate to="/InvestigationWorkspace" replace />} />
