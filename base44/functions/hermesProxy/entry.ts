@@ -194,7 +194,7 @@ export default async function (req: Request): Promise<Response> {
       for (const url of healthUrls) {
         const { controller, timer } = withTimeout(15000);
         try {
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
+          const res = await fetch(url, { headers: { "X-API-Key": apiKey }, signal: controller.signal });
           clearTimeout(timer);
           const text = await res.text().catch(() => "");
           if (res.ok) {
@@ -223,7 +223,7 @@ export default async function (req: Request): Promise<Response> {
     if (payload?.action === "models") {
       const { controller, timer } = withTimeout(15000);
       try {
-        const res = await fetch(modelsUrl, { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
+        const res = await fetch(modelsUrl, { headers: { "X-API-Key": apiKey }, signal: controller.signal });
         clearTimeout(timer);
         const text = await res.text().catch(() => "");
         if (!res.ok) {
