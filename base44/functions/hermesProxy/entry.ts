@@ -117,9 +117,9 @@ function buildInvestigationsUrl(root: string): string {
 // upstream status.
 async function investigationFetch(
   url: string,
-  { method, body, apiKey }: { method: string; body?: any; apiKey: string }
+  { method, body, apiKey, timeoutMs = 60000 }: { method: string; body?: any; apiKey: string; timeoutMs?: number }
 ) {
-  const { controller, timer } = withTimeout(60000);
+  const { controller, timer } = withTimeout(timeoutMs);
   try {
     const headers: Record<string, string> = { "X-API-Key": apiKey, "Content-Type": "application/json", "Accept": "application/json" };
     const res = await fetch(url, {
@@ -209,7 +209,7 @@ export default async function (req: Request): Promise<Response> {
             // honest without reading or creating any investigation data.
             const authProbe = await investigationFetch(
               `${buildInvestigationsUrl(root)}/__safenestt_auth_probe__`,
-              { method: "GET", apiKey },
+              { method: "GET", apiKey, timeoutMs: 15000 },
             );
             if (!authProbe.ok && authProbe.upstream_status !== 404) {
               return Response.json({
