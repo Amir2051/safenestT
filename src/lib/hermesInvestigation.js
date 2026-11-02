@@ -529,49 +529,72 @@ export async function resumeHermesInvestigation({
 export async function runHermesInvestigation({
   caseId,
   caseItem,
+  provider,
   onProgress,
   shouldStop = null,
   pollIntervalMs = 4000,
   maxPollMs = HERMES_MAX_POLL_MS, // 30 minutes — allows complex multi-phase investigations
 }) {
+  if (!provider) {
+    throw new HermesError("provider_required", "No investigation provider was selected for this run.");
+  }
+
   const tenantId = await ensureTenant();
   const user = await getCurrentUser();
   const ctx = await gatherContext(caseId);
 
   // ── Provider dispatch ────────────────────────────────────────────────────
-  // The backend reads the saved global provider configuration and executes ONLY
-  // that provider. When MIA Multi-Agent is selected the backend runs the whole
-  // multi-agent workflow server-side (and persists its own runs, findings and
-  // report), so this client must not create a Hermes lifecycle for that case.
-  const dispatched = await dispatchInvestigation(caseId);
+  // The administrator's confirmed selection is forwarded explicitly. The backend
+  // validates it and executes ONLY that provider: MIA runs the whole multi-agent
+  // workflow server-side (persisting its own runs, findings and dossier), Hermes
+  // runs the create → start → poll lifecycle. Nothing is retried on the other
+  // provider if this one fails.
+  const dispatched = await dispatchInvestigation(caseId, provider);
 
-  if (dispatched.provider === "mia") {
+  if (dispatched.provider !== provider) {
+    throw new HermesError(
+      "provider_mismatch",
+      `Requested ${provider} but the backend executed ${dispatched.provider}. The run was stopped without retrying.`
+    );
+  }
+
+  if (provider === "mia") {
     const miaPhases = dispatched.phases || {};
     const statuses = {};
     for (const p of PHASES) statuses[p.id] = miaPhases[p.id]?.status || "pending";
     if (onProgress) {
       try { onProgress(statuses, dispatched.status, dispatched); } catch { /* listener error is non-fatal */ }
     }
-    if (dispatched.ok === false || dispatched.status === "failed") {
+
+    const succeeded = dispatched.ok === true
+      && (dispatched.status === "completed" || dispatched.status === "completed_with_errors");
+    if (!succeeded) {
+      // Real failure of the selected provider — surface it, never fall back.
       throw new HermesError(
         dispatched.status || "failed",
-        dispatched.error || "MIA multi-agent investigation failed"
+        dispatched.error || "MIA Multi-Agent investigation failed"
       );
     }
+
     await logAuditEvent({
       action: "mia_investigation_completed",
       objectType: "case",
       objectId: caseId,
       caseId,
-      description: `MIA multi-agent investigation ${dispatched.status}: ${dispatched.persisted?.findings ?? 0} finding(s), ${dispatched.persisted?.report_id ? "dossier generated" : "no dossier"}.`,
+      description: `MIA Multi-Agent investigation ${dispatched.status}: ${dispatched.persisted?.findings ?? 0} finding(s), ${dispatched.persisted?.report_id ? "dossier generated" : "no dossier"}.`,
       metadata: { provider: "mia", persisted: dispatched.persisted, agents_failed: dispatched.agents_failed },
     }).catch(() => {});
+
     return {
-      status: dispatched.status === "completed" ? "completed" : "completed",
+      status: dispatched.status === "completed_with_errors" ? "completed_with_errors" : "completed",
       provider: "mia",
       phases: statuses,
       output: dispatched,
       persisted: dispatched.persisted || {},
+      report_id: dispatched.report_id || null,
+      findings: dispatched.findings || [],
+      agents_run: dispatched.agents_run || [],
+      agents_failed: dispatched.agents_failed || [],
     };
   }
 

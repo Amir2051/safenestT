@@ -139,11 +139,15 @@ export default async function (req: Request): Promise<Response> {
     }
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: sourceCaseId });
 
-    // Provider routing: when MIA Multi-Agent is the active provider, no Hermes
-    // investigation is created for this case — the run is dispatched to the MIA
-    // engine instead (startCaseInvestigation). Prevents silent cross-routing.
+    // Provider routing. An explicit per-run "hermes" selection forwarded by
+    // startCaseInvestigation (the administrator confirmed Hermes for this run)
+    // wins; otherwise the saved default decides. When the effective provider is
+    // MIA, no Hermes investigation is created for this case. Prevents silent
+    // cross-routing while still allowing a deliberate one-off Hermes run.
+    const explicitProvider = String(payload?.provider || "").trim().toLowerCase();
     const providerCfg = await readProviderConfig(base44);
-    if (providerCfg.provider === "mia") {
+    const effectiveProvider = explicitProvider === "hermes" ? "hermes" : providerCfg.provider;
+    if (effectiveProvider === "mia") {
       return Response.json({
         ok: false,
         status: "wrong_provider",

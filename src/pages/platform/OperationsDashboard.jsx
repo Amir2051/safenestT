@@ -9,7 +9,7 @@ import {
 import StatCard from "@/components/platform/StatCard";
 import SectionHeader from "@/components/platform/SectionHeader";
 import EmptyState from "@/components/platform/EmptyState";
-import { getProvider } from "@/lib/investigationAI";
+import { getProvider, PROVIDER_IDS } from "@/lib/investigationAI";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -153,7 +153,7 @@ function CaseRow({ caseItem }) {
 }
 
 function EngineStatusBanner() {
-  const provider = getProvider("hermes");
+  const engines = PROVIDER_IDS.map((id) => getProvider(id)).filter(Boolean);
   return (
     <div className="rounded-xl border border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.04] to-transparent p-4 flex items-start gap-3">
       <div className="w-9 h-9 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shrink-0">
@@ -161,12 +161,14 @@ function EngineStatusBanner() {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-white">Investigation Engine</p>
-          <Badge variant="outline" className={`text-[10px] ${provider.available ? "border-green-500/30 text-green-400" : "border-amber-500/30 text-amber-400"}`}>
-            {provider.available ? "live" : "upgrade required"}
+          <p className="text-sm font-medium text-white">Investigation Engines</p>
+          <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400">
+            {engines.length} available
           </Badge>
         </div>
-        <p className="text-xs text-gray-400 mt-0.5">{provider.description}</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {engines.map((e) => e.label).join(" · ")} — the provider is selected and confirmed in the case workspace before each run.
+        </p>
       </div>
       <Link to="/CasesManagement" className="hidden sm:block">
         <Button size="sm" variant="outline" className="border-cyan-500/30 text-cyan-400"><Zap className="w-3.5 h-3.5 mr-1.5" />Run investigation</Button>

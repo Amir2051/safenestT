@@ -1,3 +1,5 @@
+import { MIA_PERSONA, MIA_SPECIALISTS } from "./miaAgents.ts";
+
 /**
  * MIA Multi-Agent investigation engine (server-side).
  *
@@ -15,7 +17,7 @@
  */
 
 export const MIA_PROVIDER = "mia";
-export const MIA_MODEL = "base44-mia-multi-agent";
+export const MIA_MODEL = "mia-multi-agent";
 export const MIA_PHASES = ["planning", "evidence", "analysis", "reality_check", "risk", "dossier"];
 
 const PHASE_LABELS: Record<string, string> = {
@@ -28,40 +30,6 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 const LLM_TIMEOUT_MS = 90000;
-
-/** MIA's core operating protocol — mirrors the MIA agent instructions. */
-const MIA_PERSONA =
-  "You are MIA, SafeNestT's senior cyber-fraud investigator. You correlate cases by shared indicator, " +
-  "trace funds, score prioritisation and draft submissions. Response discipline: cite exact indicators, " +
-  "wallet prefixes, amounts and dates; separate FACT, EVIDENCE, ANALYSIS, INFERENCE and HYPOTHESIS; label " +
-  "confidence; never instruct a victim to contact a suspect; when intelligence is insufficient, state the " +
-  "gaps and the minimum evidence needed. Never fabricate identities, addresses, amounts or transaction paths.";
-
-const ANALYSTS = [
-  {
-    id: "blockchain_analyst",
-    instr:
-      "You are the BLOCKCHAIN / CRYPTO-FLOW analyst on a multi-agent investigation team. Focus only on wallet " +
-      "addresses, transaction patterns, chain hops, mixer/exchange exposure and on-chain indicators present in the " +
-      "supplied data. Cite the supporting evidence ids or filenames. If no blockchain-relevant data was supplied, " +
-      "return an empty findings array — never invent a wallet or transaction.",
-  },
-  {
-    id: "financial_analyst",
-    instr:
-      "You are the FINANCIAL / FUNDS-FLOW analyst on a multi-agent investigation team. Focus only on amounts lost, " +
-      "payment rails, transfers, fiat on/off ramps and monetary exposure present in the supplied data. Cite the " +
-      "supporting evidence ids or filenames. If no financial data was supplied, return an empty findings array.",
-  },
-  {
-    id: "behavioral_analyst",
-    instr:
-      "You are the BEHAVIORAL / SOCIAL-ENGINEERING analyst on a multi-agent investigation team. Focus only on " +
-      "communication patterns, impersonation, modus operandi, suspect identity indicators and victim–suspect " +
-      "interaction present in the supplied data. Cite the supporting evidence ids or filenames. If no behavioural " +
-      "data was supplied, return an empty findings array.",
-  },
-];
 
 const PLAN_SCHEMA = {
   type: "object",
@@ -410,14 +378,14 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
   {
     const run = await recordRun(base44, {
       ...runBase, phase: "analysis", status: "running", started_at: new Date().toISOString(),
-      prompt: `multi-agent: ${ANALYSTS.map((a) => a.id).join(" + ")}`,
+      prompt: `multi-agent: ${MIA_SPECIALISTS.map((a) => a.id).join(" + ")}`,
     });
     const p0 = Date.now();
 
     const settled = await Promise.allSettled(
-      ANALYSTS.map(async (analyst) => {
+      MIA_SPECIALISTS.map(async (analyst) => {
         const out = await askModel(base44,
-          `${MIA_PERSONA}\n\nYou are the ${analyst.id}. ${analyst.instr}\n\nPropose findings ONLY from the supplied data.\n\n` +
+          `${MIA_PERSONA}\n\nYou are the ${analyst.label}. ${analyst.instruction}\n\nPropose findings ONLY from the supplied data.\n\n` +
           `${contextBlock(caseItem, ctx)}`,
           ANALYSIS_SCHEMA, `mia:${analyst.id}`);
         return { analyst: analyst.id, findings: Array.isArray(out?.findings) ? out.findings : [] };
@@ -426,7 +394,7 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
 
     const merged: any[] = [];
     settled.forEach((r: any, i: number) => {
-      const analyst = ANALYSTS[i].id;
+      const analyst = MIA_SPECIALISTS[i].id;
       if (r.status === "fulfilled") {
         agentsRun.push(analyst);
         (r.value.findings || []).forEach((f: any) => merged.push({ ...f, agent: analyst }));
@@ -470,7 +438,7 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
     };
 
     if (agentsRun.filter((a) => a.endsWith("_analyst")).length === 0) {
-      const err = `All ${ANALYSTS.length} specialist analysts failed: ${agentsFailed.map((a) => `${a.agent}: ${a.error}`).join(" | ")}`;
+      const err = `All ${MIA_SPECIALISTS.length} specialist analysts failed: ${agentsFailed.map((a) => `${a.agent}: ${a.error}`).join(" | ")}`;
       phases.analysis = { status: "failed", output: { error: err } };
       await finishRun(base44, run, { status: "failed", error: truncate(err, 4000), output, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
       await persistWorkflow(base44, caseItem, phases, "failed", { error: err });

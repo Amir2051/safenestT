@@ -8,7 +8,12 @@
     },
     "source_case_type": {
       "type": "string",
-      "enum": ["InvestigationCase", "MyCase", "ClientCase", "MasterCase"],
+      "enum": [
+        "InvestigationCase",
+        "MyCase",
+        "ClientCase",
+        "MasterCase"
+      ],
       "description": "Original source entity type for canonical case projection."
     },
     "tenant_id": {
@@ -387,12 +392,12 @@
         "failed"
       ],
       "default": "pending",
-      "description": "Hermes synchronization state. pending = sync not yet attempted or retry needed; active = Hermes investigation created, awaiting run; synced = results synchronized; failed = sync could not complete."
+      "description": "Investigation engine synchronization state. pending = sync not yet attempted or retry needed; active = investigation created, awaiting run; synced = results synchronized; failed = sync could not complete."
     },
     "last_synced_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Last time this case was synchronized with the Hermes investigation engine."
+      "description": "Last time this case was synchronized with its investigation engine."
     },
     "priority": {
       "type": "string",
@@ -500,7 +505,24 @@
         },
         "provider": {
           "type": "string",
-          "description": "Investigation pipeline provider. Hermes Engine is the required provider."
+          "description": "Investigation provider confirmed by the administrator for the last run: 'hermes' (Hermes Agent) or 'mia' (MIA Multi-Agent). The whole pipeline runs on this provider only."
+        },
+        "provider_label": {
+          "type": "string",
+          "description": "Human label of the investigation provider confirmed for the last run (Hermes Agent / MIA Multi-Agent)."
+        },
+        "provider_model": {
+          "type": "string",
+          "description": "Model identifier used by the confirmed investigation provider (hermes-agent / mia-multi-agent)."
+        },
+        "provider_selected_by": {
+          "type": "string",
+          "description": "Email of the administrator who confirmed the provider for the last run."
+        },
+        "provider_selected_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the provider was confirmed for the last run."
         },
         "model": {
           "type": "string",
@@ -512,7 +534,7 @@
         },
         "risk_level": {
           "type": "string",
-          "description": "Risk level label (low/medium/high/critical) from the Hermes risk assessment"
+          "description": "Risk level label (low/medium/high/critical) from the investigation risk assessment"
         },
         "risk_factors": {
           "type": "array",
@@ -541,9 +563,22 @@
           "type": "string",
           "description": "Error message reported by Hermes when the investigation failed, or when sync could not complete."
         },
+        "mia_status": {
+          "type": "string",
+          "description": "MIA Multi-Agent run status (completed / completed_with_errors / failed) mirrored from the server-side multi-agent engine."
+        },
+        "mia_error": {
+          "type": "string",
+          "description": "Error reported by the MIA Multi-Agent engine when the run failed."
+        },
+        "mia_updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the MIA Multi-Agent workflow state was persisted on this case."
+        },
         "has_external_indicators": {
           "type": "boolean",
-          "description": "Whether the case submitted any external investigative indicator (wallet/domain/IP/email/phone/tx hash). False for narrative-only cases \u2014 Hermes investigates only the submitted narrative."
+          "description": "Whether the case submitted any external investigative indicator (wallet/domain/IP/email/phone/tx hash). False for narrative-only cases \u2014 the provider investigates only the submitted narrative."
         },
         "phases": {
           "type": "object",
@@ -695,7 +730,7 @@
           }
         }
       },
-      "description": "Investigation workflow state \u2014 phase progression with persisted outputs and AI provider/model preferences."
+      "description": "Investigation workflow state \u2014 phase progression with persisted outputs and the confirmed investigation provider for the last run."
     }
   },
   "required": [

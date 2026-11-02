@@ -78,7 +78,8 @@ export default function InvestigationProviders() {
         <div>
           <h1 className="text-lg font-semibold text-white">Investigation Providers</h1>
           <p className="text-sm text-gray-400">
-            The default provider used for every new investigation. Only administrators can change it.
+            The default provider preselected when an administrator launches an investigation. The provider is
+            confirmed per run in the investigation launch panel. Only administrators can change the default.
           </p>
         </div>
       </div>
@@ -87,7 +88,7 @@ export default function InvestigationProviders() {
         <ShieldCheck className="w-4 h-4 text-cyan-300" />
         <span className="text-sm text-cyan-100">Active provider:</span>
         <Badge variant="outline" className="border-cyan-400/40 text-cyan-200">
-          {active === "mia" ? "MIA Multi-Agent (Base44)" : "Hermes Agent"}
+          {config?.providers?.find((p) => p.id === active)?.label || active}
         </Badge>
         {config?.updated_at && (
           <span className="text-[11px] text-cyan-200/60 font-mono">
@@ -152,10 +153,10 @@ export default function InvestigationProviders() {
       </div>
 
       <p className="text-[11px] text-gray-500 leading-relaxed">
-        Hermes Agent runs the Hermes gateway lifecycle (create → start → poll). MIA Multi-Agent runs SafeNestT's
-        multi-agent workflow server-side: planning, evidence, three specialist analysts, reality-check, deterministic
-        risk scoring and an evidence-gated dossier. Investigations are routed only to the saved provider — there is no
-        fallback between them.
+        Exactly two providers exist. Hermes Agent runs the Hermes gateway lifecycle (create → start → poll).
+        MIA Multi-Agent runs SafeNestT's multi-agent workflow server-side: planning, evidence, three specialist
+        analysts, reality-check, deterministic risk scoring and an evidence-gated dossier. A run is executed only by
+        the provider the administrator confirms — there is no fallback between them.
       </p>
     </div>
   );

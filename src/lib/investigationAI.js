@@ -1,25 +1,32 @@
 import { base44 } from "@/api/base44Client";
 
 /**
- * Investigation AI — provider abstraction.
+ * Investigation provider registry.
  *
- * Hermes Engine is the only provider exposed by the investigation pipeline.
- * Other Base44 AI integrations may still exist elsewhere in the application,
- * but they are not valid pipeline providers.
+ * Exactly two investigation providers exist — Hermes Agent and MIA Multi-Agent.
+ * There is no third provider and no default fallback: `getProvider` returns null
+ * for anything else so callers must handle an invalid selection explicitly
+ * instead of silently running a different engine.
+ *
+ * Hermes Agent executes through the server-side Hermes gateway proxy.
+ * MIA Multi-Agent is not a single inference call — it is executed end-to-end by
+ * the backend (startCaseInvestigation -> shared/miaEngine.ts), so its `run` here
+ * refuses rather than pretending a one-shot completion is a multi-agent run.
  */
 
+export const PROVIDER_IDS = ["hermes", "mia"];
 export const DEFAULT_PROVIDER = "hermes";
 export const DEFAULT_MODEL = "hermes-agent";
+export const MIA_MODEL = "mia-multi-agent";
 
-export const PROVIDERS = {
+const REGISTRY = {
   hermes: {
     id: "hermes",
     label: "Hermes Agent",
-    description: "Hermes Agent gateway — authoritative investigation pipeline. Credentials stay server-side.",
+    description: "Hermes Agent gateway — create → start → poll. Credentials stay server-side.",
     available: true,
-    models: [
-      { id: "hermes-agent", label: "Hermes Agent", free: true },
-    ],
+    model: "hermes-agent",
+    models: [{ id: "hermes-agent", label: "Hermes Agent", free: true }],
     run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
       const resp = await base44.functions.invoke("hermesProxy", {
         prompt,
@@ -40,53 +47,31 @@ export const PROVIDERS = {
   },
   mia: {
     id: "mia",
-    label: "MIA Multi-Agent (Base44)",
-    description: "SafeNestT MIA multi-agent workflow — planning, evidence, three specialist analysts, reality-check, deterministic risk, evidence-gated dossier. Runs server-side.",
+    label: "MIA Multi-Agent",
+    description: "Multi-agent workflow — planning, evidence, three specialist analysts, reality-check, deterministic risk, evidence-gated dossier.",
     available: true,
-    models: [
-      { id: "base44-mia-multi-agent", label: "MIA Multi-Agent", free: true },
-    ],
-    // MIA is executed by the backend (startCaseInvestigation / miaInvestigation).
-    // It is never an inference provider for a single phase, so this throws rather
-    // than silently pretending a one-shot call is a multi-agent investigation.
+    model: "mia-multi-agent",
+    models: [{ id: "mia-multi-agent", label: "MIA Multi-Agent", free: true }],
     run: async () => {
-      throw new Error("MIA Multi-Agent runs server-side via startCaseInvestigation — it is not a single inference call.");
-    },
-  },
-  openrouter: {
-    id: "openrouter",
-    label: "OpenRouter (free models)",
-    description: "Live — server-side proxy. Only approved free models; paid IDs are blocked server-side.",
-    available: true,
-    // Only approved `:free` models. The server-side proxy rejects anything not
-    // in this allowlist, so users can never spend on a paid model by accident.
-    models: [
-      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free · primary)", free: true },
-      { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free · fallback)", free: true },
-    ],
-    run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
-      const resp = await base44.functions.invoke("openrouterProxy", {
-        model,
-        prompt,
-        response_json_schema: responseJsonSchema,
-        temperature,
-        max_tokens: maxTokens,
-      });
-      const body = resp?.data ?? resp;
-      if (!body || body.ok === false || body.status === "error") {
-        throw new Error(body?.error || "OpenRouter proxy returned an error");
-      }
-      return body.data ?? body;
+      throw new Error("MIA Multi-Agent is executed end-to-end by the backend (startCaseInvestigation), not by a single inference call.");
     },
   },
 };
 
+export const PROVIDERS = PROVIDER_IDS.map((id) => REGISTRY[id]);
+
+/** Strict lookup — null when the id is not one of the two providers. */
 export function getProvider(id) {
-  return PROVIDERS[id] || PROVIDERS.hermes;
+  return REGISTRY[id] || null;
+}
+
+export function providerLabel(id) {
+  return REGISTRY[id]?.label || "Unknown provider";
 }
 
 export function providerStatus(id) {
   const p = getProvider(id);
+  if (!p) return null;
   return { id: p.id, label: p.label, available: p.available, models: p.models };
 }
 
@@ -98,5 +83,6 @@ export async function runInference({
   fileUrls,
 }) {
   const p = getProvider(provider);
+  if (!p) throw new Error(`Unsupported investigation provider: ${provider}`);
   return p.run({ prompt, model, responseJsonSchema, fileUrls });
 }
