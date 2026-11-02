@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
 import { getProvider } from "@/lib/investigationAI";
+import { getProviderConfig } from "@/lib/investigationDispatch";
 import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, HermesError } from "@/lib/hermesInvestigation";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
 import { toast } from "sonner";
@@ -38,6 +39,21 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   const [hermesInvestigationId, setHermesInvestigationId] = useState(
     caseItem?.workflow?.hermes_investigation_id || null
   );
+
+  // The investigation provider is a GLOBAL administrator setting, enforced
+  // server-side. This panel only reads it so it reports the engine that will
+  // actually run — it can never route a case to a different provider.
+  const { data: providerConfig } = useQuery({
+    queryKey: ["investigation-provider"],
+    queryFn: getProviderConfig,
+    staleTime: 60000,
+  });
+  useEffect(() => {
+    const configured = providerConfig?.provider;
+    if (!configured) return;
+    setProvider(configured);
+    setModel(configured === "mia" ? "base44-mia-multi-agent" : DEFAULT_MODEL);
+  }, [providerConfig?.provider]);
 
   // Pre-flight: a Hermes investigation requires at least one target. Fetch the
   // case's InvestigationTarget records so the runner can disable Start and tell
@@ -104,11 +120,20 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   const testConnection = async () => {
     setTesting(true); setTestResult(null);
     try {
-      const res = await testProvider({ provider, model });
+      // Real server-side health check of the ACTIVE provider.
+      const raw = await base44.functions.invoke("investigationProviderConfig", { action: "test", provider });
+      const body = raw?.data ?? raw;
+      const res = {
+        status: body?.ok ? "ok" : (body?.status === "degraded" ? "degraded" : "failed"),
+        provider: body?.provider || provider,
+        model,
+        ms: body?.ms,
+        error: body?.error,
+      };
       setTestResult(res);
-      if (res.status === "ok") toast.success(`${provider} healthy (${res.ms}ms)`);
-      else if (res.status === "degraded") toast.warning(`${provider} responded (degraded)`);
-      else toast.error(`${provider} failed: ${res.error}`);
+      if (res.status === "ok") toast.success(`${res.provider} healthy (${res.ms}ms)`);
+      else if (res.status === "degraded") toast.warning(`${res.provider} responded (degraded)`);
+      else toast.error(`${res.provider} failed: ${res.error}`);
     } catch (e) {
       setTestResult({ status: "failed", error: e?.message || String(e) });
       toast.error("Health test failed: " + (e?.message || e));
@@ -132,8 +157,10 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   const { data: autoSync } = useQuery({
     queryKey: ["hermes-sync", caseId],
     queryFn: () => syncHermesInvestigationStep(caseId),
-    enabled: hermesActive,
-    refetchInterval: hermesActive ? 8000 : false,
+    // Only poll Hermes when Hermes is the active provider; a MIA case must never
+    // be synced through the Hermes lifecycle.
+    enabled: hermesActive && provider === "hermes",
+    refetchInterval: hermesActive && provider === "hermes" ? 8000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -207,8 +234,9 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         : await runHermesInvestigation({ caseId, caseItem, onProgress, shouldStop });
 
       setLastResult(res);
-      if (res.status === "completed") toast.success("Hermes investigation completed");
-      else toast.error(`Hermes investigation ${res.status}`);
+      const engine = res.provider === "mia" ? "MIA multi-agent" : "Hermes";
+      if (res.status === "completed") toast.success(`${engine} investigation completed`);
+      else toast.error(`${engine} investigation ${res.status}`);
       if (res.investigation_id) setHermesInvestigationId(res.investigation_id);
       invalidateAll();
     } catch (e) {
@@ -220,7 +248,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         upstreamStatus: err.upstreamStatus,
       });
       const code = err.upstreamStatus ? ` (HTTP ${err.upstreamStatus})` : "";
-      toast.error(`Hermes investigation failed${code}: ${err.message}`);
+      toast.error(`${providerDef.label} investigation failed${code}: ${err.message}`);
     } finally {
       setRunning(null);
       setRunAllActive(false);
@@ -253,6 +281,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           <div>
             <p className="text-sm font-semibold text-white">Investigation Engine</p>
             <p className="text-[11px] text-gray-500">{providerDef.description}</p>
+            {provider === "mia" && wf.mia_status && (
+              <p className="text-[10px] font-mono mt-0.5 text-cyan-400/80">
+                MIA RUN: <span className={wf.mia_status === "completed" ? "text-green-400" : wf.mia_status === "failed" ? "text-red-400" : "text-cyan-300"}>
+                  {String(wf.mia_status).toUpperCase().replace(/_/g, " ")}
+                </span>
+              </p>
+            )}
             {hermesInvestigationId && (
               <p className="text-[10px] text-cyan-400/80 font-mono mt-0.5">
                 Hermes ID: {String(hermesInvestigationId).slice(0, 24)}
@@ -320,12 +355,8 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
       />
 
       <ProviderModelControls
-        provider={provider}
-        onProvider={onProviderChange}
+        providerLabel={providerDef.label}
         model={model}
-        onModel={onModelChange}
-        models={models}
-        freeOnly={freeOnly}
         onTest={testConnection}
         testing={testing}
         testResult={testResult}
@@ -342,12 +373,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
 
 function LastResult({ result }) {
   const ok = result.status === "completed";
+  const engine = result.provider === "mia" ? "MIA multi-agent" : "Hermes";
   return (
     <div className={`rounded-lg border p-3 ${ok ? "border-green-500/20 bg-green-500/[0.04]" : "border-red-500/20 bg-red-500/[0.04]"}`}>
       <div className="flex items-start gap-2">
         {ok ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-white">{ok ? "Hermes investigation completed" : "Hermes investigation failed"}</p>
+          <p className="text-xs font-medium text-white">{engine} investigation {ok ? "completed" : "failed"}</p>
           {!ok && (result.hermesStatus || result.upstreamStatus) && (
             <p className="text-[11px] text-red-300 mt-0.5 font-mono">
               {result.upstreamStatus ? `HTTP ${result.upstreamStatus} · ` : ""}{result.hermesStatus || "error"}
@@ -391,18 +423,16 @@ function RunHistory({ history, running, onRetry, disabled }) {
   );
 }
 
-function ProviderModelControls({ provider, onProvider, model, onModel, models, freeOnly, onTest, testing, testResult }) {
+function ProviderModelControls({ providerLabel, model, onTest, testing, testResult }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <label className="text-[11px] uppercase tracking-wider text-gray-500">Provider</label>
-          <Select value={provider} onValueChange={onProvider}>
-            <SelectTrigger className="bg-[#0f1419] border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hermes">Hermes Agent</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="mt-1 rounded-md border border-white/10 bg-[#0f1419] px-3 h-9 flex items-center justify-between">
+            <span className="text-sm text-white truncate">{providerLabel}</span>
+            <span className="text-[10px] text-gray-500 shrink-0 ml-2">set by administrator</span>
+          </div>
         </div>
         <div className="flex flex-col justify-end">
           <Button size="sm" variant="outline" onClick={onTest} disabled={testing} className="border-cyan-500/30 text-cyan-400 h-9">
@@ -412,38 +442,7 @@ function ProviderModelControls({ provider, onProvider, model, onModel, models, f
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[11px] uppercase tracking-wider text-gray-500">Model</label>
-          {freeOnly && <span className="text-[10px] text-gray-500 flex items-center gap-1"><Lock className="w-3 h-3" />Free models only (OpenRouter plan)</span>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {models.map((m) => {
-            const locked = freeOnly && m.free === false;
-            const active = model === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                disabled={locked}
-                onClick={() => !locked && onModel(m.id)}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
-                  active
-                    ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-200"
-                    : locked
-                      ? "border-white/5 bg-white/[0.02] text-gray-600 cursor-not-allowed"
-                      : "border-white/10 bg-white/[0.02] text-gray-300 hover:border-cyan-500/30 hover:text-white"
-                }`}
-                title={locked ? "Paid model — not enabled on this OpenRouter account" : m.label}
-              >
-                {locked && <Lock className="w-3 h-3" />}
-                {m.label}
-                {locked && <span className="text-[9px] uppercase">paid</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <p className="text-[10px] text-gray-500 font-mono">model: {model}</p>
 
       {testResult && (
         <div className={`rounded-lg border px-3 py-2 text-xs flex items-center gap-2 ${TEST_TONE[testResult.status] || TEST_TONE.failed}`}>

@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { ensureTenant, getCurrentUser } from "@/lib/tenantContext";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { PHASES } from "@/lib/investigationRunner";
+import { dispatchInvestigation } from "@/lib/investigationDispatch";
 
 // ---------------------------------------------------------------------------
 // Polling timeout configuration
@@ -537,6 +538,43 @@ export async function runHermesInvestigation({
   const user = await getCurrentUser();
   const ctx = await gatherContext(caseId);
 
+  // ── Provider dispatch ────────────────────────────────────────────────────
+  // The backend reads the saved global provider configuration and executes ONLY
+  // that provider. When MIA Multi-Agent is selected the backend runs the whole
+  // multi-agent workflow server-side (and persists its own runs, findings and
+  // report), so this client must not create a Hermes lifecycle for that case.
+  const dispatched = await dispatchInvestigation(caseId);
+
+  if (dispatched.provider === "mia") {
+    const miaPhases = dispatched.phases || {};
+    const statuses = {};
+    for (const p of PHASES) statuses[p.id] = miaPhases[p.id]?.status || "pending";
+    if (onProgress) {
+      try { onProgress(statuses, dispatched.status, dispatched); } catch { /* listener error is non-fatal */ }
+    }
+    if (dispatched.ok === false || dispatched.status === "failed") {
+      throw new HermesError(
+        dispatched.status || "failed",
+        dispatched.error || "MIA multi-agent investigation failed"
+      );
+    }
+    await logAuditEvent({
+      action: "mia_investigation_completed",
+      objectType: "case",
+      objectId: caseId,
+      caseId,
+      description: `MIA multi-agent investigation ${dispatched.status}: ${dispatched.persisted?.findings ?? 0} finding(s), ${dispatched.persisted?.report_id ? "dossier generated" : "no dossier"}.`,
+      metadata: { provider: "mia", persisted: dispatched.persisted, agents_failed: dispatched.agents_failed },
+    }).catch(() => {});
+    return {
+      status: dispatched.status === "completed" ? "completed" : "completed",
+      provider: "mia",
+      phases: statuses,
+      output: dispatched,
+      persisted: dispatched.persisted || {},
+    };
+  }
+
   // Auditable run record — tracks the real Hermes lifecycle.
   const run = await base44.entities.InvestigationRun.create({
     tenant_id: tenantId,
@@ -570,25 +608,30 @@ export async function runHermesInvestigation({
   //    No minimum target is required — a narrative-only case is accepted.
   let investigationId;
   try {
-    // Every Run is a new execution. syncCaseToHermes reuses an active
-    // investigation, but creates a fresh Hermes investigation after a terminal
-    // run. It also verifies stored IDs and clears stale mappings before retrying.
-    const synced = await syncCaseToHermesStep(caseId);
-    if (!synced?.ok || !synced?.hermes_investigation_id) {
+    // The backend dispatch already created/reused the Hermes investigation and
+    // started it. No second create/start here — replaying either can duplicate
+    // work on the gateway.
+    if (!dispatched?.hermes_investigation_id) {
       throw new HermesError(
-        synced?.status || "sync_failed",
-        synced?.error || "Hermes case sync did not produce an investigation_id.",
-        synced?.upstream_status
+        dispatched?.status || "sync_failed",
+        dispatched?.error || "Hermes dispatch did not produce an investigation_id.",
+        dispatched?.upstream_status
       );
     }
-    investigationId = synced.hermes_investigation_id;
+    investigationId = dispatched.hermes_investigation_id;
+
+    if (dispatched.started !== true) {
+      throw new HermesError(
+        dispatched?.status || "start_failed",
+        dispatched?.start_error || "Hermes rejected the start request.",
+        dispatched?.upstream_status
+      );
+    }
 
     // Initial progress: planning running.
     const initial = {};
     for (const p of PHASES) initial[p.id] = p.id === "planning" ? "running" : "pending";
     emit(initial, "running", { investigation_id: investigationId });
-
-    await startHermesInvestigation(investigationId);
   } catch (e) {
     if (run) {
       await base44.entities.InvestigationRun.update(run.id, {

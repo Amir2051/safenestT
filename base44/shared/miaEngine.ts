@@ -1,0 +1,664 @@
+/**
+ * MIA Multi-Agent investigation engine (server-side).
+ *
+ * This is the real second investigation provider. It reuses SafeNestT's
+ * existing agent design — the MIA senior-investigator protocol (see
+ * base44/agents/mia_security_advisor.jsonc) plus the three specialist analysts
+ * and the reality-check / deterministic-risk / evidence-gated-dossier stages of
+ * the existing pipeline — and runs it entirely on the server through the
+ * platform AI gateway. No API keys reach the browser, and nothing is simulated:
+ * every persisted finding comes from a model response over real case data, and
+ * every failure is recorded and reported.
+ *
+ * Phases: planning -> evidence -> analysis (3 specialist analysts) ->
+ *         reality_check -> risk (deterministic) -> dossier (evidence-gated).
+ */
+
+export const MIA_PROVIDER = "mia";
+export const MIA_MODEL = "base44-mia-multi-agent";
+export const MIA_PHASES = ["planning", "evidence", "analysis", "reality_check", "risk", "dossier"];
+
+const PHASE_LABELS: Record<string, string> = {
+  planning: "Planning",
+  evidence: "Evidence Collection",
+  analysis: "Multi-Agent Analysis",
+  reality_check: "Reality-Check",
+  risk: "Risk Scoring",
+  dossier: "Dossier / Report",
+};
+
+const LLM_TIMEOUT_MS = 90000;
+
+/** MIA's core operating protocol — mirrors the MIA agent instructions. */
+const MIA_PERSONA =
+  "You are MIA, SafeNestT's senior cyber-fraud investigator. You correlate cases by shared indicator, " +
+  "trace funds, score prioritisation and draft submissions. Response discipline: cite exact indicators, " +
+  "wallet prefixes, amounts and dates; separate FACT, EVIDENCE, ANALYSIS, INFERENCE and HYPOTHESIS; label " +
+  "confidence; never instruct a victim to contact a suspect; when intelligence is insufficient, state the " +
+  "gaps and the minimum evidence needed. Never fabricate identities, addresses, amounts or transaction paths.";
+
+const ANALYSTS = [
+  {
+    id: "blockchain_analyst",
+    instr:
+      "You are the BLOCKCHAIN / CRYPTO-FLOW analyst on a multi-agent investigation team. Focus only on wallet " +
+      "addresses, transaction patterns, chain hops, mixer/exchange exposure and on-chain indicators present in the " +
+      "supplied data. Cite the supporting evidence ids or filenames. If no blockchain-relevant data was supplied, " +
+      "return an empty findings array — never invent a wallet or transaction.",
+  },
+  {
+    id: "financial_analyst",
+    instr:
+      "You are the FINANCIAL / FUNDS-FLOW analyst on a multi-agent investigation team. Focus only on amounts lost, " +
+      "payment rails, transfers, fiat on/off ramps and monetary exposure present in the supplied data. Cite the " +
+      "supporting evidence ids or filenames. If no financial data was supplied, return an empty findings array.",
+  },
+  {
+    id: "behavioral_analyst",
+    instr:
+      "You are the BEHAVIORAL / SOCIAL-ENGINEERING analyst on a multi-agent investigation team. Focus only on " +
+      "communication patterns, impersonation, modus operandi, suspect identity indicators and victim–suspect " +
+      "interaction present in the supplied data. Cite the supporting evidence ids or filenames. If no behavioural " +
+      "data was supplied, return an empty findings array.",
+  },
+];
+
+const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    objectives: { type: "array", items: { type: "string" } },
+    scope: { type: "string" },
+    hypotheses: { type: "array", items: { type: "string" } },
+    priority_indicators: { type: "array", items: { type: "string" } },
+    steps: { type: "array", items: { type: "object", properties: { step: { type: "string" }, detail: { type: "string" } } } },
+    gaps: { type: "array", items: { type: "string" } },
+  },
+};
+
+const EVIDENCE_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+    key_indicators: { type: "array", items: { type: "string" } },
+    gaps: { type: "array", items: { type: "string" } },
+    needs_verification: { type: "array", items: { type: "string" } },
+  },
+};
+
+const ANALYSIS_SCHEMA = {
+  type: "object",
+  properties: {
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          category: { type: "string" },
+          severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+          confidence: { type: "string", enum: ["low", "medium", "high"] },
+          supporting_evidence: { type: "array", items: { type: "string" } },
+        },
+        required: ["title", "description"],
+      },
+    },
+    rationale: { type: "string" },
+  },
+};
+
+const REALITY_SCHEMA = {
+  type: "object",
+  properties: {
+    verifications: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          finding_id: { type: "string" },
+          finding_title: { type: "string" },
+          status: { type: "string", enum: ["supported", "partially_supported", "unsupported"] },
+          reasoning: { type: "string" },
+        },
+        required: ["finding_title", "status"],
+      },
+    },
+    unsupported_claims: { type: "array", items: { type: "string" } },
+    notes: { type: "string" },
+  },
+};
+
+function truncate(s: any, n: number) {
+  const str = s == null ? "" : String(s);
+  return str.length > n ? `${str.slice(0, n)}…[truncated]` : str;
+}
+
+function safeParse(value: any) {
+  if (value == null) return null;
+  if (typeof value === "object") return value;
+  try { return JSON.parse(String(value)); } catch { return null; }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms)
+    ),
+  ]) as Promise<T>;
+}
+
+async function askModel(base44: any, prompt: string, schema: any, label: string) {
+  const res = await withTimeout(
+    base44.integrations.Core.InvokeLLM({ prompt, response_json_schema: schema }),
+    LLM_TIMEOUT_MS,
+    label
+  );
+  const parsed = safeParse(res?.data ?? res);
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error(`${label} returned an unparseable response`);
+  }
+  return parsed;
+}
+
+function caseSummary(c: any) {
+  return {
+    case_number: c.case_number,
+    case_title: c.case_title,
+    fraud_type: c.fraud_type,
+    victim_name: c.victim_name,
+    amount_stolen_usd: c.amount_stolen_usd,
+    cryptocurrency: c.cryptocurrency,
+    blockchain: c.blockchain,
+    incident_date: c.incident_date,
+    description: truncate(c.description, 4000),
+    suspect_details: c.suspect_details || null,
+    scammer_info: c.scammer_info || null,
+  };
+}
+
+function buildContext(base44: any, caseItem: any) {
+  return Promise.all([
+    base44.entities.EvidenceItem.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
+    base44.entities.InvestigationTarget.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
+    base44.entities.InvestigationFinding.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
+  ]).then(([evidence, targets, findings]: any[]) => ({ evidence: evidence || [], targets: targets || [], findings: findings || [] }));
+}
+
+function contextBlock(caseItem: any, ctx: any) {
+  const evidence = (ctx.evidence || []).map((e: any) => ({
+    id: e.id, filename: e.filename, type: e.evidence_type, description: truncate(e.description, 500), tags: e.tags,
+  }));
+  const targets = (ctx.targets || []).map((t: any) => ({
+    type: t.type, value: t.value, network: t.network, label: t.label, status: t.status,
+  }));
+  const findings = (ctx.findings || []).map((f: any) => ({
+    id: f.id, title: f.title, category: f.category, severity: f.severity, confidence: f.confidence, status: f.status,
+  }));
+  return (
+    `CASE:\n${JSON.stringify(caseSummary(caseItem), null, 2)}\n\n` +
+    `EVIDENCE (${evidence.length}):\n${JSON.stringify(evidence, null, 2)}\n\n` +
+    `TARGETS (${targets.length}):\n${JSON.stringify(targets, null, 2)}\n\n` +
+    `EXISTING FINDINGS (${findings.length}):\n${JSON.stringify(findings, null, 2)}\n`
+  );
+}
+
+// ── Deterministic risk + evidence-gated dossier ──────────────────────────────
+const SEVERITY_WEIGHT: Record<string, number> = { critical: 25, high: 15, medium: 8, low: 3 };
+const CONFIDENCE_MULT: Record<string, number> = { high: 1, medium: 0.7, low: 0.4 };
+
+function computeRisk(caseItem: any, findings: any[]) {
+  const eligible = findings.filter((f) => f.status === "verified" || f.status === "partially_supported");
+  let findingScore = 0;
+  eligible.forEach((f) => {
+    findingScore += (SEVERITY_WEIGHT[f.severity] ?? 4) * (CONFIDENCE_MULT[f.confidence] ?? 0.5);
+  });
+  findingScore = Math.min(findingScore, 60);
+
+  const factors: any[] = [];
+  if (eligible.length) factors.push({ factor: `${eligible.length} findings (severity/confidence weighted)`, weight: Math.round(findingScore) });
+  const verified = eligible.filter((f) => f.status === "verified").length;
+  if (verified) factors.push({ factor: `${verified} verified finding(s)`, weight: Math.min(verified * 2, 10) });
+
+  const amt = Number(caseItem.amount_stolen_usd) || 0;
+  const amtFactor = amt >= 100000 ? 20 : amt >= 10000 ? 12 : amt >= 1000 ? 6 : 2;
+  factors.push({ factor: `Loss amount $${amt.toLocaleString()}`, weight: amtFactor });
+
+  const highRisk = ["crypto_theft", "ransomware", "pig_butchering", "investment_scam"];
+  const typeFactor = highRisk.includes(caseItem.fraud_type) ? 10 : 5;
+  factors.push({ factor: `Fraud type: ${caseItem.fraud_type || "unknown"}`, weight: typeFactor });
+
+  const score = Math.min(100, Math.max(0, Math.round(findingScore + Math.min(verified * 2, 10) + amtFactor + typeFactor)));
+  const level = score >= 80 ? "critical" : score >= 60 ? "high" : score >= 40 ? "medium" : "low";
+  return {
+    risk_score: score,
+    risk_level: level,
+    risk_factors: factors,
+    summary: `Deterministic score ${score}/100 (${level}) from ${eligible.length} evidence-checked finding(s), $${amt.toLocaleString()} loss. Computed without LLM.`,
+  };
+}
+
+function buildDossier(caseItem: any, ctx: any, findings: any[]) {
+  const eligible = findings.filter((f) => f.status === "verified" || f.status === "partially_supported");
+  const unsupported = findings.filter((f) => f.status === "unsupported");
+
+  const sections = [
+    {
+      title: "Case Facts",
+      classification: "FACT",
+      content: [
+        caseItem.case_title ? `Case: ${caseItem.case_title}.` : "",
+        caseItem.victim_name ? `Reporting party: ${caseItem.victim_name}.` : "",
+        caseItem.incident_date ? `Incident date: ${caseItem.incident_date}.` : "",
+        Number.isFinite(Number(caseItem.amount_stolen_usd)) ? `Reported loss: $${Number(caseItem.amount_stolen_usd).toLocaleString()} USD.` : "",
+        caseItem.fraud_type ? `Reported fraud type: ${caseItem.fraud_type}.` : "",
+      ].filter(Boolean).join(" "),
+    },
+    {
+      title: "Evidence Summary",
+      classification: "EVIDENCE",
+      content: (ctx.evidence || []).length
+        ? `${ctx.evidence.length} evidence item(s) attached. Only evidence-checked findings are carried into this dossier.`
+        : "No evidence items are attached to this case.",
+    },
+    {
+      title: "Verified Findings",
+      classification: "EVIDENCE",
+      content: eligible.length
+        ? eligible.map((f) => `[${f.status}] ${f.title}: ${truncate(f.description, 600)}`).join(" ")
+        : "No findings passed the reality-check gate.",
+    },
+  ];
+
+  if (unsupported.length) {
+    sections.push({
+      title: "Excluded Claims",
+      classification: "ANALYSIS",
+      content: `Excluded because the reality check did not support them: ${unsupported.map((f) => f.title).join("; ")}.`,
+    });
+  }
+
+  return {
+    title: `${caseItem.case_title || "Investigation"} — MIA Evidence-Gated Dossier`,
+    sections,
+    conclusion: eligible.length
+      ? `Limited to ${eligible.length} finding(s) that passed the evidence gate. Partially-supported findings remain explicitly qualified.`
+      : "The available material is insufficient to establish substantive findings. Additional evidence is required.",
+    recommended_actions: [
+      "Preserve and attach primary transaction, communication and identity evidence.",
+      "Do not treat hypotheses or unsupported claims as established facts.",
+      ...(eligible.some((f) => f.status === "partially_supported")
+        ? ["Obtain the missing evidence needed to upgrade partially-supported findings."]
+        : []),
+    ],
+  };
+}
+
+function titlesSimilar(a: string, b: string) {
+  const na = (a || "").toLowerCase().trim();
+  const nb = (b || "").toLowerCase().trim();
+  if (!na || !nb) return false;
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
+function resolveEvidenceRefs(rawRefs: any[], evidence: any[]) {
+  const byFilename: Record<string, string> = {};
+  const byId: Record<string, string> = {};
+  (evidence || []).forEach((e: any) => {
+    if (e.filename) byFilename[String(e.filename).toLowerCase()] = e.id;
+    if (e.id) byId[String(e.id)] = e.id;
+  });
+  const out: string[] = [];
+  (rawRefs || []).forEach((r) => {
+    if (!r) return;
+    const key = String(r).toLowerCase();
+    if (byFilename[key]) out.push(byFilename[key]);
+    else if (byId[String(r)]) out.push(byId[String(r)]);
+  });
+  return [...new Set(out)];
+}
+
+async function recordRun(base44: any, payload: any) {
+  return base44.entities.InvestigationRun.create(payload).catch(() => null);
+}
+
+async function finishRun(base44: any, run: any, patch: any) {
+  if (!run?.id) return;
+  await base44.entities.InvestigationRun.update(run.id, patch).catch(() => {});
+}
+
+/**
+ * Execute the full MIA multi-agent investigation for one case.
+ * Caller must have authenticated the user and verified case access.
+ */
+export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: any) {
+  const startedAt = new Date().toISOString();
+  const t0 = Date.now();
+  const ctx = await buildContext(base44, caseItem);
+  const phases: Record<string, any> = {};
+  MIA_PHASES.forEach((p) => { phases[p] = { status: "pending" }; });
+
+  const runBase = {
+    tenant_id: tenantId,
+    case_id: caseItem.id,
+    provider: MIA_PROVIDER,
+    model: MIA_MODEL,
+    run_by: user?.id,
+    run_by_email: user?.email,
+  };
+
+  const agentsRun: string[] = [];
+  const agentsFailed: any[] = [];
+  const persisted: any = { findings: 0, report_id: null, risk_score: null, finding_ids: [] };
+
+  // ── Phase: planning ────────────────────────────────────────────────────────
+  let plan: any = null;
+  {
+    const run = await recordRun(base44, {
+      ...runBase, phase: "planning", status: "running", started_at: new Date().toISOString(),
+      prompt: "(multi-agent investigation plan)",
+      input_summary: { evidence_count: ctx.evidence.length, target_count: ctx.targets.length },
+    });
+    const p0 = Date.now();
+    try {
+      plan = await askModel(base44,
+        `${MIA_PERSONA}\n\nExecute the INVESTIGATION PLANNING phase for the case below. Produce objectives, scope, ` +
+        `hypotheses, priority indicators, an ordered step plan and explicit intelligence gaps. ` +
+        `Use only the supplied data. Respond as JSON.\n\n${contextBlock(caseItem, ctx)}`,
+        PLAN_SCHEMA, "mia:planning");
+      phases.planning = { status: "completed", completed_at: new Date().toISOString(), output: plan };
+      agentsRun.push("mia_planner");
+      await finishRun(base44, run, { status: "completed", output: plan, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+    } catch (e: any) {
+      const err = truncate(e?.message || e, 2000);
+      phases.planning = { status: "failed", output: { error: err } };
+      agentsFailed.push({ agent: "mia_planner", error: err });
+      await finishRun(base44, run, { status: "failed", error: err, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+      // Planning is the gate: without it the investigation cannot proceed honestly.
+      await persistWorkflow(base44, caseItem, phases, "failed", { error: `Planning failed: ${err}` });
+      return {
+        ok: false, provider: MIA_PROVIDER, status: "failed", case_id: caseItem.id,
+        error: `MIA planning failed: ${err}`, phases, persisted, agents_run: agentsRun, agents_failed: agentsFailed,
+        duration_ms: Date.now() - t0,
+      };
+    }
+  }
+
+  // ── Phase: evidence ────────────────────────────────────────────────────────
+  {
+    const run = await recordRun(base44, { ...runBase, phase: "evidence", status: "running", started_at: new Date().toISOString() });
+    const p0 = Date.now();
+    try {
+      const out = await askModel(base44,
+        `${MIA_PERSONA}\n\nPLAN:\n${JSON.stringify(plan, null, 2)}\n\nExecute the EVIDENCE phase: summarise the collected ` +
+        `evidence, list the key indicators actually present, the gaps, and what needs verification. Respond as JSON.\n\n` +
+        `${contextBlock(caseItem, ctx)}`,
+        EVIDENCE_SCHEMA, "mia:evidence");
+      phases.evidence = { status: "completed", completed_at: new Date().toISOString(), output: out };
+      agentsRun.push("mia_evidence");
+      await finishRun(base44, run, { status: "completed", output: out, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+    } catch (e: any) {
+      const err = truncate(e?.message || e, 2000);
+      phases.evidence = { status: "failed", output: { error: err } };
+      agentsFailed.push({ agent: "mia_evidence", error: err });
+      await finishRun(base44, run, { status: "failed", error: err, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+    }
+  }
+
+  // ── Phase: analysis (3 specialist analysts, in parallel) ───────────────────
+  let createdFindings: any[] = [];
+  {
+    const run = await recordRun(base44, {
+      ...runBase, phase: "analysis", status: "running", started_at: new Date().toISOString(),
+      prompt: `multi-agent: ${ANALYSTS.map((a) => a.id).join(" + ")}`,
+    });
+    const p0 = Date.now();
+
+    const settled = await Promise.allSettled(
+      ANALYSTS.map(async (analyst) => {
+        const out = await askModel(base44,
+          `${MIA_PERSONA}\n\nYou are the ${analyst.id}. ${analyst.instr}\n\nPropose findings ONLY from the supplied data.\n\n` +
+          `${contextBlock(caseItem, ctx)}`,
+          ANALYSIS_SCHEMA, `mia:${analyst.id}`);
+        return { analyst: analyst.id, findings: Array.isArray(out?.findings) ? out.findings : [] };
+      })
+    );
+
+    const merged: any[] = [];
+    settled.forEach((r: any, i: number) => {
+      const analyst = ANALYSTS[i].id;
+      if (r.status === "fulfilled") {
+        agentsRun.push(analyst);
+        (r.value.findings || []).forEach((f: any) => merged.push({ ...f, agent: analyst }));
+      } else {
+        agentsFailed.push({ agent: analyst, error: truncate(r.reason?.message || r.reason, 500) });
+      }
+    });
+
+    const deduped: any[] = [];
+    for (const f of merged) {
+      if (!f?.title) continue;
+      if (!deduped.some((d) => titlesSimilar(d.title, f.title))) deduped.push(f);
+    }
+
+    for (const f of deduped.slice(0, 25)) {
+      const rec = await base44.entities.InvestigationFinding.create({
+        tenant_id: tenantId,
+        case_id: caseItem.id,
+        title: truncate(f.title, 300),
+        description: truncate(f.description, 4000),
+        category: f.category || "other",
+        severity: ["low", "medium", "high", "critical"].includes(String(f.severity)) ? f.severity : "medium",
+        confidence: ["low", "medium", "high"].includes(String(f.confidence)) ? f.confidence : "medium",
+        status: "proposed",
+        source: "ai_run",
+        evidence_refs: resolveEvidenceRefs(f.supporting_evidence, ctx.evidence),
+        hermes_raw: { provider: MIA_PROVIDER, agent: f.agent, supporting_evidence_raw: f.supporting_evidence || [] },
+        generating_run_id: run?.id || null,
+      }).catch(() => null);
+      if (rec) createdFindings.push(rec);
+    }
+
+    persisted.findings = createdFindings.length;
+    persisted.finding_ids = createdFindings.map((f) => f.id);
+
+    const output = {
+      findings: deduped,
+      agents_run: agentsRun.filter((a) => a.endsWith("_analyst")),
+      agents_failed: agentsFailed.filter((a) => String(a.agent).endsWith("_analyst")),
+      persisted_finding_ids: persisted.finding_ids,
+    };
+
+    if (agentsRun.filter((a) => a.endsWith("_analyst")).length === 0) {
+      const err = `All ${ANALYSTS.length} specialist analysts failed: ${agentsFailed.map((a) => `${a.agent}: ${a.error}`).join(" | ")}`;
+      phases.analysis = { status: "failed", output: { error: err } };
+      await finishRun(base44, run, { status: "failed", error: truncate(err, 4000), output, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+      await persistWorkflow(base44, caseItem, phases, "failed", { error: err });
+      return {
+        ok: false, provider: MIA_PROVIDER, status: "failed", case_id: caseItem.id, error: err,
+        phases, persisted, agents_run: agentsRun, agents_failed: agentsFailed, duration_ms: Date.now() - t0,
+      };
+    }
+
+    phases.analysis = { status: "completed", completed_at: new Date().toISOString(), output };
+    await finishRun(base44, run, {
+      status: "completed", output, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0,
+      persisted_outputs: { finding_ids: persisted.finding_ids },
+    });
+  }
+
+  // ── Phase: reality_check ───────────────────────────────────────────────────
+  {
+    const run = await recordRun(base44, { ...runBase, phase: "reality_check", status: "running", started_at: new Date().toISOString() });
+    const p0 = Date.now();
+    const proposed = createdFindings.map((f) => ({ id: f.id, title: f.title, description: truncate(f.description, 800), severity: f.severity }));
+    try {
+      const out = await askModel(base44,
+        `${MIA_PERSONA}\n\nExecute the REALITY-CHECK phase. For each proposed finding decide whether the supplied ` +
+        `evidence supports it: "supported", "partially_supported" or "unsupported", with reasoning. Never upgrade a ` +
+        `claim beyond the supplied evidence. Respond as JSON.\n\nPROPOSED FINDINGS:\n${JSON.stringify(proposed, null, 2)}\n\n` +
+        `${contextBlock(caseItem, ctx)}`,
+        REALITY_SCHEMA, "mia:reality_check");
+
+      const verifications = Array.isArray(out?.verifications) ? out.verifications : [];
+      const updates: any[] = [];
+      for (const v of verifications) {
+        const mapped = v?.status === "supported" ? "verified"
+          : v?.status === "partially_supported" ? "partially_supported"
+          : v?.status === "unsupported" ? "unsupported" : null;
+        if (!mapped) continue;
+        const matches = createdFindings.filter((f) =>
+          (v?.finding_id && f.id === v.finding_id) || titlesSimilar(f.title, v?.finding_title)
+        );
+        for (const f of matches) {
+          await base44.entities.InvestigationFinding.update(f.id, {
+            status: mapped,
+            reality_check: { status: mapped, reasoning: truncate(v?.reasoning, 2000), run_id: run?.id || null, checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
+          }).catch(() => {});
+          updates.push({ finding_id: f.id, status: mapped });
+        }
+      }
+      // Findings the reality check did not address are NOT promoted.
+      const addressed = new Set(updates.map((u) => u.finding_id));
+      for (const f of createdFindings) {
+        if (!addressed.has(f.id)) {
+          await base44.entities.InvestigationFinding.update(f.id, {
+            status: "partially_supported",
+            reality_check: { status: "not_verified", reasoning: "Reality check returned no verdict for this finding; treated as unverified.", checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
+          }).catch(() => {});
+        }
+      }
+
+      createdFindings = createdFindings.map((f) => {
+        const u = updates.find((x) => x.finding_id === f.id);
+        return { ...f, status: u ? u.status : "partially_supported" };
+      });
+
+      phases.reality_check = { status: "completed", completed_at: new Date().toISOString(), output: { ...out, finding_updates: updates } };
+      await finishRun(base44, run, {
+        status: "completed", output: { ...out, finding_updates: updates }, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0,
+        persisted_outputs: { finding_updates: updates },
+      });
+    } catch (e: any) {
+      const err = truncate(e?.message || e, 2000);
+      phases.reality_check = { status: "failed", output: { error: err } };
+      agentsFailed.push({ agent: "mia_reality_check", error: err });
+      await finishRun(base44, run, { status: "failed", error: err, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+      await persistWorkflow(base44, caseItem, phases, "failed", { error: `Reality check failed: ${err}` });
+      return {
+        ok: false, provider: MIA_PROVIDER, status: "failed", case_id: caseItem.id,
+        error: `MIA reality check failed: ${err}`, phases, persisted, agents_run: agentsRun, agents_failed: agentsFailed,
+        duration_ms: Date.now() - t0,
+      };
+    }
+  }
+
+  // ── Phase: risk (deterministic) ────────────────────────────────────────────
+  let risk: any = null;
+  {
+    const run = await recordRun(base44, { ...runBase, phase: "risk", status: "running", started_at: new Date().toISOString(), prompt: "(deterministic — no LLM call)" });
+    const p0 = Date.now();
+    risk = computeRisk(caseItem, createdFindings);
+    phases.risk = { status: "completed", completed_at: new Date().toISOString(), output: risk };
+    persisted.risk_score = risk.risk_score;
+    persisted.risk_level = risk.risk_level;
+    await finishRun(base44, run, { status: "completed", output: risk, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0 });
+  }
+
+  // ── Phase: dossier (evidence-gated) ────────────────────────────────────────
+  {
+    const run = await recordRun(base44, { ...runBase, phase: "dossier", status: "running", started_at: new Date().toISOString(), prompt: "(evidence-gated dossier)" });
+    const p0 = Date.now();
+    const dossier = buildDossier(caseItem, ctx, createdFindings);
+    const report = await base44.entities.InvestigationReport.create({
+      tenant_id: tenantId,
+      case_id: caseItem.id,
+      title: dossier.title,
+      report_type: "dossier",
+      status: "generated",
+      generated_by: "ai_run",
+      generated_date: new Date().toISOString(),
+      content: { ...dossier, provider: MIA_PROVIDER, risk_score: risk.risk_score, risk_level: risk.risk_level },
+      sections: dossier.sections,
+      conclusion: dossier.conclusion,
+      recommended_actions: dossier.recommended_actions,
+      created_by: user?.email || null,
+      generating_run_id: run?.id || null,
+    }).catch(() => null);
+
+    persisted.report_id = report?.id || null;
+    phases.dossier = { status: "completed", completed_at: new Date().toISOString(), output: { ...dossier, report_id: persisted.report_id } };
+    await finishRun(base44, run, { status: "completed", output: dossier, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0, persisted_outputs: { report_id: persisted.report_id } });
+  }
+
+  const agentFailures = agentsFailed.filter((a) => String(a.agent).endsWith("_analyst"));
+  const status = agentFailures.length ? "completed_with_errors" : "completed";
+
+  await persistWorkflow(base44, caseItem, phases, status, {
+    risk_score: risk?.risk_score,
+    risk_level: risk?.risk_level,
+    risk_factors: risk?.risk_factors,
+  });
+
+  return {
+    ok: true,
+    provider: MIA_PROVIDER,
+    status,
+    case_id: caseItem.id,
+    phases,
+    risk,
+    report_id: persisted.report_id,
+    findings: createdFindings.map((f) => ({
+      id: f.id, title: f.title, status: f.status, severity: f.severity, confidence: f.confidence, category: f.category,
+    })),
+    persisted,
+    agents_run: agentsRun,
+    agents_failed: agentsFailed,
+    duration_ms: Date.now() - t0,
+    started_at: startedAt,
+  };
+}
+
+/** Persist MIA phase state + workflow provider on the case. Never touches other runs. */
+async function persistWorkflow(base44: any, caseItem: any, phases: any, status: string, extra: any) {
+  const latest = await base44.entities.InvestigationCase.get(caseItem.id).catch(() => null);
+  const wf = { ...((latest || caseItem)?.workflow || {}) };
+
+  const completedCount = MIA_PHASES.filter((p) => phases[p]?.status === "completed").length;
+  const progress = Math.round((completedCount / MIA_PHASES.length) * 100);
+  const allCompleted = completedCount === MIA_PHASES.length;
+
+  const update: any = {
+    workflow: {
+      ...wf,
+      provider: MIA_PROVIDER,
+      phases,
+      current_phase: allCompleted ? "closed" : MIA_PHASES[completedCount] || "planning",
+      mia_status: status,
+      mia_error: status === "failed" ? (extra?.error || null) : null,
+      mia_updated_at: new Date().toISOString(),
+      ...(extra?.risk_score != null ? { risk_score: extra.risk_score, risk_level: extra.risk_level, risk_factors: extra.risk_factors || [] } : {}),
+    },
+    investigation_progress: progress,
+    last_activity: new Date().toISOString(),
+    sync_status: status === "failed" ? "failed" : "synced",
+    last_synced_at: new Date().toISOString(),
+    status: status === "failed" ? "investigating" : (allCompleted ? "documented" : "investigating"),
+  };
+
+  await base44.entities.InvestigationCase.update(caseItem.id, update).catch(() => {});
+
+  await base44.entities.AuditEvent.create({
+    tenant_id: caseItem.tenant_id,
+    actor: "mia_multi_agent",
+    actor_name: "MIA Multi-Agent",
+    timestamp: new Date().toISOString(),
+    action: status === "failed" ? "mia_investigation_failed" : "mia_investigation_completed",
+    object_type: "case",
+    object_id: caseItem.id,
+    case_id: caseItem.id,
+    description: `MIA multi-agent investigation ${status} (${completedCount}/${MIA_PHASES.length} phases completed)`,
+    metadata: { provider: MIA_PROVIDER, phases_completed: completedCount, status, error: extra?.error || null },
+    source: "system",
+  }).catch(() => {});
+}

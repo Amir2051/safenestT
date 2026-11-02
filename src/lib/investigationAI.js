@@ -38,6 +38,21 @@ export const PROVIDERS = {
       return body.data;
     },
   },
+  mia: {
+    id: "mia",
+    label: "MIA Multi-Agent (Base44)",
+    description: "SafeNestT MIA multi-agent workflow — planning, evidence, three specialist analysts, reality-check, deterministic risk, evidence-gated dossier. Runs server-side.",
+    available: true,
+    models: [
+      { id: "base44-mia-multi-agent", label: "MIA Multi-Agent", free: true },
+    ],
+    // MIA is executed by the backend (startCaseInvestigation / miaInvestigation).
+    // It is never an inference provider for a single phase, so this throws rather
+    // than silently pretending a one-shot call is a multi-agent investigation.
+    run: async () => {
+      throw new Error("MIA Multi-Agent runs server-side via startCaseInvestigation — it is not a single inference call.");
+    },
+  },
   openrouter: {
     id: "openrouter",
     label: "OpenRouter (free models)",

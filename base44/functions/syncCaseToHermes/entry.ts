@@ -3,6 +3,7 @@ import { secrets } from "base44:runtime";
 import {
   loadHermesCredentials, normalizeRoot, buildInvestigationsUrl, investigationFetch, extractInvestigationId,
 } from "../../shared/hermesHttp.ts";
+import { readProviderConfig } from "../../shared/investigationProvider.ts";
 
 /**
  * syncCaseToHermes — idempotently synchronizes a SafeNestT InvestigationCase to
@@ -137,6 +138,20 @@ export default async function (req: Request): Promise<Response> {
       caseItem = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
     }
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: sourceCaseId });
+
+    // Provider routing: when MIA Multi-Agent is the active provider, no Hermes
+    // investigation is created for this case — the run is dispatched to the MIA
+    // engine instead (startCaseInvestigation). Prevents silent cross-routing.
+    const providerCfg = await readProviderConfig(base44);
+    if (providerCfg.provider === "mia") {
+      return Response.json({
+        ok: false,
+        status: "wrong_provider",
+        provider: "mia",
+        case_id: caseId,
+        error: "MIA Multi-Agent is the active investigation provider; no Hermes investigation was created.",
+      });
+    }
 
     const { apiKey, configuredBase, keySanitized } = loadHermesCredentials(secrets);
     if (!apiKey) return Response.json({ ok: false, status: "not_configured", error: "hermes-api_key secret is not configured" });

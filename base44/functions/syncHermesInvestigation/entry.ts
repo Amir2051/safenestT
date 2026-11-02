@@ -255,6 +255,19 @@ export default async function (req: Request): Promise<Response> {
     let caseItem = resolveBody.case || await base44.entities.InvestigationCase.get(caseId).catch(() => null);
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: caseId });
 
+    // Cross-provider guard: a case investigated by MIA Multi-Agent must never be
+    // synced through the Hermes lifecycle. Return an honest error instead of
+    // creating a Hermes investigation for it.
+    if (String(caseItem.workflow?.provider || "") === "mia") {
+      return Response.json({
+        ok: false,
+        status: "wrong_provider",
+        provider: "mia",
+        case_id: caseId,
+        error: "This case is investigated by MIA Multi-Agent; Hermes sync is disabled for it.",
+      });
+    }
+
     let investigationId = caseItem.workflow?.hermes_investigation_id || payload?.investigation_id;
     if (!investigationId) {
       // No Hermes investigation exists yet — create it idempotently via
