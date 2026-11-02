@@ -169,9 +169,16 @@ export async function investigationFetch(
 // Load + sanitize the Hermes credentials from app secrets. Returns an empty
 // value for either piece if not configured so the caller can fail loudly.
 export function loadHermesCredentials(secrets: { get: (name: string) => any }) {
-  const rawKey = secrets.get("hermes-api_key");
+  // The live gateway (hermes-engine.safenestt.com) authenticates with the
+  // HERMES_API_KEY secret. "hermes-api_key" is the legacy name and holds a key
+  // issued for the retired api.safenestt.com deployment, so it is used only as
+  // a fallback when HERMES_API_KEY is absent — preferring it causes every
+  // authenticated call to fail with 401 invalid_key.
+  const primary = sanitizeSecret(secrets.get("HERMES_API_KEY"));
+  const legacy = sanitizeSecret(secrets.get("hermes-api_key"));
+  const apiKey = primary.value || legacy.value;
+  const keySanitized = primary.value ? primary.modified : legacy.modified;
   const rawBase = secrets.get("HERMES_BASE_URL");
-  const { value: apiKey, modified: keySanitized } = sanitizeSecret(rawKey);
   const { value: configuredBase } = sanitizeSecret(rawBase);
   return { apiKey, configuredBase, keySanitized };
 }
