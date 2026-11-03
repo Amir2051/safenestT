@@ -769,18 +769,18 @@ export async function runHermesInvestigation({
     }).catch(() => {});
   }
 
-  await logAuditEvent({
-    action: partialCompletion ? "hermes_investigation_partial" : (finalStatus === "completed" ? "hermes_investigation_completed" : "hermes_investigation_failed"),
-    objectType: "case",
-    objectId: caseId,
-    caseId,
-    description: pollingError
-      ? `Hermes investigation ${investigationId} failed during polling: ${pollingError?.message || pollingError}`
-      : (partialCompletion
-        ? `Hermes investigation ${investigationId} completed with partial results: ${persisted.evidence} evidence, ${persisted.findings || 0} findings; investigator review required.`
-        : `Hermes investigation ${investigationId} ${finalStatus}: ${last.status}`),
-    metadata: { investigation_id: investigationId, status: last.status, persisted: persistedOutputs, partial_completion: partialCompletion, error: pollingError ? String(pollingError?.message || pollingError) : undefined },
-  }).catch(() => {});
+  // The server-side sync step writes the authoritative terminal audit event.
+  // Only log here when polling itself failed before the server could finalize it.
+  if (pollingError) {
+    await logAuditEvent({
+      action: "hermes_investigation_failed",
+      objectType: "case",
+      objectId: caseId,
+      caseId,
+      description: `Hermes investigation ${investigationId} failed during polling: ${pollingError?.message || pollingError}`,
+      metadata: { investigation_id: investigationId, status: last.status, persisted: persistedOutputs, error: String(pollingError?.message || pollingError) },
+    }).catch(() => {});
+  }
 
   if (pollingError) throw pollingError;
 
