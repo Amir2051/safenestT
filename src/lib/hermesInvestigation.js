@@ -81,7 +81,7 @@ function isTerminal(status) {
 }
 
 function isPersistedPartialCompletion(status, persisted) {
-  const normalized = String(status || "").toLowerCase().trim().replace(/[\\s-]+/g, "_");
+  const normalized = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
   const partialStatuses = new Set([
     "failed_with_results", "completed_with_errors", "completed_with_warnings",
     "completed_with_failures", "partial_success", "partially_completed",
