@@ -1,6 +1,8 @@
 #env
 .env
 .env.*
+datenoApi.env
+.dateno_cmd.yaml
 
 # Logs
 logs
@@ -27,6 +29,5 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
 base44/.app.jsonc
 pat.env

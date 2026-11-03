@@ -42,10 +42,46 @@ export default function CasesManagement() {
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ["cases-management"],
     queryFn: async () => {
-      const res = await base44.functions.invoke("getInvestigationCaseInventory", {});
-      const body = res?.data ?? res;
-      if (!body?.ok) throw new Error(body?.error || "Failed to load case inventory");
-      return body.cases || [];
+      // Prefer the server inventory when backend functions are available.
+      // Some Base44 workspaces block function execution (HTTP 402); the entity
+      // SDK still applies the user's normal RLS rules, so fall back to direct
+      // reads instead of presenting every existing case as missing.
+      try {
+        const res = await base44.functions.invoke("getInvestigationCaseInventory", {});
+        const body = res?.data ?? res;
+        if (body?.ok && Array.isArray(body.cases)) return body.cases;
+      } catch (error) {
+        console.warn("Case inventory function unavailable; using RLS-scoped entity reads.", error?.message || error);
+      }
+
+      const readList = async (entity, sort = "-created_date") => {
+        try { return await entity.list(sort, 5000); } catch { return []; }
+      };
+      const [canonical, myCases, clientCases, masterCases] = await Promise.all([
+        readList(base44.entities.InvestigationCase),
+        readList(base44.entities.MyCase),
+        readList(base44.entities.ClientCase),
+        readList(base44.entities.MasterCase, "-generated_date"),
+      ]);
+      const mapped = new Set((canonical || []).filter(c => c.source_case_id).map(c => `${c.source_case_type || "legacy"}:${c.source_case_id}`));
+      const normalizeLegacy = (record, sourceType) => ({
+        ...record,
+        id: record.id,
+        source_case_id: record.id,
+        source_case_type: sourceType,
+        case_title: record.case_title || record.title || (record.client_name ? `Case — ${record.client_name}` : null) || (record.case_number ? `Case ${record.case_number}` : `Case ${record.id}`),
+        victim_name: record.victim_name || record.client_name || record.user_id || "Unknown",
+        victim_email: record.victim_email || record.client_email || record.created_by_email || "",
+        fraud_type: record.fraud_type || record.issue_type || record.incident_classification || "other",
+        amount_stolen_usd: Number(record.amount_stolen_usd ?? record.amount_lost ?? record.financial_loss?.total_amount_usd ?? 0) || 0,
+        _legacy_source: true,
+      });
+      const legacy = [
+        ...(myCases || []).map(c => normalizeLegacy(c, "MyCase")),
+        ...(clientCases || []).map(c => normalizeLegacy(c, "ClientCase")),
+        ...(masterCases || []).map(c => normalizeLegacy(c, "MasterCase")),
+      ].filter(c => !mapped.has(`${c.source_case_type}:${c.id}`));
+      return [...(canonical || []), ...legacy].sort((a, b) => new Date(b.created_date || b.generated_date || 0).getTime() - new Date(a.created_date || a.generated_date || 0).getTime());
     },
   });
 

@@ -280,6 +280,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         { id: "subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
         { id: "user-export", label: "User Export", icon: FileBarChart, path: "/UserExport", glow: "cyan" },
         { id: "org-verifications", label: "Org Verifications", icon: ShieldCheck, path: "/OrganizationVerifications", glow: "emerald" },
+        { id: "investigation-providers", label: "Providers", icon: Bot, path: "/InvestigationProviders", glow: "purple" },
         { id: "admin-support", label: "Support Queue", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },
       ],
     },

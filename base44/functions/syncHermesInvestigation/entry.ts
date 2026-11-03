@@ -54,8 +54,67 @@ function normalizeStatus(st) {
 }
 
 function isTerminal(status) {
-  const s = String(status || "").toLowerCase();
-  return ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "cancelled", "canceled", "aborted"].includes(s);
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return [
+    "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+    "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+    "partial_success", "partially_completed", "partial_failure", "partially_failed",
+    "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+    "aborted", "expired", "timeout", "timed_out",
+  ].includes(s);
+}
+
+function isFailedStatus(status) {
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  // Only statuses that mean the engine stopped without a usable partial
+  // completion belong here. Result-bearing partial statuses are handled below.
+  return [
+    "failed", "error", "errored", "cancelled", "canceled",
+    "aborted", "expired", "timeout", "timed_out",
+  ].includes(s);
+}
+
+function isPartialStatus(status) {
+  const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return [
+    "failed_with_results", "completed_with_errors", "completed_with_warnings",
+    "completed_with_failures", "partial_success", "partially_completed",
+    "partial_failure", "partially_failed",
+  ].includes(s);
+}
+
+// A successful HTTP/tool invocation is not evidence by itself. Reject empty
+// provider responses (e.g. echoed query strings with empty DNS/WHOIS results).
+function hasSourceBackedEvidence(reportData) {
+  const metadataKeys = new Set(["domain", "target", "source", "query", "status"]);
+  function hasSubstantiveValue(value, key = "") {
+    if (metadataKeys.has(String(key).toLowerCase())) return false;
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "boolean") return value;
+    if (Array.isArray(value)) return value.some((item) => hasSubstantiveValue(item));
+    if (typeof value === "object") {
+      return Object.entries(value).some(([childKey, childValue]) => hasSubstantiveValue(childValue, childKey));
+    }
+    return false;
+  }
+
+  const evidence = Array.isArray(reportData?.evidence) ? reportData.evidence : [];
+  return evidence.some((item) => {
+    const call = item?.data?.tool_call;
+    const result = call?.result;
+    const payload = result?.data ?? item?.data?.data;
+    if (!call || !["success", "ok"].includes(String(call.status || "").toLowerCase())) return false;
+    if (!payload || typeof payload !== "object") return false;
+    return hasSubstantiveValue(payload);
+  });
+}
+
+// A case may close only after both a report and at least one source-backed
+// evidence record have actually been persisted to SafeNestT entities.
+function hasPersistedResults(persisted) {
+  return Number(persisted?.evidence) > 0 && typeof persisted?.report_id === "string" && persisted.report_id.trim().length > 0;
 }
 
 function extractStatus(data) {
@@ -196,6 +255,19 @@ export default async function (req: Request): Promise<Response> {
     let caseItem = resolveBody.case || await base44.entities.InvestigationCase.get(caseId).catch(() => null);
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: caseId });
 
+    // Cross-provider guard: a case investigated by MIA Multi-Agent must never be
+    // synced through the Hermes lifecycle. Return an honest error instead of
+    // creating a Hermes investigation for it.
+    if (String(caseItem.workflow?.provider || "") === "mia") {
+      return Response.json({
+        ok: false,
+        status: "wrong_provider",
+        provider: "mia",
+        case_id: caseId,
+        error: "This case is investigated by MIA Multi-Agent; Hermes sync is disabled for it.",
+      });
+    }
+
     let investigationId = caseItem.workflow?.hermes_investigation_id || payload?.investigation_id;
     if (!investigationId) {
       // No Hermes investigation exists yet — create it idempotently via
@@ -218,32 +290,65 @@ export default async function (req: Request): Promise<Response> {
     const proxyRes = await base44.functions.invoke("hermesProxy", { action: "get_investigation", investigation_id: investigationId });
     const proxyBody = proxyRes && proxyRes.data ? proxyRes.data : proxyRes;
     if (!proxyBody || proxyBody.ok === false) {
+      const failedStatus = proxyBody?.status || "error";
+
+      // A 404 means Hermes no longer recognises the stored investigation id.
+      // Leaving the case in "pending"/"active" made the scheduled dispatcher
+      // retry the same dead id forever, so the case never progressed and never
+      // reported why. Clear the stale mapping and record the real reason; the
+      // next Run creates a fresh investigation via syncCaseToHermes.
+      if (failedStatus === "not_found") {
+        const wf = caseItem.workflow || {};
+        await base44.entities.InvestigationCase.update(caseId, {
+          sync_status: "failed",
+          last_synced_at: new Date().toISOString(),
+          workflow: {
+            ...wf,
+            hermes_investigation_id: null,
+            hermes_status: "not_found",
+            hermes_error: "Hermes no longer recognises the stored investigation id (404 investigation_not_found). The mapping was cleared; run the investigation again to create a new one.",
+          },
+        }).catch(() => null);
+        return Response.json({
+          ok: false,
+          status: "not_found",
+          action: "stale_mapping_cleared",
+          case_id: caseId,
+          hermes_investigation_id: investigationId,
+          error: "Hermes investigation not found; stale mapping cleared.",
+        });
+      }
+
       return Response.json({
         ok: false,
-        status: proxyBody?.status || "error",
+        status: failedStatus,
         error: proxyBody?.error || "Hermes status fetch failed",
         upstream_status: proxyBody?.upstream_status,
+        correlation_id: proxyBody?.correlation_id,
       });
     }
     const statusData = proxyBody.data || {};
 
     const hermesStatus = extractStatus(statusData);
     const phaseStatuses = extractPhaseStatuses(statusData);
-    const isFailed = hermesStatus === "failed" || hermesStatus === "error";
+    const isFailed = isFailedStatus(hermesStatus);
+    const isPartial = isPartialStatus(hermesStatus);
     const phases = {};
     for (const p of CANONICAL_PHASES) {
       phases[p] = phaseStatuses[p] || (p === "planning" ? "running" : "pending");
     }
     const terminal = isTerminal(hermesStatus);
-    // Hermes' investigation status response carries only lifecycle metadata
+    // Log status for debugging — helps operators see if the investigation is
+    // stuck in QUEUED (not started yet), RUNNING, or COMPLETED.
+    console.log(`[hermes-sync] case=${caseId} hermes_status=${hermesStatus} terminal=${terminal}`);
+    // Hermes investigation status response carries only lifecycle metadata
     // (no per-phase breakdown). When Hermes reports COMPLETED, the whole
     // pipeline is done — reflect that truthfully by marking every phase
     // completed. On FAILED, mark the in-flight phase failed. This is lifecycle
-    // status only; no findings/evidence/report are fabricated — those are
-    // persisted only when Hermes actually returns them (below).
-    if (terminal && !isFailed) {
-      for (const p of CANONICAL_PHASES) phases[p] = "completed";
-    } else if (terminal && isFailed) {
+    // A terminal lifecycle status is not proof of a successful investigation.
+    // Keep phases incomplete until the report has source-backed evidence.
+    // Only the validated-results branch below may close the case.
+    if (terminal && isFailed) {
       const inflight = CANONICAL_PHASES.find((p) => phases[p] === "running") || "planning";
       phases[inflight] = "failed";
     }
@@ -269,9 +374,10 @@ export default async function (req: Request): Promise<Response> {
     const runningPhase = CANONICAL_PHASES.find((p) => mergedPhases[p]?.status === "running");
     let currentPhase = runningPhase || wf.current_phase || "planning";
     let caseStatus;
-    if (terminal && hermesStatus !== "failed" && hermesStatus !== "error") {
-      currentPhase = "closed";
-      caseStatus = "closed";
+    if (terminal && !isFailed) {
+      // Candidate success only; report/evidence validation happens below.
+      currentPhase = "evidence";
+      caseStatus = "investigating";
     } else if (hermesStatus === "queued" || hermesStatus === "queue" || hermesStatus === "pending" || hermesStatus === "waiting" || hermesStatus === "not_started") {
       // Reflect QUEUED truthfully when nothing is running yet.
       caseStatus = (hermesStatus === "queued" || hermesStatus === "queue") ? "queued" : "investigating";
@@ -294,7 +400,7 @@ export default async function (req: Request): Promise<Response> {
       investigation_progress: progress,
       last_activity: now,
       last_synced_at: now,
-      sync_status: terminal ? (isFailed ? "failed" : "synced") : "active",
+      sync_status: terminal ? (isFailed || isPartial ? "failed" : "synced") : "active",
       ...(caseStatus ? { status: caseStatus } : {}),
     };
     await base44.entities.InvestigationCase.update(caseId, updatePatch).catch(() => null);
@@ -329,14 +435,30 @@ export default async function (req: Request): Promise<Response> {
       const reportData = (reportRes?.data ?? reportRes)?.data;
       const standaloneEvidence = (evidenceRes?.data ?? evidenceRes)?.data;
       const standaloneFindings = (findingsRes?.data ?? findingsRes)?.data;
-      if (!reportData) {
-        // No report retrievable — record the gap truthfully without fabricating.
+      const sourceBacked = !!reportData && hasSourceBackedEvidence(reportData);
+      if (!sourceBacked) {
+        // Do not close a case or publish a completed run on empty/echo-only
+        // provider output. Keep the real Hermes status, but flag SafeNestT's
+        // investigation as requiring evidence/source remediation.
+        const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+        const latestWorkflow = latestCase?.workflow || workflowUpdate;
+        const latestPhases = { ...(latestWorkflow.phases || {}) };
+        latestPhases.evidence = { ...(latestPhases.evidence || {}), status: "failed" };
+        latestPhases.dossier = { ...(latestPhases.dossier || {}), status: "blocked", output: { results_persisted: false, reason: !reportData ? "Hermes report unavailable" : "No source-backed evidence returned" } };
+        await base44.entities.InvestigationCase.update(caseId, {
+          status: "investigating",
+          sync_status: "failed",
+          investigation_progress: Math.round((CANONICAL_PHASES.filter((p) => latestPhases[p]?.status === "completed").length / CANONICAL_PHASES.length) * 100),
+          workflow: { ...latestWorkflow, current_phase: "evidence", phases: latestPhases, hermes_error: !reportData ? "Hermes report unavailable; results were not marked complete." : "No source-backed evidence returned; results were not marked complete." },
+        }).catch(() => null);
         await base44.entities.AuditEvent.create({
           tenant_id: tenantId, actor: user.email, actor_name: user.full_name || user.email,
           timestamp: now, action: "hermes_results_unavailable", object_type: "case",
           object_id: caseId, case_id: caseId,
-          description: `Hermes investigation ${invId} completed but /report returned no data`,
-          metadata: { investigation_id: invId }, source: "hermes",
+          description: !reportData
+            ? `Hermes investigation ${invId} returned no report; case left incomplete`
+            : `Hermes investigation ${invId} returned no source-backed evidence; case left incomplete`,
+          metadata: { investigation_id: invId, report_available: !!reportData, source_backed_evidence: false }, source: "hermes",
         }).catch(() => null);
       } else {
         // Canonical arrays from /report (richest schema: confidence, provenance, metadata).
@@ -455,17 +577,29 @@ export default async function (req: Request): Promise<Response> {
         const edgeRecs = edgePayloads.length ? await base44.entities.GraphEdge.bulkCreate(edgePayloads).catch(() => []) : [];
         persisted.graph_edges = edgeRecs.length;
 
+        // A source-backed upstream report is insufficient if SafeNestT failed
+        // to persist its report or evidence records. Never close on partial writes.
+        const persistenceSucceeded = hasPersistedResults(persisted);
+
         // ── Mark results persisted on the dossier phase output (idempotency marker)
         // AND write the risk score/level/factors onto the case workflow.
+        if (persistenceSucceeded) {
         const c2 = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
         const wf2 = c2?.workflow || workflowUpdate;
         const mergedPhases2 = { ...(wf2.phases || {}) };
+        mergedPhases2.evidence = {
+          ...(mergedPhases2.evidence || {}),
+          status: "completed",
+          completed_at: mergedPhases2.evidence?.completed_at || now,
+        };
         mergedPhases2.dossier = {
           ...(mergedPhases2.dossier || {}),
           status: "completed",
           completed_at: now,
           output: {
             results_persisted: true,
+            partial: isPartial,
+            hermes_status: hermesStatus,
             evidence_count: persisted.evidence,
             findings_count: persisted.findings,
             report_id: persisted.report_id,
@@ -478,15 +612,77 @@ export default async function (req: Request): Promise<Response> {
             standalone_findings_count: Array.isArray(standaloneFindings) ? standaloneFindings.length : null,
           },
         };
-        await base44.entities.InvestigationCase.update(caseId, {
-          workflow: {
-            ...wf2,
-            phases: mergedPhases2,
-            risk_score: persisted.risk_score,
-            risk_level: persisted.risk_level,
-            risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
-          },
-        }).catch(() => null);
+
+        if (isPartial) {
+          // Preserve usable results, but never represent a partial engine run
+          // as a fully completed investigation. The persisted marker prevents
+          // duplicate records on subsequent polling; the case remains open
+          // for investigator review and the sync status remains visibly failed.
+          const partialProgress = Math.round(
+            (CANONICAL_PHASES.filter((phase) => mergedPhases2[phase]?.status === "completed").length /
+              CANONICAL_PHASES.length) * 100,
+          );
+          await base44.entities.InvestigationCase.update(caseId, {
+            status: "investigating",
+            sync_status: "failed",
+            investigation_progress: partialProgress,
+            workflow: {
+              ...wf2,
+              current_phase: "analysis",
+              phases: mergedPhases2,
+              hermes_status: hermesStatus,
+              hermes_error: statusData?.error || `Hermes returned partial results (${hermesStatus}); saved results require investigator review.`,
+              risk_score: persisted.risk_score,
+              risk_level: persisted.risk_level,
+              risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
+            },
+          }).catch(() => null);
+        } else {
+          // Close only after the report passed the source-backed evidence gate.
+          // A terminal Hermes status by itself never closes a SafeNestT case.
+          const completedPhases = { ...mergedPhases2 };
+          for (const phase of CANONICAL_PHASES) {
+            completedPhases[phase] = {
+              ...(completedPhases[phase] || {}),
+              status: "completed",
+              completed_at: completedPhases[phase]?.completed_at || now,
+            };
+          }
+          await base44.entities.InvestigationCase.update(caseId, {
+            status: "closed",
+            sync_status: "synced",
+            investigation_progress: 100,
+            workflow: {
+              ...wf2,
+              current_phase: "closed",
+              phases: completedPhases,
+              risk_score: persisted.risk_score,
+              risk_level: persisted.risk_level,
+              risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
+            },
+          }).catch(() => null);
+        }
+        } else {
+          const latestCase = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+          const latestWorkflow = latestCase?.workflow || workflowUpdate;
+          const latestPhases = { ...(latestWorkflow.phases || {}) };
+          latestPhases.evidence = { ...(latestPhases.evidence || {}), status: "failed" };
+          latestPhases.dossier = {
+            ...(latestPhases.dossier || {}),
+            status: "blocked",
+            output: { results_persisted: false, reason: "SafeNestT report/evidence persistence incomplete", persisted },
+          };
+          await base44.entities.InvestigationCase.update(caseId, {
+            status: "investigating",
+            sync_status: "failed",
+            workflow: {
+              ...latestWorkflow,
+              current_phase: "evidence",
+              phases: latestPhases,
+              hermes_error: "Hermes returned source-backed evidence, but SafeNestT could not persist the report and evidence records.",
+            },
+          }).catch(() => null);
+        }
       }
 
       // Mark the active InvestigationRun terminal.
@@ -494,41 +690,59 @@ export default async function (req: Request): Promise<Response> {
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: "completed",
+          status: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) && !isPartial ? "completed" : "failed",
+          error: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) && !isPartial
+            ? undefined
+            : (isPartial
+              ? `Hermes returned partial results (${hermesStatus}); saved outputs require investigator review.`
+              : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete."),
           output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,
         }).catch(() => null);
       }
 
-      // Immutable audit trail.
+      // Immutable audit trail distinguishes successful source-backed results
+      // from a terminal engine response with unusable evidence.
       await base44.entities.AuditEvent.create({
         tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
         timestamp: now,
-        action: "hermes_investigation_completed",
+        action: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted)
+          ? (isPartial ? "hermes_investigation_partial" : "hermes_investigation_completed")
+          : "hermes_investigation_failed",
         object_type: "case", object_id: caseId, case_id: caseId,
-        description: `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report ${persisted.report_id ? "present" : "absent"}`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
+        description: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted)
+          ? (isPartial
+            ? `Hermes investigation ${investigationId} returned partial results: ${persisted.evidence} evidence, ${persisted.findings} findings, report saved; investigator review required`
+            : `Hermes investigation ${investigationId} results persisted: ${persisted.evidence} evidence, ${persisted.findings} findings, report present`)
+          : `Hermes investigation ${investigationId} did not fully persist source-backed results; SafeNestT left the case incomplete`,
+        metadata: { investigation_id: investigationId, status: hermesStatus, persisted, source_backed_evidence: !!reportData && hasSourceBackedEvidence(reportData), persistence_succeeded: hasPersistedResults(persisted), hermes_evidence_count: reportData?.evidence_count, hermes_finding_count: reportData?.finding_count },
         source: "hermes",
       }).catch(() => null);
-    } else if (terminal && isFailed && !wasTerminal) {
-      // First time we see a FAILED investigation — mark the run failed + audit.
-      const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 5).catch(() => []);
+    } else if (terminal && isFailed) {
+      // A terminal error may have been written to workflow before this version
+      // learned that status name (for example, completed_with_errors). Always
+      // close any still-running run record, but only emit the audit event once.
+      const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 10).catch(() => []);
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: "failed", error: statusData?.error || "Hermes investigation failed",
-          completed_at: now, persisted_outputs: persisted,
+          status: "failed",
+          error: statusData?.error || `Hermes reached terminal status: ${hermesStatus}`,
+          completed_at: now,
+          persisted_outputs: persisted,
         }).catch(() => null);
       }
-      await base44.entities.AuditEvent.create({
-        tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
-        timestamp: now, action: "hermes_investigation_failed", object_type: "case",
-        object_id: caseId, case_id: caseId,
-        description: `Hermes investigation ${investigationId} failed: ${statusData?.error || "unknown"}`,
-        metadata: { investigation_id: investigationId, status: hermesStatus, error: statusData?.error },
-        source: "hermes",
-      }).catch(() => null);
+      if (!wasTerminal) {
+        await base44.entities.AuditEvent.create({
+          tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
+          timestamp: now, action: "hermes_investigation_failed", object_type: "case",
+          object_id: caseId, case_id: caseId,
+          description: `Hermes investigation ${investigationId} ended with status ${hermesStatus}: ${statusData?.error || "no error details returned"}`,
+          metadata: { investigation_id: investigationId, status: hermesStatus, error: statusData?.error },
+          source: "hermes",
+        }).catch(() => null);
+      }
     }
 
     return Response.json({

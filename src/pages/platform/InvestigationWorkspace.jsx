@@ -90,12 +90,41 @@ export default function InvestigationWorkspace() {
   const { data: caseItem, isLoading } = useQuery({
     queryKey: ["investigation-case", caseId],
     queryFn: async () => {
-      // A case opened from the legacy Cases/My Cases inventory may have a
-      // MyCase/ClientCase/MasterCase id. Resolve it server-side to the canonical
-      // InvestigationCase before rendering or running Hermes.
-      const res = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseId });
-      const body = res?.data ?? res;
-      if (body?.ok && body.case) return body.case;
+      // Prefer the server resolver. If function execution is blocked for this
+      // workspace, recover readable records directly through the entity SDK;
+      // Base44 RLS remains in force for each read.
+      try {
+        const res = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseId });
+        const body = res?.data ?? res;
+        if (body?.ok && body.case) return body.case;
+      } catch (error) {
+        console.warn("Case resolver function unavailable; trying direct case reads.", error?.message || error);
+      }
+
+      const direct = await base44.entities.InvestigationCase.get(caseId).catch(() => null);
+      if (direct) return direct;
+      const mapped = await base44.entities.InvestigationCase.filter({ source_case_id: caseId }, "-created_date", 10).catch(() => []);
+      if (mapped?.length) return mapped[0];
+
+      const sources = ["MyCase", "ClientCase", "MasterCase"];
+      for (const sourceType of sources) {
+        const entity = base44.entities[sourceType];
+        if (!entity?.get) continue;
+        const record = await entity.get(caseId).catch(() => null);
+        if (!record) continue;
+        return {
+          ...record,
+          id: record.id,
+          source_case_id: record.id,
+          source_case_type: sourceType,
+          case_title: record.case_title || record.title || (record.client_name ? `Case — ${record.client_name}` : null) || (record.case_number ? `Case ${record.case_number}` : `Case ${record.id}`),
+          victim_name: record.victim_name || record.client_name || record.user_id || "Unknown",
+          victim_email: record.victim_email || record.client_email || record.created_by_email || "",
+          fraud_type: record.fraud_type || record.issue_type || record.incident_classification || "other",
+          amount_stolen_usd: Number(record.amount_stolen_usd ?? record.amount_lost ?? record.financial_loss?.total_amount_usd ?? 0) || 0,
+          _legacy_source: true,
+        };
+      }
       return null;
     },
     enabled: !!caseId,
@@ -167,7 +196,31 @@ export default function InvestigationWorkspace() {
     );
   }
   if (isLoading) return <div className="p-8"><EmptyState variant="loading" title="Loading case…" /></div>;
-  if (!caseItem) return <div className="p-8"><EmptyState variant="error" title="Case not found" description="This case may have been deleted or you may not have access." /></div>;
+  if (!caseItem) return <div className="p-8"><EmptyState variant="error" title="Case unavailable" description="The case could not be read through the current account. It has not been deleted by this recovery flow; check the account's record access and try again." /></div>;
+
+  // Legacy records can now be opened even when server functions are blocked,
+  // but they must not be passed into Hermes as if their IDs were canonical.
+  if (caseItem._legacy_source && !caseItem.canonical_case_id) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+        <Link to="/CasesManagement" className="inline-flex items-center text-sm text-gray-400 hover:text-cyan-400 transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-1.5" />Back to cases
+        </Link>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-5 space-y-3">
+          <h1 className="text-xl font-semibold text-white">{caseItem.case_title || caseItem.case_number || "Recovered legacy case"}</h1>
+          <p className="text-sm text-amber-100">This original case record is readable and has not been deleted. It is stored in the legacy {caseItem.source_case_type} entity and has no confirmed canonical investigation record yet, so Hermes execution is disabled here to prevent using the wrong case ID.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-300">
+            <div><span className="text-gray-500">Case ID:</span> <span className="font-mono">{caseItem.source_case_id || caseItem.id}</span></div>
+            <div><span className="text-gray-500">Victim:</span> {caseItem.victim_name || caseItem.client_name || "Unknown"}</div>
+            <div><span className="text-gray-500">Status:</span> {caseItem.status || "Unknown"}</div>
+            <div><span className="text-gray-500">Reported loss:</span> ${Number(caseItem.amount_stolen_usd ?? caseItem.amount_lost ?? 0).toLocaleString()}</div>
+          </div>
+          {caseItem.description && <p className="text-sm text-gray-300 whitespace-pre-wrap">{caseItem.description}</p>}
+        </div>
+      </div>
+    );
+  }
+  const workspaceCaseId = caseItem.id || caseId;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -186,7 +239,7 @@ export default function InvestigationWorkspace() {
       )}
 
       {canMutate ? (
-        <InvestigationRunnerPanel caseId={caseId} caseItem={caseItem} autoRun={runFlag === "1"} onGoToTargets={() => setActiveTab("targets")} />
+        <InvestigationRunnerPanel caseId={workspaceCaseId} caseItem={caseItem} autoRun={runFlag === "1"} onGoToTargets={() => setActiveTab("targets")} />
       ) : (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-5 flex items-start gap-3">
           <div className="w-9 h-9 rounded-md bg-amber-500/15 border border-amber-500/40 flex items-center justify-center shrink-0">
@@ -223,18 +276,18 @@ export default function InvestigationWorkspace() {
       </nav>
 
       <div className="pt-1">
-        {activeTab === "overview" && <OverviewTab caseId={caseId} caseItem={caseItem} hermesState={hermesState} />}
-        {activeTab === "evidence" && <EvidenceVaultTab caseId={caseId} />}
-        {activeTab === "targets" && <TargetsTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "findings" && <FindingsTab caseId={caseId} />}
-        {activeTab === "risk" && <RiskTab caseId={caseId} caseItem={caseItem} hermesState={hermesState} />}
-        {activeTab === "reports" && <ReportsTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "activity" && <ActivityTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "blockchain" && <BlockchainTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "entities" && <EntitiesTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "correlation" && <CorrelationTab caseId={caseId} />}
-        {activeTab === "timeline" && <TimelineTab caseId={caseId} hermesState={hermesState} />}
-        {activeTab === "osint" && <OsintProvidersTab caseId={caseId} />}
+        {activeTab === "overview" && <OverviewTab caseId={workspaceCaseId} caseItem={caseItem} hermesState={hermesState} />}
+        {activeTab === "evidence" && <EvidenceVaultTab caseId={workspaceCaseId} />}
+        {activeTab === "targets" && <TargetsTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "findings" && <FindingsTab caseId={workspaceCaseId} />}
+        {activeTab === "risk" && <RiskTab caseId={workspaceCaseId} caseItem={caseItem} hermesState={hermesState} />}
+        {activeTab === "reports" && <ReportsTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "activity" && <ActivityTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "blockchain" && <BlockchainTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "entities" && <EntitiesTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "correlation" && <CorrelationTab caseId={workspaceCaseId} />}
+        {activeTab === "timeline" && <TimelineTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "osint" && <OsintProvidersTab caseId={workspaceCaseId} />}
       </div>
     </div>
   );

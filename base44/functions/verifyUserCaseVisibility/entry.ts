@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
                     problems
                 });
             }
-        });
+        }
 
         return Response.json({
             user: {

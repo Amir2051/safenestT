@@ -11,8 +11,8 @@ export default function EmptyState({
   title = "No data available",
   description = "",
   variant = "empty", // 'empty' | 'loading' | 'error' | 'not_connected'
-  action,
-  className,
+  action = null,
+  className = "",
 }) {
   const config = {
     empty: {

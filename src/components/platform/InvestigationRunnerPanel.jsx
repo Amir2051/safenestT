@@ -2,63 +2,95 @@ import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2, Cpu, CheckCircle2, XCircle, History, Activity,
-  RotateCw, Lock, Zap, Crosshair,
+  Loader2, Cpu, CheckCircle2, XCircle, History,
+  RotateCw, Zap, Crosshair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { PHASES, runPhase, getRunHistory, testProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
-import { getProvider } from "@/lib/investigationAI";
+import { PHASES, runPhase, getRunHistory } from "@/lib/investigationRunner";
+import { getProvider, providerLabel, DEFAULT_PROVIDER } from "@/lib/investigationAI";
+import { getProviderConfig } from "@/lib/investigationDispatch";
 import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, HermesError } from "@/lib/hermesInvestigation";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";
+import InvestigationProviderPicker from "@/components/platform/InvestigationProviderPicker";
+import ConfirmProviderLaunchDialog from "@/components/platform/ConfirmProviderLaunchDialog";
 import { toast } from "sonner";
 
-const TEST_TONE = {
-  ok: "border-green-500/20 bg-green-500/[0.04] text-green-300",
-  degraded: "border-amber-500/20 bg-amber-500/[0.04] text-amber-300",
-  failed: "border-red-500/20 bg-red-500/[0.04] text-red-300",
-};
+const TERMINAL_HERMES = [
+  "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+  "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+  "partial_success", "partially_completed", "partial_failure", "partially_failed",
+  "failed", "error", "errored", "failed_with_results", "cancelled", "canceled",
+  "aborted", "expired", "timeout", "timed_out",
+];
+
+const FAILED_HERMES = [
+  "failed", "error", "errored", "failed_with_results", "completed_with_errors",
+  "completed_with_failures", "partial_failure", "partially_failed", "cancelled",
+  "canceled", "aborted", "expired", "timeout", "timed_out",
+];
+
+const norm = (s) => String(s || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
 
 export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, onGoToTargets }) {
   const qc = useQueryClient();
   const wf = caseItem?.workflow || {};
-  // Full investigation runs use Hermes; standalone workflow phases use the
-  // default OpenRouter provider. Ignore stale provider values on old cases.
-  const [provider, setProvider] = useState(DEFAULT_PROVIDER);
-  const [model, setModel] = useState(DEFAULT_MODEL);
+
+  // ── Per-run provider selection ────────────────────────────────────────────
+  // The administrator's saved default only preselects; this value is the
+  // provider for the NEXT run and is sent explicitly with the launch request.
+  const [runProvider, setRunProvider] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   const [running, setRunning] = useState(null);
   const [runAllActive, setRunAllActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-  // Live phase statuses + Hermes investigation id from the real pipeline.
   const [liveStatuses, setLiveStatuses] = useState(null);
   const [hermesInvestigationId, setHermesInvestigationId] = useState(
     caseItem?.workflow?.hermes_investigation_id || null
   );
 
-  // Pre-flight: a Hermes investigation requires at least one target. Fetch the
-  // case's InvestigationTarget records so the runner can disable Start and tell
-  // the investigator exactly what must be added when none exist.
+  // Administrator-configured default provider (read-only here).
+  const { data: providerConfig } = useQuery({
+    queryKey: ["investigation-provider"],
+    queryFn: getProviderConfig,
+    staleTime: 60000,
+  });
+  const defaultProvider = providerConfig?.provider || DEFAULT_PROVIDER;
+  useEffect(() => {
+    const configured = providerConfig?.provider;
+    if (!configured) return;
+    setRunProvider((cur) => cur || configured);
+  }, [providerConfig?.provider]);
+
+  // Pre-flight: a case needs at least one target or a description. Fetch the
+  // case's InvestigationTarget records so the runner can explain what is missing.
   const { data: targets = [] } = useQuery({
     queryKey: ["targets", caseId],
     queryFn: () => base44.entities.InvestigationTarget.filter({ case_id: caseId }, "-created_date", 200),
     enabled: !!caseId,
   });
   const hasTargets = targets.length > 0;
-  // Narrative-tolerant: a case may contain only a description. Hermes must be
-  // allowed to investigate it (analyzing the narrative) without requiring a
-  // wallet/domain/IP/etc. first. No minimum target is enforced to start.
   const hasNarrative = !!(caseItem?.description || caseItem?.case_title);
 
-  const providerDef = getProvider(provider);
-  const models = providerDef.models;
-  const freeOnly = provider === "openrouter";
+  // Which provider owns this case (from the persisted run, not the local choice).
+  const caseProvider = wf.provider === "hermes" || wf.provider === "mia"
+    ? wf.provider
+    : (hermesInvestigationId ? "hermes" : null);
 
-  useEffect(() => {
-    if (model !== DEFAULT_MODEL) setModel(DEFAULT_MODEL);
-  }, [provider]);
+  const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
+  const hermesTerminal = !!wf.hermes_status && TERMINAL_HERMES.includes(norm(wf.hermes_status));
+  const manualRunning = !!running || runAllActive;
+  const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
+    caseItem?.status === "investigating" || caseItem?.status === "queued" ||
+    wf.hermes_status === "running" || wf.hermes_status === "queued" || wf.hermes_status === "pending" || !wf.hermes_status
+  );
+
+  const canRun = hasTargets || hasNarrative || hermesActive;
+  const providerDef = getProvider(runProvider);
+  const anyRunning = !!running || runAllActive;
 
   const { data: history = [], refetch } = useQuery({
     queryKey: ["investigation-runs", caseId],
@@ -66,30 +98,22 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     enabled: !!caseId,
   });
 
-  const savePreference = async (p, m) => {
-    try {
-      const cur = await base44.entities.InvestigationCase.get(caseId);
-      await base44.entities.InvestigationCase.update(caseId, {
-        workflow: { ...(cur.workflow || {}), provider: p, model: m },
-      });
-    } catch { /* best-effort */ }
-  };
-
-  const onProviderChange = () => {
-    // Keep this selector on the approved OpenRouter provider for phase prompts.
-    setProvider(DEFAULT_PROVIDER);
-    savePreference(DEFAULT_PROVIDER, model);
-  };
-  const onModelChange = () => { setModel(DEFAULT_MODEL); savePreference(DEFAULT_PROVIDER, DEFAULT_MODEL); };
-
   const testConnection = async () => {
+    if (!runProvider) { toast.error("Select a provider first"); return; }
     setTesting(true); setTestResult(null);
     try {
-      const res = await testProvider({ provider, model });
+      const raw = await base44.functions.invoke("investigationProviderConfig", { action: "test", provider: runProvider });
+      const body = raw?.data ?? raw;
+      const res = {
+        status: body?.ok ? "ok" : (body?.status === "degraded" ? "degraded" : "failed"),
+        provider: providerLabel(body?.provider || runProvider),
+        ms: body?.ms,
+        error: body?.error,
+      };
       setTestResult(res);
-      if (res.status === "ok") toast.success(`${provider} healthy (${res.ms}ms)`);
-      else if (res.status === "degraded") toast.warning(`${provider} responded (degraded)`);
-      else toast.error(`${provider} failed: ${res.error}`);
+      if (res.status === "ok") toast.success(`${res.provider} healthy (${res.ms}ms)`);
+      else if (res.status === "degraded") toast.warning(`${res.provider} responded (degraded)`);
+      else toast.error(`${res.provider} failed: ${res.error}`);
     } catch (e) {
       setTestResult({ status: "failed", error: e?.message || String(e) });
       toast.error("Health test failed: " + (e?.message || e));
@@ -104,25 +128,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     qc.invalidateQueries({ queryKey: ["investigation-runs", caseId] });
   };
 
-  // ── Existing-investigation auto-sync ────────────────────────────────────
-  // When this case already has a Hermes investigation that hasn't reached a
-  // terminal state, poll the server-side sync step on an interval so the case
-  // reflects the REAL Hermes status even without a manual button press. This
-  // is what un-stucks cases whose earlier client-side polling loop died on
-  // navigation/unmount.
-  const allComplete = PHASES.every((p) => wf.phases?.[p.id]?.status === "completed");
-  const hermesTerminal = wf.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wf.hermes_status).toLowerCase());
-  const manualRunning = !!running || runAllActive;
-  const hermesActive = !!hermesInvestigationId && !allComplete && !hermesTerminal && !manualRunning && (
-    caseItem?.status === "investigating" || caseItem?.status === "queued" ||
-    wf.hermes_status === "running" || wf.hermes_status === "queued" || wf.hermes_status === "pending" || !wf.hermes_status
-  );
-
+  // ── Existing Hermes investigation auto-sync ──────────────────────────────
+  // Only poll the Hermes lifecycle for a case that is actually owned by Hermes.
   const { data: autoSync } = useQuery({
     queryKey: ["hermes-sync", caseId],
     queryFn: () => syncHermesInvestigationStep(caseId),
-    enabled: hermesActive,
-    refetchInterval: hermesActive ? 8000 : false,
+    enabled: hermesActive && caseProvider === "hermes",
+    refetchInterval: hermesActive && caseProvider === "hermes" ? 8000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -133,33 +145,44 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
     qc.invalidateQueries({ queryKey: ["investigation-case", caseId] });
     if (autoSync.terminal) {
       invalidateAll();
-      if (autoSync.hermes_status === "completed" || autoSync.hermes_status === "done") {
+      const st = norm(autoSync.hermes_status);
+      if (st === "completed" || st === "done") {
         toast.success("Hermes investigation completed — results attached to this case");
-      } else if (autoSync.hermes_status === "failed" || autoSync.hermes_status === "error") {
-        toast.error("Hermes investigation failed — failure recorded on this case");
+      } else if (FAILED_HERMES.includes(st)) {
+        toast.error(`Hermes investigation ended with status: ${autoSync.hermes_status}`);
+      } else if (["completed_with_warnings", "partial_success", "partially_completed"].includes(st)) {
+        toast.warning(`Hermes finished with partial results: ${autoSync.hermes_status}`);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSync]);
 
-  // Run the REAL Hermes investigation lifecycle: create → start → poll the
-  // /v1/investigations status endpoint. The six-phase UI is driven from the
-  // real Hermes status response (onProgress), never simulated. Errors
-  // (401/404/5xx/network) are surfaced with their upstream HTTP status.
+  const cancelledRef = useRef(false);
+  useEffect(() => () => { cancelledRef.current = true; }, []);
+
+  /**
+   * Launch the confirmed provider's pipeline.
+   * The provider id is passed to the backend, which validates it and runs ONLY
+   * that provider. A failure is reported as a failure of that provider — the
+   * operator must change the selection and confirm again to retry elsewhere.
+   */
   const runPipeline = async () => {
+    const providerId = runProvider;
+    if (!providerId) { toast.error("Select an investigation provider before launching"); return; }
+
+    setConfirmOpen(false);
     setRunAllActive(true);
     setLastResult(null);
     setLiveStatuses(null);
     setRunning("planning");
+    cancelledRef.current = false;
+
     try {
-      // If this case already has a Hermes investigation that hasn't reached a
-      // terminal state, RESUME polling it — do NOT create a new one. This keeps
-      // the case/user/organization relationship intact and re-syncs the real
-      // Hermes status into the same case.
       const existingId = hermesInvestigationId || caseItem?.workflow?.hermes_investigation_id;
       const wfNow = caseItem?.workflow || {};
-      const existingTerminal = wfNow.hermes_status && ["completed", "done", "failed", "error", "cancelled", "canceled", "aborted"].includes(String(wfNow.hermes_status).toLowerCase());
-      const shouldResume = existingId && !existingTerminal && (
+      const existingTerminal = !!wfNow.hermes_status && TERMINAL_HERMES.includes(norm(wfNow.hermes_status));
+      // Resuming only applies to Hermes: there must be an open Hermes
+      // investigation on this case AND Hermes must be the selected provider.
+      const shouldResume = providerId === "hermes" && !!existingId && !existingTerminal && (
         caseItem?.status === "investigating" || caseItem?.status === "queued" ||
         wfNow.hermes_status === "running" || wfNow.hermes_status === "queued" || wfNow.hermes_status === "pending"
       );
@@ -172,47 +195,48 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         if (hid) setHermesInvestigationId(hid);
       };
 
+      const shouldStop = () => cancelledRef.current;
       const res = shouldResume
-        ? await resumeHermesInvestigation({ caseId, onProgress })
-        : await runHermesInvestigation({ caseId, caseItem, onProgress });
+        ? await resumeHermesInvestigation({ caseId, onProgress, shouldStop })
+        : await runHermesInvestigation({ caseId, caseItem, provider: providerId, onProgress, shouldStop });
 
       setLastResult(res);
-      if (res.status === "completed") toast.success("Hermes investigation completed");
-      else toast.error(`Hermes investigation ${res.status}`);
+      const engine = providerLabel(res.provider || providerId);
+      if (res.status === "completed") toast.success(`${engine} investigation completed`);
+      else if (res.status === "completed_with_errors") toast.warning(`${engine} investigation completed with agent errors — review the findings`);
+      else toast.error(`${engine} investigation ${res.status}`);
       if (res.investigation_id) setHermesInvestigationId(res.investigation_id);
       invalidateAll();
     } catch (e) {
-      const err = e instanceof HermesError ? e : { message: e?.message || String(e) };
+      const err = e instanceof HermesError ? e : { message: e?.message || String(e), hermesStatus: e?.status };
       setLastResult({
         status: "failed",
+        provider: providerId,
         error: err.message,
         hermesStatus: err.hermesStatus,
         upstreamStatus: err.upstreamStatus,
       });
       const code = err.upstreamStatus ? ` (HTTP ${err.upstreamStatus})` : "";
-      toast.error(`Hermes investigation failed${code}: ${err.message}`);
+      toast.error(`${providerLabel(providerId)} investigation failed${code}: ${err.message}`);
     } finally {
       setRunning(null);
       setRunAllActive(false);
       invalidateAll();
     }
   };
-  const runAll = runPipeline;
-  const runOne = runPipeline;
+  const runAll = () => setConfirmOpen(true);
+  const runOne = () => setConfirmOpen(true);
 
-  // Built-in Hermes test: when the workspace navigates in with ?run=1 (after
-  // creating the example.com test case), auto-start the pipeline once the case
-  // and its targets have loaded. Guarded so it only fires a single time.
+  // Built-in test hook: when the workspace navigates in with ?run=1, open the
+  // confirmation for the preselected provider once the case has loaded.
   const autoRunRef = useRef(false);
   useEffect(() => {
-    if (!autoRun || autoRunRef.current || !hasTargets || anyRunning) return;
+    if (!autoRun || autoRunRef.current || !canRun || !runProvider || anyRunning) return;
     autoRunRef.current = true;
-    runPipeline();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRun, hasTargets]);
+    setConfirmOpen(true);
+  }, [autoRun, canRun, runProvider, anyRunning]);
 
   const phaseState = (id) => wf.phases?.[id]?.status || "pending";
-  const anyRunning = !!running || runAllActive;
 
   return (
     <section className="rounded-xl border border-cyan-500/15 bg-gradient-to-br from-[#0a0f1a]/80 to-[#0f1419]/80 p-4 sm:p-5 space-y-4">
@@ -223,7 +247,21 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Investigation Engine</p>
-            <p className="text-[11px] text-gray-500">{providerDef.description}</p>
+            <p className="text-[11px] text-gray-500">
+              Selected for this run:{" "}
+              <span className={providerDef ? "text-cyan-300" : "text-amber-300"}>
+                {providerDef ? providerDef.label : "none yet"}
+              </span>
+              {caseProvider ? ` · case last run by ${providerLabel(caseProvider)}` : ""}
+            </p>
+            {providerDef && <p className="text-[10px] text-gray-600 font-mono mt-0.5">{providerDef.model}</p>}
+            {caseProvider === "mia" && wf.mia_status && (
+              <p className="text-[10px] font-mono mt-0.5 text-cyan-400/80">
+                MIA RUN: <span className={wf.mia_status === "completed" ? "text-green-400" : wf.mia_status === "failed" ? "text-red-400" : "text-cyan-300"}>
+                  {String(wf.mia_status).toUpperCase().replace(/_/g, " ")}
+                </span>
+              </p>
+            )}
             {hermesInvestigationId && (
               <p className="text-[10px] text-cyan-400/80 font-mono mt-0.5">
                 Hermes ID: {String(hermesInvestigationId).slice(0, 24)}
@@ -237,14 +275,14 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={`text-[10px] ${providerDef.available ? "border-green-500/30 text-green-400" : "border-amber-500/30 text-amber-400"}`}>
-            {providerDef.available ? "live" : "upgrade required"}
+          <Badge variant="outline" className={`text-[10px] ${providerDef?.available ? "border-green-500/30 text-green-400" : "border-amber-500/30 text-amber-400"}`}>
+            {providerDef?.available ? "ready" : "select a provider"}
           </Badge>
           <Button
             size="sm"
             onClick={runAll}
-            disabled={anyRunning || (!hermesActive && !hasTargets && !hasNarrative)}
-            title={hermesActive ? "Resume polling the existing Hermes investigation" : hasTargets ? "Start a new Hermes investigation pipeline" : hasNarrative ? "Start a narrative-only investigation (Hermes analyzes the submitted description)" : "Add a target or description before starting"}
+            disabled={anyRunning || !canRun || !runProvider}
+            title={!runProvider ? "Select an investigation provider first" : hermesActive ? "Review the provider and resume the investigation" : "Review the provider and start the pipeline"}
             className="bg-cyan-600 hover:bg-cyan-700 h-8"
           >
             {runAllActive ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : hermesActive ? <RotateCw className="w-3.5 h-3.5 mr-1.5" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
@@ -269,13 +307,13 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
           </div>
         </div>
       )}
-      {!hasTargets && hasNarrative && (
+      {!hasTargets && hasNarrative && !hermesActive && (
         <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.04] p-3 flex items-start gap-2.5">
           <Crosshair className="w-4 h-4 text-cyan-300 shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-cyan-100">Narrative-only investigation</p>
             <p className="text-[11px] text-cyan-200/70 mt-0.5 leading-relaxed">
-              This case has no external indicator (wallet, domain, IP, email, or phone). Hermes will analyze the submitted description and report <span className="font-mono">INSUFFICIENT_EXTERNAL_INDICATORS</span> if no investigative lead exists. No targets are invented and no placeholders are substituted.
+              This case has no external indicator (wallet, domain, IP, email, or phone). The selected provider analyses the submitted description only, and reports insufficient external indicators when no investigative lead exists. No targets are invented.
             </p>
           </div>
         </div>
@@ -290,13 +328,12 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
         disabled={anyRunning}
       />
 
-      <ProviderModelControls
-        provider={provider}
-        onProvider={onProviderChange}
-        model={model}
-        onModel={onModelChange}
-        models={models}
-        freeOnly={freeOnly}
+      <InvestigationProviderPicker
+        value={runProvider}
+        onChange={setRunProvider}
+        disabled={anyRunning}
+        defaultProvider={defaultProvider}
+        caseProvider={caseProvider}
         onTest={testConnection}
         testing={testing}
         testResult={testResult}
@@ -307,18 +344,33 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
       {history.length > 0 && (
         <RunHistory history={history} running={running} onRetry={runOne} disabled={anyRunning} />
       )}
+
+      <ConfirmProviderLaunchDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        provider={runProvider}
+        resume={hermesActive && runProvider === "hermes"}
+        busy={runAllActive}
+        onConfirm={runPipeline}
+      />
     </section>
   );
 }
 
 function LastResult({ result }) {
-  const ok = result.status === "completed";
+  const ok = result.status === "completed" || result.status === "completed_with_errors";
+  const partial = result.status === "completed_with_errors";
+  const engine = providerLabel(result.provider);
   return (
-    <div className={`rounded-lg border p-3 ${ok ? "border-green-500/20 bg-green-500/[0.04]" : "border-red-500/20 bg-red-500/[0.04]"}`}>
+    <div className={`rounded-lg border p-3 ${ok ? (partial ? "border-amber-500/25 bg-amber-500/[0.04]" : "border-green-500/20 bg-green-500/[0.04]") : "border-red-500/20 bg-red-500/[0.04]"}`}>
       <div className="flex items-start gap-2">
-        {ok ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
+        {ok
+          ? (partial ? <History className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />)
+          : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-white">{ok ? "Hermes investigation completed" : "Hermes investigation failed"}</p>
+          <p className="text-xs font-medium text-white">
+            {engine} investigation {ok ? (partial ? "completed with agent errors" : "completed") : "failed"}
+          </p>
           {!ok && (result.hermesStatus || result.upstreamStatus) && (
             <p className="text-[11px] text-red-300 mt-0.5 font-mono">
               {result.upstreamStatus ? `HTTP ${result.upstreamStatus} · ` : ""}{result.hermesStatus || "error"}
@@ -327,8 +379,14 @@ function LastResult({ result }) {
           {ok ? (
             <pre className="text-[11px] text-gray-400 mt-1 max-h-32 overflow-auto whitespace-pre-wrap">{JSON.stringify(result.output || result.phases, null, 2).slice(0, 1200)}</pre>
           ) : (
-            <p className="text-[11px] text-red-300 mt-1">{result.error}</p>
+            <>
+              <p className="text-[11px] text-red-300 mt-1">{result.error}</p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                Nothing was retried on another provider. Change the provider above and confirm again to retry.
+              </p>
+            </>
           )}
+          {result.report_id && <p className="text-[10px] text-gray-500 mt-1 font-mono">Dossier report: {result.report_id}</p>}
           {result.investigation_id && (
             <p className="text-[10px] text-gray-500 mt-1 font-mono">Hermes ID: {result.investigation_id}</p>
           )}
@@ -346,11 +404,11 @@ function RunHistory({ history, running, onRetry, disabled }) {
         {history.map((r) => (
           <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-xs">
             <Badge variant="outline" className="text-[9px] capitalize border-white/10 text-gray-400">{r.phase.replace(/_/g, " ")}</Badge>
-            <span className="text-gray-300 font-mono truncate hidden sm:inline">{r.provider}/{r.model}</span>
+            <span className="text-gray-300 font-mono truncate hidden sm:inline">{providerLabel(r.provider)}/{r.model}</span>
             {r.status === "completed" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : r.status === "failed" ? <XCircle className="w-3.5 h-3.5 text-red-400" /> : <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />}
             <span className="text-gray-500">{r.duration_ms ? `${(r.duration_ms / 1000).toFixed(1)}s` : "—"}</span>
             {r.status === "failed" && (
-              <button onClick={() => onRetry(r.phase)} disabled={disabled} title="Retry phase" className="text-amber-400 hover:text-amber-300 disabled:opacity-40">
+              <button onClick={onRetry} disabled={disabled} title="Retry investigation" className="text-amber-400 hover:text-amber-300 disabled:opacity-40">
                 <RotateCw className="w-3.5 h-3.5" />
               </button>
             )}
@@ -358,71 +416,6 @@ function RunHistory({ history, running, onRetry, disabled }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function ProviderModelControls({ provider, onProvider, model, onModel, models, freeOnly, onTest, testing, testResult }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1">
-          <label className="text-[11px] uppercase tracking-wider text-gray-500">Provider</label>
-          <Select value={provider} onValueChange={onProvider}>
-            <SelectTrigger className="bg-[#0f1419] border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="openrouter">OpenRouter (free models)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col justify-end">
-          <Button size="sm" variant="outline" onClick={onTest} disabled={testing} className="border-cyan-500/30 text-cyan-400 h-9">
-            {testing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Activity className="w-3.5 h-3.5 mr-1.5" />}
-            {testing ? "Testing…" : "Health test"}
-          </Button>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[11px] uppercase tracking-wider text-gray-500">Model</label>
-          {freeOnly && <span className="text-[10px] text-gray-500 flex items-center gap-1"><Lock className="w-3 h-3" />Free models only (OpenRouter plan)</span>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {models.map((m) => {
-            const locked = freeOnly && m.free === false;
-            const active = model === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                disabled={locked}
-                onClick={() => !locked && onModel(m.id)}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
-                  active
-                    ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-200"
-                    : locked
-                      ? "border-white/5 bg-white/[0.02] text-gray-600 cursor-not-allowed"
-                      : "border-white/10 bg-white/[0.02] text-gray-300 hover:border-cyan-500/30 hover:text-white"
-                }`}
-                title={locked ? "Paid model — not enabled on this OpenRouter account" : m.label}
-              >
-                {locked && <Lock className="w-3 h-3" />}
-                {m.label}
-                {locked && <span className="text-[9px] uppercase">paid</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {testResult && (
-        <div className={`rounded-lg border px-3 py-2 text-xs flex items-center gap-2 ${TEST_TONE[testResult.status] || TEST_TONE.failed}`}>
-          {testResult.status === "failed"
-            ? <><XCircle className="w-3.5 h-3.5 shrink-0" />{testResult.error}</>
-            : <><CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{testResult.provider}/{testResult.model} — {testResult.status} ({testResult.ms}ms)</>}
-        </div>
-      )}
     </div>
   );
 }

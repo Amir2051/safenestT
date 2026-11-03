@@ -3,6 +3,7 @@ import { secrets } from "base44:runtime";
 import {
   loadHermesCredentials, normalizeRoot, buildInvestigationsUrl, investigationFetch, extractInvestigationId,
 } from "../../shared/hermesHttp.ts";
+import { readProviderConfig } from "../../shared/investigationProvider.ts";
 
 /**
  * syncCaseToHermes — idempotently synchronizes a SafeNestT InvestigationCase to
@@ -138,6 +139,24 @@ export default async function (req: Request): Promise<Response> {
     }
     if (!caseItem) return Response.json({ ok: false, status: "not_found", error: "Case not found or no access", case_id: sourceCaseId });
 
+    // Provider routing. An explicit per-run "hermes" selection forwarded by
+    // startCaseInvestigation (the administrator confirmed Hermes for this run)
+    // wins; otherwise the saved default decides. When the effective provider is
+    // MIA, no Hermes investigation is created for this case. Prevents silent
+    // cross-routing while still allowing a deliberate one-off Hermes run.
+    const explicitProvider = String(payload?.provider || "").trim().toLowerCase();
+    const providerCfg = await readProviderConfig(base44);
+    const effectiveProvider = explicitProvider === "hermes" ? "hermes" : providerCfg.provider;
+    if (effectiveProvider === "mia") {
+      return Response.json({
+        ok: false,
+        status: "wrong_provider",
+        provider: "mia",
+        case_id: caseId,
+        error: "MIA Multi-Agent is the active investigation provider; no Hermes investigation was created.",
+      });
+    }
+
     const { apiKey, configuredBase, keySanitized } = loadHermesCredentials(secrets);
     if (!apiKey) return Response.json({ ok: false, status: "not_configured", error: "hermes-api_key secret is not configured" });
     if (!configuredBase) return Response.json({ ok: false, status: "not_configured", error: "HERMES_BASE_URL secret is not configured" });
@@ -147,13 +166,23 @@ export default async function (req: Request): Promise<Response> {
     const now = new Date().toISOString();
 
     // ── Idempotency: if a mapping already exists, verify it against Hermes.
+    // Keep a mutable workflow base so rerun resets are not overwritten by the
+    // stale caseItem snapshot when the new Hermes ID is stored below.
+    let workflowBase = { ...(caseItem.workflow || {}) };
     const existingId = caseItem.workflow?.hermes_investigation_id;
     if (existingId) {
       const verify = await investigationFetch(`${investigationsUrl}/${encodeURIComponent(String(existingId))}`, { method: "GET", apiKey });
       if (verify.ok) {
         const vStatus = String(verify.data?.status || "").toLowerCase();
         const isActive = ["queued", "running", "waiting_for_tool", "analyzing", "verifying", "calculating_risk", "pending", "processing"].includes(vStatus);
-        const isTerminal = ["completed", "done", "complete", "success", "succeeded", "finished", "failed", "error", "errored", "aborted", "cancelled", "canceled"].includes(vStatus);
+        const normalizedStatus = vStatus.trim().replace(/[\s-]+/g, "_");
+        const isTerminal = [
+          "completed", "done", "complete", "success", "succeeded", "finished", "ok",
+          "completed_with_errors", "completed_with_warnings", "completed_with_failures",
+          "partial_success", "partially_completed", "partial_failure", "partially_failed",
+          "failed", "error", "errored", "failed_with_results", "aborted", "cancelled",
+          "canceled", "expired", "timeout", "timed_out",
+        ].includes(normalizedStatus);
         if (isActive) {
           // Do not create duplicates while the current Hermes execution is active.
           await base44.entities.InvestigationCase.update(caseId, {
@@ -180,35 +209,33 @@ export default async function (req: Request): Promise<Response> {
           });
           while (history.length > 25) history.shift();
 
-          await base44.entities.InvestigationCase.update(caseId, {
-            sync_status: "pending",
-            last_synced_at: now,
-            workflow: {
-              ...(caseItem.workflow || {}),
-              hermes_investigation_id: null,
-              hermes_status: null,
-              hermes_error: null,
-              hermes_runs: history,
-              current_phase: "planning",
-              phases: {
-                planning: { status: "pending" },
-                evidence: { status: "pending" },
-                analysis: { status: "pending" },
-                reality_check: { status: "pending" },
-                risk: { status: "pending" },
-                dossier: { status: "pending", output: null },
-              },
-              risk_score: null,
-              risk_level: null,
-              risk_factors: [],
+          workflowBase = {
+            ...workflowBase,
+            hermes_investigation_id: null,
+            hermes_status: null,
+            hermes_error: null,
+            hermes_runs: history,
+            current_phase: "planning",
+            phases: {
+              planning: { status: "pending" },
+              evidence: { status: "pending" },
+              analysis: { status: "pending" },
+              reality_check: { status: "pending" },
+              risk: { status: "pending" },
+              dossier: { status: "pending", output: null },
             },
+            risk_score: null,
+            risk_level: null,
+            risk_factors: [],
+          };
+          await base44.entities.InvestigationCase.update(caseId, {
+            sync_status: "pending", last_synced_at: now, workflow: workflowBase,
           }).catch(() => null);
         }
       } else if (verify.status === "not_found") {
         // Stale mapping (Hermes no longer has it) — clear and recreate below.
-        await base44.entities.InvestigationCase.update(caseId, {
-          workflow: { ...(caseItem.workflow || {}), hermes_investigation_id: null, hermes_status: null, hermes_error: "stale mapping cleared" },
-        }).catch(() => null);
+        workflowBase = { ...workflowBase, hermes_investigation_id: null, hermes_status: null, hermes_error: "stale mapping cleared" };
+        await base44.entities.InvestigationCase.update(caseId, { workflow: workflowBase }).catch(() => null);
       } else {
         // Transient Hermes error — mark pending/retry, do not recreate.
         await base44.entities.InvestigationCase.update(caseId, { sync_status: "pending", last_synced_at: now }).catch(() => null);
@@ -265,7 +292,7 @@ export default async function (req: Request): Promise<Response> {
       const hint = keySanitized ? " (hermes-api_key had whitespace/quotes — cleaned before sending; re-save the secret if this persists)" : "";
       await base44.entities.InvestigationCase.update(caseId, {
         sync_status: "failed", last_synced_at: now,
-        workflow: { ...(caseItem.workflow || {}), hermes_error: createRes.error },
+        workflow: { ...workflowBase, hermes_error: createRes.error },
       }).catch(() => null);
       return Response.json({ ok: false, status: createRes.status, upstream_status: createRes.upstream_status, error: createRes.error + hint, action: "create_failed", case_id: caseId });
     }
@@ -282,7 +309,7 @@ export default async function (req: Request): Promise<Response> {
       last_synced_at: now,
       status: caseItem.status === "new" ? "queued" : caseItem.status,
       workflow: {
-        ...(caseItem.workflow || { current_phase: "planning", phases: {} }),
+        ...workflowBase,
         hermes_investigation_id: investigationId,
         hermes_status: createRes.data?.status || "queued",
         hermes_error: null,
