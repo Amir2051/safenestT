@@ -244,6 +244,6 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
     });
   } catch (error) {
     console.error("MIA case analysis error:", error);
-    return Response.json({ error: error?.message || String(error) }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 });
