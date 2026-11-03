@@ -3,13 +3,12 @@ import { base44 } from "@/api/base44Client";
 /**
  * Investigation AI — provider abstraction.
  *
- * Hermes Engine is the only provider exposed by the investigation pipeline.
- * Other Base44 AI integrations may still exist elsewhere in the application,
- * but they are not valid pipeline providers.
+ * Full investigations use the Hermes lifecycle. Prompt-only workflow phases
+ * use the server-side OpenRouter proxy because Hermes has no chat endpoint.
  */
 
-export const DEFAULT_PROVIDER = "hermes";
-export const DEFAULT_MODEL = "hermes-agent";
+export const DEFAULT_PROVIDER = "openrouter";
+export const DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 
 export const PROVIDERS = {
   hermes: {
@@ -67,7 +66,7 @@ export const PROVIDERS = {
 };
 
 export function getProvider(id) {
-  return PROVIDERS[id] || PROVIDERS.hermes;
+  return PROVIDERS[id] || PROVIDERS[DEFAULT_PROVIDER];
 }
 
 export function providerStatus(id) {
