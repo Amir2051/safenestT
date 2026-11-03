@@ -23,9 +23,8 @@ const TEST_TONE = {
 export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, onGoToTargets }) {
   const qc = useQueryClient();
   const wf = caseItem?.workflow || {};
-  // Hermes is mandatory for the investigation pipeline. Ignore any legacy
-  // provider value persisted on older cases so the UI cannot route a run to
-  // Base44 InvokeLLM or another legacy provider.
+  // Full investigation runs use Hermes; standalone workflow phases use the
+  // default OpenRouter provider. Ignore stale provider values on old cases.
   const [provider, setProvider] = useState(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [running, setRunning] = useState(null);
@@ -77,8 +76,7 @@ export default function InvestigationRunnerPanel({ caseId, caseItem, autoRun, on
   };
 
   const onProviderChange = () => {
-    // Kept for compatibility with the selector component; Hermes is the only
-    // supported investigation pipeline provider.
+    // Keep this selector on the approved OpenRouter provider for phase prompts.
     setProvider(DEFAULT_PROVIDER);
     savePreference(DEFAULT_PROVIDER, model);
   };
@@ -373,7 +371,7 @@ function ProviderModelControls({ provider, onProvider, model, onModel, models, f
           <Select value={provider} onValueChange={onProvider}>
             <SelectTrigger className="bg-[#0f1419] border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="hermes">Hermes Agent</SelectItem>
+              <SelectItem value="openrouter">OpenRouter (free models)</SelectItem>
             </SelectContent>
           </Select>
         </div>
