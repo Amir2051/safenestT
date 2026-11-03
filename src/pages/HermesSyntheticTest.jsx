@@ -40,34 +40,8 @@ export default function HermesSyntheticTest() {
   const [events, setEvents] = useState([]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [openRouterRunning, setOpenRouterRunning] = useState(false);
-  const [openRouterDone, setOpenRouterDone] = useState(false);
-  const [openRouterResult, setOpenRouterResult] = useState(null);
-  const [openRouterError, setOpenRouterError] = useState("");
 
   const log = (step, detail) => setEvents((current) => [...current, { step, detail, at: new Date().toLocaleTimeString() }]);
-
-  const runOpenRouterSmoke = async () => {
-    if (openRouterRunning || openRouterDone) return;
-    setOpenRouterRunning(true);
-    setOpenRouterError("");
-    try {
-      const response = await base44.functions.invoke("openrouterProxy", {
-        model: "nvidia/nemotron-3-super-120b-a12b:free",
-        prompt: "Reply with exactly: OPENROUTER_LIVE_OK",
-        temperature: 0,
-        max_tokens: 20,
-      });
-      const body = response?.data ?? response;
-      if (!body || body.ok !== true) throw new Error(body?.error || "OpenRouter proxy returned an unsuccessful response.");
-      setOpenRouterResult({ model: body.model, text: body.data });
-    } catch (err) {
-      setOpenRouterError(String(err?.message || err));
-    } finally {
-      setOpenRouterDone(true);
-      setOpenRouterRunning(false);
-    }
-  };
 
   const runTest = async () => {
     if (running || finished) return;
@@ -156,30 +130,8 @@ export default function HermesSyntheticTest() {
           It uses no real target, sends no SafeNestT case ID, and does not create or modify SafeNestT database records.
         </p>
       </header>
-      <section className="space-y-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
-        <div>
-          <h2 className="font-semibold">OpenRouter live inference smoke test</h2>
-          <p>One synthetic prompt only. It sends no SafeNestT case data and creates no database records.</p>
-        </div>
-        <button
-          type="button"
-          onClick={runOpenRouterSmoke}
-          disabled={openRouterRunning || openRouterDone}
-          className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50"
-        >
-          {openRouterRunning ? "Calling OpenRouter…" : openRouterDone ? "Smoke test finished" : "Run one OpenRouter smoke test"}
-        </button>
-        {openRouterError && <p role="alert" className="rounded bg-red-100 p-3 text-red-800">{openRouterError}</p>}
-        {openRouterResult && (
-          <div className="rounded border border-emerald-300 bg-white p-3">
-            <p className="font-semibold">Live response received</p>
-            <p>Model: {openRouterResult.model || "reported by proxy"}</p>
-            <pre className="mt-2 whitespace-pre-wrap">{String(openRouterResult.text ?? "")}</pre>
-          </div>
-        )}
-      </section>
       <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-        <strong>Hermes test boundary:</strong> This creates one synthetic investigation record inside the isolated Hermes engine.
+        <strong>Test boundary:</strong> This creates one synthetic investigation record inside the isolated Hermes engine.
         It does not touch live SafeNestT cases or the production database. Do not press Run more than once.
       </section>
       <button
