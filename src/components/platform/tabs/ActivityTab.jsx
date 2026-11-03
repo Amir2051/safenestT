@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Cpu, ScrollText, CheckCircle2, XCircle, Loader2, Clock } from "lucide-react";
+import { Cpu, ScrollText, CheckCircle2, XCircle, Loader2, Clock, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/platform/EmptyState";
 import { AGENT_STYLES } from "@/components/platform/investigationStyles";
@@ -45,6 +45,7 @@ function RunHistory({ caseId }) {
       {runs.map((r) => {
         const agents = r.output?.agents_run || (r.phase === "analysis" ? [] : null);
         const failed = r.output?.agents_failed || [];
+        const partial = r.persisted_outputs?.partial === true;
         return (
           <div key={r.id} className="flex items-start gap-3 p-3">
             <div className="w-8 h-8 rounded-md border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0">
@@ -54,7 +55,13 @@ function RunHistory({ caseId }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="capitalize border-cyan-500/30 text-cyan-400 text-[10px]">{r.phase.replace(/_/g, " ")}</Badge>
                 <span className="text-xs text-gray-300 font-mono truncate">{r.provider}/{r.model}</span>
-                {r.status === "completed" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : r.status === "failed" ? <XCircle className="w-3.5 h-3.5 text-red-400" /> : <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />}
+                {r.status === "completed" && partial
+                  ? <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                  : r.status === "completed"
+                    ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                    : r.status === "failed"
+                      ? <XCircle className="w-3.5 h-3.5 text-red-400" />
+                      : <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />}
                 {r.duration_ms != null && <span className="text-[11px] text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" />{(r.duration_ms / 1000).toFixed(1)}s</span>}
               </div>
               {agents?.length > 0 && (
@@ -65,6 +72,7 @@ function RunHistory({ caseId }) {
               {failed.length > 0 && (
                 <p className="text-[11px] text-red-400 mt-1">Failed agents: {failed.map((f) => f.analyst || f).join(", ")}</p>
               )}
+              {partial && <p className="text-[11px] text-amber-300 mt-1">{r.error || "Completed with partial results; investigator review required."}</p>}
               {r.status === "failed" && r.error && <p className="text-[11px] text-red-300 mt-1">{r.error}</p>}
               <p className="text-[11px] text-gray-600 mt-0.5">{r.started_at ? new Date(r.started_at).toLocaleString() : ""}{r.run_by_email ? ` · ${r.run_by_email}` : ""}</p>
             </div>
