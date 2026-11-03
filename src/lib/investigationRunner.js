@@ -23,8 +23,10 @@ export const PHASES = [
 ];
 
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p) => [p.id, p]));
-export const DEFAULT_PROVIDER = "hermes";
-export const DEFAULT_MODEL = "hermes-agent";
+// Standalone workflow phases use OpenRouter; full investigations continue
+// through the Hermes lifecycle.
+export const DEFAULT_PROVIDER = "openrouter";
+export const DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 const LLM_TIMEOUT_MS = 90000;
 
 function truncate(s, n) {
