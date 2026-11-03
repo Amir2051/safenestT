@@ -74,6 +74,14 @@ test("resumeHermesInvestigation wraps its polling loop in try/catch and finalize
 // ── 2. Executed: finalizeActiveRun correctly updates a "running" run to the
 //    given terminal status, and is a no-op when no running run exists. ─────
 
+function extractPartialCompletionHelper(src) {
+  const start = src.indexOf("function isPersistedPartialCompletion(");
+  assert.notEqual(start, -1, "partial-completion classifier must exist");
+  const end = src.indexOf("\\nfunction extractInvestigationId", start);
+  assert.notEqual(end, -1, "partial-completion classifier must have a clear end boundary");
+  return src.slice(start, end);
+}
+
 function extractHelper(src) {
   const start = src.indexOf("async function finalizeActiveRun(");
   assert.notEqual(start, -1, "finalizeActiveRun helper must exist");
@@ -102,6 +110,22 @@ function makeMockBase44(runs) {
   };
   return { base44, updates };
 }
+
+test("completed_with_errors is a successful partial only when evidence and report were persisted", () => {
+  const helperSrc = extractPartialCompletionHelper(source);
+  const isPersistedPartialCompletion = vm.runInNewContext(
+    `(() => { ${helperSrc}; return isPersistedPartialCompletion; })()`,
+  );
+  assert.equal(isPersistedPartialCompletion("completed_with_errors", { evidence: 3, report_id: "report-1" }), true);
+  assert.equal(isPersistedPartialCompletion("partial_success", { evidence: 2, report_id: "report-2" }), true);
+  assert.equal(isPersistedPartialCompletion("completed_with_errors", { evidence: 0, report_id: "report-1" }), false);
+  assert.equal(isPersistedPartialCompletion("completed_with_errors", { evidence: 3, report_id: null }), false);
+  assert.equal(isPersistedPartialCompletion("failed", { evidence: 3, report_id: "report-1" }), false);
+});
+
+test("both Hermes polling paths classify persisted partial results", () => {
+  assert.equal((source.match(/isPersistedPartialCompletion\\(last\\.status, persisted\\)/g) || []).length, 2);
+});
 
 test("finalizeActiveRun marks a running run as failed on timeout", async () => {
   const helperSrc = extractHelper(source);
