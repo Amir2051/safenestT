@@ -77,7 +77,7 @@ test("resumeHermesInvestigation wraps its polling loop in try/catch and finalize
 function extractPartialCompletionHelper(src) {
   const start = src.indexOf("function isPersistedPartialCompletion(");
   assert.notEqual(start, -1, "partial-completion classifier must exist");
-  const end = src.indexOf("\\nfunction extractInvestigationId", start);
+  const end = src.indexOf("function extractInvestigationId", start);
   assert.notEqual(end, -1, "partial-completion classifier must have a clear end boundary");
   return src.slice(start, end);
 }
@@ -124,7 +124,7 @@ test("completed_with_errors is a successful partial only when evidence and repor
 });
 
 test("both Hermes polling paths classify persisted partial results", () => {
-  assert.equal((source.match(/isPersistedPartialCompletion\\(last\\.status, persisted\\)/g) || []).length, 2);
+  assert.equal(source.split("isPersistedPartialCompletion(last.status, persisted)").length - 1, 2);
 });
 
 test("finalizeActiveRun marks a running run as failed on timeout", async () => {
