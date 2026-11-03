@@ -19,22 +19,8 @@ export const PROVIDERS = {
     models: [
       { id: "hermes-agent", label: "Hermes Agent", free: true },
     ],
-    run: async ({ prompt, model, responseJsonSchema, temperature, maxTokens }) => {
-      const resp = await base44.functions.invoke("hermesProxy", {
-        prompt,
-        model: model || "hermes-agent",
-        response_json_schema: responseJsonSchema,
-        temperature,
-        max_tokens: maxTokens,
-      });
-      const body = resp?.data ?? resp;
-      if (!body || body.ok === false) {
-        throw new Error(body?.error || "Hermes proxy returned an error");
-      }
-      if (body.data == null) {
-        throw new Error("Hermes returned empty content");
-      }
-      return body.data;
+    run: async () => {
+      throw new Error("Hermes supports full investigation lifecycle requests only. Use OpenRouter for standalone prompt analysis.");
     },
   },
   openrouter: {
