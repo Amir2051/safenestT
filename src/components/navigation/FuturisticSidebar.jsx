@@ -26,6 +26,7 @@ const USER_SECTIONS = [
     label: "Home",
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/Dashboard", glow: "cyan" },
+      { id: "organizations", label: "Organizations", icon: Building2, path: "/Organizations", glow: "cyan" }
     ],
   },
   {
