@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { orgAccess } from '@/lib/orgAccess';
 
 const AuthContext = createContext();
 
@@ -91,7 +92,15 @@ export const AuthProvider = ({ children }) => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      let currentUser = await base44.auth.me();
+      // Pick up any organization invite addressed to this email (server-side;
+      // grants the role the org admin chose). Cheap no-op when there is none.
+      if (currentUser && currentUser.role !== 'admin' && !currentUser.tenant_id) {
+        try {
+          const res = await orgAccess('acceptInvite');
+          if (res?.accepted > 0) currentUser = await base44.auth.me();
+        } catch (e) { console.warn('Invite check failed:', e?.message); }
+      }
       // Merge the user's TenantMembership so the effective role reflects the
       // org admin's assignment and pending users get read-only access. The
       // platform admin (role: admin) has no membership and is unaffected.
