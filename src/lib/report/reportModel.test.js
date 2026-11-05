@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildCaseReport, classifyIndicator, describeEvidence, formatDate, formatMoney,
-  humanize, canonicalJson, integrityHash, shortHash,
+  humanize, canonicalJson, integrityHash, shortHash, cleanEngineText, parseEngineDescription,
 } from "./reportModel.js";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
@@ -141,6 +141,33 @@ describe("buildCaseReport", () => {
     assert.equal(empty.risk, null);
     assert.match(empty.executive_summary.join(" "), /No findings/);
     assert.doesNotThrow(() => buildCaseReport({ caseItem: { workflow: "oops", scammer_info: [] }, findings: [null, 3], evidence: "x" }));
+  });
+
+  it("supersedes older AI runs but keeps anything a human reviewed", () => {
+    const c2 = JSON.parse(JSON.stringify(caseItem));
+    c2.workflow.phases.analysis = { status: "completed", output: { persisted_finding_ids: ["new1"] } };
+    const fs = [
+      { id: "new1", source: "ai_run", status: "partially_supported", title: "Loss documented" },
+      { id: "old1", source: "ai_run", status: "partially_supported", title: "Loss documented" },
+      { id: "old2", source: "ai_run", status: "verified", title: "Reviewed old", reviewer_name: "Analyst" },
+      { id: "h1", source: "hermes", status: "proposed", title: "Threat intel lookup for cyber_intel.threat_intel.dehashed_search",
+        description: "EXTERNAL_INTELLIGENCE · capability: cyber_intel.threat_intel.dehashed_search · limitations: Requires corroboration." },
+    ];
+    const r = buildCaseReport({ caseItem: c2, findings: fs, evidence, asOf: ASOF });
+    assert.deepEqual(r.findings.map((f) => f.id).sort(), ["h1", "new1", "old2"]);
+    assert.equal(r.counts.superseded, 1);
+    const h = r.findings.find((f) => f.id === "h1");
+    assert.equal(h.title, "Threat intel lookup for DeHashed breach-data search");
+    assert.equal(h.finding_kind, "External Intelligence");
+    assert.equal(h.limitation, "Requires corroboration.");
+    assert.equal(h.description, "");
+    assert.match(r.executive_summary[2], /1 finding\(s\) from earlier analysis runs were superseded/);
+  });
+
+  it("cleans engine identifiers out of prose", () => {
+    assert.equal(cleanEngineText("via cyber_intel.threat_intel.shodan_domain today"), "via Shodan infrastructure lookup today");
+    assert.equal(cleanEngineText("Visit dmenergy.io"), "Visit dmenergy.io"); // real domains untouched? see below
+    assert.deepEqual(parseEngineDescription("Plain sentence."), { description: "Plain sentence.", kind: "", limitation: "" });
   });
 
   it("produces a stable SHA-256 integrity hash", async () => {
