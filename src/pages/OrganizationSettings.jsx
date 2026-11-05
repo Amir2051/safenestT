@@ -13,6 +13,7 @@ import {
 import {
   getEffectiveRole, canManageOrg, ORGANIZATION_TYPES, ORG_TYPE_LABELS,
 } from "@/lib/organizationRoles";
+import { orgAccess } from "@/lib/orgAccess";
 
 export default function OrganizationSettings() {
   const { user, isLoadingAuth } = useAuth();
