@@ -29,6 +29,7 @@ import ReportsTab from "@/components/platform/tabs/ReportsTab";
 import ActivityTab from "@/components/platform/tabs/ActivityTab";
 import { useCanMutate } from "@/components/shared/MutateGuard";
 import { Lock } from "lucide-react";
+import TabErrorBoundary from "@/components/platform/TabErrorBoundary";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Target },
@@ -276,6 +277,7 @@ export default function InvestigationWorkspace() {
       </nav>
 
       <div className="pt-1">
+        <TabErrorBoundary tab={activeTab}>
         {activeTab === "overview" && <OverviewTab caseId={workspaceCaseId} caseItem={caseItem} hermesState={hermesState} />}
         {activeTab === "evidence" && <EvidenceVaultTab caseId={workspaceCaseId} />}
         {activeTab === "targets" && <TargetsTab caseId={workspaceCaseId} hermesState={hermesState} />}
@@ -288,6 +290,7 @@ export default function InvestigationWorkspace() {
         {activeTab === "correlation" && <CorrelationTab caseId={workspaceCaseId} />}
         {activeTab === "timeline" && <TimelineTab caseId={workspaceCaseId} hermesState={hermesState} />}
         {activeTab === "osint" && <OsintProvidersTab caseId={workspaceCaseId} />}
+        </TabErrorBoundary>
       </div>
     </div>
   );
