@@ -107,7 +107,7 @@ export function getHomePath(user) {
     case "VIEWER":
       return "/CasesManagement";
     default:
-      return "/MyCases";
+      return "/Dashboard";
   }
 }
 
