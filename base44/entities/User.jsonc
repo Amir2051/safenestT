@@ -1,107 +1,142 @@
 {
   "name": "User",
-  "type": "object",
   "properties": {
     "account_status": {
-      "type": "string",
+      "default": "active",
+      "description": "Account approval status",
       "enum": [
         "active",
         "pending",
         "rejected",
         "suspended"
       ],
-      "default": "active",
-      "description": "Account approval status"
-    },
-    "approved_by": {
-      "type": "string",
-      "description": "Admin who approved the user"
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
     },
     "approved_at": {
-      "type": "string",
+      "description": "When the user was approved",
       "format": "date-time",
-      "description": "When the user was approved"
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
+    },
+    "approved_by": {
+      "description": "Admin who approved the user",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
     },
     "country": {
-      "type": "string",
-      "description": "User's country"
+      "description": "User's country",
+      "type": "string"
     },
-    "profile_image": {
-      "type": "string",
-      "description": "URL to profile image"
-    },
-    "wallet_address": {
-      "type": "string",
-      "description": "User's crypto wallet address"
-    },
-    "username": {
-      "type": "string",
-      "description": "Username"
-    },
-    "phone": {
-      "type": "string",
-      "description": "Phone number"
-    },
-    "vpn_enabled": {
+    "is_admin": {
+      "description": "Legacy platform-admin flag. Locked: only set by Base44 editors or server code.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
       "type": "boolean"
     },
-    "two_factor_enabled": {
-      "type": "boolean"
+    "job_title": {
+      "description": "Job title. Locked because some functions grant access by title (Fraud Specialist); only admins set it via updateUserProfile.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
     },
-    "risk_score": {
-      "type": "number",
-      "description": "Security risk score"
+    "last_login": {
+      "description": "Last login timestamp (if available).",
+      "format": "date-time",
+      "type": "string"
     },
     "last_scan_date": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "subscription_plan": {
-      "type": "string",
-      "enum": [
-        "free",
-        "basic",
-        "elite",
-        "trial"
-      ],
-      "default": "free"
-    },
-    "subscription_status": {
-      "type": "string",
-      "enum": [
-        "active",
-        "inactive",
-        "cancelled",
-        "past_due"
-      ],
-      "default": "inactive"
+      "format": "date-time",
+      "type": "string"
     },
     "monitored_emails": {
-      "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "type": "array"
     },
-    "tenant_id": {
-      "type": "string",
-      "description": "Active tenant id for multi-tenant isolation. Referenced by RLS on investigation entities."
+    "organization_contact_address": {
+      "description": "Organization contact address.",
+      "properties": {
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "line1": {
+          "type": "string"
+        },
+        "line2": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     },
-    "tenant_role": {
-      "type": "string",
-      "enum": [
-        "owner",
-        "admin",
-        "investigator",
-        "member"
-      ],
-      "description": "Legacy tenant-scoped role (owner/admin/investigator/member)."
+    "organization_contact_phone": {
+      "description": "Organization primary contact phone.",
+      "type": "string"
     },
     "organization_name": {
-      "type": "string",
-      "description": "Name of the organization this user belongs to. Set during organization onboarding."
+      "description": "Name of the organization this user belongs to. Set during organization onboarding.",
+      "type": "string"
+    },
+    "organization_role": {
+      "description": "Organization role. Drives navigation AND data rules. LOCKED: set only by the orgAccess server function.",
+      "enum": [
+        "PLATFORM_ADMIN",
+        "ORG_ADMIN",
+        "INVESTIGATOR",
+        "ANALYST",
+        "CASE_MANAGER",
+        "VIEWER",
+        "AUDITOR"
+      ],
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
     },
     "organization_type": {
-      "type": "string",
+      "description": "Type of organization the user represents.",
       "enum": [
         "bank_financial",
         "insurance",
@@ -112,54 +147,83 @@
         "individual_investigator",
         "other"
       ],
-      "description": "Type of organization the user represents."
+      "type": "string"
     },
-    "organization_role": {
-      "type": "string",
+    "phone": {
+      "description": "Phone number",
+      "type": "string"
+    },
+    "profile_image": {
+      "description": "URL to profile image",
+      "type": "string"
+    },
+    "risk_score": {
+      "description": "Security risk score",
+      "type": "number"
+    },
+    "subscription_plan": {
+      "default": "free",
       "enum": [
-        "PLATFORM_ADMIN",
-        "ORG_ADMIN",
-        "INVESTIGATOR",
-        "ANALYST",
-        "CASE_MANAGER",
-        "VIEWER",
-        "AUDITOR"
+        "free",
+        "basic",
+        "elite",
+        "trial"
       ],
-      "description": "Canonical UI role driving role-based navigation. PLATFORM_ADMIN is internal and never offered during public signup. Backend/Hermes enforces actual permissions separately."
+      "type": "string"
     },
-    "organization_contact_phone": {
-      "type": "string",
-      "description": "Organization primary contact phone."
+    "subscription_status": {
+      "default": "inactive",
+      "enum": [
+        "active",
+        "inactive",
+        "cancelled",
+        "past_due"
+      ],
+      "type": "string"
     },
-    "organization_contact_address": {
-      "type": "object",
-      "properties": {
-        "line1": {
-          "type": "string"
-        },
-        "line2": {
-          "type": "string"
-        },
-        "city": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "country": {
-          "type": "string"
+    "tenant_id": {
+      "description": "Active tenant id for multi-tenant isolation. Referenced by RLS on investigation entities. LOCKED: set only by the orgAccess server function.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
         }
       },
-      "description": "Organization contact address."
+      "type": "string"
     },
-    "last_login": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Last login timestamp (if available)."
+    "tenant_role": {
+      "description": "Legacy tenant-scoped role (owner/admin/investigator/member). LOCKED: set only by the orgAccess server function.",
+      "enum": [
+        "owner",
+        "admin",
+        "investigator",
+        "member"
+      ],
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
+          }
+        }
+      },
+      "type": "string"
+    },
+    "two_factor_enabled": {
+      "type": "boolean"
+    },
+    "username": {
+      "description": "Username",
+      "type": "string"
+    },
+    "vpn_enabled": {
+      "type": "boolean"
+    },
+    "wallet_address": {
+      "description": "User's crypto wallet address",
+      "type": "string"
     }
   },
-  "required": []
+  "required": [],
+  "type": "object"
 }
