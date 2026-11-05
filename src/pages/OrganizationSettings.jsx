@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, ShieldCheck, Loader2, CheckCircle2, ArrowLeft,
-  Users, Phone, MapPin, AlertCircle,
+  Users, Phone, MapPin, AlertCircle, KeyRound,
 } from "lucide-react";
 import {
   getEffectiveRole, canManageOrg, ORGANIZATION_TYPES, ORG_TYPE_LABELS,
 } from "@/lib/organizationRoles";
 import { orgAccess } from "@/lib/orgAccess";
+import TenantProviderKeys from "@/components/settings/TenantProviderKeys";
 
 export default function OrganizationSettings() {
   const { user, isLoadingAuth } = useAuth();
@@ -154,6 +155,11 @@ export default function OrganizationSettings() {
             <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${twoFactor ? "left-5 bg-cyan-400" : "left-0.5 bg-slate-500"}`} />
           </button>
         </div>
+      </Section>
+
+      {/* Investigation Provider Keys */}
+      <Section title="Investigation Provider Keys" icon={KeyRound}>
+        <TenantProviderKeys />
       </Section>
 
       {/* Team Management */}

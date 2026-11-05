@@ -1,12 +1,17 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
+import { resolveProviderKey } from "../../shared/tenantProviderKeys.ts";
 
 /**
  * osintReputationProxy — server-side dispatcher for OPTIONAL reputation
- * providers (VirusTotal, Shodan, Firecrawl). These keys are not configured by
- * default; when absent the function returns { ok:false, configured:false } so
- * the UI can show "Not configured" honestly and the investigation continues
- * with the tools that are available. Keys are never returned to the browser.
+ * providers (VirusTotal, Shodan, Firecrawl).
+ *
+ * Credential resolution is per tenant: the organization's own credential
+ * (provisioned through tenantProviderCredentials, service-role only) is used
+ * first, then the platform secret. The response reports which source was used
+ * via `key_source`; only when neither exists does it return
+ * { ok:false, configured:false } so the UI can show "Not configured" honestly.
+ * Keys are never returned to the browser.
  *
  * Contract:
  *   IN  { provider: "virustotal"|"shodan"|"firecrawl", target? }
@@ -34,10 +39,14 @@ export default async function (req) {
     if (!user) return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     const payload = await req.json().catch(() => ({}));
     const { provider, target } = payload || {};
+    // Keys resolve per tenant: the organization's own credential first, then
+    // the platform secret. The key itself never leaves the server.
+    const entities = base44.asServiceRole.entities;
+    const tenantId = user.tenant_id || user.data?.tenant_id || null;
 
     switch (provider) {
-      case "virustotal": return await runVirusTotal(target);
-      case "shodan": return await runShodan(target);
+      case "virustotal": return await runVirusTotal(target, entities, tenantId);
+      case "shodan": return await runShodan(target, entities, tenantId);
       case "firecrawl": return await runFirecrawl(target);
       default: return Response.json({ ok: false, error: `Unknown provider: ${provider}` }, { status: 400 });
     }
@@ -46,38 +55,38 @@ export default async function (req) {
   }
 }
 
-async function runVirusTotal(target: string) {
-  const key = secrets.get("VIRUSTOTAL_API_KEY");
-  if (!key) return Response.json({ ok: false, configured: false, provider: "virustotal", error: "VIRUSTOTAL_API_KEY is not configured" }, { status: 503 });
+async function runVirusTotal(target: string, entities: any, tenantId: string | null) {
+  const { key, source } = await resolveProviderKey(entities, tenantId, "virustotal", secrets);
+  if (!key) return Response.json({ ok: false, configured: false, provider: "virustotal", error: "No VirusTotal key is available for this organization, and no platform key is configured." }, { status: 503 });
   if (!target) return Response.json({ ok: false, configured: true, provider: "virustotal", error: "target is required" }, { status: 400 });
   try {
     const res = await fetchWithTimeout(`https://www.virustotal.com/api/v3/domains/${encodeURIComponent(String(target).trim())}`, { headers: { "x-apikey": key } });
     if (!res.ok) {
       const t = await res.text().catch(() => "");
-      return Response.json({ ok: false, configured: true, provider: "virustotal", error: `VirusTotal ${res.status}: ${t.slice(0, 200)}` }, { status: 502 });
+      return Response.json({ ok: false, configured: true, key_source: source, provider: "virustotal", error: `VirusTotal ${res.status}: ${t.slice(0, 200)}` }, { status: 502 });
     }
     const json = await res.json();
     const stats = json?.data?.attributes?.last_analysis_stats || {};
-    return Response.json({ ok: true, configured: true, provider: "virustotal", data: { target, stats, source: "virustotal" } });
+    return Response.json({ ok: true, configured: true, key_source: source, provider: "virustotal", data: { target, stats, source: "virustotal" } });
   } catch (e: any) {
-    return Response.json({ ok: false, configured: true, provider: "virustotal", error: e?.name === "AbortError" ? "VirusTotal lookup timed out" : (e?.message || String(e)) }, { status: 502 });
+    return Response.json({ ok: false, configured: true, key_source: source, provider: "virustotal", error: e?.name === "AbortError" ? "VirusTotal lookup timed out" : (e?.message || String(e)) }, { status: 502 });
   }
 }
 
-async function runShodan(target: string) {
-  const key = secrets.get("SHODAN_API_KEY");
-  if (!key) return Response.json({ ok: false, configured: false, provider: "shodan", error: "SHODAN_API_KEY is not configured" }, { status: 503 });
+async function runShodan(target: string, entities: any, tenantId: string | null) {
+  const { key, source } = await resolveProviderKey(entities, tenantId, "shodan", secrets);
+  if (!key) return Response.json({ ok: false, configured: false, provider: "shodan", error: "No Shodan key is available for this organization, and no platform key is configured." }, { status: 503 });
   if (!target) return Response.json({ ok: false, configured: true, provider: "shodan", error: "target (IP) is required" }, { status: 400 });
   try {
     const res = await fetchWithTimeout(`https://api.shodan.io/shodan/host/${encodeURIComponent(String(target).trim())}?key=${encodeURIComponent(key)}`);
     if (!res.ok) {
       const t = await res.text().catch(() => "");
-      return Response.json({ ok: false, configured: true, provider: "shodan", error: `Shodan ${res.status}: ${t.slice(0, 200)}` }, { status: 502 });
+      return Response.json({ ok: false, configured: true, key_source: source, provider: "shodan", error: `Shodan ${res.status}: ${t.slice(0, 200)}` }, { status: 502 });
     }
     const json = await res.json();
-    return Response.json({ ok: true, configured: true, provider: "shodan", data: { ip: json.ip_str, org: json.org, os: json.os, ports: json.ports, hostnames: json.hostnames, source: "shodan" } });
+    return Response.json({ ok: true, configured: true, key_source: source, provider: "shodan", data: { ip: json.ip_str, org: json.org, os: json.os, ports: json.ports, hostnames: json.hostnames, source: "shodan" } });
   } catch (e: any) {
-    return Response.json({ ok: false, configured: true, provider: "shodan", error: e?.name === "AbortError" ? "Shodan lookup timed out" : (e?.message || String(e)) }, { status: 502 });
+    return Response.json({ ok: false, configured: true, key_source: source, provider: "shodan", error: e?.name === "AbortError" ? "Shodan lookup timed out" : (e?.message || String(e)) }, { status: 502 });
   }
 }
 
