@@ -11,7 +11,7 @@
 const ECHO_KEYS = new Set(["domain", "target", "source", "query", "status", "type", "provider"]);
 const NETWORK_TOOLS = /(shodan_domain|whois|dns|subdomain|ssl|cert|reverse_ip|passive_dns)/i;
 
-export function targetKind(target) {
+export function targetKind(target: unknown): string {
   const v = String(target ?? "").trim();
   if (!v) return "";
   if (/^0x[a-fA-F0-9]{40}$/.test(v) || /^(bc1[a-z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(v) || /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(v)) return "wallet";
