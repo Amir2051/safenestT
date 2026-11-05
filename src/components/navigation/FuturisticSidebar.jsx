@@ -245,8 +245,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const NavButton = ({ item }) => {
     const active = isActiveItem(item, location);
     const Icon = item.icon;
-    const grad = glowBar[item.glow] || glowBar.cyan;
-    return (
+        return (
       <button
         onClick={() => go(item)}
         title={collapsed ? item.label : undefined}
@@ -260,7 +259,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
               : "border border-transparent hover:bg-white/[0.04] hover:border-white/10"}`}
       >
         {active && (
-          <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b ${grad}`} />
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b from-sn-cyan to-purple-500 shadow-[0_0_8px_rgba(0,217,255,0.6)]" />
         )}
         <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? "text-cyan-300" : item.prominent ? "text-purple-300 group-hover:text-purple-200" : "text-gray-400 group-hover:text-cyan-300"}`} />
         <span className={`flex-1 text-left text-sm font-medium truncate transition-colors ${active ? "text-white" : "text-gray-300 group-hover:text-white"} ${collapsed ? "lg:hidden" : ""}`}>
@@ -269,7 +268,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         {item.badge && !collapsed && (
           <Badge className={`text-[9px] px-1.5 py-0.5 border ${
             item.badge === "AI" ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
-            : item.badge === "LIVE" ? "bg-red-500/20 text-red-300 border-red-500/40"
+            : item.badge === "LIVE" ? "bg-lime-400/15 text-lime-300 border-lime-400/40"
             : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"}`}>
             {item.badge}
           </Badge>
@@ -292,11 +291,11 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       <div className="relative z-10 flex flex-col h-full min-h-screen px-3 py-4">
         {/* Header / brand + collapse toggle */}
         <div className="flex items-center gap-2 px-1 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 border border-cyan-500/40">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sn-cyan to-purple-500 flex items-center justify-center shrink-0 border border-sn-cyan/40 sn-glow-cyan">
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
-            <p className="text-white font-bold text-sm tracking-wider leading-none">SafeNestT</p>
+            <p className="sn-wordmark text-white font-bold text-[13px] leading-none">SAFENESTT</p>
             <p className="text-cyan-400 text-[10px] font-mono mt-0.5">{isAdmin ? "// ADMIN //" : `// ${ROLE_SHORT[effectiveRole] || "SECURED"} //`}</p>
           </div>
           <button
@@ -365,7 +364,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         <div className="pt-3 mt-2 border-t border-white/5 space-y-2">
           <div className={`flex items-center justify-between px-2 py-1.5 rounded-md bg-white/[0.02] border border-white/10 ${collapsed ? "lg:hidden" : ""}`}>
             <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Engine
+              <span className="w-1.5 h-1.5 rounded-full bg-sn-lime shadow-[0_0_6px_rgba(0,255,0,0.8)] animate-pulse" />Engine
             </span>
             <span className="text-[10px] text-gray-400 font-mono"><LiveClock /></span>
           </div>

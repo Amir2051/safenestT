@@ -266,11 +266,12 @@ export default function Layout({ children, currentPageName }) {
           {/* Ambient glow */}
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/[0.04] rounded-full blur-[120px]" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/[0.04] rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/[0.04] rounded-full blur-[120px]" />
           </div>
 
           {/* Command Header */}
           <CommandHeader user={user} onMenuOpen={handleMenuOpen} onLogout={handleLogout} />
+          <div className="relative z-10 sn-brand-line" aria-hidden="true" />
           <div className="relative z-10 bg-[#06090d]/70 border-b border-slate-800/60 px-3 sm:px-4 h-10 flex items-center justify-between gap-2">
             <Breadcrumb />
             <NotificationCenter />
