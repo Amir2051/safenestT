@@ -4,6 +4,9 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import { transformSync } from "esbuild";
+import { summarizeToolResult } from "./toolResult.js";
 import {
   buildCaseReport, classifyIndicator, describeEvidence, formatDate, formatMoney,
   humanize, canonicalJson, integrityHash, shortHash, cleanEngineText, parseEngineDescription,
@@ -82,7 +85,10 @@ describe("describeEvidence", () => {
     assert.equal(d.source, "Automated OSINT (Hermes)");
     assert.equal(d.integrity.kind, "Reference ID");
     assert.equal(d.target.type, "wallet"); // mislabelled "domain" in raw data
-    assert.match(d.nature, /not attached/);
+    // No stored result and no dossier to recover it from: say so, never imply data.
+    assert.match(d.nature, /not recorded/);
+    assert.equal(d.result.state, "unknown");
+    assert.equal(d.supports, false);
     assert.equal(d.is_primary, false);
   });
   it("recognises a real SHA-256", () => {
