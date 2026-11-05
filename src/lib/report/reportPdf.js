@@ -298,11 +298,12 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
     if (shared) para(`All automated queries targeted the ${shared.subtype.toLowerCase()} ${shared.value}.`, { size: 8.5, color: C.body });
     table([
       { header: "Ref", width: 0.07, key: "ref", bold: true, color: () => C.ink },
-      { header: "Item", width: 0.25, render: (r) => r.label + (r.target && !(shared && !r.is_primary) ? `\n${r.target.value}` : "") },
-      { header: "Type", width: 0.12, key: "kind" },
-      { header: "Source", width: 0.17, key: "source" },
-      { header: "Collected", width: 0.15, render: (r) => formatDate(r.collected_at, { withTime: true }) },
-      { header: "Integrity", width: 0.24, render: (r) => (r.integrity ? `${r.integrity.kind}: ${r.integrity.value}` : "—") },
+      { header: "Item", width: 0.24, render: (r) => `${r.label}\n${r.kind}` + (r.target && !(shared && !r.is_primary) ? `\n${r.target.value}` : "") },
+      { header: "Result", width: 0.2, bold: true, color: (r) => TONE[r.result?.tone] || C.body,
+        render: (r) => (r.is_primary ? "Primary record" : `${r.result?.label || "—"}${r.result?.state === "not_applicable" ? "\n(wrong lookup type)" : r.result?.record_count ? `\n${r.result.record_count} record(s)` : ""}`) },
+      { header: "Source", width: 0.14, key: "source" },
+      { header: "Collected", width: 0.13, render: (r) => formatDate(r.collected_at, { withTime: true }) },
+      { header: "Integrity", width: 0.22, render: (r) => (r.integrity ? `${r.integrity.kind}: ${r.integrity.value}` : "—") },
     ], model.evidence.map((e) => ({ ...e, label: e.label })), { size: 7.5 });
   }
 
