@@ -83,8 +83,13 @@ export default function CaseReportDocument({ model, integrity = "", draft = true
       <header className="bg-[#0A0E27] text-white px-6 sm:px-10 pt-7 pb-6 relative">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <p className="sn-wordmark text-lg font-bold tracking-[0.2em]">SAFENESTT</p>
-            <p className="text-[10px] tracking-[0.15em] text-slate-300/80 mt-0.5">SECURITY OPERATIONS &amp; INVESTIGATION SERVICES</p>
+            <div className="flex items-center gap-3 -ml-2">
+              <img src={BRAND_LOGO.dataUrl} alt="SafeNestT" className="h-14 sm:h-16 w-auto select-none" draggable={false} />
+              <div className="border-l border-slate-500/60 pl-3 text-[10px] leading-snug tracking-[0.12em]">
+                <p className="font-semibold text-slate-200">SECURITY OPERATIONS</p>
+                <p className="text-slate-300/80">&amp; INVESTIGATION SERVICES</p>
+              </div>
+            </div>
             <h1 className="text-2xl sm:text-[28px] font-bold mt-5 leading-tight">{model.title}</h1>
             <p className="text-sm text-slate-300 mt-1">{c.title || c.number}</p>
           </div>
