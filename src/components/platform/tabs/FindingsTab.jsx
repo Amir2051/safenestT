@@ -25,6 +25,7 @@ const STATUS_CLS = {
   unsupported: "border-red-500/40 text-red-300 bg-red-500/10",
   rejected: "border-red-500/40 text-red-300 bg-red-500/10",
   superseded: "border-white/10 text-gray-500 bg-white/5",
+  no_supporting_data: "border-orange-500/40 text-orange-300 bg-orange-500/10",
 };
 
 /**
@@ -44,6 +45,12 @@ export default function FindingsTab({ caseId, caseItem }) {
     queryFn: () => base44.entities.EvidenceItem.filter({ case_id: caseId }, "-created_date", 200),
     enabled: !!caseId,
   });
+  // Engine dossiers carry the raw lookup results for older evidence records.
+  const { data: engineReports = [] } = useQuery({
+    queryKey: ["engine-dossiers", caseId],
+    queryFn: () => base44.entities.InvestigationReport.filter({ case_id: caseId, report_type: "dossier" }, "-created_date", 20),
+    enabled: !!caseId,
+  });
 
   if (isLoading) return <EmptyState variant="loading" title="Loading findings…" />;
   if (!findings.length)
@@ -56,17 +63,17 @@ export default function FindingsTab({ caseId, caseItem }) {
       />
     );
 
-  return <FindingsList findings={findings} caseId={caseId} evidence={evidence} caseItem={caseItem} />;
+  return <FindingsList findings={findings} caseId={caseId} evidence={evidence} caseItem={caseItem} engineReports={engineReports} />;
 }
 
-function FindingsList({ findings, caseId, evidence, caseItem }) {
+function FindingsList({ findings, caseId, evidence, caseItem, engineReports }) {
   const [reviewFinding, setReviewFinding] = useState(null);
 
   // Same normalization as the client report, so what investigators review is
   // exactly what a client will read.
   const model = React.useMemo(() => {
-    try { return buildCaseReport({ caseItem: caseItem || {}, findings, evidence }); } catch { return null; }
-  }, [caseItem, findings, evidence]);
+    try { return buildCaseReport({ caseItem: caseItem || {}, findings, evidence, engineReports }); } catch { return null; }
+  }, [caseItem, findings, evidence, engineReports]);
   const evRefById = React.useMemo(() => new Map((model?.evidence || []).map((e) => [e.id, e])), [model]);
   const currentIds = new Set([...(model?.findings || []), ...(model?.excluded_findings || [])].map((f) => f.id));
   const byId = new Map(findings.map((f) => [f.id, f]));
