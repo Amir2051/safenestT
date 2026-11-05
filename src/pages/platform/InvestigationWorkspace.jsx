@@ -281,7 +281,7 @@ export default function InvestigationWorkspace() {
         {activeTab === "targets" && <TargetsTab caseId={workspaceCaseId} hermesState={hermesState} />}
         {activeTab === "findings" && <FindingsTab caseId={workspaceCaseId} />}
         {activeTab === "risk" && <RiskTab caseId={workspaceCaseId} caseItem={caseItem} hermesState={hermesState} />}
-        {activeTab === "reports" && <ReportsTab caseId={workspaceCaseId} hermesState={hermesState} />}
+        {activeTab === "reports" && <ReportsTab caseId={workspaceCaseId} caseItem={caseItem} hermesState={hermesState} />}
         {activeTab === "activity" && <ActivityTab caseId={workspaceCaseId} hermesState={hermesState} />}
         {activeTab === "blockchain" && <BlockchainTab caseId={workspaceCaseId} hermesState={hermesState} />}
         {activeTab === "entities" && <EntitiesTab caseId={workspaceCaseId} hermesState={hermesState} />}
