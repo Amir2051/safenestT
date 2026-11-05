@@ -2,6 +2,8 @@ import React from "react";
 import { formatDate, INDICATOR_TYPE_LABEL } from "@/lib/report/reportModel";
 import { BRAND_LOGO } from "@/lib/report/brandLogo";
 
+const RESULT_CLS = { positive: "text-emerald-700", caution: "text-amber-700", neutral: "text-slate-600", negative: "text-red-700" };
+
 /**
  * In-app rendering of the SafeNestT case report. Paper-style so it reads the
  * same as the exported PDF; renders ONLY from the normalized report model.
@@ -208,11 +210,15 @@ export default function CaseReportDocument({ model, integrity = "", draft = true
               {model.shared_query_target && <p className="text-[12px] text-slate-700 mb-2 break-all">All automated queries targeted the {model.shared_query_target.subtype.toLowerCase()} <span className="font-mono">{model.shared_query_target.value}</span>.</p>}
               <Table dense cols={[
                 { header: "Ref", width: "7%", key: "ref", className: "font-bold text-slate-900" },
-                { header: "Item", render: (r) => (<>{r.label}{r.target && !(model.shared_query_target && !r.is_primary) && <span className="block font-mono text-[10.5px] text-slate-500 break-all">{r.target.value}</span>}</>) },
-                { header: "Type", width: "12%", key: "kind" },
-                { header: "Source", width: "17%", key: "source" },
-                { header: "Collected", width: "16%", render: (r) => formatDate(r.collected_at, { withTime: true }) },
-                { header: "Integrity", width: "24%", render: (r) => r.integrity ? <span className="font-mono text-[10px] break-all"><span className="text-slate-500 font-sans">{r.integrity.kind}: </span>{r.integrity.value}</span> : "—" },
+                { header: "Item", render: (r) => (<>{r.label}<span className="block text-[10.5px] text-slate-500">{r.kind}</span>{r.target && !(model.shared_query_target && !r.is_primary) && <span className="block font-mono text-[10.5px] text-slate-500 break-all">{r.target.value}</span>}</>) },
+                { header: "Result", width: "18%", render: (r) => r.is_primary ? <span className="font-semibold text-emerald-700">Primary record</span> : (
+                  <span title={r.nature} className={`font-semibold ${RESULT_CLS[r.result?.tone] || "text-slate-700"}`}>{r.result?.label}
+                    {r.result?.state === "not_applicable" && <span className="block font-normal text-[10.5px] text-slate-500">Wrong lookup type for this indicator</span>}
+                    {r.result?.record_count > 0 && <span className="block font-normal text-[10.5px] text-slate-500">{r.result.record_count} record(s)</span>}
+                  </span>) },
+                { header: "Source", width: "15%", key: "source" },
+                { header: "Collected", width: "14%", render: (r) => formatDate(r.collected_at, { withTime: true }) },
+                { header: "Integrity", width: "22%", render: (r) => r.integrity ? <span className="font-mono text-[10px] break-all"><span className="text-slate-500 font-sans">{r.integrity.kind}: </span>{r.integrity.value}</span> : "—" },
               ]} rows={model.evidence} />
             </>
           )}
