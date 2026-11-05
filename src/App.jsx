@@ -32,6 +32,14 @@ import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationVerifications from './pages/OrganizationVerifications';
 import InvestigationProviders from './pages/InvestigationProviders';
+import { getHomePath } from '@/lib/organizationRoles';
+
+// After sign-in everyone arrives at "/" — send each role to its own home.
+function RoleHome() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <Navigate to={getHomePath(user)} replace />;
+}
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -122,7 +130,7 @@ const AuthenticatedApp = () => {
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
-        <Route path="/" element={<MainPage />} />
+        <Route path="/" element={<RoleHome />} />
         {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
         <Route path="/AdminInvestigation" element={<Navigate to="/InvestigationWorkspace" replace />} />
