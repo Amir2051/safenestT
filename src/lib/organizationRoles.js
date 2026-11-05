@@ -71,8 +71,12 @@ export function getEffectiveRole(user) {
   if (!user) return "VIEWER";
   if (user.role === "admin" || user.is_admin) return "PLATFORM_ADMIN";
   if (user.organization_role) return user.organization_role;
-  if (user.tenant_role === "owner" || user.tenant_role === "admin") return "ORG_ADMIN";
-  if (user.tenant_role === "investigator") return "INVESTIGATOR";
+  // Legacy tenant_role only counts inside a real organization — owning a
+  // personal workspace does not make an individual client an Org Admin.
+  if (user.organization_name) {
+    if (user.tenant_role === "owner" || user.tenant_role === "admin") return "ORG_ADMIN";
+    if (user.tenant_role === "investigator") return "INVESTIGATOR";
+  }
   return "REGULAR_USER";
 }
 
