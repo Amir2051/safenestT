@@ -128,7 +128,29 @@ function toolKey(ev, notes) {
   return TOOL_LABELS[last] ? last : TOOL_LABELS[cap] ? cap : str(ev.filename);
 }
 
-export function describeEvidence(ev) {
+/**
+ * Result of an automated lookup: the stored tool_result (new records), or the
+ * raw payload recovered from the engine dossier (older records), or unknown.
+ */
+function lookupResult(e, notes, fallback) {
+  const tr = isObj(e.tool_result) ? e.tool_result : null;
+  if (tr && tr.state) {
+    return {
+      state: tr.state, summary: str(tr.summary), record_count: Number(tr.record_count) || 0,
+      sha256: /^[a-f0-9]{64}$/i.test(str(tr.data_sha256)) ? str(tr.data_sha256).toLowerCase() : "",
+      target: str(tr.target),
+    };
+  }
+  if (isObj(fallback)) {
+    const s = summarizeToolResult(fallback);
+    return { ...s, sha256: "", target: str(fallback.target) };
+  }
+  const st = str(notes.status).toLowerCase();
+  if (st && st !== "success") return summarizeToolResult({ status: st });
+  return summarizeToolResult({});
+}
+
+export function describeEvidence(ev, resultFallback = null) {
   const e = isObj(ev) ? ev : {};
   const notes = parseNotes(e.processing_notes);
   const isTool = e.source === "hermes_extraction" || arr(e.tags).includes("tool");
@@ -137,19 +159,22 @@ export function describeEvidence(ev) {
     ? TOOL_LABELS[key] || humanize(key) || "Automated lookup"
     : str(e.original_filename) || str(e.filename) || "Unnamed item";
 
-  const targets = arr(e.detected_targets).map((t) => classifyIndicator(isObj(t) ? t.value : t)).filter(Boolean);
+  const result = isTool ? lookupResult(e, notes, resultFallback) : null;
+  const targets = [
+    ...(result?.target ? [classifyIndicator(result.target)] : []),
+    ...arr(e.detected_targets).map((t) => classifyIndicator(isObj(t) ? t.value : t)),
+  ].filter(Boolean);
   const hash = str(e.file_hash);
   const isSha256 = /^[a-f0-9]{64}$/i.test(hash);
 
-  let nature;
-  if (isTool) {
-    const ok = str(notes.status).toLowerCase() === "success";
-    nature = ok
-      ? "Automated query completed. Result content is not attached to this record."
-      : `Automated query ${str(notes.status) || "status unknown"}.`;
-  } else {
-    nature = str(e.description) || "Uploaded material.";
-  }
+  const nature = isTool ? result.summary : str(e.description) || "Uploaded material.";
+  const resultInfo = isTool
+    ? { state: result.state, label: (RESULT_STATE[result.state] || RESULT_STATE.unknown).label,
+        tone: (RESULT_STATE[result.state] || RESULT_STATE.unknown).tone, record_count: result.record_count }
+    : { state: "primary", label: "Primary record", tone: "positive", record_count: null };
+  const integrity = isTool && result.sha256
+    ? { kind: "Result SHA-256", value: result.sha256 }
+    : isSha256 ? { kind: "SHA-256", value: hash.toLowerCase() } : hash ? { kind: "Reference ID", value: hash } : null;
 
   return {
     id: e.id || "",
@@ -159,10 +184,13 @@ export function describeEvidence(ev) {
     collected_at: e.uploaded_at || e.created_date || "",
     collected_by: str(e.uploaded_by_name) || str(e.uploaded_by),
     target: targets[0] || null,
-    integrity: isSha256 ? { kind: "SHA-256", value: hash.toLowerCase() } : hash ? { kind: "Reference ID", value: hash } : null,
+    integrity,
     processing: humanize(e.processing_status) || "Unknown",
     nature,
+    result: resultInfo,
     is_primary: !isTool, // primary = actual documents/records, not tool queries
+    // Can this item support a finding? Primary records can; lookups only if they returned data.
+    supports: !isTool || result.state === "data",
   };
 }
 
