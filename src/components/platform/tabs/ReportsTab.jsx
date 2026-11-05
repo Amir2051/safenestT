@@ -58,15 +58,18 @@ export default function ReportsTab({ caseId, caseItem }) {
     ? `${user.full_name || user.email}, ${isPlatformAdmin(user) ? "SafeNestT Investigations" : user.organization_name || "SafeNestT"}`
     : "SafeNestT Investigations";
 
+  // Engine dossiers hold the raw lookup results for older evidence records.
+  const engineReports = useMemo(() => reports.filter((r) => r.report_type === "dossier" || r.generated_by === "hermes"), [reports]);
+
   const draft = useMemo(() => {
     if (!caseItem) return null;
     try {
-      return buildCaseReport({ caseItem, findings, evidence, organization, preparedBy });
+      return buildCaseReport({ caseItem, findings, evidence, organization, preparedBy, engineReports });
     } catch (e) {
       console.error("[report] draft build failed", e);
       return null;
     }
-  }, [caseItem, findings, evidence, organization?.name, preparedBy]);
+  }, [caseItem, findings, evidence, organization?.name, preparedBy, engineReports]);
 
   const issued = reports.filter((r) => r.report_type === "investigation_report" && r.content?.model);
   const engineDossiers = reports.filter((r) => !(r.report_type === "investigation_report" && r.content?.model));
@@ -84,7 +87,7 @@ export default function ReportsTab({ caseId, caseItem }) {
     setBusy("issue");
     try {
       // Rebuild with a fresh timestamp so report number + data-as-of are exact.
-      const model = buildCaseReport({ caseItem, findings, evidence, organization, preparedBy, asOf: new Date().toISOString() });
+      const model = buildCaseReport({ caseItem, findings, evidence, organization, preparedBy, engineReports, asOf: new Date().toISOString() });
       const integrity = await integrityHash(model);
       const rec = await base44.entities.InvestigationReport.create({
         tenant_id: caseItem.tenant_id,
