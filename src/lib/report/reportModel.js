@@ -352,7 +352,6 @@ export function buildCaseReport(input = {}) {
   // A machine-generated finding whose only cited evidence is lookups that
   // returned nothing (or could not apply) has no support, whatever its score.
   const lacksSupport = (f) => {
-    if (isHumanReviewed(f)) return false;
     const refs = arr(f.evidence_refs);
     const linked = refs.map((id) => evById.get(id)).filter(Boolean);
     return linked.length > 0 && linked.length === refs.length && linked.every((e) => !e.supports);
@@ -369,7 +368,8 @@ export function buildCaseReport(input = {}) {
       // case record itself), so it stays in with an explicit caveat; a claimed
       // "verified" or an unreviewed machine finding with no data is excluded.
       const emptyOnly = lacksSupport(f);
-      const noSupport = emptyOnly && f.status !== "partially_supported";
+      // A person's review is never overridden; it only gets the caveat.
+      const noSupport = emptyOnly && !isHumanReviewed(f) && f.status !== "partially_supported";
       const st = noSupport
         ? { label: "No supporting data", tone: "negative", included: false,
             meaning: "Every lookup cited for this finding returned no records or did not apply to the indicator. Excluded from conclusions." }
@@ -386,7 +386,11 @@ export function buildCaseReport(input = {}) {
         finding_kind: parsed.kind,
         limitation: [
           parsed.limitation,
-          emptyOnly && !noSupport ? "None of the automated lookups cited for this finding returned data; any support comes from the case record alone." : "",
+          emptyOnly && !noSupport
+            ? isHumanReviewed(f)
+              ? "None of the automated lookups cited for this finding returned data; it rests on the reviewing investigator's judgement."
+              : "None of the automated lookups cited for this finding returned data; any support comes from the case record alone."
+            : "",
         ].filter(Boolean).join(" "),
         category: f.category === "other" ? "" : humanize(f.category),
         severity: str(f.severity) || "medium",
