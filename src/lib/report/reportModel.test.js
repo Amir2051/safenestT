@@ -164,6 +164,17 @@ describe("buildCaseReport", () => {
     assert.match(r.executive_summary[2], /1 finding\(s\) from earlier analysis runs were superseded/);
   });
 
+  it("drops reworded duplicate gaps and plain-words risk factors", () => {
+    const c3 = JSON.parse(JSON.stringify(caseItem));
+    c3.workflow.phases.planning.output.gaps = ["Lack of verified off-chain identity (KYC) data for the operator of wallet X1.", "No hosting history."];
+    c3.workflow.phases.evidence.output.gaps = ["Lack of verified KYC/off-chain identity for the operator of X1."];
+    c3.workflow.risk_factors = [{ factor: "Fraud type: crypto_theft", weight: 10 }];
+    const r = buildCaseReport({ caseItem: c3, findings: [], evidence, asOf: ASOF });
+    assert.equal(r.gaps.length, 2);
+    assert.equal(r.risk.factors[0].factor, "Fraud type: crypto theft");
+    assert.equal(r.shared_query_target.type, "wallet");
+  });
+
   it("cleans engine identifiers out of prose", () => {
     assert.equal(cleanEngineText("via cyber_intel.threat_intel.shodan_domain today"), "via Shodan infrastructure lookup today");
     assert.equal(cleanEngineText("Visit dmenergy.io and www.example.co.uk"), "Visit dmenergy.io and www.example.co.uk"); // real domains untouched
