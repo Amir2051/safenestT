@@ -414,7 +414,7 @@ export function buildCaseReport(input = {}) {
     title: "Investigation Report",
     classification: "CONFIDENTIAL",
     distribution: input.organization?.name
-      ? `Prepared for ${str(input.organization.name)}. Not for onward distribution.`
+      ? `Prepared for ${str(input.organization.name).replace(/\.+$/, "")}. Not for onward distribution.`
       : "Restricted to authorized recipients. Not for onward distribution.",
     as_of: asOf,
     prepared_by: str(input.preparedBy) || "SafeNestT Investigations",
