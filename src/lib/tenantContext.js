@@ -1,4 +1,5 @@
 import { base44 } from "@/api/base44Client";
+import { orgAccess } from "@/lib/orgAccess";
 
 /**
  * Tenant Context — the client-side companion to the server-side RLS that
@@ -54,31 +55,12 @@ export async function ensureTenant() {
   const u = await getCurrentUser();
   if (u?.tenant_id) return u.tenant_id;
 
-  const ownerName = u?.full_name || u?.email || "User";
-  const tenant = await base44.entities.Tenant.create({
-    name: `${ownerName}'s Workspace`,
-    slug: `personal-${(u.id || "").slice(-8)}`,
-    owner_user_id: u.id,
-    owner_email: u.email,
-    plan: "personal",
-    status: "active",
-    members: [u.id],
-  });
-
-  await base44.entities.TenantMembership.create({
-    tenant_id: tenant.id,
-    user_id: u.id,
-    user_email: u.email,
-    role: "owner",
-    status: "active",
-    joined_at: new Date().toISOString(),
-  });
-
-  await base44.auth.updateMe({ tenant_id: tenant.id, tenant_role: "owner" });
+  // tenant_id is a locked field — the server creates the personal tenant.
+  const { tenant_id } = await orgAccess("ensurePersonalTenant");
 
   invalidateCurrentUser();
   const refreshed = await getCurrentUser({ force: true });
-  return refreshed?.tenant_id || tenant.id;
+  return refreshed?.tenant_id || tenant_id;
 }
 
 // ── App-layer role helpers (advisory; RLS enforces isolation server-side) ──
