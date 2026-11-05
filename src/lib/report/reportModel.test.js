@@ -258,11 +258,11 @@ describe("lookup results", () => {
   });
 
   it("the sync function's copy of the interpreter matches the app's", () => {
-    const src = fs.readFileSync(new URL("../../../base44/functions/syncHermesInvestigation/entry.ts", import.meta.url), "utf8");
+    const src = fs.readFileSync(new URL("../../../base44/shared/toolResult.ts", import.meta.url), "utf8");
     const start = src.indexOf("const ECHO_KEYS");
-    const end = src.indexOf("function canonicalJson");
-    assert.ok(start > 0 && end > start, "interpreter block found in entry.ts");
-    const js = transformSync(src.slice(start, end) + "\nreturn summarizeToolResult;", { loader: "ts" }).code;
+    const end = src.indexOf("export function canonicalJson");
+    assert.ok(start > 0 && end > start, "interpreter block found in base44/shared/toolResult.ts");
+    const js = transformSync(src.slice(start, end).replace(/^export /gm, "") + "\nreturn summarizeToolResult;", { loader: "ts" }).code;
     const fnCopy = new Function(js)();
     const cases = [
       { capability: "a.shodan_domain", target: WALLET, status: "success", data: { dns: [] } },
