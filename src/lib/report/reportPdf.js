@@ -247,10 +247,11 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
       pill(pillText, PAGE.m + W - pillW, y, TONE[f.tone]);
       y += head.length * 14 + 2;
       font("normal", 8, C.muted);
-      doc.text([f.category, `Severity ${f.severity}`, `Confidence ${f.confidence}`, f.source].filter(Boolean).join("  ·  "), PAGE.m, y);
+      doc.text([f.finding_kind || f.category, `Severity ${f.severity}`, `Confidence ${f.confidence}`, f.source].filter(Boolean).join("  ·  "), PAGE.m, y);
       y += 13;
       para(f.description, { color: C.ink });
       if (f.assessment) { sub("Evidence assessment"); para(f.assessment); }
+      if (f.limitation) para(`Limitation: ${f.limitation}`, { size: 8.5, color: C.amber, gap: 2 });
       const ev = [...f.evidence_refs, ...(f.case_record_refs ? ["case intake record"] : [])];
       para(`Supporting record: ${ev.length ? ev.join(", ") : "none attached"}`, { size: 8.5, color: C.muted, gap: 2 });
       para(`Status: ${f.status_label} — ${f.status_meaning}` + (f.reviewer ? ` Reviewed by ${f.reviewer}${f.review_date ? `, ${formatDate(f.review_date)}` : ""}.` : ""), { size: 8.5, color: C.muted });
@@ -286,9 +287,11 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
     if (!model.counts.primary_evidence) {
       para("Note: all items below are automated intelligence queries. No primary records (statements, transaction records, communications) are attached yet.", { size: 8.5, color: C.amber, style: "bold" });
     }
+    const shared = model.shared_query_target;
+    if (shared) para(`All automated queries targeted the ${shared.subtype.toLowerCase()} ${shared.value}.`, { size: 8.5, color: C.body });
     table([
       { header: "Ref", width: 0.07, key: "ref", bold: true, color: () => C.ink },
-      { header: "Item", width: 0.25, render: (r) => r.label + (r.target ? `\n${r.target.value}` : "") },
+      { header: "Item", width: 0.25, render: (r) => r.label + (r.target && !(shared && !r.is_primary) ? `\n${r.target.value}` : "") },
       { header: "Type", width: 0.12, key: "kind" },
       { header: "Source", width: 0.17, key: "source" },
       { header: "Collected", width: 0.15, render: (r) => formatDate(r.collected_at, { withTime: true }) },
@@ -353,11 +356,12 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
       font("bold", 7.5, C.magenta); doc.text(model.classification, PAGE.w - PAGE.m, 34, { align: "right" });
       doc.setDrawColor(...C.rule); doc.setLineWidth(0.5); doc.line(PAGE.m, 42, PAGE.w - PAGE.m, 42);
     }
-    doc.setDrawColor(...C.rule); doc.setLineWidth(0.5); doc.line(PAGE.m, PAGE.h - 40, PAGE.w - PAGE.m, PAGE.h - 40);
+    doc.setDrawColor(...C.rule); doc.setLineWidth(0.5); doc.line(PAGE.m, PAGE.h - 44, PAGE.w - PAGE.m, PAGE.h - 44);
     font("normal", 7, C.muted);
-    doc.text(`${model.classification} · Report No. ${model.report_number}`, PAGE.m, PAGE.h - 28);
-    doc.text(integrity ? `Integrity ${integrity.slice(0, 16)}…` : "DRAFT — not issued", PAGE.w / 2, PAGE.h - 28, { align: "center" });
-    doc.text(`Page ${i} of ${pages}`, PAGE.w - PAGE.m, PAGE.h - 28, { align: "right" });
+    doc.text(`${model.classification} · Report No. ${model.report_number}`, PAGE.m, PAGE.h - 32);
+    doc.text(`Page ${i} of ${pages}`, PAGE.w - PAGE.m, PAGE.h - 32, { align: "right" });
+    font("normal", 6.5, [150, 156, 170]);
+    doc.text(integrity ? `Integrity (SHA-256) ${integrity}` : "DRAFT — not issued; no integrity fingerprint", PAGE.m, PAGE.h - 22);
   }
   return doc;
 }
