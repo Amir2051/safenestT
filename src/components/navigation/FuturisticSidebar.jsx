@@ -219,9 +219,13 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const visibleSections = navSections.filter(
     (s) => !(s.label === "Case Workspace" && !hasCaseContext)
   );
-  const activeSection = visibleSections.find((s) => s.items.some((i) => isActiveItem(i, location)))?.label;
-  const [openSection, setOpenSection] = useState(activeSection || visibleSections[1]?.label || null);
-  useEffect(() => { if (activeSection) setOpenSection(activeSection); }, [activeSection]);
+  const activeSectionObj = visibleSections.find((s) => s.items.some((i) => isActiveItem(i, location)));
+  const activeSection = activeSectionObj?.label;
+  // On a flat page (e.g. Dashboard) open the first group so the nav isn't empty.
+  const firstGroup = visibleSections.find((s) => s.items.length > 1)?.label || null;
+  const defaultOpen = activeSectionObj && activeSectionObj.items.length > 1 ? activeSection : firstGroup;
+  const [openSection, setOpenSection] = useState(defaultOpen);
+  useEffect(() => { setOpenSection(defaultOpen); }, [defaultOpen]);
 
   const go = (item) => {
     let url = item.path;
