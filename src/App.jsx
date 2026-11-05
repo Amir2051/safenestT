@@ -28,6 +28,8 @@ import DataRightsDeletion from './pages/DataRightsDeletion';
 import OAuthConsent from './pages/OAuthConsent';
 import ClientAuthorizations from './pages/ClientAuthorizations';
 import OrganizationOnboarding from './pages/OrganizationOnboarding';
+import AccountTypeSetup from './pages/AccountTypeSetup';
+import OrganizationsDirectory from './pages/OrganizationsDirectory';
 import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationVerifications from './pages/OrganizationVerifications';
@@ -91,17 +93,23 @@ const AuthenticatedApp = () => {
     return <OAuthConsent />;
   }
 
+  // Account-type selection is a full-screen flow before choosing a personal
+  // or organization workspace.
+  if (typeof window !== 'undefined' && window.location.pathname === '/AccountTypeSetup') {
+    return <AccountTypeSetup />;
+  }
+
   // Organization onboarding is a full-screen flow (no app shell) so the user
   // can set up their organization before entering the workspace.
   if (typeof window !== 'undefined' && window.location.pathname === '/OrganizationOnboarding') {
     return <OrganizationOnboarding />;
   }
 
-  // Authenticated users who haven't set up an organization yet are routed to
-  // the onboarding flow (which asks for organization type) before entering the
-  // workspace. Platform admins skip this — they manage orgs directly.
-  if (isAuthenticated && user && user.role !== 'admin' && !user.is_admin && !user.organization_name) {
-    return <Navigate to="/OrganizationOnboarding" replace />;
+  // New users choose an account type once. Existing personal workspaces are
+  // valid homes even though they intentionally have no organization_name.
+  // Organization members continue through the existing org onboarding flow.
+  if (isAuthenticated && user && user.role !== 'admin' && !user.is_admin && !user.organization_name && !user.tenant_id) {
+    return <Navigate to="/AccountTypeSetup" replace />;
   }
 
   // Show loading spinner while checking app public settings or auth
@@ -177,6 +185,7 @@ const AuthenticatedApp = () => {
         <Route path="/AuditLog" element={<RoleGate allowInvestigator allowReadOnly><AuditLog /></RoleGate>} />
         <Route path="/GlobalSearch" element={<RoleGate allowInvestigator allowReadOnly><GlobalSearchPage /></RoleGate>} />
         <Route path="/ReportsCenter" element={<RoleGate allowInvestigator allowReadOnly><ReportsCenter /></RoleGate>} />
+        <Route path="/Organizations" element={<ConsumerGate><OrganizationsDirectory /></ConsumerGate>} />
         <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
         <Route path="/Team" element={<Team />} />
         <Route path="/OrganizationSettings" element={<OrganizationSettings />} />
