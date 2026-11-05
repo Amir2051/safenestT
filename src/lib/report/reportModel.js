@@ -53,6 +53,29 @@ export function formatDate(value, { withTime = false } = {}) {
   return `${base} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
+/** snake_case words inside prose -> plain words ("crypto_theft" -> "crypto theft"). */
+export function plainWords(text) {
+  return str(text).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (m) => m.replace(/_/g, " "));
+}
+
+// Near-duplicate sentences (same idea, different wording) — keep the first.
+const STOP = new Set(["the", "and", "for", "with", "from", "that", "this", "into", "once", "after", "they", "their", "have", "been", "lack", "absence", "verified", "confirmed"]);
+const tokens = (s) => new Set(str(s).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.has(w)));
+export function dedupeSimilar(list, threshold = 0.75) {
+  const kept = [];
+  list.map(str).filter(Boolean).forEach((s) => {
+    const t = tokens(s);
+    const dup = kept.some((k) => {
+      const u = tokens(k);
+      if (!t.size || !u.size) return k.toLowerCase() === s.toLowerCase();
+      let inter = 0; t.forEach((w) => { if (u.has(w)) inter++; });
+      return inter / Math.min(t.size, u.size) >= threshold;
+    });
+    if (!dup) kept.push(s);
+  });
+  return kept;
+}
+
 // ── Indicator classification ───────────────────────────────────────────────
 // Raw data sometimes mislabels indicators (e.g. an ETH wallet typed "domain"),
 // so the value's own shape decides the type.
@@ -279,7 +302,7 @@ export function buildCaseReport(input = {}) {
     .map((f, i) => {
       const st = findingStatus(f.status);
       const refs = arr(f.evidence_refs);
-      const resolved = refs.map((id) => evRef.get(id)).filter(Boolean);
+      const resolved = refs.map((id) => evRef.get(id)).filter(Boolean).sort();
       const caseRefs = refs.filter((id) => !evRef.has(id));
       const parsed = parseEngineDescription(f.description);
       return {
@@ -294,7 +317,10 @@ export function buildCaseReport(input = {}) {
         confidence: str(f.confidence) || "medium",
         status: f.status || "proposed",
         status_label: st.label,
-        status_meaning: st.meaning,
+        // "Verified" by a person (no reality-check reasoning) says so explicitly.
+        status_meaning: f.status === "verified" && isHumanReviewed(f) && !str(isObj(f.reality_check) ? f.reality_check.reasoning : "") && !rcById.get(f.id)
+          ? "Verified on investigator review."
+          : st.meaning,
         tone: st.tone,
         included: st.included,
         assessment: str(isObj(f.reality_check) ? f.reality_check.reasoning : "") || rcById.get(f.id) || "",
@@ -346,7 +372,7 @@ export function buildCaseReport(input = {}) {
   const riskLevel = str(wf.risk_level) || (riskScore == null ? "" :
     riskScore >= 80 ? "critical" : riskScore >= 60 ? "high" : riskScore >= 40 ? "medium" : "low");
   const riskFactors = arr(wf.risk_factors).filter(isObj).map((f) => ({
-    factor: str(f.factor) || str(f.name) || str(f.description) || "Factor",
+    factor: plainWords(str(f.factor) || str(f.name) || str(f.description) || "Factor"),
     weight: Number(f.weight) || 0,
   }));
 
@@ -363,11 +389,16 @@ export function buildCaseReport(input = {}) {
 
   // Gaps & next steps (deduplicated, order preserved).
   const uniq = (list) => [...new Set(list.map(str).filter(Boolean))];
-  const gaps = uniq([...arr(out("planning").gaps), ...arr(out("evidence").gaps)]);
-  const nextSteps = uniq([
+  const gaps = dedupeSimilar(uniq([...arr(out("planning").gaps), ...arr(out("evidence").gaps)]));
+  const nextSteps = dedupeSimilar(uniq([
     ...arr(out("evidence").needs_verification),
     ...arr(out("planning").steps).map((st) => (isObj(st) ? [str(st.step), str(st.detail)].filter(Boolean).join(": ") : st)),
-  ]);
+  ]));
+
+  // If every automated query hit the same target, state it once for the register.
+  const autoTargets = [...new Set(evOrdered.filter((e) => !e.is_primary && e.target).map((e) => e.target.value))];
+  const sharedQueryTarget = autoTargets.length === 1 && evOrdered.filter((e) => !e.is_primary).every((e) => e.target)
+    ? evOrdered.find((e) => !e.is_primary).target : null;
 
   const counts = {
     total: findings.length,
@@ -446,6 +477,7 @@ export function buildCaseReport(input = {}) {
     reality_check_note: str(out("reality_check").notes),
     risk: riskScore == null ? null : { score: riskScore, level: riskLevel, factors: riskFactors },
     evidence: evOrdered,
+    shared_query_target: sharedQueryTarget,
     gaps,
     next_steps: nextSteps,
     counts,
