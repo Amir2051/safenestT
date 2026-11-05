@@ -28,20 +28,25 @@ function Loading() {
 }
 
 const INVESTIGATION_ROLES = ['ORG_ADMIN', 'INVESTIGATOR', 'ANALYST', 'CASE_MANAGER'];
+// Read-only org roles. They may OPEN review pages; the data rules stop any
+// change they attempt, and ReadOnlyBanner tells them they're read-only.
+const READ_ONLY_ROLES = ['VIEWER', 'AUDITOR'];
 
-function isPrivileged(user, { allowInvestigator = false } = {}) {
+function isPrivileged(user, { allowInvestigator = false, allowReadOnly = false } = {}) {
   if (!user) return false;
   const role = getEffectiveRole(user);
   if (role === 'PLATFORM_ADMIN') return true;
   if (role === 'ORG_ADMIN') return true; // enterprise admin functionality
   if (allowInvestigator && INVESTIGATION_ROLES.includes(role)) return true;
+  // Pending members are forced to VIEWER until approved — keep them out.
+  if (allowReadOnly && READ_ONLY_ROLES.includes(role) && user.account_status !== 'pending') return true;
   return false;
 }
 
-export function RoleGate({ children, allowInvestigator = false }) {
+export function RoleGate({ children, allowInvestigator = false, allowReadOnly = false }) {
   const { user, isLoadingAuth } = useAuth();
   if (isLoadingAuth || !user) return <Loading />;
-  if (!isPrivileged(user, { allowInvestigator })) return <Navigate to="/Dashboard" replace />;
+  if (!isPrivileged(user, { allowInvestigator, allowReadOnly })) return <Navigate to="/Dashboard" replace />;
   return <>{children}</>;
 }
 
