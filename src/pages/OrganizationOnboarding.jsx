@@ -13,6 +13,7 @@ import {
   Loader2, Lock, AlertCircle, Users,
 } from "lucide-react";
 import { ORGANIZATION_TYPES, ORG_TYPE_LABELS } from "@/lib/organizationRoles";
+import { orgAccess } from "@/lib/orgAccess";
 
 /**
  * Organization onboarding — the institutional "signup" flow.
@@ -54,8 +55,8 @@ export default function OrganizationOnboarding() {
   useEffect(() => {
     if (step === 2 && mode === "join" && joinable.length === 0 && !joinableLoading) {
       setJoinableLoading(true);
-      base44.functions.invoke("listJoinableOrganizations", {})
-        .then((res) => setJoinable(res?.data?.organizations || []))
+      orgAccess("listJoinable")
+        .then((res) => setJoinable(res?.organizations || []))
         .catch(() => setJoinable([]))
         .finally(() => setJoinableLoading(false));
     }
@@ -88,74 +89,16 @@ export default function OrganizationOnboarding() {
     }
     setSubmitting(true);
     try {
+      // Access is granted server-side only (orgAccess). Joining does NOT give
+      // access to the organization's data until a platform admin verifies the
+      // company and an org admin assigns a role.
       if (mode === "join" && selectedOrg) {
-        // Join an existing verified organization — create a PENDING membership
-        // for platform-admin company verification, then org-admin role assignment.
-        await base44.auth.updateMe({
-          organization_name: selectedOrg.name,
-          organization_type: selectedOrg.organization_type || null,
-          organization_role: "VIEWER", // read-only until approved
-          tenant_id: selectedOrg.id,
-          account_status: "pending",
-        });
-        await base44.entities.TenantMembership.create({
-          tenant_id: selectedOrg.id,
-          user_id: user.id,
-          user_email: user.email,
-          user_name: user.full_name || fullName.trim(),
-          role: "member",
-          organization_role: "VIEWER",
-          status: "pending_verification",
-          requested_at: new Date().toISOString(),
-          joined_at: new Date().toISOString(),
-        });
+        await orgAccess("requestJoinOrg", { tenantId: selectedOrg.id, fullName: fullName.trim() });
       } else {
-        // Request a NEW organization — pending Tenant + pending membership.
-        const tenant = await base44.entities.Tenant.create({
-          name: orgName.trim(),
-          organization_type: orgType,
-          owner_user_id: user.id,
-          owner_email: user.email,
-          plan: "team",
-          status: "pending_verification",
-          members: [user.id],
-          requested_by_user_id: user.id,
-          requested_at: new Date().toISOString(),
-        });
-        if (tenant?.id) {
-          await base44.auth.updateMe({
-            organization_name: orgName.trim(),
-            organization_type: orgType,
-            organization_role: "VIEWER", // read-only until the org is verified
-            tenant_id: tenant.id,
-            tenant_role: "owner",
-            account_status: "pending",
-          });
-          await base44.entities.TenantMembership.create({
-            tenant_id: tenant.id,
-            user_id: user.id,
-            user_email: user.email,
-            user_name: user.full_name || fullName.trim(),
-            role: "owner",
-            organization_role: "ORG_ADMIN", // takes effect once verified
-            status: "pending_verification",
-            requested_org_name: orgName.trim(),
-            requested_org_type: orgType,
-            requested_at: new Date().toISOString(),
-            joined_at: new Date().toISOString(),
-          });
-        } else {
-          // Tenant creation blocked (RLS) — persist org context on the profile only.
-          await base44.auth.updateMe({
-            organization_name: orgName.trim(),
-            organization_type: orgType,
-            organization_role: "VIEWER",
-            account_status: "pending",
-          });
-        }
+        await orgAccess("requestNewOrg", { orgName: orgName.trim(), orgType, fullName: fullName.trim() });
       }
-
-      navigate("/OperationsDashboard", { replace: true });
+      // Full reload so the session picks up the server-set profile fields.
+      window.location.replace("/");
     } catch (e) {
       setError(e?.message || "Failed to set up your organization. Please try again.");
     } finally {
