@@ -161,6 +161,14 @@ export const FINDING_STATUS = {
     meaning: "Replaced by a later finding." },
 };
 const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+const CONFIDENCE_RANK = { high: 0, medium: 1, low: 2 };
+
+/** Finding titles: drop engine boilerplate ("Threat intel lookup for X" -> "OSINT: X"). */
+export function cleanFindingTitle(title) {
+  const t = cleanEngineText(title);
+  const m = t.match(/^threat intel lookup for (.+)$/i);
+  return m ? `OSINT: ${m[1]}` : t;
+}
 
 export function findingStatus(status) {
   return FINDING_STATUS[status] || FINDING_STATUS.proposed;
@@ -266,6 +274,7 @@ export function buildCaseReport(input = {}) {
     .sort((a, b) =>
       findingStatus(a.status).rank - findingStatus(b.status).rank ||
       (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
+      (CONFIDENCE_RANK[a.confidence] ?? 9) - (CONFIDENCE_RANK[b.confidence] ?? 9) ||
       byCreated(a, b))
     .map((f, i) => {
       const st = findingStatus(f.status);
@@ -276,7 +285,7 @@ export function buildCaseReport(input = {}) {
       return {
         ref: `F-${String(i + 1).padStart(2, "0")}`,
         id: f.id || "",
-        title: cleanEngineText(f.title) || "Untitled finding",
+        title: cleanFindingTitle(f.title) || "Untitled finding",
         description: parsed.description,
         finding_kind: parsed.kind,
         limitation: parsed.limitation,
