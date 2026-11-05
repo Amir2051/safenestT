@@ -53,7 +53,7 @@ export default function ThreatIntelligence() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white">
+    <div className="min-h-screen p-6 lg:p-8 text-white">
       <div className="mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-3 text-purple-400">
           <Globe className="w-8 h-8" />

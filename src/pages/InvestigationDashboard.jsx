@@ -83,7 +83,7 @@ export default function InvestigationDashboard() {
 
   return (
     <AdminGate>
-    <div className="min-h-screen bg-[#000000] text-white p-6 relative">
+    <div className="min-h-screen text-white p-6 relative">
       <ProactiveAlertsWidget />
       <div className="max-w-[1600px] mx-auto space-y-8">
         

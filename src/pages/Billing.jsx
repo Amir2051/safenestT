@@ -104,7 +104,7 @@ export default function Billing() {
   const paymentMethods = info.payment_methods || [];
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-4 lg:p-8">
+    <div className="min-h-screen p-4 lg:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>

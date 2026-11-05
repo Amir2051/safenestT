@@ -200,7 +200,7 @@ export default function AdminReports() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white" ref={reportRef}>
+    <div className="min-h-screen p-6 lg:p-8 text-white" ref={reportRef}>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">

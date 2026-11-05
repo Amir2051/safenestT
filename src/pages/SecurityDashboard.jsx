@@ -359,7 +359,7 @@ function SecurityDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>

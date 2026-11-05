@@ -111,7 +111,7 @@ export default function PaymentSuccess() {
                    user.subscription_plan === 'elite' ? 'Elite Protection' : 'Premium';
 
   return (
-    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <Card className="max-w-3xl w-full bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-green-500/30 relative overflow-hidden">
         {/* Confetti Animation */}
         {celebrating && (

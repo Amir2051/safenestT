@@ -146,7 +146,7 @@ export default function CaseDocumentManager() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6 lg:p-8 text-white">
+    <div className="min-h-screen p-6 lg:p-8 text-white">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">

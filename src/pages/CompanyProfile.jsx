@@ -18,10 +18,10 @@ export default function CompanyProfile() {
     enabled: !!id
   });
 
-  if (isLoading || !company) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
+  if (isLoading || !company) return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white pb-20">
+    <div className="min-h-screen text-white pb-20">
       {/* Header Image / Gradient */}
       <div className="h-64 bg-gradient-to-r from-blue-900 to-slate-900 relative">
         <div className="absolute top-6 left-6">

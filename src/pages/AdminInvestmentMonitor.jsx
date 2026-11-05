@@ -39,7 +39,7 @@ export default function AdminInvestmentMonitor() {
   const flaggedCount = investments.filter(i => i.status === 'flagged').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 space-y-6">
+    <div className="min-h-screen p-6 space-y-6">
       <h1 className="text-3xl font-bold text-white">Investment Monitor</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -150,7 +150,7 @@ function CasesContent() {
   if (!user) return <div className="p-8 text-center text-white">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white">
+    <div className="min-h-screen p-6 lg:p-8 text-white">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">

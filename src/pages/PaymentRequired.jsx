@@ -44,7 +44,7 @@ export default function PaymentRequired() {
   const daysLeft = subscriptionInfo?.days_left || 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a]">
+    <div className="min-h-screen flex items-center justify-center p-6">
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse" />

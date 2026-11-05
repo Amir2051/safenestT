@@ -17,7 +17,7 @@ export default function MyPortfolio() {
   const totalInvested = investments.reduce((acc, i) => acc + (i.status !== 'refunded' ? i.amount : 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
            <h1 className="text-3xl font-bold text-white">My Portfolio</h1>

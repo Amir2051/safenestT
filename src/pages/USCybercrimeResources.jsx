@@ -174,7 +174,7 @@ export default function USCybercrimeResources() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060b12] text-white p-4 md:p-8">
+    <div className="min-h-screen text-white p-4 md:p-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

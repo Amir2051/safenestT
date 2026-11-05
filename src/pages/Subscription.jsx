@@ -84,7 +84,7 @@ export default function Subscription() {
   const canCancel = (isOnTrial && !isTrialCancelled) || isSubscribed;
 
   return (
-    <div className="min-h-screen p-6 lg:p-8 bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a]">
+    <div className="min-h-screen p-6 lg:p-8">
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />

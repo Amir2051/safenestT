@@ -103,7 +103,7 @@ export default function FamilyInvite() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/30 max-w-md">
           <CardContent className="p-12 text-center">
             <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -124,7 +124,7 @@ export default function FamilyInvite() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="max-w-2xl w-full space-y-6">
         {/* Header */}
         <div className="text-center">

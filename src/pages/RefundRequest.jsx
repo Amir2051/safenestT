@@ -30,7 +30,7 @@ export default function RefundRequest() {
   if (!investment) return <div className="text-white p-6">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 flex items-center justify-center">
+    <div className="min-h-screen p-6 flex items-center justify-center">
       <Card className="w-full max-w-lg bg-slate-900 border-slate-800">
         <CardHeader>
            <Link to={createPageUrl("MyPortfolio")} className="inline-flex items-center text-slate-400 hover:text-white mb-4 text-sm">

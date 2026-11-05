@@ -382,7 +382,7 @@ User Request: ${prompt}`,
   );
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white font-sans">
+    <div className="min-h-screen p-6 lg:p-8 text-white font-sans">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">

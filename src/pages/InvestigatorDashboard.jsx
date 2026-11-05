@@ -56,7 +56,7 @@ export default function InvestigatorDashboard() {
   const activeCases = myCases.filter(c => !["Closed", "Resolved"].includes(c.status));
 
   return (
-    <div className="min-h-screen bg-[#000000] text-white p-6">
+    <div className="min-h-screen text-white p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <header className="flex justify-between items-center">
           <div>
