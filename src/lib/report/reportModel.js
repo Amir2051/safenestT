@@ -13,7 +13,11 @@
  * No React / SDK imports so it can be unit-tested with `node --test`.
  */
 
-export const REPORT_SCHEMA_VERSION = 1;
+import { summarizeToolResult, RESULT_STATE } from "./toolResult.js";
+export { RESULT_STATE } from "./toolResult.js";
+
+// v2: automated lookups carry their actual result (data / empty / not applicable).
+export const REPORT_SCHEMA_VERSION = 2;
 
 // ── Small safe helpers ─────────────────────────────────────────────────────
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -294,6 +298,9 @@ const byCreated = (a, b) =>
  * @param {object} [input.organization] { name } of the client organization
  * @param {string} [input.preparedBy]   person issuing the report
  * @param {string} [input.asOf]         ISO time the data was read (default: now)
+ * @param {object[]} [input.engineReports] InvestigationReport records from engines
+ *        (Hermes dossiers). Used to recover lookup results for evidence
+ *        records created before results were stored on the evidence itself.
  */
 export function buildCaseReport(input = {}) {
   const c = isObj(input.caseItem) ? input.caseItem : {};
@@ -304,7 +311,23 @@ export function buildCaseReport(input = {}) {
 
   // Evidence register: primary material first, then automated queries.
   const evidenceRaw = arr(input.evidence).filter(isObj).slice().sort(byCreated);
-  const evidenceDescribed = evidenceRaw.map(describeEvidence);
+  // Engine evidence id -> raw lookup result, from stored dossiers.
+  const dossierResults = new Map();
+  arr(input.engineReports).filter(isObj).forEach((r) => {
+    const content = isObj(r.content) ? r.content : {};
+    arr(content.evidence).filter(isObj).forEach((item) => {
+      const call = isObj(item.data) && isObj(item.data.tool_call) ? item.data.tool_call : {};
+      const res = isObj(call.result) ? call.result : {};
+      const data = res.data !== undefined ? res.data : isObj(item.data) ? item.data.data : undefined;
+      if (item.evidence_id) {
+        dossierResults.set(str(item.evidence_id), {
+          capability: str(call.capability) || str(item.source), target: str(item.target), status: str(call.status), data,
+        });
+      }
+    });
+  });
+  const evidenceDescribed = evidenceRaw.map((e) => describeEvidence(e, dossierResults.get(str(e.file_hash)) || null));
+  const evById = new Map(evidenceDescribed.map((e) => [e.id, e]));
   const evOrdered = [
     ...evidenceDescribed.filter((e) => e.is_primary),
     ...evidenceDescribed.filter((e) => !e.is_primary),
@@ -326,6 +349,15 @@ export function buildCaseReport(input = {}) {
   const allFindings = arr(input.findings).filter(isObj);
   const supersededCount = allFindings.filter(isStale).length;
 
+  // A machine-generated finding whose only cited evidence is lookups that
+  // returned nothing (or could not apply) has no support, whatever its score.
+  const lacksSupport = (f) => {
+    if (isHumanReviewed(f)) return false;
+    const refs = arr(f.evidence_refs);
+    const linked = refs.map((id) => evById.get(id)).filter(Boolean);
+    return linked.length > 0 && linked.length === refs.length && linked.every((e) => !e.supports);
+  };
+
   const findings = allFindings.filter((f) => !isStale(f)).slice()
     .sort((a, b) =>
       findingStatus(a.status).rank - findingStatus(b.status).rank ||
@@ -333,7 +365,11 @@ export function buildCaseReport(input = {}) {
       (CONFIDENCE_RANK[a.confidence] ?? 9) - (CONFIDENCE_RANK[b.confidence] ?? 9) ||
       byCreated(a, b))
     .map((f, i) => {
-      const st = findingStatus(f.status);
+      const noSupport = lacksSupport(f);
+      const st = noSupport
+        ? { label: "No supporting data", tone: "negative", included: false,
+            meaning: "Every lookup cited for this finding returned no records or did not apply to the indicator. Excluded from conclusions." }
+        : findingStatus(f.status);
       const refs = arr(f.evidence_refs);
       const resolved = refs.map((id) => evRef.get(id)).filter(Boolean).sort();
       const caseRefs = refs.filter((id) => !evRef.has(id));
@@ -348,7 +384,7 @@ export function buildCaseReport(input = {}) {
         category: f.category === "other" ? "" : humanize(f.category),
         severity: str(f.severity) || "medium",
         confidence: str(f.confidence) || "medium",
-        status: f.status || "proposed",
+        status: noSupport ? "no_supporting_data" : f.status || "proposed",
         status_label: st.label,
         // "Verified" by a person (no reality-check reasoning) says so explicitly.
         status_meaning: f.status === "verified" && isHumanReviewed(f) && !str(isObj(f.reality_check) ? f.reality_check.reasoning : "") && !rcById.get(f.id)
@@ -442,6 +478,13 @@ export function buildCaseReport(input = {}) {
     superseded: supersededCount,
     evidence: evOrdered.length,
     primary_evidence: evOrdered.filter((e) => e.is_primary).length,
+    lookups: evOrdered.filter((e) => !e.is_primary).length,
+    lookups_with_data: evOrdered.filter((e) => !e.is_primary && e.result.state === "data").length,
+    lookups_empty: evOrdered.filter((e) => !e.is_primary && e.result.state === "empty").length,
+    lookups_not_applicable: evOrdered.filter((e) => !e.is_primary && e.result.state === "not_applicable").length,
+    lookups_failed: evOrdered.filter((e) => !e.is_primary && e.result.state === "error").length,
+    lookups_unrecorded: evOrdered.filter((e) => !e.is_primary && e.result.state === "unknown").length,
+    no_supporting_data: excluded.filter((f) => f.status === "no_supporting_data").length,
   };
 
   const currency = "USD";
@@ -471,6 +514,17 @@ export function buildCaseReport(input = {}) {
         ? `The evidence register holds ${counts.evidence} automated intelligence quer${counts.evidence === 1 ? "y" : "ies"}; no primary records (statements, transaction records, communications) are attached yet.`
         : "No evidence is attached to this case."
   );
+  if (counts.lookups) {
+    const parts = [`${counts.lookups_with_data} returned data`];
+    if (counts.lookups_empty) parts.push(`${counts.lookups_empty} returned no records`);
+    if (counts.lookups_not_applicable) parts.push(`${counts.lookups_not_applicable} did not apply to the indicator queried`);
+    if (counts.lookups_failed) parts.push(`${counts.lookups_failed} failed`);
+    if (counts.lookups_unrecorded) parts.push(`${counts.lookups_unrecorded} have no recorded result`);
+    summary.push(
+      `Of ${counts.lookups} automated intelligence lookup(s), ${parts.join(", ")}.` +
+      (counts.no_supporting_data ? ` ${counts.no_supporting_data} machine-generated finding(s) rested only on lookups without data and are excluded.` : "")
+    );
+  }
 
   const model = {
     schema_version: REPORT_SCHEMA_VERSION,
@@ -517,7 +571,7 @@ export function buildCaseReport(input = {}) {
     limitations: [
       "This report reflects the case record as of the date shown. Later evidence may change the assessment.",
       "Findings marked \"Partially supported\" or \"Proposed\" are not established facts and must be corroborated before reliance.",
-      "Automated intelligence queries (OSINT) record that a lookup was performed; unless result content is attached, they do not by themselves prove a link.",
+      "Automated intelligence lookups (OSINT) are reported with what they actually returned. A lookup that returned no records is not evidence for or against a link, and a lookup that returned data still requires corroboration.",
       "The analyst narrative and findings are produced with AI assistance and reviewed through an evidence gate. The risk score is computed deterministically, without AI.",
       "This report is an investigative work product. It is not legal advice and is not a determination of guilt or liability.",
     ],
