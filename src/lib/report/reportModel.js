@@ -365,7 +365,11 @@ export function buildCaseReport(input = {}) {
       (CONFIDENCE_RANK[a.confidence] ?? 9) - (CONFIDENCE_RANK[b.confidence] ?? 9) ||
       byCreated(a, b))
     .map((f, i) => {
-      const noSupport = lacksSupport(f);
+      // "Partially supported" already says the support is incomplete (often the
+      // case record itself), so it stays in with an explicit caveat; a claimed
+      // "verified" or an unreviewed machine finding with no data is excluded.
+      const emptyOnly = lacksSupport(f);
+      const noSupport = emptyOnly && f.status !== "partially_supported";
       const st = noSupport
         ? { label: "No supporting data", tone: "negative", included: false,
             meaning: "Every lookup cited for this finding returned no records or did not apply to the indicator. Excluded from conclusions." }
@@ -380,7 +384,10 @@ export function buildCaseReport(input = {}) {
         title: cleanFindingTitle(f.title) || "Untitled finding",
         description: parsed.description,
         finding_kind: parsed.kind,
-        limitation: parsed.limitation,
+        limitation: [
+          parsed.limitation,
+          emptyOnly && !noSupport ? "None of the automated lookups cited for this finding returned data; any support comes from the case record alone." : "",
+        ].filter(Boolean).join(" "),
         category: f.category === "other" ? "" : humanize(f.category),
         severity: str(f.severity) || "medium",
         confidence: str(f.confidence) || "medium",
