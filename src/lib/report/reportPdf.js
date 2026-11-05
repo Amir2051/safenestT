@@ -38,7 +38,9 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
   const ensure = (h) => { if (y + h > PAGE.h - PAGE.bottom) { doc.addPage(); y = PAGE.top; } };
 
   // Wraps text, also breaking long unbroken tokens (wallet addresses, hashes).
-  const wrap = (text, width) => {
+  // Explicit "\n" starts a new line.
+  const wrap = (text, width) => String(text ?? "").split("\n").flatMap((part) => wrapLine(part, width));
+  const wrapLine = (text, width) => {
     const words = String(text ?? "").split(/(\s+)/);
     const lines = [];
     let line = "";
