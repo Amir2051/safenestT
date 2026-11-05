@@ -238,10 +238,13 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
 
     model.findings.forEach((f) => {
       ensure(70);
+      const pillText = f.status_label.toUpperCase();
+      font("bold", 7);
+      const pillW = doc.getTextWidth(pillText) + 8;
       font("bold", 10.5, C.ink);
-      const head = wrap(`${f.ref}  ${f.title}`, W - 120);
+      const head = wrap(`${f.ref}  ${f.title}`, W - pillW - 14);
       head.forEach((ln, i) => { doc.text(ln, PAGE.m, y + i * 14); });
-      pill(f.status_label.toUpperCase(), PAGE.m + W - doc.getTextWidth(f.status_label.toUpperCase()) - 8 - 2, y, TONE[f.tone]);
+      pill(pillText, PAGE.m + W - pillW, y, TONE[f.tone]);
       y += head.length * 14 + 2;
       font("normal", 8, C.muted);
       doc.text([f.category, `Severity ${f.severity}`, `Confidence ${f.confidence}`, f.source].filter(Boolean).join("  ·  "), PAGE.m, y);
