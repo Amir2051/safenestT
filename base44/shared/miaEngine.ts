@@ -470,6 +470,37 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
 
       const verifications = Array.isArray(out?.verifications) ? out.verifications : [];
       const updates: any[] = [];
+      const updateErrors: any[] = [];
+
+      // Persist one finding's reality-check outcome. Errors are logged and
+      // carried into the run output — a verdict must never be lost silently.
+      const persistVerdict = async (finding: any, mapped: string, reasoning: string | null, verdict: string | null) => {
+        const refs = Array.isArray(finding.evidence_refs) ? finding.evidence_refs : [];
+        // Evidence gate, enforced in code (not in the prompt): a finding may only
+        // be "verified" when at least one evidence item is actually attached. A
+        // "supported" verdict with no evidence is recorded as "partially_supported".
+        const gated = mapped === "verified" && refs.length === 0 ? "partially_supported" : mapped;
+        try {
+          await base44.entities.InvestigationFinding.update(finding.id, {
+            status: gated,
+            reality_check: {
+              status: gated,
+              verdict,
+              reasoning,
+              run_id: run?.id || null,
+              checked_at: new Date().toISOString(),
+              provider: MIA_PROVIDER,
+              evidence_gate: gated === mapped ? null : "downgraded_to_partially_supported_no_evidence",
+            },
+          });
+        } catch (e: any) {
+          const err = truncate(e?.message || e, 500);
+          updateErrors.push({ finding_id: finding.id, attempted_status: gated, error: err });
+          console.error(`[mia] reality_check finding update failed for ${finding.id} (${gated}): ${err}`);
+        }
+        updates.push({ finding_id: finding.id, verdict, status: gated, evidence_refs: refs.length });
+      };
+
       for (const v of verifications) {
         const mapped = v?.status === "supported" ? "verified"
           : v?.status === "partially_supported" ? "partially_supported"
@@ -479,21 +510,19 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
           (v?.finding_id && f.id === v.finding_id) || titlesSimilar(f.title, v?.finding_title)
         );
         for (const f of matches) {
-          await base44.entities.InvestigationFinding.update(f.id, {
-            status: mapped,
-            reality_check: { status: mapped, reasoning: truncate(v?.reasoning, 2000), run_id: run?.id || null, checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
-          }).catch(() => {});
-          updates.push({ finding_id: f.id, status: mapped });
+          await persistVerdict(f, mapped, truncate(v?.reasoning, 2000), v?.status ?? null);
         }
       }
       // Findings the reality check did not address are NOT promoted.
       const addressed = new Set(updates.map((u) => u.finding_id));
       for (const f of createdFindings) {
         if (!addressed.has(f.id)) {
-          await base44.entities.InvestigationFinding.update(f.id, {
-            status: "partially_supported",
-            reality_check: { status: "not_verified", reasoning: "Reality check returned no verdict for this finding; treated as unverified.", checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
-          }).catch(() => {});
+          await persistVerdict(
+            f,
+            "partially_supported",
+            "Reality check returned no verdict for this finding; treated as unverified.",
+            "not_verified"
+          );
         }
       }
 
@@ -502,10 +531,17 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
         return { ...f, status: u ? u.status : "partially_supported" };
       });
 
-      phases.reality_check = { status: "completed", completed_at: new Date().toISOString(), output: { ...out, finding_updates: updates } };
+      phases.reality_check = {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        output: { ...out, finding_updates: updates, update_errors: updateErrors },
+      };
       await finishRun(base44, run, {
-        status: "completed", output: { ...out, finding_updates: updates }, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0,
-        persisted_outputs: { finding_updates: updates },
+        status: "completed",
+        output: { ...out, finding_updates: updates, update_errors: updateErrors },
+        completed_at: new Date().toISOString(),
+        duration_ms: Date.now() - p0,
+        persisted_outputs: { finding_updates: updates, update_errors: updateErrors },
       });
     } catch (e: any) {
       const err = truncate(e?.message || e, 2000);

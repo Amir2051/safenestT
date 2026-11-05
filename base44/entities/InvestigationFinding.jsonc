@@ -29,6 +29,15 @@
         "risk_factor",
         "other"
       ],
+      "enumColors": [
+        "blue",
+        "purple",
+        "pink",
+        "yellow",
+        "green",
+        "red",
+        "gray"
+      ],
       "default": "other",
       "description": "Finding category"
     },
@@ -40,6 +49,12 @@
         "high",
         "critical"
       ],
+      "enumColors": [
+        "green",
+        "yellow",
+        "red",
+        "red"
+      ],
       "default": "medium",
       "description": "Finding severity"
     },
@@ -49,6 +64,11 @@
         "low",
         "medium",
         "high"
+      ],
+      "enumColors": [
+        "red",
+        "yellow",
+        "green"
       ],
       "default": "medium",
       "description": "Confidence level"
@@ -63,11 +83,57 @@
         "proposed",
         "under_review",
         "verified",
+        "partially_supported",
+        "unsupported",
         "rejected",
         "superseded"
       ],
+      "enumColors": [
+        "gray",
+        "blue",
+        "green",
+        "yellow",
+        "red",
+        "red",
+        "gray"
+      ],
       "default": "proposed",
-      "description": "Review status \u2014 AI findings start as 'proposed' and are NOT auto-verified"
+      "description": "Review status. 'verified' requires at least one attached evidence item \u2014 the MIA engine downgrades a supported verdict with no evidence to 'partially_supported'. AI findings are never auto-verified without evidence."
+    },
+    "reality_check": {
+      "type": "object",
+      "description": "Audit trail of the MIA reality-check verdict for this finding: the provider verdict, the status it produced, the reasoning, and the InvestigationRun that produced it. Written by the MIA engine; never hand-edited.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Final review status persisted from the reality check (verified | partially_supported | unsupported | not_verified)."
+        },
+        "verdict": {
+          "type": "string",
+          "description": "Raw verdict returned by the reality-check model (supported | partially_supported | unsupported)."
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "The reality-check model's reasoning for this verdict."
+        },
+        "run_id": {
+          "type": "string",
+          "description": "InvestigationRun id of the reality-check phase that produced this verdict."
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the verdict was recorded."
+        },
+        "provider": {
+          "type": "string",
+          "description": "Investigation provider that produced the verdict (mia)."
+        },
+        "evidence_gate": {
+          "type": "string",
+          "description": "Set when the engine's evidence gate changed the status, e.g. 'downgraded_to_partially_supported_no_evidence'."
+        }
+      }
     },
     "source": {
       "type": "string",
@@ -75,6 +141,11 @@
         "hermes",
         "investigator",
         "ai_run"
+      ],
+      "enumColors": [
+        "purple",
+        "blue",
+        "gray"
       ],
       "default": "ai_run",
       "description": "Who generated the finding"
