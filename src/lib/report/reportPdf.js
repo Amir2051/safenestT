@@ -7,6 +7,9 @@
  */
 import { jsPDF } from "jspdf";
 import { formatDate, INDICATOR_TYPE_LABEL } from "./reportModel.js";
+import { BRAND_LOGO } from "./brandLogo.js";
+
+const LOGO_RATIO = BRAND_LOGO.width / BRAND_LOGO.height;
 
 // Brand palette (print-safe: navy + cyan, magenta only as a thin accent).
 const C = {
@@ -149,8 +152,12 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
   doc.setFillColor(...C.navy); doc.rect(0, 0, PAGE.w, 118, "F");
   doc.setFillColor(...C.cyanBright); doc.rect(0, 118, PAGE.w * 0.62, 3, "F");
   doc.setFillColor(...C.magenta); doc.rect(PAGE.w * 0.62, 118, PAGE.w * 0.38, 3, "F");
-  font("bold", 16, C.white); doc.setCharSpace(2.2); doc.text("SAFENESTT", PAGE.m, 44); doc.setCharSpace(0);
-  font("normal", 7.5, [170, 190, 215]); doc.text("SECURITY OPERATIONS & INVESTIGATION SERVICES", PAGE.m, 57);
+  // Logo sits on its own navy background, which matches the letterhead band.
+  const logoH = 50, logoW = logoH * LOGO_RATIO;
+  doc.addImage(BRAND_LOGO.dataUrl, "JPEG", PAGE.m - 6, 10, logoW, logoH, "sn-logo", "FAST");
+  doc.setDrawColor(70, 90, 125); doc.setLineWidth(0.6); doc.line(PAGE.m - 6 + logoW + 6, 22, PAGE.m - 6 + logoW + 6, 50);
+  font("bold", 7.5, [200, 215, 235]); doc.text("SECURITY OPERATIONS", PAGE.m - 6 + logoW + 14, 33);
+  font("normal", 7.5, [170, 190, 215]); doc.text("& INVESTIGATION SERVICES", PAGE.m - 6 + logoW + 14, 44);
   font("bold", 20, C.white); doc.text(model.title, PAGE.m, 92);
   font("normal", 9, [190, 205, 225]); doc.text(model.case?.title || model.case?.number || "", PAGE.m, 107);
   // Classification block (right)
@@ -351,8 +358,10 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     if (i > 1) {
-      font("bold", 7.5, C.navy); doc.setCharSpace(1.2); doc.text("SAFENESTT", PAGE.m, 34); doc.setCharSpace(0);
-      font("normal", 7.5, C.muted); doc.text(`${model.title} · ${model.case.number}`, PAGE.m + 62, 34);
+      const hH = 22, hW = hH * LOGO_RATIO;
+      doc.setFillColor(...C.navy); doc.roundedRect(PAGE.m, 18, hW, hH, 2, 2, "F");
+      doc.addImage(BRAND_LOGO.dataUrl, "JPEG", PAGE.m, 18, hW, hH, "sn-logo", "FAST");
+      font("normal", 7.5, C.muted); doc.text(`${model.title} · ${model.case.number}`, PAGE.m + hW + 8, 33);
       font("bold", 7.5, C.magenta); doc.text(model.classification, PAGE.w - PAGE.m, 34, { align: "right" });
       doc.setDrawColor(...C.rule); doc.setLineWidth(0.5); doc.line(PAGE.m, 42, PAGE.w - PAGE.m, 42);
     }
