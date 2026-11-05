@@ -58,11 +58,19 @@ Deno.serve(async (req) => {
         m.organization_role === "ORG_ADMIN" || m.role === "owner" || m.role === "admin");
     };
 
+    /** Verified team/enterprise org (never a personal workspace). */
+    const isVerifiedOrg = (t: any) =>
+      !!t && t.plan !== "personal" && ["active", "verified"].includes(t.status);
+
     /** Write the trusted User fields to match a membership's state. */
     const syncUserFromMembership = async (m: any) => {
       if (!m?.user_id || m.user_id === "pending") return;
       if (m.status === "active") {
         const tenant = await sr.Tenant.get(m.tenant_id).catch(() => null);
+        // Keep Tenant.members in step so members can read their org record.
+        if (tenant && !(tenant.members || []).includes(m.user_id)) {
+          await sr.Tenant.update(tenant.id, { members: [...(tenant.members || []), m.user_id] });
+        }
         await sr.User.update(m.user_id, {
           tenant_id: m.tenant_id,
           organization_role: m.organization_role || "VIEWER",
@@ -71,6 +79,10 @@ Deno.serve(async (req) => {
           ...(tenant?.name ? { organization_name: tenant.name, organization_type: tenant.organization_type || null } : {}),
         });
       } else if (m.status === "revoked") {
+        const tenant = await sr.Tenant.get(m.tenant_id).catch(() => null);
+        if (tenant && (tenant.members || []).includes(m.user_id)) {
+          await sr.Tenant.update(tenant.id, { members: (tenant.members || []).filter((x: string) => x !== m.user_id) });
+        }
         // Only strip access if the user's active tenant is the one being revoked.
         const u = await sr.User.get(m.user_id).catch(() => null);
         if (u && u.tenant_id === m.tenant_id) {
@@ -232,6 +244,10 @@ Deno.serve(async (req) => {
       case "inviteMember": {
         const tenantId = me.tenant_id;
         if (!(await canManageTenant(tenantId))) return fail(403, "Only organization admins can invite members.");
+        // Invites auto-join the invitee on sign-in, so only SafeNestT-verified
+        // organizations may send them (never personal workspaces).
+        const inviterOrg = await sr.Tenant.get(tenantId).catch(() => null);
+        if (!isVerifiedOrg(inviterOrg)) return fail(403, "Only verified organizations can invite members.");
         const email = clean(body.email, 320).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(400, "Enter a valid email address.");
         if (!ORG_ROLES.includes(body.organizationRole)) return fail(400, "Invalid role.");
@@ -247,15 +263,21 @@ Deno.serve(async (req) => {
       case "acceptInvite": {
         // Called on login: link any invite addressed to this email, then
         // the org admin activates it with assignRole (company already known).
+        if (me.tenant_id) return ok({ accepted: 0 }); // never move an existing member
         const invites = await sr.TenantMembership.filter({ user_email: String(me.email).toLowerCase(), status: "invited" });
+        let accepted = 0;
         for (const inv of invites || []) {
+          if (accepted > 0) break; // one organization at a time
+          const org = await sr.Tenant.get(inv.tenant_id).catch(() => null);
+          if (!isVerifiedOrg(org)) continue; // ignore invites from unverified/personal tenants
+          accepted++;
           await sr.TenantMembership.update(inv.id, {
             user_id: me.id, user_name: me.full_name || "", status: "active", joined_at: now(),
           });
           await syncUserFromMembership({ ...inv, user_id: me.id, status: "active" });
           await audit("invite_accepted", { membership_id: inv.id, tenant_id: inv.tenant_id });
         }
-        return ok({ accepted: (invites || []).length });
+        return ok({ accepted });
       }
 
       case "renameOrg": {
