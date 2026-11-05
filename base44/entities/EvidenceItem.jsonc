@@ -1,25 +1,42 @@
 {
   "name": "EvidenceItem",
-  "type": "object",
   "properties": {
-    "tenant_id": {
-      "type": "string",
-      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant."
+    "audit_history": {
+      "description": "Access and modification audit trail",
+      "items": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
     },
     "case_id": {
-      "type": "string",
-      "description": "ID of the related investigation case"
+      "description": "ID of the related investigation case",
+      "type": "string"
     },
-    "filename": {
-      "type": "string",
-      "description": "Original filename"
+    "description": {
+      "description": "Investigator description of the evidence",
+      "type": "string"
     },
-    "file_url": {
-      "type": "string",
-      "description": "Stored file URL"
+    "detected_targets": {
+      "description": "Targets auto-detected from evidence content (wallets, hashes, domains, etc.)",
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
     },
     "evidence_type": {
-      "type": "string",
+      "default": "document",
+      "description": "Category of evidence",
       "enum": [
         "document",
         "screenshot",
@@ -32,56 +49,44 @@
         "archive",
         "other"
       ],
-      "default": "document",
-      "description": "Category of evidence"
-    },
-    "mime_type": {
-      "type": "string",
-      "description": "MIME type of the file"
-    },
-    "file_size": {
-      "type": "number",
-      "description": "Size in bytes"
-    },
-    "source": {
-      "type": "string",
-      "enum": [
-        "manual_upload",
-        "case_import",
-        "hermes_extraction"
-      ],
-      "default": "manual_upload",
-      "description": "How the evidence was added"
-    },
-    "uploaded_by": {
-      "type": "string",
-      "description": "Email of uploader"
-    },
-    "uploaded_by_name": {
-      "type": "string",
-      "description": "Name of uploader"
-    },
-    "uploaded_at": {
-      "type": "string",
-      "format": "date-time"
+      "type": "string"
     },
     "file_hash": {
-      "type": "string",
-      "description": "Checksum/hash of the file"
+      "description": "Checksum/hash of the file",
+      "type": "string"
     },
-    "description": {
-      "type": "string",
-      "description": "Investigator description of the evidence"
+    "file_size": {
+      "description": "Size in bytes",
+      "type": "number"
     },
-    "tags": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Investigator tags"
+    "file_url": {
+      "description": "Stored file URL",
+      "type": "string"
+    },
+    "filename": {
+      "description": "Original filename",
+      "type": "string"
+    },
+    "mime_type": {
+      "description": "MIME type of the file",
+      "type": "string"
+    },
+    "original_filename": {
+      "description": "Original filename if renamed",
+      "type": "string"
+    },
+    "original_import": {
+      "default": false,
+      "description": "Whether this was from a case import",
+      "type": "boolean"
+    },
+    "processing_notes": {
+      "description": "Notes from Hermes processing",
+      "type": "string"
     },
     "processing_status": {
-      "type": "string",
+      "default": "uploaded",
+      "description": "Hermes processing status",
       "enum": [
         "uploaded",
         "queued",
@@ -90,67 +95,120 @@
         "failed",
         "review_required"
       ],
-      "default": "uploaded",
-      "description": "Hermes processing status"
-    },
-    "processing_notes": {
-      "type": "string",
-      "description": "Notes from Hermes processing"
-    },
-    "original_import": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether this was from a case import"
-    },
-    "original_filename": {
-      "type": "string",
-      "description": "Original filename if renamed"
-    },
-    "related_targets": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "IDs of related investigation targets"
+      "type": "string"
     },
     "related_entities": {
-      "type": "array",
+      "description": "IDs of related entities (Hermes)",
       "items": {
         "type": "string"
       },
-      "description": "IDs of related entities (Hermes)"
+      "type": "array"
     },
     "related_findings": {
-      "type": "array",
+      "description": "IDs of related findings",
       "items": {
         "type": "string"
       },
-      "description": "IDs of related findings"
+      "type": "array"
     },
-    "detected_targets": {
-      "type": "array",
+    "related_targets": {
+      "description": "IDs of related investigation targets",
       "items": {
-        "type": "object"
+        "type": "string"
       },
-      "description": "Targets auto-detected from evidence content (wallets, hashes, domains, etc.)"
+      "type": "array"
     },
-    "audit_history": {
-      "type": "array",
+    "source": {
+      "default": "manual_upload",
+      "description": "How the evidence was added",
+      "enum": [
+        "manual_upload",
+        "case_import",
+        "hermes_extraction"
+      ],
+      "type": "string"
+    },
+    "tags": {
+      "description": "Investigator tags",
       "items": {
-        "type": "object",
-        "properties": {
-          "timestamp": {
-            "type": "string"
-          },
-          "actor": {
-            "type": "string"
-          },
-          "action": {
-            "type": "string"
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "tenant_id": {
+      "description": "Tenant id \u2014 server-side multi-tenant isolation. Set on create from the current user's tenant.",
+      "type": "string"
+    },
+    "tool_result": {
+      "description": "What an automated lookup actually returned (set once by the engine sync; not editable). state: data | empty | not_applicable | error | unknown. data_json holds the result payload (capped); data_sha256 is SHA-256 of the full canonical payload.",
+      "properties": {
+        "capability": {
+          "type": "string"
+        },
+        "data_bytes": {
+          "type": "number"
+        },
+        "data_json": {
+          "type": "string"
+        },
+        "data_sha256": {
+          "type": "string"
+        },
+        "record_count": {
+          "type": "number"
+        },
+        "retrieved_at": {
+          "type": "string"
+        },
+        "source_reference": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "data",
+            "empty",
+            "not_applicable",
+            "error",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "target_kind": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "rls": {
+        "update": {
+          "user_condition": {
+            "collaborator_role": "editor"
           }
         }
       },
-      "description": "Access and modification audit trail"
+      "type": "object"
+    },
+    "uploaded_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "uploaded_by": {
+      "description": "Email of uploader",
+      "type": "string"
+    },
+    "uploaded_by_name": {
+      "description": "Name of uploader",
+      "type": "string"
     }
   },
   "required": [
@@ -159,6 +217,7 @@
     "filename",
     "file_url"
   ],
+  "type": "object",
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}"
