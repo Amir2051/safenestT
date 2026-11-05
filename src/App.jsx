@@ -146,15 +146,15 @@ const AuthenticatedApp = () => {
         })}
         <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
         <Route path="/UserExport" element={<AdminGate><UserExport /></AdminGate>} />
-        <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator><OperationsDashboard /></RoleGate>} />
+        <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator allowReadOnly><OperationsDashboard /></RoleGate>} />
         <Route path="/WalletTrackerAdmin" element={<AdminGate><WalletTrackerAdmin /></AdminGate>} />
         <Route path="/FlowMapAdmin" element={<AdminGate><FlowMapAdmin /></AdminGate>} />
-        <Route path="/CasesManagement" element={<RoleGate allowInvestigator><CasesManagement /></RoleGate>} />
+        <Route path="/CasesManagement" element={<RoleGate allowInvestigator allowReadOnly><CasesManagement /></RoleGate>} />
         <Route path="/CaseImport" element={<RoleGate allowInvestigator><CaseImport /></RoleGate>} />
-        <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator><InvestigationWorkspace /></RoleGate>} />
-        <Route path="/AuditLog" element={<RoleGate allowInvestigator><AuditLog /></RoleGate>} />
-        <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
-        <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
+        <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator allowReadOnly><InvestigationWorkspace /></RoleGate>} />
+        <Route path="/AuditLog" element={<RoleGate allowInvestigator allowReadOnly><AuditLog /></RoleGate>} />
+        <Route path="/GlobalSearch" element={<RoleGate allowInvestigator allowReadOnly><GlobalSearchPage /></RoleGate>} />
+        <Route path="/ReportsCenter" element={<RoleGate allowInvestigator allowReadOnly><ReportsCenter /></RoleGate>} />
         <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
         <Route path="/Team" element={<Team />} />
         <Route path="/OrganizationSettings" element={<OrganizationSettings />} />
