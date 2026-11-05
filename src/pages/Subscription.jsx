@@ -351,7 +351,7 @@ export default function Subscription() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {PLANS.map((plan) => {
               const Icon = plan.icon;
-              const isCurrentPlan = plan.id === currentPlan && (plan.id === "starter" || ["active", "trialing", "trial"].includes(status));
+              const isCurrentPlan = plan.id === currentPlan && (plan.id === "starter" || ["active", "trialing", "trial", "past_due", "unpaid"].includes(status));
               const isLockedByExistingSubscription = hasManagedSubscription && !isCurrentPlan && plan.priceId;
               const isLoadingThisPlan = loadingPlan === plan.id;
               const accent = {
