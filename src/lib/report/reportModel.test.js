@@ -157,7 +157,7 @@ describe("buildCaseReport", () => {
     assert.deepEqual(r.findings.map((f) => f.id).sort(), ["h1", "new1", "old2"]);
     assert.equal(r.counts.superseded, 1);
     const h = r.findings.find((f) => f.id === "h1");
-    assert.equal(h.title, "Threat intel lookup for DeHashed breach-data search");
+    assert.equal(h.title, "OSINT: DeHashed breach-data search");
     assert.equal(h.finding_kind, "External Intelligence");
     assert.equal(h.limitation, "Requires corroboration.");
     assert.equal(h.description, "");
