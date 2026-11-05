@@ -121,6 +121,78 @@ function extractStatus(data) {
   return String(data?.status || data?.state || "pending").toLowerCase();
 }
 
+// ── Lookup result interpretation ───────────────────────────────────────────
+// KEEP IN SYNC with src/lib/report/toolResult.js (functions can't import src/).
+// A lookup that "completed" is not evidence: decide from the payload whether it
+// returned data, came back empty, or was the wrong kind of lookup for the target.
+const ECHO_KEYS = new Set(["domain", "target", "source", "query", "status", "type", "provider"]);
+const NETWORK_TOOLS = /(shodan_domain|whois|dns|subdomain|ssl|cert|reverse_ip|passive_dns)/i;
+
+function targetKind(target) {
+  const v = String(target ?? "").trim();
+  if (!v) return "";
+  if (/^0x[a-fA-F0-9]{40}$/.test(v) || /^(bc1[a-z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(v) || /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(v)) return "wallet";
+  if (/^0x[a-fA-F0-9]{64}$/.test(v)) return "transaction";
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "email";
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return "ip";
+  const host = v.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+  if (/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(host)) return "domain";
+  if (/^\+?[\d\s().-]{7,20}$/.test(v)) return "phone";
+  return "other";
+}
+
+function substantiveCount(value: unknown, key = ""): number {
+  if (ECHO_KEYS.has(String(key).toLowerCase())) return 0;
+  if (value === null || value === undefined) return 0;
+  if (typeof value === "string") return value.trim() ? 1 : 0;
+  if (typeof value === "number") return Number.isFinite(value) ? 1 : 0;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (Array.isArray(value)) return value.reduce((n, item) => n + (substantiveCount(item) > 0 ? 1 : 0), 0);
+  if (typeof value === "object") return Object.entries(value as Record<string, unknown>).reduce((n, [k, v]) => n + substantiveCount(v, k), 0);
+  return 0;
+}
+
+function summarizeToolResult({ capability = "", target = "", status = "", data }: { capability?: string; target?: string; status?: string; data?: unknown }) {
+  const kind = targetKind(target);
+  const st = String(status || "").toLowerCase();
+  const tool = String(capability || "").split(".").pop() || "";
+  if (st && !["success", "ok", "completed"].includes(st)) {
+    return { state: "error", record_count: 0, target_kind: kind, summary: `The lookup did not complete (status: ${st}).` };
+  }
+  if (NETWORK_TOOLS.test(tool) && kind && !["domain", "ip"].includes(kind)) {
+    return { state: "not_applicable", record_count: 0, target_kind: kind,
+      summary: `A domain/network lookup was run against a ${kind === "wallet" ? "wallet address" : kind}, which it cannot resolve. No result.` };
+  }
+  if (data === undefined) return { state: "unknown", record_count: 0, target_kind: kind, summary: "The result of this lookup was not recorded." };
+  let records = 0;
+  if (Array.isArray(data)) records = data.length;
+  else if (data && typeof data === "object") {
+    for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+      if (ECHO_KEYS.has(k.toLowerCase())) continue;
+      if (Array.isArray(v)) records += v.length;
+      else if (substantiveCount(v, k) > 0) records += 1;
+    }
+  }
+  if (records === 0 || substantiveCount(data) === 0) return { state: "empty", record_count: 0, target_kind: kind, summary: "The lookup ran and returned no records." };
+  return { state: "data", record_count: records, target_kind: kind, summary: `The lookup returned ${records} record${records === 1 ? "" : "s"}.` };
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((v) => (v == null ? "null" : canonicalJson(v))).join(",")}]`;
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    return `{${Object.keys(o).filter((k) => o[k] != null).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(o[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const RESULT_JSON_CAP = 20000; // characters stored on the record; the hash covers the full payload
+
 // ── Hermes result → SafeNestT entity mappers ────────────────────────────────
 // These map the ACTUAL Hermes /report response schema (inspected live) into
 // the SafeNestT entity enums. No fields are invented — only translated.
@@ -473,9 +545,28 @@ export default async function (req: Request): Promise<Response> {
         // ── 1. Evidence → EvidenceItem. Capture hermes_evidence_id → SafeNestT id
         // so findings can link via evidence_refs (FindingsTab joins on
         // EvidenceItem.id, not the Hermes id).
-        const evidencePayloads = hermesEvidence.map((e) => {
+        const evidencePayloads = await Promise.all(hermesEvidence.map(async (e) => {
           const hermesEid = e.evidence_id;
           const toolCall = e.data?.tool_call || {};
+          // Keep what the lookup actually returned, with a fingerprint of it.
+          const rawData = toolCall.result?.data !== undefined ? toolCall.result.data : e.data?.data;
+          const verdict = summarizeToolResult({ capability: toolCall.capability || e.source, target: e.target, status: toolCall.status, data: rawData });
+          const canon = rawData === undefined ? "" : canonicalJson(rawData);
+          const toolResult = {
+            capability: String(toolCall.capability || e.source || ""),
+            target: String(e.target || ""),
+            target_kind: verdict.target_kind,
+            status: String(toolCall.status || ""),
+            state: verdict.state,
+            summary: verdict.summary,
+            record_count: verdict.record_count,
+            retrieved_at: e.observed_at || now,
+            data_json: canon.slice(0, RESULT_JSON_CAP),
+            data_sha256: canon ? await sha256Hex(canon) : "",
+            data_bytes: canon.length,
+            truncated: canon.length > RESULT_JSON_CAP,
+            source_reference: String(hermesEid || ""),
+          };
           return {
             tenant_id: tenantId,
             case_id: caseId,
@@ -489,12 +580,17 @@ export default async function (req: Request): Promise<Response> {
             file_hash: hermesEid,
             description: `${e.source || "Hermes evidence"} · target: ${e.target || "—"}`,
             tags: [e.source_type, e.source].filter(Boolean),
-            processing_status: "processed",
-            processing_notes: JSON.stringify({ capability: toolCall.capability, status: toolCall.status, tool_status: toolCall.tool_status }).slice(0, 1000),
-            detected_targets: e.target ? [{ type: "domain", value: e.target }] : [],
+            // Empty / inapplicable lookups need a person to look before anyone relies on them.
+            processing_status: verdict.state === "data" ? "processed" : verdict.state === "error" ? "failed" : "review_required",
+            processing_notes: JSON.stringify({ capability: toolCall.capability, status: toolCall.status, tool_status: toolCall.tool_status, result_state: verdict.state }).slice(0, 1000),
+            detected_targets: e.target ? [{ type: verdict.target_kind || "other", value: e.target }] : [],
             original_import: false,
+            tool_result: toolResult,
           };
-        });
+        }));
+        // Hermes evidence id -> did that lookup return data?
+        const evidenceHasData: Record<string, boolean> = {};
+        for (const p of evidencePayloads) evidenceHasData[p.file_hash] = p.tool_result.state === "data";
         const evidenceRecs = evidencePayloads.length
           ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch(() => [])
           : [];
@@ -506,14 +602,18 @@ export default async function (req: Request): Promise<Response> {
 
         // ── 2. Findings → InvestigationFinding (evidence_refs mapped to SafeNestT ids).
         const findingPayloads = hermesFindings.map((f) => {
+          // A finding whose cited lookups all came back empty / inapplicable has no data behind it.
+          const eids: string[] = Array.isArray(f.evidence_ids) ? f.evidence_ids : [];
+          const noData = eids.length > 0 && eids.every((id) => id in evidenceHasData && !evidenceHasData[id]);
+          const limitations = [...(f.factors?.limitations || []), ...(noData ? ["Every lookup cited for this finding returned no records or did not apply to the indicator."] : [])];
           const payload = {
             tenant_id: tenantId,
             case_id: caseId,
             title: findingTitle(f),
-            description: [f.factors?.finding_type, f.factors?.capability && `capability: ${f.factors.capability}`, f.factors?.limitations?.length && `limitations: ${f.factors.limitations.join("; ")}`].filter(Boolean).join(" · "),
+            description: [f.factors?.finding_type, f.factors?.capability && `capability: ${f.factors.capability}`, limitations.length && `limitations: ${limitations.join("; ")}`].filter(Boolean).join(" · "),
             category: mapFindingCategory(f.factors?.finding_type),
-            severity: severityFromScore(f.risk_score),
-            confidence: confidenceFromReality(f.reality_status),
+            severity: noData ? "low" : severityFromScore(f.risk_score),
+            confidence: noData ? "low" : confidenceFromReality(f.reality_status),
             status: "proposed", // AI findings are never auto-verified
             source: "hermes",
             evidence_refs: (f.evidence_ids || []).map((id) => evidenceMap[id]).filter(Boolean),
@@ -521,7 +621,7 @@ export default async function (req: Request): Promise<Response> {
           };
           // confidence_score is a number field — only set it when Hermes
           // provided a numeric risk_score (omit rather than pass null).
-          if (typeof f.risk_score === "number") payload.confidence_score = Math.round(f.risk_score * 100);
+          if (typeof f.risk_score === "number" && !noData) payload.confidence_score = Math.round(f.risk_score * 100);
           return payload;
         });
         const findingRecs = findingPayloads.length
