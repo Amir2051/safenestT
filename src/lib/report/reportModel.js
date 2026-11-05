@@ -239,13 +239,18 @@ export function shortHash(input) {
   return h.toString(36).toUpperCase().padStart(6, "0").slice(-6);
 }
 
-/** Deterministic JSON (sorted keys) so the integrity hash is reproducible. */
+/**
+ * Deterministic JSON (sorted keys) so the integrity hash is reproducible.
+ * Object keys whose value is null/undefined are omitted, so a snapshot that
+ * a datastore returns without empty fields still hashes identically.
+ */
 export function canonicalJson(value) {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (Array.isArray(value)) return `[${value.map((v) => (v == null ? "null" : canonicalJson(v))).join(",")}]`;
   if (isObj(value)) {
-    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`).join(",")}}`;
+    return `{${Object.keys(value).filter((k) => value[k] != null).sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`).join(",")}}`;
   }
-  return JSON.stringify(value === undefined ? null : value);
+  return JSON.stringify(value);
 }
 
 const byCreated = (a, b) =>
