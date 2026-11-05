@@ -247,6 +247,18 @@ describe("lookup results", () => {
     assert.ok(m.findings.some((f) => f.id === "f10" && f.status === "verified"));
   });
 
+  it("keeps a partially supported finding but states its lookups found nothing", () => {
+    const partial = { id: "f11", status: "partially_supported", title: "Suspect wallet named in intake", severity: "high", confidence: "medium", evidence_refs: ["e2"], source: "ai_run" };
+    const m = buildCaseReport({
+      caseItem, findings: [partial], evidence, asOf: ASOF,
+      engineReports: DOSSIER([hermesItem("986784a2-0ce3-41a3-aa34-054d623fb7a8", "cyber_intel.threat_intel.dehashed_search", WALLET, { items: [] })]),
+    });
+    const f = m.findings.find((x) => x.id === "f11");
+    assert.ok(f);
+    assert.equal(f.status, "partially_supported");
+    assert.match(f.limitation, /returned data; any support comes from the case record alone/);
+  });
+
   it("prefers the result stored on the record, with its SHA-256", () => {
     const sha = "b".repeat(64);
     const rec = { ...evidence[0], tool_result: { state: "data", summary: "The lookup returned 2 records.", record_count: 2, data_sha256: sha, target: "example.com" } };
