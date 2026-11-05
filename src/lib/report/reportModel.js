@@ -166,6 +166,30 @@ export function findingStatus(status) {
   return FINDING_STATUS[status] || FINDING_STATUS.proposed;
 }
 
+// Engine text like "cyber_intel.threat_intel.shodan_domain" -> "Shodan infrastructure lookup".
+export function cleanEngineText(text) {
+  return str(text).replace(/\b(?:[a-z_]+\.)+([a-z_]+)\b/g, (m, last) => TOOL_LABELS[last] || TOOL_LABELS[m] || humanize(last));
+}
+
+/**
+ * Hermes descriptions look like "EXTERNAL_INTELLIGENCE · capability: x · limitations: y".
+ * Split into a readable description + an explicit limitation.
+ */
+export function parseEngineDescription(text) {
+  const s = str(text);
+  if (!/\s·\s/.test(s) && !/^[A-Z_]{6,}$/.test(s)) return { description: cleanEngineText(s), kind: "", limitation: "" };
+  const parts = s.split(/\s·\s/).map((p) => p.trim()).filter(Boolean);
+  let kind = "", limitation = "";
+  const rest = [];
+  parts.forEach((p) => {
+    if (/^[A-Z][A-Z_]+$/.test(p)) kind = humanize(p.toLowerCase());
+    else if (/^limitations?:/i.test(p)) limitation = p.replace(/^limitations?:\s*/i, "");
+    else if (/^capability:/i.test(p)) { /* already named in the title */ }
+    else rest.push(cleanEngineText(p));
+  });
+  return { description: rest.join(" "), kind, limitation };
+}
+
 // ── Stable hashing (FNV-1a, for report numbers; integrity uses SHA-256) ──────
 export function shortHash(input) {
   let h = 0x811c9dc5;
@@ -222,7 +246,16 @@ export function buildCaseReport(input = {}) {
     if (isObj(v) && v.finding_id) rcById.set(v.finding_id, str(v.reasoning));
   });
 
-  const findings = arr(input.findings).filter(isObj).slice()
+  // Re-running the analysis produces a fresh set of findings. Only the latest
+  // MIA run's findings are current; older AI findings are superseded unless a
+  // human has reviewed them (human review always survives).
+  const latestIds = new Set(arr(out("analysis").persisted_finding_ids).map(str).filter(Boolean));
+  const isHumanReviewed = (f) => !!(str(f.reviewer_name) || str(f.reviewer) || f.review_date);
+  const isStale = (f) => latestIds.size > 0 && f.source === "ai_run" && !latestIds.has(f.id) && !isHumanReviewed(f);
+  const allFindings = arr(input.findings).filter(isObj);
+  const supersededCount = allFindings.filter(isStale).length;
+
+  const findings = allFindings.filter((f) => !isStale(f)).slice()
     .sort((a, b) =>
       findingStatus(a.status).rank - findingStatus(b.status).rank ||
       (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
@@ -232,12 +265,15 @@ export function buildCaseReport(input = {}) {
       const refs = arr(f.evidence_refs);
       const resolved = refs.map((id) => evRef.get(id)).filter(Boolean);
       const caseRefs = refs.filter((id) => !evRef.has(id));
+      const parsed = parseEngineDescription(f.description);
       return {
         ref: `F-${String(i + 1).padStart(2, "0")}`,
         id: f.id || "",
-        title: str(f.title) || "Untitled finding",
-        description: str(f.description),
-        category: humanize(f.category),
+        title: cleanEngineText(f.title) || "Untitled finding",
+        description: parsed.description,
+        finding_kind: parsed.kind,
+        limitation: parsed.limitation,
+        category: f.category === "other" ? "" : humanize(f.category),
         severity: str(f.severity) || "medium",
         confidence: str(f.confidence) || "medium",
         status: f.status || "proposed",
@@ -323,6 +359,7 @@ export function buildCaseReport(input = {}) {
     partially_supported: findings.filter((f) => f.status === "partially_supported").length,
     unreviewed: findings.filter((f) => f.status === "proposed" || f.status === "under_review").length,
     excluded: excluded.length,
+    superseded: supersededCount,
     evidence: evOrdered.length,
     primary_evidence: evOrdered.filter((e) => e.is_primary).length,
   };
@@ -342,8 +379,9 @@ export function buildCaseReport(input = {}) {
   if (riskScore != null) summary.push(`The case is assessed as ${riskLevel.toUpperCase()} risk (${riskScore}/100).`);
   summary.push(
     counts.total
-      ? `${counts.total} finding(s) were produced: ${counts.verified} verified, ${counts.partially_supported} partially supported, ` +
-        `${counts.unreviewed} awaiting review and ${counts.excluded} excluded.`
+      ? `${counts.total} current finding(s): ${counts.verified} verified, ${counts.partially_supported} partially supported, ` +
+        `${counts.unreviewed} awaiting review and ${counts.excluded} excluded.` +
+        (supersededCount ? ` ${supersededCount} finding(s) from earlier analysis runs were superseded and are not repeated.` : "")
       : "No findings have been produced yet."
   );
   summary.push(
