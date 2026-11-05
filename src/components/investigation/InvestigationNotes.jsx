@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, MessageSquare, Lock, Shield, Phone, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { canInvestigate } from "@/lib/organizationRoles";
 
 export default function InvestigationNotes({ caseId, caseData: initialCaseData, onUpdate }) {
   const [noteText, setNoteText] = useState("");
@@ -48,7 +49,7 @@ export default function InvestigationNotes({ caseId, caseData: initialCaseData, 
       
       let userRole = 'User';
       if (currentUser?.role === 'admin') userRole = 'Admin';
-      else if (currentUser?.job_title === 'Fraud Specialist' || currentUser?.role === 'investigator') userRole = 'Investigator';
+      else if (canInvestigate(currentUser) || currentUser?.job_title === 'Fraud Specialist') userRole = 'Investigator';
       
       const authorName = currentUser?.full_name || currentUser?.email || 'User';
 

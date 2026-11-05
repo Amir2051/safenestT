@@ -15,21 +15,21 @@ export default function AdminReferralDashboard() {
   const { data: referrals = [] } = useQuery({
     queryKey: ['all-referrals'],
     queryFn: () => base44.entities.Referral.list('-created_date', 1000),
-    enabled: !!user?.role === 'admin',
+    enabled: user?.role === 'admin',
     initialData: [],
   });
 
   const { data: clicks = [] } = useQuery({
     queryKey: ['referral-clicks'],
     queryFn: () => base44.entities.ReferralClick.list('-click_timestamp', 1000),
-    enabled: !!user?.role === 'admin',
+    enabled: user?.role === 'admin',
     initialData: [],
   });
 
   const { data: users = [] } = useQuery({
     queryKey: ['all-users'],
     queryFn: () => base44.entities.User.list('-created_date', 1000),
-    enabled: !!user?.role === 'admin',
+    enabled: user?.role === 'admin',
     initialData: [],
   });
 

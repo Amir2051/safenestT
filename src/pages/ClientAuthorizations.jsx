@@ -7,13 +7,10 @@ import { Loader2, ShieldCheck, Plus, FileText, Ban, CheckCircle2, UserCog, Scrol
 import GrantAuthorizationDialog from "@/components/authorization/GrantAuthorizationDialog";
 import FileOnBehalfDialog from "@/components/authorization/FileOnBehalfDialog";
 import AuthorizationBadge from "@/components/authorization/AuthorizationBadge";
+import { canInvestigate } from "@/lib/organizationRoles";
 
-function isStaff(user) {
-  if (!user) return false;
-  if (user.role === "admin") return true;
-  const tr = user.data?.tenant_role || user.tenant_role;
-  return ["owner", "admin", "investigator"].includes(tr);
-}
+// Staff = anyone who can work investigations (shared role helper).
+const isStaff = (user) => canInvestigate(user);
 
 const STATUS_FILTERS = ["ALL", "PENDING", "ACTIVE", "EXPIRED", "REVOKED"];
 

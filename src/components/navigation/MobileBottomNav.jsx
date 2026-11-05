@@ -2,13 +2,14 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Briefcase, Sparkles, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
+import { canInvestigate } from "@/lib/organizationRoles";
 
 /**
  * Investigation-focused mobile bottom nav — four primary destinations.
  */
 export default function MobileBottomNav({ user }) {
   const location = useLocation();
-  const isStaff = user?.role === "admin" || user?.is_admin || ["owner", "admin", "investigator"].includes(user?.tenant_role);
+  const isStaff = canInvestigate(user);
 
   const navItems = isStaff
     ? [

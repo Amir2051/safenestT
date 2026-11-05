@@ -52,6 +52,7 @@ import SharedFilesPanel from "../cases/SharedFilesPanel";
 import CaseDownloadButtons from "./CaseDownloadButtons";
 import { Link } from "react-router-dom";
 import AuthorizationBadge from "@/components/authorization/AuthorizationBadge";
+import { canInvestigate } from "@/lib/organizationRoles";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
