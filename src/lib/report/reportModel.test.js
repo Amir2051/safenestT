@@ -195,3 +195,83 @@ describe("buildCaseReport", () => {
     assert.equal(h1, h2);
   });
 });
+
+// ── Lookup results: a lookup that "completed" is not evidence ──────────────
+const DOSSIER = (items) => [{ report_type: "dossier", content: { evidence: items } }];
+const hermesItem = (id, capability, target, data, status = "success") => ({
+  evidence_id: id, source: capability, target,
+  data: { tool_call: { capability, status, result: { data } } },
+});
+
+describe("lookup results", () => {
+  it("classifies what a lookup actually returned", () => {
+    const shodan = "cyber_intel.threat_intel.shodan_domain";
+    assert.equal(summarizeToolResult({ capability: shodan, target: WALLET, status: "success", data: { domain: WALLET, dns: [], whois: null } }).state, "not_applicable");
+    assert.equal(summarizeToolResult({ capability: shodan, target: "example.com", status: "success", data: { domain: "example.com", dns: [], whois: null, subdomains: [] } }).state, "empty");
+    const hit = summarizeToolResult({ capability: shodan, target: "example.com", status: "success", data: { domain: "example.com", dns: ["1.2.3.4", "5.6.7.8"], whois: { registrar: "X" } } });
+    assert.equal(hit.state, "data");
+    assert.equal(hit.record_count, 3);
+    assert.equal(summarizeToolResult({ capability: "x.dehashed_search", target: "a@b.com", status: "success", data: { items: [], source: "dehashed" } }).state, "empty");
+    assert.equal(summarizeToolResult({ capability: "x.dehashed_search", target: "a@b.com", status: "success", data: { items: [{ email: "a@b.com" }], source: "dehashed" } }).record_count, 1);
+    assert.equal(summarizeToolResult({ capability: "x.dehashed_search", status: "error" }).state, "error");
+    assert.equal(summarizeToolResult({}).state, "unknown");
+  });
+
+  it("recovers results for older records from the engine dossier", () => {
+    const m = buildCaseReport({
+      caseItem, findings, evidence, asOf: ASOF,
+      engineReports: DOSSIER([hermesItem("986784a2-0ce3-41a3-aa34-054d623fb7a8", "cyber_intel.threat_intel.shodan_domain", WALLET, { domain: WALLET, dns: [], whois: null })]),
+    });
+    const lookup = m.evidence.find((e) => !e.is_primary);
+    assert.equal(lookup.result.state, "not_applicable");
+    assert.match(lookup.nature, /wallet address/);
+    assert.equal(m.counts.lookups, 1);
+    assert.equal(m.counts.lookups_not_applicable, 1);
+    assert.ok(m.executive_summary.some((p) => /Of 1 automated intelligence lookup/.test(p)));
+  });
+
+  it("excludes machine findings that rest only on lookups without data", () => {
+    const emptyOnly = { id: "f9", status: "proposed", title: "Threat intel lookup for x.dehashed_search", severity: "high", confidence: "medium", evidence_refs: ["e2"], source: "hermes" };
+    const reviewed = { ...emptyOnly, id: "f10", status: "verified", reviewer_name: "Analyst A", review_date: "2026-11-05" };
+    const m = buildCaseReport({
+      caseItem, findings: [...findings, emptyOnly, reviewed], evidence, asOf: ASOF,
+      engineReports: DOSSIER([hermesItem("986784a2-0ce3-41a3-aa34-054d623fb7a8", "cyber_intel.threat_intel.dehashed_search", WALLET, { items: [], source: "dehashed" })]),
+    });
+    const ex = m.excluded_findings.find((f) => f.id === "f9");
+    assert.ok(ex, "empty-only finding is excluded");
+    assert.equal(ex.status, "no_supporting_data");
+    assert.equal(m.counts.no_supporting_data, 1);
+    // A finding that also cites a primary record keeps its status.
+    assert.ok(m.findings.some((f) => f.id === "f2"));
+    // A person's verification is never overridden.
+    assert.ok(m.findings.some((f) => f.id === "f10" && f.status === "verified"));
+  });
+
+  it("prefers the result stored on the record, with its SHA-256", () => {
+    const sha = "b".repeat(64);
+    const rec = { ...evidence[0], tool_result: { state: "data", summary: "The lookup returned 2 records.", record_count: 2, data_sha256: sha, target: "example.com" } };
+    const d = describeEvidence(rec, { capability: "x.shodan_domain", target: WALLET, status: "success", data: {} });
+    assert.equal(d.result.state, "data");
+    assert.equal(d.supports, true);
+    assert.deepEqual(d.integrity, { kind: "Result SHA-256", value: sha });
+    assert.equal(d.target.value, "example.com");
+  });
+
+  it("the sync function's copy of the interpreter matches the app's", () => {
+    const src = fs.readFileSync(new URL("../../../base44/functions/syncHermesInvestigation/entry.ts", import.meta.url), "utf8");
+    const start = src.indexOf("const ECHO_KEYS");
+    const end = src.indexOf("function canonicalJson");
+    assert.ok(start > 0 && end > start, "interpreter block found in entry.ts");
+    const js = transformSync(src.slice(start, end) + "\nreturn summarizeToolResult;", { loader: "ts" }).code;
+    const fnCopy = new Function(js)();
+    const cases = [
+      { capability: "a.shodan_domain", target: WALLET, status: "success", data: { dns: [] } },
+      { capability: "a.shodan_domain", target: "example.com", status: "success", data: { dns: ["1.1.1.1"], whois: null } },
+      { capability: "a.dehashed_search", target: "a@b.com", status: "success", data: { items: [], source: "d" } },
+      { capability: "a.darkweb_paste", target: WALLET, status: "success", data: { items: [{ t: 1 }, { t: 2 }] } },
+      { capability: "a.x", status: "timeout" },
+      {},
+    ];
+    for (const c of cases) assert.deepEqual(fnCopy(c), summarizeToolResult(c));
+  });
+});
