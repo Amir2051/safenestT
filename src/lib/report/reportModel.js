@@ -167,8 +167,15 @@ export function findingStatus(status) {
 }
 
 // Engine text like "cyber_intel.threat_intel.shodan_domain" -> "Shodan infrastructure lookup".
+// Only touches engine identifiers (known tool names, or dotted names with an
+// underscore — hostnames never contain "_"), so real domains stay intact.
 export function cleanEngineText(text) {
-  return str(text).replace(/\b(?:[a-z_]+\.)+([a-z_]+)\b/g, (m, last) => TOOL_LABELS[last] || TOOL_LABELS[m] || humanize(last));
+  return str(text).replace(/\b[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\b/g, (m) => {
+    if (TOOL_LABELS[m]) return TOOL_LABELS[m];
+    if (!m.includes("_")) return m;
+    const last = m.split(".").pop();
+    return TOOL_LABELS[last] || humanize(last);
+  });
 }
 
 /**
