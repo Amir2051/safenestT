@@ -108,7 +108,7 @@ function FindingsList({ findings, caseId, evidence, caseItem, engineReports }) {
 
       {excluded.length > 0 && (
         <Folded title={`Excluded from conclusions (${excluded.length})`}>
-          {excluded.map(({ m, raw }) => <FindingCard key={m.id} m={m} raw={raw} evRefById={evRefById} compact />)}
+          {excluded.map(({ m, raw }) => <FindingCard key={m.id} m={m} raw={raw} evRefById={evRefById} compact onReview={() => setReviewFinding(raw)} />)}
         </Folded>
       )}
       {superseded.length > 0 && (
@@ -141,7 +141,9 @@ function Folded({ title, hint, children }) {
 }
 
 function FindingCard({ m, raw, evRefById, onReview, compact }) {
-  const canReview = !compact && (raw.status === "proposed" || raw.status === "under_review" || raw.status === "partially_supported");
+  // "No supporting data" findings stay reviewable: an investigator may hold outside evidence.
+  const reviewable = raw.status === "proposed" || raw.status === "under_review" || raw.status === "partially_supported";
+  const canReview = reviewable && (!compact || m.status === "no_supporting_data");
   return (
     <div className={`rounded-lg border border-white/10 bg-white/[0.02] ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-start gap-3">
@@ -157,6 +159,7 @@ function FindingCard({ m, raw, evRefById, onReview, compact }) {
             <span className="text-[11px] text-gray-500">{[m.finding_kind || m.category, m.source].filter(Boolean).join(" · ")}</span>
             {raw.hermes_raw?.agent && <AgentBadge agent={raw.hermes_raw.agent} />}
           </div>
+          {compact && m.status === "no_supporting_data" && <p className="text-[11px] text-orange-300/90">{m.status_meaning}</p>}
           {!compact && m.description && <p className="text-[13px] text-gray-300 break-words">{m.description}</p>}
           {!compact && m.assessment && (
             <div className="mt-2 rounded-md border border-white/10 bg-black/20 px-3 py-2">
@@ -169,9 +172,10 @@ function FindingCard({ m, raw, evRefById, onReview, compact }) {
             <div className="flex flex-wrap gap-1 mt-2">
               {raw.evidence_refs.map((eid) => {
                 const ev = evRefById.get(eid);
+                const weak = ev && !ev.supports;
                 return (
-                  <span key={eid} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/[0.04] text-cyan-300" title={ev ? `${ev.label} · ${ev.nature}` : "Case intake record"}>
-                    <FileSearch className="w-2.5 h-2.5" />{ev ? `${ev.ref} ${ev.label}` : "Case record"}
+                  <span key={eid} className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${weak ? "border-white/10 bg-white/[0.02] text-gray-500" : "border-cyan-500/20 bg-cyan-500/[0.04] text-cyan-300"}`} title={ev ? `${ev.label} · ${ev.nature}` : "Case intake record"}>
+                    <FileSearch className="w-2.5 h-2.5" />{ev ? `${ev.ref} ${ev.label}` : "Case record"}{ev && !ev.is_primary && <span className="opacity-80">· {ev.result.label}</span>}
                   </span>
                 );
               })}
