@@ -101,14 +101,22 @@ export const AuthProvider = ({ children }) => {
           if (res?.accepted > 0) currentUser = await base44.auth.me();
         } catch (e) { console.warn('Invite check failed:', e?.message); }
       }
-      // Merge the user's TenantMembership so the effective role reflects the
-      // org admin's assignment and pending users get read-only access. The
-      // platform admin (role: admin) has no membership and is unaffected.
+      // Personal workspaces also have a TenantMembership (owner), but that is
+      // not an organization role. Only merge membership state for users who
+      // have an organization profile/role. When a personal user has requested
+      // to join an org, prefer that pending org membership over their personal
+      // workspace membership until the org approves them.
       let merged = currentUser;
       try {
-        if (currentUser && currentUser.role !== 'admin' && !currentUser.is_admin) {
+        if (currentUser && currentUser.role !== 'admin' && !currentUser.is_admin && (currentUser.organization_name || currentUser.organization_role)) {
           const memberships = await base44.entities.TenantMembership.filter({ user_id: currentUser.id });
-          const mem = (memberships || []).find((m) => m.tenant_id === currentUser.tenant_id) || (memberships || [])[0];
+          let mem = (memberships || []).find((m) => m.tenant_id === currentUser.tenant_id);
+          if (currentUser.account_status === 'pending' && currentUser.organization_name) {
+            const pendingOrgMemberships = (memberships || [])
+              .filter((m) => m.tenant_id !== currentUser.tenant_id && ['pending_verification', 'pending_role_assignment', 'invited'].includes(m.status))
+              .sort((a, b) => new Date(b.requested_at || b.created_date || 0) - new Date(a.requested_at || a.created_date || 0));
+            if (pendingOrgMemberships.length) mem = pendingOrgMemberships[0];
+          }
           if (mem) {
             merged = { ...currentUser, membership_status: mem.status };
             if (mem.status === 'active') {
