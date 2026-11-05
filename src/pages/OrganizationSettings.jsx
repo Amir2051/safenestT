@@ -54,9 +54,9 @@ export default function OrganizationSettings() {
         organization_contact_phone: phone,
         organization_contact_address: addr,
       });
-      // Sync the tenant record name if the user owns it.
-      if (user.tenant_id) {
-        try { await base44.entities.Tenant.update(user.tenant_id, { name: orgName.trim() }); } catch (e) { /* ignore */ }
+      // Rename the organization record (server checks org-admin rights).
+      if (user.tenant_id && canManageOrg(user)) {
+        await orgAccess("renameOrg", { name: orgName.trim() });
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
