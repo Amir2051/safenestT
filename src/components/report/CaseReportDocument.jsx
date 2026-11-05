@@ -1,5 +1,6 @@
 import React from "react";
 import { formatDate, INDICATOR_TYPE_LABEL } from "@/lib/report/reportModel";
+import { BRAND_LOGO } from "@/lib/report/brandLogo";
 
 /**
  * In-app rendering of the SafeNestT case report. Paper-style so it reads the
