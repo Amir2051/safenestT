@@ -252,7 +252,11 @@ function buildDossier(caseItem: any, ctx: any, findings: any[]) {
       title: "Evidence Summary",
       classification: "EVIDENCE",
       content: (ctx.evidence || []).length
-        ? `${ctx.evidence.length} evidence item(s) attached. Only evidence-checked findings are carried into this dossier.`
+        ? `${ctx.evidence.length} evidence item(s) attached` +
+          ` (${ctx.evidence.filter((e: any) => e._result === "primary record").length} primary record(s); ` +
+          `${ctx.evidence.filter((e: any) => String(e._result || "").startsWith("data:")).length} automated lookup(s) returned data; ` +
+          `${ctx.evidence.filter((e: any) => !evidenceSupports(e)).length} returned nothing usable). ` +
+          `Only evidence-checked findings are carried into this dossier.`
         : "No evidence items are attached to this case.",
     },
     {
