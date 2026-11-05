@@ -166,7 +166,8 @@ describe("buildCaseReport", () => {
 
   it("cleans engine identifiers out of prose", () => {
     assert.equal(cleanEngineText("via cyber_intel.threat_intel.shodan_domain today"), "via Shodan infrastructure lookup today");
-    assert.equal(cleanEngineText("Visit dmenergy.io"), "Visit dmenergy.io"); // real domains untouched? see below
+    assert.equal(cleanEngineText("Visit dmenergy.io and www.example.co.uk"), "Visit dmenergy.io and www.example.co.uk"); // real domains untouched
+    assert.equal(cleanEngineText("dns.lookup ran"), "DNS lookup ran");
     assert.deepEqual(parseEngineDescription("Plain sentence."), { description: "Plain sentence.", kind: "", limitation: "" });
   });
 
