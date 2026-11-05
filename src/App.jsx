@@ -32,7 +32,29 @@ import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationVerifications from './pages/OrganizationVerifications';
 import InvestigationProviders from './pages/InvestigationProviders';
-import { getHomePath } from '@/lib/organizationRoles';
+import { getHomePath, isOrgMember, isPlatformAdmin } from '@/lib/organizationRoles';
+
+// Personal-protection (consumer) pages. Hidden from organization staff, who
+// get the investigation workspace instead; individual clients and platform
+// admins still reach them.
+const CONSUMER_PAGE_KEYS = new Set([
+  'FamilyProtection', 'FamilyInvite', 'DeviceCare', 'DeviceSecurity', 'StorageOptimizer',
+  'CreditMonitor', 'CreditCardMonitor', 'IdentityMonitor', 'Achievements', 'ElectraWallet',
+  'MyPortfolio', 'InvestmentCheckout', 'AutoProtection', 'PrivacyGuard', 'PrivacyHub',
+  'PrivacyScore', 'PrivacyAdvisor', 'BrokerRemoval', 'FootprintMap', 'ExposureScanner',
+  'DarkWebMonitor', 'DarkWebMonitorHub', 'SignalWatch', 'Referrals', 'MediaDashboard',
+  'MediaDirectorAI', 'MyCases', 'ReportScam', 'Dashboard',
+]);
+
+function ConsumerGate({ children }) {
+  const { user } = useAuth();
+  // Pending org members still use the client Dashboard while they wait for approval.
+  const pending = user?.account_status === 'pending';
+  if (user && isOrgMember(user) && !isPlatformAdmin(user) && !pending) {
+    return <Navigate to={getHomePath(user)} replace />;
+  }
+  return children;
+}
 
 // After sign-in everyone arrives at "/" — send each role to its own home.
 function RoleHome() {
@@ -135,7 +157,7 @@ const AuthenticatedApp = () => {
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
         <Route path="/AdminInvestigation" element={<Navigate to="/InvestigationWorkspace" replace />} />
         {Object.entries(Pages).map(([path, Page]) => {
-          const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : null;
+          const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : CONSUMER_PAGE_KEYS.has(path) ? ConsumerGate : null;
           return (
             <Route
               key={path}
@@ -144,7 +166,7 @@ const AuthenticatedApp = () => {
             />
           );
         })}
-        <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
+        <Route path="/PrivacyAdvisor" element={<ConsumerGate><PrivacyAdvisor /></ConsumerGate>} />
         <Route path="/UserExport" element={<AdminGate><UserExport /></AdminGate>} />
         <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator allowReadOnly><OperationsDashboard /></RoleGate>} />
         <Route path="/WalletTrackerAdmin" element={<AdminGate><WalletTrackerAdmin /></AdminGate>} />
