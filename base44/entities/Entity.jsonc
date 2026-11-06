@@ -13,7 +13,15 @@
     "entity_type": {
       "type": "string",
       "description": "Type of entity",
-      "enum": ["VASP", "Financial Institution", "Regulator", "Government Authority", "Person", "State-Centric Entity", "Other"],
+      "enum": [
+        "VASP",
+        "Financial Institution",
+        "Regulator",
+        "Government Authority",
+        "Person",
+        "State-Centric Entity",
+        "Other"
+      ],
       "default": "VASP"
     },
     "nature_of_business": {
@@ -52,7 +60,14 @@
     "status": {
       "type": "string",
       "description": "Current status",
-      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired", "Pending"],
+      "enum": [
+        "Active",
+        "Inactive",
+        "Suspended",
+        "Revoked",
+        "Expired",
+        "Pending"
+      ],
       "default": "Active"
     },
     "source_url": {
@@ -94,7 +109,11 @@
       "description": "Website URL"
     }
   },
-  "required": ["legal_name", "entity_type", "created_at"],
+  "required": [
+    "legal_name",
+    "entity_type",
+    "created_at"
+  ],
   "rls": {
     "create": {
       "user_condition": {

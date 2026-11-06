@@ -1,10 +1,11 @@
 import { base44 } from "@/api/base44Client";
+import { DEFAULT_MODEL } from "@/lib/investigationAI";
 import { ensureTenant } from "@/lib/tenantContext";
 import { logAuditEvent } from "@/lib/auditLogger";
 
 /**
- * Graph extraction — asks the Hermes engine (via the server-side hermesProxy)
- * to extract entities + relationships ONLY from the real case context
+ * Graph extraction — asks the server-side OpenRouter proxy to extract entities
+ * and relationships ONLY from the real case context
  * (case, evidence, targets, findings). The result is persisted as tenant-
  * scoped GraphNode / GraphEdge records, then rendered from the database.
  *
@@ -49,7 +50,7 @@ const SCHEMA = {
 function safeArr(x) { return Array.isArray(x) ? x : []; }
 
 /**
- * Execute a Hermes-powered graph extraction for a case and persist the result.
+ * Execute an OpenRouter-powered graph extraction for a case and persist the result.
  * Returns { nodes, edges, persisted, note?, error? }.
  */
 export async function extractGraph({ caseId }) {
@@ -94,14 +95,15 @@ export async function extractGraph({ caseId }) {
 
   let body;
   try {
-    const res = await base44.functions.invoke("hermesProxy", {
+    const res = await base44.functions.invoke("openrouterProxy", {
+      model: DEFAULT_MODEL,
       prompt,
       response_json_schema: SCHEMA,
       temperature: 0.1,
     });
     body = res?.data ?? res;
   } catch (e) {
-    throw new Error(`Hermes extraction request failed: ${e?.message || e}`);
+    throw new Error(`OpenRouter graph extraction request failed: ${e?.message || e}`);
   }
 
   if (!body || body.ok === false || body.status === "error") {
@@ -148,11 +150,11 @@ export async function extractGraph({ caseId }) {
       objectType: "case",
       objectId: caseId,
       caseId,
-      description: "Hermes graph extraction returned no entities",
+      description: "OpenRouter graph extraction returned no entities",
       metadata: { nodes: 0, edges: 0 },
       source: "ai_run",
     }).catch(() => {});
-    return { nodes: [], edges: [], persisted: { nodes: 0, edges: 0 }, note: "Hermes returned no extractable entities from the current case context." };
+    return { nodes: [], edges: [], persisted: { nodes: 0, edges: 0 }, note: "OpenRouter returned no extractable entities from the current case context." };
   }
 
   const nodeRecords = Array.from(nodeMap.values()).map((n) => ({
@@ -161,7 +163,7 @@ export async function extractGraph({ caseId }) {
     node_type: n.node_type,
     label: n.label,
     value: n.value,
-    source: "hermes_extraction",
+    source: "openrouter_extraction",
     confidence: n.confidence,
     evidence_refs: n.evidence_refs,
     hermes_raw: n.hermes_raw,
@@ -194,7 +196,7 @@ export async function extractGraph({ caseId }) {
     objectType: "case",
     objectId: caseId,
     caseId,
-    description: `Hermes extracted ${createdNodes.length} nodes / ${createdEdges.length} edges`,
+    description: `OpenRouter extracted ${createdNodes.length} nodes / ${createdEdges.length} edges`,
     metadata: { nodes: createdNodes.length, edges: createdEdges.length },
     source: "ai_run",
   }).catch(() => {});

@@ -95,7 +95,7 @@ export default async function (req: Request): Promise<Response> {
         const { controller, timer } = withTimeout(15000);
         try {
           const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json", "X-Correlation-ID": correlation },
+            headers: { "X-API-Key": apiKey, Accept: "application/json", "X-Correlation-ID": correlation },
             signal: controller.signal,
           });
           clearTimeout(timer);
@@ -247,7 +247,7 @@ export default async function (req: Request): Promise<Response> {
         const res = await fetch(chatUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            "X-API-Key": apiKey,
             "Content-Type": "application/json",
             "X-Correlation-ID": correlation,
           },

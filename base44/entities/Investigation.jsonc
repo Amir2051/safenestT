@@ -23,7 +23,14 @@
     "case_type": {
       "type": "string",
       "description": "Case type",
-      "enum": ["VASP Licence Intelligence", "VASP Watchlist Correlation", "Entity Risk Assessment", "Transaction Pattern Analysis", "Witness / Subject Tracking", "Other"],
+      "enum": [
+        "VASP Licence Intelligence",
+        "VASP Watchlist Correlation",
+        "Entity Risk Assessment",
+        "Transaction Pattern Analysis",
+        "Witness / Subject Tracking",
+        "Other"
+      ],
       "default": "VASP Licence Intelligence"
     },
     "case_title": {
@@ -41,25 +48,57 @@
     "status": {
       "type": "string",
       "description": "Investigation status",
-      "enum": ["new", "queued", "investigating", "documented", "submitted", "law_enforcement", "recovering", "recovered", "closed", "open", "pending"],
+      "enum": [
+        "new",
+        "queued",
+        "investigating",
+        "documented",
+        "submitted",
+        "law_enforcement",
+        "recovering",
+        "recovered",
+        "closed",
+        "open",
+        "pending"
+      ],
       "default": "open"
     },
     "priority": {
       "type": "string",
       "description": "Priority",
-      "enum": ["low", "medium", "high", "critical"],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
       "default": "medium"
     },
     "fraud_type": {
       "type": "string",
       "description": "Fraud / concern type",
-      "enum": ["VASP Licence", "VASP Watchlist Correlation", "Entity Risk", "Unknown Scammer Wallet", "Scammer Website", "Wallet / Address", "VASP Financial Intelligence", "Other"],
+      "enum": [
+        "VASP Licence",
+        "VASP Watchlist Correlation",
+        "Entity Risk",
+        "Unknown Scammer Wallet",
+        "Scammer Website",
+        "Wallet / Address",
+        "VASP Financial Intelligence",
+        "Other"
+      ],
       "default": "VASP Licence"
     },
     "origin": {
       "type": "string",
       "description": "Source of the intelligence",
-      "enum": ["VARA Public Register", "Dubai Pulse", "Hermes", "User Submission", "Other"],
+      "enum": [
+        "VARA Public Register",
+        "Dubai Pulse",
+        "Hermes",
+        "User Submission",
+        "Other"
+      ],
       "default": "VARA Public Register"
     },
     "origin_id": {
@@ -121,7 +160,15 @@
       "properties": {
         "current_phase": {
           "type": "string",
-          "enum": ["planning", "evidence", "analysis", "reality_check", "risk", "dossier", "closed"],
+          "enum": [
+            "planning",
+            "evidence",
+            "analysis",
+            "reality_check",
+            "risk",
+            "dossier",
+            "closed"
+          ],
           "default": "planning"
         },
         "provider": {
@@ -165,7 +212,13 @@
       "description": "ISO 8601 last-updated timestamp"
     }
   },
-  "required": ["case_title", "description", "status", "origin", "created_at"],
+  "required": [
+    "case_title",
+    "description",
+    "status",
+    "origin",
+    "created_at"
+  ],
   "rls": {
     "create": {
       "user_condition": {

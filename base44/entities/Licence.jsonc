@@ -25,7 +25,13 @@
     "status": {
       "type": "string",
       "description": "Licence status",
-      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired"],
+      "enum": [
+        "Active",
+        "Inactive",
+        "Suspended",
+        "Revoked",
+        "Expired"
+      ],
       "default": "Active"
     },
     "licensed_activities": {
@@ -77,7 +83,10 @@
       }
     }
   },
-  "required": ["var_license_ref", "vasp_id"],
+  "required": [
+    "var_license_ref",
+    "vasp_id"
+  ],
   "rls": {
     "create": {
       "user_condition": {

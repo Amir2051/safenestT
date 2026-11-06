@@ -9,7 +9,17 @@
     "activity_type": {
       "type": "string",
       "description": "Activity category",
-      "enum": ["broker-dealer", "exchange", "custody", "advisory", "management-and-investment", "lending-and-borrowing", "issuance", "trading", "other"],
+      "enum": [
+        "broker-dealer",
+        "exchange",
+        "custody",
+        "advisory",
+        "management-and-investment",
+        "lending-and-borrowing",
+        "issuance",
+        "trading",
+        "other"
+      ],
       "default": "broker-dealer"
     },
     "descriptive_licensed_activities": {
@@ -53,7 +63,10 @@
       }
     }
   },
-  "required": ["name", "vasp_license_ref"],
+  "required": [
+    "name",
+    "vasp_license_ref"
+  ],
   "rls": {
     "create": {
       "user_condition": {

@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PHASES, runPhase, getRunHistory } from "@/lib/investigationRunner";
-import { getProvider, providerLabel, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationAI";
+import { getProvider, providerLabel, DEFAULT_PROVIDER } from "@/lib/investigationAI";
 import { getProviderConfig } from "@/lib/investigationDispatch";
 import { runHermesInvestigation, resumeHermesInvestigation, syncHermesInvestigationStep, HermesError } from "@/lib/hermesInvestigation";
 import InvestigationStageTimeline from "@/components/platform/InvestigationStageTimeline";

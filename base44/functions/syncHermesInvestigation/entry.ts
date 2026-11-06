@@ -118,6 +118,10 @@ function hasPersistedResults(persisted) {
   return Number(persisted?.evidence) > 0 && typeof persisted?.report_id === "string" && persisted.report_id.trim().length > 0;
 }
 
+function persistedRunStatus(sourceBacked, persisted) {
+  return sourceBacked && hasPersistedResults(persisted) ? "completed" : "failed";
+}
+
 function extractStatus(data) {
   return String(data?.status || data?.state || "pending").toLowerCase();
 }
@@ -408,7 +412,7 @@ export default async function (req: Request): Promise<Response> {
     };
     await base44.entities.InvestigationCase.update(caseId, updatePatch).catch(() => null);
 
-    const persisted = { evidence: 0, findings: 0, report_id: null, risk_score: null, risk_level: null, graph_nodes: 0, graph_edges: 0 };
+    const persisted = { evidence: 0, findings: 0, report_id: null, risk_score: null, risk_level: null, graph_nodes: 0, graph_edges: 0, partial: false, hermes_status: hermesStatus };
 
     // Idempotency: persist results once. The marker lives on the existing
     // workflow.phases.dossier.output object (already declared in the schema as
@@ -655,7 +659,9 @@ export default async function (req: Request): Promise<Response> {
           );
           await base44.entities.InvestigationCase.update(caseId, {
             status: "investigating",
-            sync_status: "failed",
+            // The investigation is incomplete, but its partial outputs were
+            // successfully synchronized. Keep case status open for review.
+            sync_status: "synced",
             investigation_progress: partialProgress,
             workflow: {
               ...wf2,
@@ -720,13 +726,17 @@ export default async function (req: Request): Promise<Response> {
       const runs = await base44.entities.InvestigationRun.filter({ case_id: caseId }, "-started_at", 5).catch(() => []);
       const activeRun = (runs || []).find((r) => r.status === "running");
       if (activeRun) {
+        const runStatus = persistedRunStatus(sourceBacked, persisted);
+        const partialPersisted = runStatus === "completed" && isPartial;
+        persisted.partial = partialPersisted;
+        persisted.hermes_status = hermesStatus;
         await base44.entities.InvestigationRun.update(activeRun.id, {
-          status: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) && !isPartial ? "completed" : "failed",
-          error: reportData && hasSourceBackedEvidence(reportData) && hasPersistedResults(persisted) && !isPartial
-            ? undefined
-            : (isPartial
-              ? `Hermes returned partial results (${hermesStatus}); saved outputs require investigator review.`
-              : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete."),
+          // A result-bearing partial run is completed execution, not a failed
+          // sync. The case remains open and the partial flag requires review.
+          status: runStatus,
+          error: partialPersisted
+            ? `Hermes returned partial results (${hermesStatus}); saved outputs require investigator review.`
+            : (runStatus === "completed" ? undefined : "Source-backed evidence or SafeNestT result persistence is incomplete; run cannot be marked complete."),
           output: reportData ? { evidence_count: persisted.evidence, findings_count: persisted.findings, report_id: persisted.report_id } : statusData,
           completed_at: now,
           persisted_outputs: persisted,

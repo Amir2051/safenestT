@@ -17,7 +17,12 @@
     "licence_type": {
       "type": "string",
       "description": "VARA licence type (e.g. VASP Licence)",
-      "enum": ["VASP Licence", "In-Principle Approval", "IPA", "Licence"],
+      "enum": [
+        "VASP Licence",
+        "In-Principle Approval",
+        "IPA",
+        "Licence"
+      ],
       "default": "VASP Licence"
     },
     "licence_date": {
@@ -28,7 +33,15 @@
     "status": {
       "type": "string",
       "description": "VARA licence status",
-      "enum": ["Active", "Inactive", "Suspended", "Revoked", "Expired", "IPA", "Pending"],
+      "enum": [
+        "Active",
+        "Inactive",
+        "Suspended",
+        "Revoked",
+        "Expired",
+        "IPA",
+        "Pending"
+      ],
       "default": "Active"
     },
     "cma_registration": {
@@ -91,7 +104,14 @@
       }
     }
   },
-  "required": ["name", "vara_reference", "licence_type", "status", "source_url", "retrieved_at"],
+  "required": [
+    "name",
+    "vara_reference",
+    "licence_type",
+    "status",
+    "source_url",
+    "retrieved_at"
+  ],
   "rls": {
     "create": {
       "user_condition": {

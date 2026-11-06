@@ -1,6 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 
-const MODEL = "meituan/longcat-2.0:free";
+// Keep this aligned with the free-model allowlist in openrouterProxy.
+const MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 
 Deno.serve(async (req) => {
   try {
@@ -177,7 +178,7 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
     ];
     const specialistRuns = await Promise.allSettled(specialistSpecs.map(async (agent) => {
       const agentPrompt = "You are " + agent.name + ", a specialist inside MIA. Focus ONLY on " + agent.focus + ". Do not invent facts.\n\nCASE:\n" + JSON.stringify(caseSnapshot, null, 2) + "\n\nEVIDENCE:\n" + JSON.stringify(compactEvidence, null, 2) + "\n\nTRANSACTIONS:\n" + JSON.stringify(compactTransactions, null, 2) + "\n\nTIMELINE:\n" + JSON.stringify(compactTimeline, null, 2);
-      const out = await base44.functions.invoke("hermesProxy", { prompt: agentPrompt, model: MODEL, temperature: 0.1, max_tokens: 2200 });
+      const out = await base44.functions.invoke("openrouterProxy", { prompt: agentPrompt, model: MODEL, temperature: 0.1, max_tokens: 2200 });
       const body = out?.data ?? out;
       return { id: agent.id, name: agent.name, status: body?.ok ? "completed" : "failed", result: body?.data || body?.result || body?.text || body?.error || "No specialist response" };
     }));
@@ -195,7 +196,7 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
         }).catch(() => null);
       }
     }
-    const ai = await base44.functions.invoke("hermesProxy", {
+    const ai = await base44.functions.invoke("openrouterProxy", {
       prompt,
       model: MODEL,
       temperature: 0.1,
@@ -243,6 +244,6 @@ If a category has insufficient data, explicitly say "Insufficient case data" rat
     });
   } catch (error) {
     console.error("MIA case analysis error:", error);
-    return Response.json({ error: error?.message || String(error) }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 });

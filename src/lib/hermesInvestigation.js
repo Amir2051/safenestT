@@ -80,6 +80,19 @@ function isTerminal(status) {
   ].includes(s);
 }
 
+function isPersistedPartialCompletion(status, persisted) {
+  const normalized = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  const partialStatuses = new Set([
+    "failed_with_results", "completed_with_errors", "completed_with_warnings",
+    "completed_with_failures", "partial_success", "partially_completed",
+    "partial_failure", "partially_failed",
+  ]);
+  return partialStatuses.has(normalized)
+    && Number(persisted?.evidence) > 0
+    && typeof persisted?.report_id === "string"
+    && persisted.report_id.trim().length > 0;
+}
+
 function extractInvestigationId(data) {
   if (!data) return null;
   return data.investigation_id || data.investigationId || data.id || data.investigation?.id || null;
@@ -499,19 +512,27 @@ export async function resumeHermesInvestigation({
   // The backend sync step may have already finalized it; finalizeActiveRun is a
   // no-op when no "running" run remains.
   const normalizedFinalStatus = String(last.status || "").toLowerCase();
+  const persisted = last.raw?.persisted || {};
+  const partialCompletion = !pollingError && isPersistedPartialCompletion(last.status, persisted);
   const successStatuses = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"];
   const finalStatus = pollingError
     ? (pollingError?.hermesStatus === "cancelled" ? "cancelled" : "failed")
-    : (successStatuses.includes(normalizedFinalStatus) ? "completed" : "failed");
+    : (successStatuses.includes(normalizedFinalStatus) || partialCompletion ? "completed" : "failed");
+  const persistedOutputs = { ...persisted, partial: partialCompletion, hermes_status: last.status };
+  const finalError = pollingError
+    ? String(pollingError?.message || pollingError)
+    : (partialCompletion
+      ? `Hermes returned partial results (${last.status}); saved outputs require investigator review.`
+      : (finalStatus === "failed" ? `Hermes ended with status: ${last.status}` : undefined));
   await finalizeActiveRun(caseId, {
     status: finalStatus,
-    error: pollingError ? String(pollingError?.message || pollingError) : (finalStatus === "failed" ? `Hermes ended with status: ${last.status}` : undefined),
+    error: finalError,
     output: pollingError ? { error: String(pollingError?.message || pollingError), last_status: last.status } : last.raw,
     startedAt,
-    persisted: last.raw?.persisted || {},
+    persisted: persistedOutputs,
   });
   if (pollingError) throw pollingError;
-  return { status: finalStatus, investigation_id: last.investigation_id, phases: last.phases, output: last.raw, persisted: last.raw?.persisted || {} };
+  return { status: partialCompletion ? "completed_with_errors" : finalStatus, investigation_id: last.investigation_id, phases: last.phases, output: last.raw, persisted: persistedOutputs };
 }
 
 /**
@@ -725,36 +746,45 @@ export async function runHermesInvestigation({
   //    run that made the AI Run History spinner spin forever.
   const persisted = last.raw?.persisted || {};
   const normalizedFinalStatus = String(last.status || "").toLowerCase();
+  const partialCompletion = !pollingError && isPersistedPartialCompletion(last.status, persisted);
   const successStatuses = ["completed", "done", "complete", "success", "succeeded", "finished", "ok"];
   const finalStatus = pollingError
     ? (pollingError?.hermesStatus === "cancelled" ? "cancelled" : "failed")
-    : (successStatuses.includes(normalizedFinalStatus) ? "completed" : "failed");
+    : (successStatuses.includes(normalizedFinalStatus) || partialCompletion ? "completed" : "failed");
+  const persistedOutputs = { ...persisted, partial: partialCompletion, hermes_status: last.status };
+  const finalError = pollingError
+    ? String(pollingError?.message || pollingError).slice(0, 4000)
+    : (partialCompletion
+      ? `Hermes returned partial results (${last.status}); saved outputs require investigator review.`
+      : (finalStatus === "failed" ? `Hermes ended with non-success status: ${last.status}` : undefined));
 
   if (run) {
     await base44.entities.InvestigationRun.update(run.id, {
       status: finalStatus,
-      error: pollingError ? String(pollingError?.message || pollingError).slice(0, 4000) : (finalStatus === "failed" ? `Hermes ended with non-success status: ${last.status}` : undefined),
+      error: finalError,
       output: pollingError ? { error: String(pollingError?.message || pollingError), last_status: last.status } : last.raw,
       completed_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
-      persisted_outputs: persisted,
+      persisted_outputs: persistedOutputs,
     }).catch(() => {});
   }
 
-  await logAuditEvent({
-    action: finalStatus === "completed" ? "hermes_investigation_completed" : "hermes_investigation_failed",
-    objectType: "case",
-    objectId: caseId,
-    caseId,
-    description: pollingError
-      ? `Hermes investigation ${investigationId} failed during polling: ${pollingError?.message || pollingError}`
-      : `Hermes investigation ${investigationId} ${finalStatus}: ${last.status}`,
-    metadata: { investigation_id: investigationId, status: last.status, persisted, error: pollingError ? String(pollingError?.message || pollingError) : undefined },
-  }).catch(() => {});
+  // The server-side sync step writes the authoritative terminal audit event.
+  // Only log here when polling itself failed before the server could finalize it.
+  if (pollingError) {
+    await logAuditEvent({
+      action: "hermes_investigation_failed",
+      objectType: "case",
+      objectId: caseId,
+      caseId,
+      description: `Hermes investigation ${investigationId} failed during polling: ${pollingError?.message || pollingError}`,
+      metadata: { investigation_id: investigationId, status: last.status, persisted: persistedOutputs, error: String(pollingError?.message || pollingError) },
+    }).catch(() => {});
+  }
 
   if (pollingError) throw pollingError;
 
-  return { status: finalStatus, investigation_id: investigationId, phases: last.phases, output: last.raw, persisted };
+  return { status: partialCompletion ? "completed_with_errors" : finalStatus, investigation_id: investigationId, phases: last.phases, output: last.raw, persisted: persistedOutputs };
 }
 
 export { PHASES };

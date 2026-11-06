@@ -35,6 +35,7 @@ import OrganizationsDirectory from './pages/OrganizationsDirectory';
 import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationVerifications from './pages/OrganizationVerifications';
+import HermesSyntheticTest from './pages/HermesSyntheticTest';
 import InvestigationProviders from './pages/InvestigationProviders';
 import { getHomePath, isOrgMember, isPlatformAdmin } from '@/lib/organizationRoles';
 
@@ -206,6 +207,7 @@ const AuthenticatedApp = () => {
         <Route path="/Team" element={<Team />} />
         <Route path="/OrganizationSettings" element={<OrganizationSettings />} />
         <Route path="/OrganizationVerifications" element={<AdminGate><OrganizationVerifications /></AdminGate>} />
+        <Route path="/HermesSyntheticTest" element={<AdminGate><HermesSyntheticTest /></AdminGate>} />
         <Route path="/InvestigationProviders" element={<AdminGate><InvestigationProviders /></AdminGate>} />
         <Route path="/CookiePolicy" element={<CookiePolicy />} />
         <Route path="/DataRightsDeletion" element={<DataRightsDeletion />} />
