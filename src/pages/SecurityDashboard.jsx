@@ -349,7 +349,7 @@ function SecurityDashboard() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4" />
           <p className="text-gray-400">Loading security dashboard...</p>
@@ -359,7 +359,7 @@ function SecurityDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>

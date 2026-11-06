@@ -1,11 +1,13 @@
 /**
  * Organization role model for SafeNestT — Security Operations & Investigation Services.
  *
- * IMPORTANT: This module is UI-only. It drives role-based navigation and the
- * organization-aware shell. It is NOT a security boundary. The backend / Hermes
- * enforces authentication, authorization, tenant isolation, and investigation
- * permissions separately. Never treat frontend role hiding as the actual
- * security boundary.
+ * THE single source of truth for roles in the UI. Use these helpers instead of
+ * checking user.role / is_admin / tenant_role / job_title directly.
+ *
+ * Security: the fields read here (role, organization_role, tenant_role,
+ * is_admin) are locked in the User schema and only set server-side by the
+ * orgAccess function. Data rules (RLS) enforce the same roles on the server;
+ * this module only decides what the UI shows.
  */
 
 export const ORGANIZATION_TYPES = [
@@ -31,7 +33,7 @@ export const ROLE_LABELS = {
   CASE_MANAGER: "Case Manager",
   VIEWER: "Viewer (Read-Only)",
   AUDITOR: "Auditor",
-  REGULAR_USER: "Member",
+  REGULAR_USER: "Regular User",
 };
 
 export const ROLE_SHORT = {
@@ -42,7 +44,7 @@ export const ROLE_SHORT = {
   CASE_MANAGER: "CASE MANAGER",
   VIEWER: "VIEWER",
   AUDITOR: "AUDITOR",
-  REGULAR_USER: "MEMBER",
+  REGULAR_USER: "REGULAR USER",
 };
 
 /** Roles assignable to an organization member (PLATFORM_ADMIN excluded). */
@@ -69,13 +71,49 @@ export function getEffectiveRole(user) {
   if (!user) return "VIEWER";
   if (user.role === "admin" || user.is_admin) return "PLATFORM_ADMIN";
   if (user.organization_role) return user.organization_role;
-  if (user.tenant_role === "owner" || user.tenant_role === "admin") return "ORG_ADMIN";
-  if (user.tenant_role === "investigator") return "INVESTIGATOR";
+  // Legacy tenant_role only counts inside a real organization — owning a
+  // personal workspace does not make an individual client an Org Admin.
+  if (user.organization_name) {
+    if (user.tenant_role === "owner" || user.tenant_role === "admin") return "ORG_ADMIN";
+    if (user.tenant_role === "investigator") return "INVESTIGATOR";
+  }
   return "REGULAR_USER";
 }
 
 export const isPlatformAdmin = (user) => getEffectiveRole(user) === "PLATFORM_ADMIN";
 export const isOrgAdmin = (user) => getEffectiveRole(user) === "ORG_ADMIN";
+
+/** Roles that can open and run investigations (matches RoleGate allowInvestigator). */
+export const INVESTIGATION_ROLES = ["PLATFORM_ADMIN", "ORG_ADMIN", "INVESTIGATOR", "ANALYST", "CASE_MANAGER"];
+export const canInvestigate = (user) => INVESTIGATION_ROLES.includes(getEffectiveRole(user));
+
+/** Org staff: anyone working inside an organization (not an individual client). */
+export const isStaff = (user) => isOrgMember(user) || isPlatformAdmin(user);
+
+/**
+ * Where each role lands after signing in. Pending/unverified members land on
+ * Dashboard (read-only) until their organization access is approved.
+ */
+export function getHomePath(user) {
+  if (!user) return "/";
+  const r = getEffectiveRole(user);
+  if (r === "PLATFORM_ADMIN") return "/OperationsDashboard";
+  if (user.account_status === "pending" || user.membership_status && user.membership_status !== "active") return "/Dashboard";
+  switch (r) {
+    case "ORG_ADMIN":
+    case "CASE_MANAGER":
+      return "/OperationsDashboard";
+    case "INVESTIGATOR":
+    case "ANALYST":
+      return "/InvestigationWorkspace";
+    case "AUDITOR":
+      return "/AuditLog";
+    case "VIEWER":
+      return "/CasesManagement";
+    default:
+      return "/Dashboard";
+  }
+}
 
 export function isOrgMember(user) {
   const r = getEffectiveRole(user);

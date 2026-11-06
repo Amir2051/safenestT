@@ -112,7 +112,7 @@ export default function MediaDirectorAI() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-4 lg:p-6 flex flex-col h-screen">
+    <div className="min-h-screen p-4 lg:p-6 flex flex-col h-screen">
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Sparkles className="w-8 h-8 text-purple-400" />

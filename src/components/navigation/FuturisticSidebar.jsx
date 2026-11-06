@@ -5,9 +5,9 @@ import {
   LayoutDashboard, Briefcase, FileSearch, ShieldAlert, FileText,
   Search, ScrollText, Upload, Radar, Activity, ShieldCheck, Bot, Lock,
   CreditCard, HelpCircle, Settings as SettingsIcon, ChevronLeft, Power, Wallet,
-  Command, Sparkles,
+  Command, Sparkles, ChevronDown,
   UserCheck, UserPlus, FileBarChart, LifeBuoy, Users, TrendingUp,
-  Server, Gavel, Home as HomeIcon, Cookie, Scale, Building2,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,71 +20,13 @@ import { getEffectiveRole, ROLE_LABELS, ROLE_SHORT } from "@/lib/organizationRol
  * and case-aware workspace deep links (Evidence / Findings & Risk / Reports).
  */
 
-const SECTIONS = [
-  {
-    label: "Overview",
-    items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/OperationsDashboard", glow: "cyan" },
-    ],
-  },
-  {
-    label: "Investigations",
-    items: [
-      { id: "ai-investigations", label: "AI Investigations", icon: Sparkles, path: "/InvestigationWorkspace", glow: "purple", badge: "AI", prominent: true },
-      { id: "cases", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
-      { id: "import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
-      { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
-    ],
-  },
-  {
-    label: "Case Workspace",
-    items: [
-      { id: "ws-evidence", label: "Evidence", icon: FileSearch, path: "/InvestigationWorkspace", tab: "evidence", glow: "cyan" },
-      { id: "ws-findings", label: "Findings & Risk", icon: ShieldAlert, path: "/InvestigationWorkspace", tab: "findings", glow: "amber" },
-      { id: "ws-reports", label: "Reports & Dossiers", icon: FileText, path: "/InvestigationWorkspace", tab: "reports", glow: "cyan" },
-      { id: "audit", label: "Audit Log", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
-      { id: "client-auth", label: "Client Authorizations", icon: ShieldCheck, path: "/ClientAuthorizations", glow: "emerald" },
-    ],
-  },
-  {
-    label: "Intelligence & Security",
-    items: [
-      { id: "intelligence", label: "Intelligence", icon: Radar, path: "/ReportedScams", glow: "red" },
-      { id: "monitoring", label: "Monitoring", icon: Activity, path: "/Alerts", glow: "red", badge: "LIVE" },
-      { id: "security", label: "Security", icon: ShieldCheck, path: "/SecurityDashboard", glow: "emerald" },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
-      { id: "vault", label: "Password Vault", icon: Lock, path: "/PasswordVault", glow: "blue" },
-      { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
-      { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
-    ],
-  },
-  {
-    label: "Legal & Privacy",
-    items: [
-      { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
-      { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
-      { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
-      { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
-      { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
-      { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
-      { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
-      { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
-      { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
-    ],
-  },
-];
-
 // Minimal navigation for regular (non-staff) users.
 const USER_SECTIONS = [
   {
     label: "Home",
     items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/", glow: "cyan" },
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/Dashboard", glow: "cyan" },
+      { id: "organizations", label: "Organizations", icon: Building2, path: "/Organizations", glow: "cyan" }
     ],
   },
   {
@@ -101,19 +43,6 @@ const USER_SECTIONS = [
       { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
       { id: "subscription", label: "Subscription", icon: CreditCard, path: "/Subscription", glow: "purple" },
       { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
-    ],
-  },
-  {
-    label: "Legal & Privacy",
-    items: [
-      { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
-      { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
-      { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
-      { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
-      { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
-      { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
-      { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
-      { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
       { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
     ],
   },
@@ -134,21 +63,12 @@ const ORG_ITEMS = {
   team: { id: "team", label: "Team", icon: Users, path: "/Team", glow: "cyan" },
   orgSettings: { id: "org-settings", label: "Organization", icon: Building2, path: "/OrganizationSettings", glow: "cyan" },
   assistant: { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+  subscription: { id: "subscription", label: "Subscription & Pricing", icon: CreditCard, path: "/Subscription", glow: "purple" },
   settings: { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
+  help: { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
 };
 
-const LEGAL_ITEMS = [
-  { id: "privacy-policy", label: "Privacy Policy", icon: ShieldCheck, path: "/PrivacyPolicy", glow: "cyan" },
-  { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/TermsAndConditions", glow: "cyan" },
-  { id: "aup", label: "Acceptable Use", icon: ShieldAlert, path: "/AcceptableUsePolicy", glow: "cyan" },
-  { id: "refund", label: "Refund Policy", icon: CreditCard, path: "/RefundPolicy", glow: "cyan" },
-  { id: "cookie-policy", label: "Cookie Policy", icon: Cookie, path: "/CookiePolicy", glow: "cyan" },
-  { id: "data-rights", label: "Data Rights & Deletion", icon: FileText, path: "/DataRightsDeletion", glow: "cyan" },
-  { id: "rights-center", label: "Rights Center", icon: FileSearch, path: "/RightsCenter", glow: "emerald" },
-  { id: "cookie-intel", label: "Cookie Intel", icon: Cookie, path: "/CookieIntel", glow: "amber" },
-  { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
-];
-const LEGAL_SECTION = { label: "Legal & Privacy", items: LEGAL_ITEMS };
+
 
 // Role-specific navigation for organization members. PLATFORM_ADMIN keeps
 // the ADMIN_SECTIONS defined inside the component (platform admin experience);
@@ -159,42 +79,36 @@ const ORG_SECTIONS = {
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.audit, ORG_ITEMS.clientAuth] },
     { label: "Organization", items: [ORG_ITEMS.team, ORG_ITEMS.orgSettings] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   INVESTIGATOR: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   ANALYST: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   CASE_MANAGER: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   VIEWER: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   AUDITOR: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Review", items: [ORG_ITEMS.audit, ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.evidence, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.settings] },
-    LEGAL_SECTION,
+    { label: "Account", items: [ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
 };
 
@@ -240,6 +154,8 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   // PLATFORM_ADMIN (SafeNestT internal) gets the platform administration sidebar.
   // Organization members get role-specific navigation from ORG_SECTIONS.
   // REGULAR_USER (no organization) keeps the minimal USER_SECTIONS navigation.
+  // Platform admin: 5 groups (was 6 groups / 20 links), Account added so
+  // admins can reach Settings and Help from the nav.
   const ADMIN_SECTIONS = [
     {
       label: "Overview",
@@ -254,11 +170,6 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         { id: "cases-mgmt", label: "Cases", icon: Briefcase, path: "/CasesManagement", glow: "cyan" },
         { id: "case-import", label: "Import Case", icon: Upload, path: "/CaseImport", glow: "cyan" },
         { id: "global-search", label: "Global Search", icon: Search, path: "/GlobalSearch", glow: "cyan" },
-      ],
-    },
-    {
-      label: "Reports & Audit",
-      items: [
         { id: "reports-center", label: "Reports", icon: FileText, path: "/ReportsCenter", glow: "cyan" },
         { id: "audit-log", label: "Audit Trail", icon: ScrollText, path: "/AuditLog", glow: "cyan" },
       ],
@@ -275,20 +186,28 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       label: "Platform",
       items: [
         { id: "users", label: "Users", icon: Users, path: "/AdminUserApprovals", glow: "cyan" },
-        { id: "invites", label: "Invitations", icon: UserPlus, path: "/AdminInvites", glow: "cyan" },
-        { id: "analytics", label: "Analytics", icon: TrendingUp, path: "/AdminReports", glow: "blue" },
-        { id: "subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
-        { id: "user-export", label: "User Export", icon: FileBarChart, path: "/UserExport", glow: "cyan" },
         { id: "org-verifications", label: "Org Verifications", icon: ShieldCheck, path: "/OrganizationVerifications", glow: "emerald" },
-        { id: "investigation-providers", label: "Providers", icon: Bot, path: "/InvestigationProviders", glow: "purple" },
+        { id: "invites", label: "Invitations", icon: UserPlus, path: "/AdminInvites", glow: "cyan" },
+        { id: "subscriptions", label: "Subscriptions", icon: CreditCard, path: "/AdminSubscriptions", glow: "purple" },
         { id: "admin-support", label: "Support Queue", icon: LifeBuoy, path: "/AdminSupport", glow: "cyan" },
+        { id: "investigation-providers", label: "AI Providers", icon: Bot, path: "/InvestigationProviders", glow: "purple" },
       ],
     },
     {
-      label: "Growth",
+      label: "Insights",
       items: [
+        { id: "analytics", label: "Analytics", icon: TrendingUp, path: "/AdminReports", glow: "blue" },
         { id: "admin-referrals", label: "Referrals", icon: UserCheck, path: "/AdminReferrals", glow: "purple" },
         { id: "admin-referral-dashboard", label: "Referral Analytics", icon: TrendingUp, path: "/AdminReferralDashboard", glow: "purple" },
+        { id: "user-export", label: "User Export", icon: FileBarChart, path: "/UserExport", glow: "cyan" },
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+        { id: "subscription", label: "Subscription & Pricing", icon: CreditCard, path: "/Subscription", glow: "purple" },
+        { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
       ],
     },
   ];
@@ -297,6 +216,19 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
     : ORG_SECTIONS[effectiveRole]
       ? ORG_SECTIONS[effectiveRole]
       : USER_SECTIONS;
+
+  // Sections that hold the current page start open; others fold away.
+  // Single-item sections (e.g. Overview) render flat, with no header.
+  const visibleSections = navSections.filter(
+    (s) => !(s.label === "Case Workspace" && !hasCaseContext)
+  );
+  const activeSectionObj = visibleSections.find((s) => s.items.some((i) => isActiveItem(i, location)));
+  const activeSection = activeSectionObj?.label;
+  // On a flat page (e.g. Dashboard) open the first group so the nav isn't empty.
+  const firstGroup = visibleSections.find((s) => s.items.length > 1)?.label || null;
+  const defaultOpen = activeSectionObj && activeSectionObj.items.length > 1 ? activeSection : firstGroup;
+  const [openSection, setOpenSection] = useState(defaultOpen);
+  useEffect(() => { setOpenSection(defaultOpen); }, [defaultOpen]);
 
   const go = (item) => {
     let url = item.path;
@@ -316,8 +248,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
   const NavButton = ({ item }) => {
     const active = isActiveItem(item, location);
     const Icon = item.icon;
-    const grad = glowBar[item.glow] || glowBar.cyan;
-    return (
+        return (
       <button
         onClick={() => go(item)}
         title={collapsed ? item.label : undefined}
@@ -331,7 +262,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
               : "border border-transparent hover:bg-white/[0.04] hover:border-white/10"}`}
       >
         {active && (
-          <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b ${grad}`} />
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b from-sn-cyan to-purple-500 shadow-[0_0_8px_rgba(0,217,255,0.6)]" />
         )}
         <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? "text-cyan-300" : item.prominent ? "text-purple-300 group-hover:text-purple-200" : "text-gray-400 group-hover:text-cyan-300"}`} />
         <span className={`flex-1 text-left text-sm font-medium truncate transition-colors ${active ? "text-white" : "text-gray-300 group-hover:text-white"} ${collapsed ? "lg:hidden" : ""}`}>
@@ -340,7 +271,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         {item.badge && !collapsed && (
           <Badge className={`text-[9px] px-1.5 py-0.5 border ${
             item.badge === "AI" ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
-            : item.badge === "LIVE" ? "bg-red-500/20 text-red-300 border-red-500/40"
+            : item.badge === "LIVE" ? "bg-lime-400/15 text-lime-300 border-lime-400/40"
             : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"}`}>
             {item.badge}
           </Badge>
@@ -363,11 +294,11 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       <div className="relative z-10 flex flex-col h-full min-h-screen px-3 py-4">
         {/* Header / brand + collapse toggle */}
         <div className="flex items-center gap-2 px-1 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 border border-cyan-500/40">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sn-cyan to-purple-500 flex items-center justify-center shrink-0 border border-sn-cyan/40 sn-glow-cyan">
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
-            <p className="text-white font-bold text-sm tracking-wider leading-none">SafeNestT</p>
+            <p className="sn-wordmark text-white font-bold text-[13px] leading-none">SAFENESTT</p>
             <p className="text-cyan-400 text-[10px] font-mono mt-0.5">{isAdmin ? "// ADMIN //" : `// ${ROLE_SHORT[effectiveRole] || "SECURED"} //`}</p>
           </div>
           <button
@@ -389,7 +320,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             <p className="text-[10px] text-gray-500 truncate mt-0.5">{user?.email || ""}</p>
           </div>
         </div>
-        {effectiveRole !== "REGULAR_USER" && !collapsed && (
+        {!collapsed && (
           <div className="flex items-center gap-1.5 mb-3 px-1">
             <span className="text-[9px] font-mono uppercase tracking-wider text-slate-500">Role</span>
             <Badge className="text-[9px] px-1.5 py-0.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">{ROLE_LABELS[effectiveRole]}</Badge>
@@ -397,29 +328,55 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-4">
-          {navSections.map((section) => {
-            if (section.label === "Case Workspace" && !hasCaseContext) return null;
+        <nav className="flex-1 overflow-y-auto pr-1 -mr-1 scrollbar-custom space-y-1">
+          {visibleSections.map((section) => {
+            if (section.items.length === 1) {
+              return (
+                <div key={section.label} className="pb-1">
+                  <NavButton item={section.items[0]} />
+                </div>
+              );
+            }
+            const open = collapsed || openSection === section.label;
+            const holdsActive = section.label === activeSection;
             return (
               <div key={section.label}>
-                <p className={`px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 ${collapsed ? "lg:hidden" : ""}`}>{section.label}</p>
-                <div className="space-y-1">
-                  {section.items.map((item) => <NavButton key={item.id} item={item} />)}
-                </div>
+                <button
+                  onClick={() => setOpenSection(open && !collapsed ? null : section.label)}
+                  aria-expanded={open}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${collapsed ? "lg:hidden" : ""}
+                    ${holdsActive ? "text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    {section.label}
+                    {holdsActive && <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_6px_rgba(232,121,249,0.8)]" />}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "" : "-rotate-90"}`} />
+                </button>
+                {open && (
+                  <div className="space-y-1 mt-1 mb-2">
+                    {section.items.map((item) => <NavButton key={item.id} item={item} />)}
+                  </div>
+                )}
               </div>
             );
           })}
-
         </nav>
 
         {/* Footer */}
         <div className="pt-3 mt-2 border-t border-white/5 space-y-2">
           <div className={`flex items-center justify-between px-2 py-1.5 rounded-md bg-white/[0.02] border border-white/10 ${collapsed ? "lg:hidden" : ""}`}>
             <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Engine
+              <span className="w-1.5 h-1.5 rounded-full bg-sn-lime shadow-[0_0_6px_rgba(0,255,0,0.8)] animate-pulse" />Engine
             </span>
             <span className="text-[10px] text-gray-400 font-mono"><LiveClock /></span>
           </div>
+          <button
+            onClick={() => go({ path: "/PrivacyPolicy" })}
+            className={`w-full text-left px-2 text-[10px] text-slate-500 hover:text-cyan-300 tracking-wider uppercase ${collapsed ? "lg:hidden" : ""}`}
+          >
+            Legal &amp; Privacy
+          </button>
           <Button
             variant="outline"
             onClick={() => { onLogout?.(); onNavigate?.(); }}

@@ -31,7 +31,7 @@ export default function LawEnforcementAccess() {
   if (!isAuthenticated) {
     return (
       <AdminGate>
-      <div className="min-h-screen bg-[#050a10] flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
         
         <Card className="w-full max-w-md bg-[#0f1419] border-blue-900/30 shadow-2xl shadow-blue-900/20 relative z-10">
@@ -82,7 +82,7 @@ export default function LawEnforcementAccess() {
 
   return (
     <AdminGate>
-    <div className="min-h-screen bg-[#050a10] text-white">
+    <div className="min-h-screen text-white">
       {/* LE Header */}
       <header className="bg-[#0a0e14] border-b border-blue-900/30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">

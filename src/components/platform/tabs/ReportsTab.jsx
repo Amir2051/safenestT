@@ -1,198 +1,252 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Download, Loader2, FileCheck2, ClipboardList } from "lucide-react";
+import {
+  FileText, Download, Loader2, Eye, ShieldCheck, ShieldAlert, Stamp, ChevronDown, X, AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import EmptyState from "@/components/platform/EmptyState";
-import { jsPDF } from "jspdf";
-import { runPhase, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/investigationRunner";
+import CaseReportDocument from "@/components/report/CaseReportDocument";
+import { buildCaseReport, integrityHash, formatDate } from "@/lib/report/reportModel";
+import { renderReportPdf, reportFileName } from "@/lib/report/reportPdf";
+import { useAuth } from "@/lib/AuthContext";
+import { useCanMutate } from "@/components/shared/MutateGuard";
+import { isPlatformAdmin } from "@/lib/organizationRoles";
 import { logAuditEvent } from "@/lib/auditLogger";
 import { toast } from "sonner";
 
-const REPORT_TYPES = [
-  { value: "investigation_report", label: "Investigation Report" },
-  { value: "evidence_report", label: "Evidence Report" },
-  { value: "blockchain_trace_report", label: "Blockchain Trace Report" },
-  { value: "executive_summary", label: "Executive Summary" },
-  { value: "finding_report", label: "Finding Report" },
-];
-
-const CLASSIFICATION_STYLES = {
-  fact: "border-green-500/30 text-green-400",
-  evidence: "border-cyan-500/30 text-cyan-400",
-  analysis: "border-amber-500/30 text-amber-400",
-  inference: "border-purple-500/30 text-purple-400",
-  hypothesis: "border-orange-500/30 text-orange-400",
-  unknown: "border-white/15 text-gray-400",
-};
-
-export default function ReportsTab({ caseId, hermesState }) {
-  const [generating, setGenerating] = useState(false);
-  const [reportType, setReportType] = useState("investigation_report");
+/**
+ * Reports — the client-facing deliverable.
+ *
+ *  - Draft: built live from the case's current records (never stored).
+ *  - Issue: freezes the report model + its SHA-256 into an InvestigationReport
+ *    record. Issued reports re-render from that snapshot, so the document a
+ *    client received never changes; the hash is re-checked every time.
+ *  - Engine dossiers: the raw engine output, kept for audit.
+ */
+export default function ReportsTab({ caseId, caseItem }) {
+  const { user } = useAuth();
+  const canMutate = useCanMutate();
   const qc = useQueryClient();
+  const [viewing, setViewing] = useState(null); // { model, integrity, draft }
+  const [busy, setBusy] = useState("");
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: ["reports", caseId],
-    queryFn: () => base44.entities.InvestigationReport.filter({ case_id: caseId }, "-created_date", 50),
+  const { data: findings = [], isLoading: lf } = useQuery({
+    queryKey: ["report-findings", caseId],
+    queryFn: () => base44.entities.InvestigationFinding.filter({ case_id: caseId }, "-created_date", 500),
     enabled: !!caseId,
   });
+  const { data: evidence = [], isLoading: le } = useQuery({
+    queryKey: ["report-evidence", caseId],
+    queryFn: () => base44.entities.EvidenceItem.filter({ case_id: caseId }, "-created_date", 500),
+    enabled: !!caseId,
+  });
+  const { data: reports = [], isLoading: lr } = useQuery({
+    queryKey: ["reports", caseId],
+    queryFn: () => base44.entities.InvestigationReport.filter({ case_id: caseId }, "-created_date", 100),
+    enabled: !!caseId,
+  });
+  const { data: tenant } = useQuery({
+    queryKey: ["report-tenant", caseItem?.tenant_id],
+    queryFn: () => base44.entities.Tenant.get(caseItem.tenant_id).catch(() => null),
+    enabled: !!caseItem?.tenant_id,
+  });
 
-  const generate = async () => {
-    setGenerating(true);
+  const organization = tenant && tenant.plan !== "personal" ? { name: tenant.name } : null;
+  const preparedBy = user
+    ? `${user.full_name || user.email}, ${isPlatformAdmin(user) ? "SafeNestT Investigations" : user.organization_name || "SafeNestT"}`
+    : "SafeNestT Investigations";
+
+  // Engine dossiers hold the raw lookup results for older evidence records.
+  const engineReports = useMemo(() => reports.filter((r) => r.report_type === "dossier" || r.generated_by === "hermes"), [reports]);
+
+  const draft = useMemo(() => {
+    if (!caseItem) return null;
     try {
-      const res = await runPhase({ caseId, phase: "dossier", provider: DEFAULT_PROVIDER, model: DEFAULT_MODEL });
-      if (res.status === "completed") {
-        toast.success("Dossier report generated");
-        qc.invalidateQueries({ queryKey: ["reports", caseId] });
-      } else {
-        toast.error("Dossier generation failed: " + (res.error || "unknown"));
-      }
-    } catch (e) { toast.error("Failed: " + (e.message || e)); }
-    finally { setGenerating(false); }
+      return buildCaseReport({ caseItem, findings, evidence, organization, preparedBy, engineReports });
+    } catch (e) {
+      console.error("[report] draft build failed", e);
+      return null;
+    }
+  }, [caseItem, findings, evidence, organization?.name, preparedBy, engineReports]);
+
+  const issued = reports.filter((r) => r.report_type === "investigation_report" && r.content?.model);
+  const engineDossiers = reports.filter((r) => !(r.report_type === "investigation_report" && r.content?.model));
+
+  const downloadPdf = async (model, integrity, { audit, reportId } = {}) => {
+    const doc = renderReportPdf(model, { integrity });
+    doc.save(reportFileName(model));
+    if (audit) {
+      await logAuditEvent({ action: "report_exported", objectType: "report", objectId: reportId, caseId, description: `Downloaded ${model.report_number} (PDF)` });
+    }
   };
 
-  const exportReport = async (report, format) => {
+  const issueReport = async () => {
+    if (!draft) return;
+    setBusy("issue");
     try {
-      if (format === "json") {
-        const blob = new Blob([JSON.stringify(report.content || report, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = `${report.title}.json`; a.click();
-        URL.revokeObjectURL(url);
-      } else if (format === "markdown") {
-        const md = generateMarkdown(report);
-        const blob = new Blob([md], { type: "text/markdown" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = `${report.title}.md`; a.click();
-        URL.revokeObjectURL(url);
-      } else if (format === "pdf") {
-        generatePdf(report);
-      }
-      await logAuditEvent({ action: "report_exported", objectType: "report", objectId: report.id, caseId, description: `Exported ${report.title} as ${format.toUpperCase()}` });
-      toast.success(`Exported as ${format.toUpperCase()}`);
-    } catch (e) { toast.error("Export failed: " + (e.message || e)); }
+      // Rebuild with a fresh timestamp so report number + data-as-of are exact.
+      const model = buildCaseReport({ caseItem, findings, evidence, organization, preparedBy, engineReports, asOf: new Date().toISOString() });
+      const integrity = await integrityHash(model);
+      const rec = await base44.entities.InvestigationReport.create({
+        tenant_id: caseItem.tenant_id,
+        case_id: caseId,
+        title: `Investigation Report ${model.report_number}`,
+        report_type: "investigation_report",
+        status: "exported",
+        generated_by: "investigator",
+        generated_date: model.as_of,
+        content: { model, integrity, schema_version: model.schema_version },
+        conclusion: model.executive_summary.join(" "),
+        recommended_actions: model.next_steps,
+        created_by: user?.email,
+      });
+      await logAuditEvent({
+        action: "report_issued", objectType: "report", objectId: rec?.id, caseId,
+        description: `Issued ${model.report_number} (SHA-256 ${integrity.slice(0, 16)}…)`,
+        metadata: { report_number: model.report_number, integrity },
+      });
+      qc.invalidateQueries({ queryKey: ["reports", caseId] });
+      await downloadPdf(model, integrity);
+      toast.success(`Report ${model.report_number} issued`);
+    } catch (e) {
+      toast.error("Could not issue the report: " + (e?.message || e));
+    } finally {
+      setBusy("");
+    }
   };
+
+  if (lf || le || lr) return <EmptyState variant="loading" title="Preparing report…" />;
+  if (!caseItem) return <EmptyState variant="error" title="Case unavailable" description="The case record could not be loaded." />;
 
   return (
-    <div className="space-y-4">
-      {/* Generate */}
-      <div className="rounded-lg border border-white/10 p-4 flex items-center gap-3 flex-wrap">
-        <FileText className="w-5 h-5 text-cyan-400" />
-        <Select value={reportType} onValueChange={setReportType}>
-          <SelectTrigger className="w-56 bg-[#0f1419] border-white/10 text-white"><SelectValue /></SelectTrigger>
-          <SelectContent>{REPORT_TYPES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-        </Select>
-        <Button onClick={generate} disabled={generating} className="bg-cyan-600 hover:bg-cyan-700">
-          {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileCheck2 className="w-4 h-4 mr-1.5" />}Generate Report
-        </Button>
-        <span className="text-xs text-gray-500">Runs the Dossier phase via the investigation engine.</span>
+    <div className="space-y-5">
+      {/* Draft */}
+      <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.03] p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-cyan-400" />
+              <p className="text-sm font-semibold text-white">Investigation Report</p>
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-300">DRAFT · LIVE DATA</Badge>
+            </div>
+            {draft ? (
+              <p className="text-xs text-gray-400 mt-1">
+                {draft.counts.verified} verified · {draft.counts.partially_supported} partially supported · {draft.counts.unreviewed} awaiting review
+                {" · "}{draft.counts.evidence} evidence item(s){draft.risk ? ` · ${draft.risk.level} risk ${draft.risk.score}/100` : ""}
+              </p>
+            ) : (
+              <p className="text-xs text-red-300 mt-1">The report could not be assembled from this case's data.</p>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" disabled={!draft} onClick={() => setViewing({ model: draft, integrity: "", draft: true })} className="border-white/15 text-gray-200">
+              <Eye className="w-4 h-4 mr-1.5" />Preview
+            </Button>
+            <Button size="sm" variant="outline" disabled={!draft} onClick={() => downloadPdf(draft, "")} className="border-white/15 text-gray-200">
+              <Download className="w-4 h-4 mr-1.5" />Draft PDF
+            </Button>
+            {canMutate && (
+              <Button size="sm" disabled={!draft || !!busy} onClick={issueReport}>
+                {busy === "issue" ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Stamp className="w-4 h-4 mr-1.5" />}Issue report
+              </Button>
+            )}
+          </div>
+        </div>
+        {draft && draft.counts.unreviewed > 0 && (
+          <p className="text-[11px] text-amber-300/90 mt-3 flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+            {draft.counts.unreviewed} finding(s) are still unreviewed. They will appear as "Proposed (unreviewed)". Review them in the Findings tab before issuing to a client.
+          </p>
+        )}
       </div>
 
-      {/* Report list */}
-      {isLoading ? (
-        <EmptyState variant="loading" title="Loading reports…" />
-      ) : reports.length === 0 ? (
-        <EmptyState variant="empty" icon={FileText} title="No reports yet" description="Run the Dossier phase in the Investigation Engine to generate a structured report with classified sections and an evidence register." />
-      ) : (
-        <div className="space-y-3">
-          {reports.map((report) => (
-            <div key={report.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">{report.title}</p>
-                  <p className="text-xs text-gray-500">{REPORT_TYPES.find((r) => r.value === report.report_type)?.label || report.report_type} • {report.generated_by} • {report.generated_date ? new Date(report.generated_date).toLocaleString() : ""}</p>
-                </div>
-                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 text-[10px] capitalize">{report.status}</Badge>
+      {/* Issued */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Issued reports</h3>
+        {issued.length === 0 ? (
+          <p className="text-xs text-gray-500 rounded-lg border border-white/10 p-4">No report has been issued for this case yet. Issuing freezes the report exactly as delivered and records its SHA-256 fingerprint.</p>
+        ) : (
+          <div className="space-y-2">
+            {issued.map((r) => <IssuedRow key={r.id} report={r} caseId={caseId} onView={setViewing} onDownload={downloadPdf} />)}
+          </div>
+        )}
+      </div>
+
+      {/* Engine dossiers (raw) */}
+      {engineDossiers.length > 0 && (
+        <details className="group rounded-lg border border-white/10">
+          <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-xs text-gray-400">
+            <span>Engine dossiers (raw output, {engineDossiers.length}) — internal audit trail, not for clients</span>
+            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="px-4 pb-4 space-y-2">
+            {engineDossiers.map((r) => (
+              <div key={r.id} className="text-xs text-gray-400 border-t border-white/5 pt-2">
+                <span className="text-gray-300">{r.title}</span> · {r.generated_by} · {r.generated_date ? formatDate(r.generated_date, { withTime: true }) : ""}
               </div>
-
-              {/* Sections with classification */}
-              {report.sections?.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  {report.sections.map((section, i) => (
-                    <div key={i} className="text-xs">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[9px] uppercase ${CLASSIFICATION_STYLES[section.classification] || CLASSIFICATION_STYLES.unknown}`}>{section.classification || "unknown"}</Badge>
-                        <span className="text-gray-300 font-medium">{section.title}</span>
-                      </div>
-                      {section.content && <p className="text-gray-400 mt-0.5 pl-2 border-l border-white/5">{section.content.slice(0, 200)}{section.content.length > 200 ? "…" : ""}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Evidence register */}
-              {report.evidence_register?.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1"><ClipboardList className="w-3 h-3" />Evidence Register</p>
-                  <div className="space-y-1">
-                    {report.evidence_register.map((ev, i) => (
-                      <div key={i} className="text-xs text-gray-400 rounded border border-white/5 bg-black/20 px-2 py-1 flex items-center gap-2">
-                        <span className="font-mono text-gray-300">{ev.evidence_id || ev.filename}</span>
-                        {ev.type && <span>• {ev.type}</span>}
-                        {ev.hash && <span className="text-gray-600">• hash: {ev.hash.slice(0, 12)}…</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {report.conclusion && <p className="text-xs text-gray-300 border-t border-white/5 pt-2"><span className="text-gray-500">Conclusion: </span>{report.conclusion}</p>}
-
-              {/* Export buttons */}
-              <div className="flex gap-2 mt-3 pt-2 border-t border-white/5">
-                <Button size="sm" variant="outline" onClick={() => exportReport(report, "pdf")} className="border-white/15 text-gray-200 h-7 text-xs"><Download className="w-3 h-3 mr-1" />PDF</Button>
-                <Button size="sm" variant="outline" onClick={() => exportReport(report, "markdown")} className="border-white/15 text-gray-200 h-7 text-xs"><Download className="w-3 h-3 mr-1" />Markdown</Button>
-                <Button size="sm" variant="outline" onClick={() => exportReport(report, "json")} className="border-white/15 text-gray-200 h-7 text-xs"><Download className="w-3 h-3 mr-1" />JSON</Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </details>
       )}
+
+      {viewing && <ReportViewer {...viewing} onClose={() => setViewing(null)} onDownload={() => downloadPdf(viewing.model, viewing.integrity)} />}
     </div>
   );
 }
 
-function generatePdf(report) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const margin = 40;
-  const maxW = doc.internal.pageSize.getWidth() - margin * 2;
-  let y = margin;
-  const heading = (text, size = 16) => { doc.setFont("helvetica", "bold"); doc.setFontSize(size); doc.text(text, margin, y); y += size * 1.4; };
-  const para = (text, size = 10) => {
-    doc.setFont("helvetica", "normal"); doc.setFontSize(size);
-    const lines = doc.splitTextToSize(text || "", maxW);
-    lines.forEach((ln) => { if (y > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; } doc.text(ln, margin, y); y += size * 1.5; });
-    y += 4;
-  };
-  heading(report.title || "Investigation Report", 18);
-  para(`Type: ${report.report_type || "—"}   |   Generated by: ${report.generated_by || "—"}   |   Date: ${report.generated_date ? new Date(report.generated_date).toLocaleString() : "—"}`);
-  y += 6;
-  (report.sections || []).forEach((s) => { heading(`[${(s.classification || "unknown").toUpperCase()}] ${s.title || ""}`, 12); para(s.content || ""); });
-  if (report.evidence_register?.length) { heading("Evidence Register", 12); report.evidence_register.forEach((ev) => para(`• ${ev.evidence_id || ev.filename || "—"} (${ev.type || "unknown"}) — Hash: ${ev.hash || "—"}`)); }
-  if (report.conclusion) { heading("Conclusion", 12); para(report.conclusion); }
-  if (report.recommended_actions?.length) { heading("Recommended Actions", 12); report.recommended_actions.forEach((a) => para(`• ${a}`)); }
-  doc.save(`${(report.title || "report").replace(/[^a-z0-9]+/gi, "_")}.pdf`);
+function IssuedRow({ report, caseId, onView, onDownload }) {
+  const { model, integrity } = report.content || {};
+  const [check, setCheck] = useState("checking"); // checking | ok | mismatch
+  useEffect(() => {
+    let alive = true;
+    integrityHash(model)
+      .then((h) => { if (alive) setCheck(h && h === integrity ? "ok" : "mismatch"); })
+      .catch(() => alive && setCheck("mismatch"));
+    return () => { alive = false; };
+  }, [model, integrity]);
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+      <div className="min-w-0">
+        <p className="text-sm text-white font-mono truncate">{model?.report_number || report.title}</p>
+        <p className="text-[11px] text-gray-500">
+          Issued {formatDate(report.generated_date || report.created_date, { withTime: true })}{report.created_by ? ` by ${report.created_by}` : ""}
+        </p>
+        <p className="text-[11px] mt-0.5 flex items-center gap-1">
+          {check === "ok" && <><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-300">Integrity verified</span></>}
+          {check === "mismatch" && <><ShieldAlert className="w-3.5 h-3.5 text-red-400" /><span className="text-red-300">Integrity check failed — this record changed after issue</span></>}
+          {check === "checking" && <span className="text-gray-500">Checking integrity…</span>}
+          <span className="text-gray-600 font-mono ml-1 truncate">{integrity?.slice(0, 16)}…</span>
+        </p>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <Button size="sm" variant="outline" onClick={() => onView({ model, integrity, draft: false })} className="border-white/15 text-gray-200 h-8"><Eye className="w-3.5 h-3.5 mr-1" />View</Button>
+        <Button size="sm" variant="outline" onClick={() => onDownload(model, integrity, { audit: true, reportId: report.id })} className="border-white/15 text-gray-200 h-8"><Download className="w-3.5 h-3.5 mr-1" />PDF</Button>
+      </div>
+    </div>
+  );
 }
 
-function generateMarkdown(report) {
-  let md = `# ${report.title}\n\n`;
-  md += `**Type:** ${report.report_type}\n**Generated by:** ${report.generated_by}\n**Date:** ${report.generated_date || ""}\n\n`;
-  if (report.sections?.length) {
-    md += `## Sections\n\n`;
-    report.sections.forEach((s) => {
-      md += `### [${(s.classification || "unknown").toUpperCase()}] ${s.title}\n${s.content || ""}\n\n`;
-    });
-  }
-  if (report.evidence_register?.length) {
-    md += `## Evidence Register\n\n`;
-    report.evidence_register.forEach((ev) => { md += `- **${ev.evidence_id || ev.filename}** (${ev.type || "unknown"}) — Hash: ${ev.hash || "—"}\n`; });
-    md += `\n`;
-  }
-  if (report.conclusion) md += `## Conclusion\n${report.conclusion}\n\n`;
-  if (report.recommended_actions?.length) {
-    md += `## Recommended Actions\n`;
-    report.recommended_actions.forEach((a) => { md += `- ${a}\n`; });
-  }
-  return md;
+function ReportViewer({ model, integrity, draft, onClose, onDownload }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm overflow-y-auto" role="dialog" aria-modal="true" aria-label="Report preview">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2.5 bg-[#06090d]/95 border-b border-white/10">
+        <p className="text-xs text-gray-300 font-mono truncate">{model.report_number}{draft ? " · DRAFT" : ""}</p>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onDownload} className="border-white/15 text-gray-200 h-8"><Download className="w-3.5 h-3.5 mr-1" />PDF</Button>
+          <Button size="sm" variant="outline" onClick={onClose} className="border-white/15 text-gray-200 h-8" aria-label="Close"><X className="w-4 h-4" /></Button>
+        </div>
+      </div>
+      <div className="p-3 sm:p-8">
+        <CaseReportDocument model={model} integrity={integrity} draft={draft} />
+      </div>
+    </div>
+  );
 }

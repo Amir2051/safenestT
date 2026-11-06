@@ -1,6 +1,4 @@
 import React from "react";
-import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Lock, ArrowRight, FileSearch, Wallet, Network,
@@ -61,9 +59,8 @@ function FeatureRow({ icon: Icon, title, desc }) {
 }
 
 export default function PublicLanding() {
-  const { navigateToLogin } = useAuth();
-  const go = () => navigateToLogin();
-  const goOrg = () => base44.auth.redirectToLogin(`${window.location.origin}/OrganizationOnboarding`);
+  const go = () => { window.location.assign("/login"); };
+  const goOrg = () => { window.location.assign("/signup?accountType=organization"); };
 
   return (
     <div className="min-h-screen bg-[#05080b] text-slate-200 relative overflow-hidden font-sans">
@@ -85,12 +82,10 @@ export default function PublicLanding() {
             <p className="text-[9px] text-cyan-500/80 tracking-wider mt-0.5">SECURITY OPERATIONS & INVESTIGATION SERVICES</p>
           </div>
         </div>
-        <button
-          onClick={go}
-          className="px-3 h-8 text-[11px] font-mono font-semibold tracking-wider uppercase text-cyan-300 border border-cyan-500/40 rounded-md hover:bg-cyan-500/10 transition-colors"
-        >
-          Sign In
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={go} className="px-3 h-8 text-[11px] font-mono font-semibold tracking-wider uppercase text-slate-300 border border-slate-700 rounded-md hover:border-cyan-500/40 hover:text-cyan-300 transition-colors">Sign In</button>
+          <button onClick={() => window.location.assign("/signup")} className="px-3 h-8 text-[11px] font-mono font-semibold tracking-wider uppercase text-slate-950 bg-cyan-400 rounded-md hover:bg-cyan-300 transition-colors">Create Account</button>
+        </div>
       </header>
 
       {/* HERO */}
@@ -117,10 +112,10 @@ export default function PublicLanding() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </button>
               <button
-                onClick={go}
+                onClick={() => window.location.assign("/signup?accountType=personal")}
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-md border border-slate-700/70 text-slate-300 font-semibold text-sm hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
               >
-                Sign In
+                Create Personal Account
               </button>
               <a
                 href="#workflow"

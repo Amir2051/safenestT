@@ -160,7 +160,7 @@ export default function Onboarding() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
       </div>
     );
@@ -169,7 +169,7 @@ export default function Onboarding() {
   const progress = (step / 3) * 100;
 
   return (
-    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">

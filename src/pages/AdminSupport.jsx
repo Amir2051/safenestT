@@ -70,7 +70,7 @@ export default function AdminSupport() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-4 lg:p-6 text-white flex flex-col h-screen">
+    <div className="min-h-screen p-4 lg:p-6 text-white flex flex-col h-screen">
         <div className="flex items-center justify-between mb-6">
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">

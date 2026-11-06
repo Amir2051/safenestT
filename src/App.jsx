@@ -1,4 +1,5 @@
 import './App.css'
+import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -28,11 +29,50 @@ import DataRightsDeletion from './pages/DataRightsDeletion';
 import OAuthConsent from './pages/OAuthConsent';
 import ClientAuthorizations from './pages/ClientAuthorizations';
 import OrganizationOnboarding from './pages/OrganizationOnboarding';
+import AccountTypeSetup from './pages/AccountTypeSetup';
+import AuthPage from './pages/AuthPage';
+import OrganizationsDirectory from './pages/OrganizationsDirectory';
 import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationVerifications from './pages/OrganizationVerifications';
 import HermesSyntheticTest from './pages/HermesSyntheticTest';
 import InvestigationProviders from './pages/InvestigationProviders';
+import { getHomePath, isOrgMember, isPlatformAdmin } from '@/lib/organizationRoles';
+
+// Personal-protection (consumer) pages. Hidden from organization staff, who
+// get the investigation workspace instead; individual clients and platform
+// admins still reach them.
+const CONSUMER_PAGE_KEYS = new Set([
+  'FamilyProtection', 'FamilyInvite', 'DeviceCare', 'DeviceSecurity', 'StorageOptimizer',
+  'CreditMonitor', 'CreditCardMonitor', 'IdentityMonitor', 'Achievements', 'ElectraWallet',
+  'MyPortfolio', 'InvestmentCheckout', 'AutoProtection', 'PrivacyGuard', 'PrivacyHub',
+  'PrivacyScore', 'PrivacyAdvisor', 'BrokerRemoval', 'FootprintMap', 'ExposureScanner',
+  'DarkWebMonitor', 'DarkWebMonitorHub', 'SignalWatch', 'Referrals', 'MediaDashboard',
+  'MediaDirectorAI', 'MyCases', 'ReportScam', 'Dashboard',
+]);
+
+function ConsumerGate({ children }) {
+  const { user } = useAuth();
+  // Pending org members still use the client Dashboard while they wait for approval.
+  const pending = user?.account_status === 'pending';
+  if (user && isOrgMember(user) && !isPlatformAdmin(user) && !pending) {
+    return <Navigate to={getHomePath(user)} replace />;
+  }
+  return children;
+}
+
+// After sign-in everyone arrives at "/" — send each role to its own home.
+function RoleHome() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <Navigate to={getHomePath(user)} replace />;
+}
+
+// Branded email/password login and pre-registration account-type selection.
+function LoginRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />;
+}
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
 const ADMIN_PAGE_KEYS = new Set([
@@ -62,17 +102,23 @@ const AuthenticatedApp = () => {
     return <OAuthConsent />;
   }
 
+  // Account-type selection is a full-screen flow before choosing a personal
+  // or organization workspace.
+  if (typeof window !== 'undefined' && window.location.pathname === '/AccountTypeSetup') {
+    return <AccountTypeSetup />;
+  }
+
   // Organization onboarding is a full-screen flow (no app shell) so the user
   // can set up their organization before entering the workspace.
   if (typeof window !== 'undefined' && window.location.pathname === '/OrganizationOnboarding') {
     return <OrganizationOnboarding />;
   }
 
-  // Authenticated users who haven't set up an organization yet are routed to
-  // the onboarding flow (which asks for organization type) before entering the
-  // workspace. Platform admins skip this — they manage orgs directly.
-  if (isAuthenticated && user && user.role !== 'admin' && !user.is_admin && !user.organization_name) {
-    return <Navigate to="/OrganizationOnboarding" replace />;
+  // New users choose an account type once. Existing personal workspaces are
+  // valid homes even though they intentionally have no organization_name.
+  // Organization members continue through the existing org onboarding flow.
+  if (isAuthenticated && user && user.role !== 'admin' && !user.is_admin && !user.organization_name && !user.tenant_id) {
+    return <Navigate to="/AccountTypeSetup" replace />;
   }
 
   // Show loading spinner while checking app public settings or auth
@@ -100,6 +146,10 @@ const AuthenticatedApp = () => {
   if (!isAuthenticated && !isLoadingAuth && !isLoadingPublicSettings) {
     return (
       <Routes>
+        <Route path="/auth/login" element={<LoginRoute />} />
+        <Route path="/login" element={<LoginRoute />} />
+        <Route path="/signup" element={<AuthPage />} />
+        <Route path="/register" element={<AuthPage />} />
         <Route path="/" element={<PublicLanding />} />
         <Route path="/TermsAndConditions" element={<PublicLegalLayout><Pages.TermsAndConditions /></PublicLegalLayout>} />
         <Route path="/PrivacyPolicy" element={<PublicLegalLayout><Pages.PrivacyPolicy /></PublicLegalLayout>} />
@@ -123,12 +173,16 @@ const AuthenticatedApp = () => {
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
-        <Route path="/" element={<AdminGate><HermesSyntheticTest /></AdminGate>} />
+        <Route path="/auth/login" element={<LoginRoute />} />
+        <Route path="/login" element={<LoginRoute />} />
+        <Route path="/signup" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
+        <Route path="/" element={<RoleHome />} />
         {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
         <Route path="/AdminInvestigation" element={<Navigate to="/InvestigationWorkspace" replace />} />
         {Object.entries(Pages).map(([path, Page]) => {
-          const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : null;
+          const Gate = ADMIN_PAGE_KEYS.has(path) ? AdminGate : CONSUMER_PAGE_KEYS.has(path) ? ConsumerGate : null;
           return (
             <Route
               key={path}
@@ -137,17 +191,18 @@ const AuthenticatedApp = () => {
             />
           );
         })}
-        <Route path="/PrivacyAdvisor" element={<PrivacyAdvisor />} />
+        <Route path="/PrivacyAdvisor" element={<ConsumerGate><PrivacyAdvisor /></ConsumerGate>} />
         <Route path="/UserExport" element={<AdminGate><UserExport /></AdminGate>} />
-        <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator><OperationsDashboard /></RoleGate>} />
+        <Route path="/OperationsDashboard" element={<RoleGate allowInvestigator allowReadOnly><OperationsDashboard /></RoleGate>} />
         <Route path="/WalletTrackerAdmin" element={<AdminGate><WalletTrackerAdmin /></AdminGate>} />
         <Route path="/FlowMapAdmin" element={<AdminGate><FlowMapAdmin /></AdminGate>} />
-        <Route path="/CasesManagement" element={<RoleGate allowInvestigator><CasesManagement /></RoleGate>} />
+        <Route path="/CasesManagement" element={<RoleGate allowInvestigator allowReadOnly><CasesManagement /></RoleGate>} />
         <Route path="/CaseImport" element={<RoleGate allowInvestigator><CaseImport /></RoleGate>} />
-        <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator><InvestigationWorkspace /></RoleGate>} />
-        <Route path="/AuditLog" element={<RoleGate allowInvestigator><AuditLog /></RoleGate>} />
-        <Route path="/GlobalSearch" element={<RoleGate allowInvestigator><GlobalSearchPage /></RoleGate>} />
-        <Route path="/ReportsCenter" element={<RoleGate allowInvestigator><ReportsCenter /></RoleGate>} />
+        <Route path="/InvestigationWorkspace" element={<RoleGate allowInvestigator allowReadOnly><InvestigationWorkspace /></RoleGate>} />
+        <Route path="/AuditLog" element={<RoleGate allowInvestigator allowReadOnly><AuditLog /></RoleGate>} />
+        <Route path="/GlobalSearch" element={<RoleGate allowInvestigator allowReadOnly><GlobalSearchPage /></RoleGate>} />
+        <Route path="/ReportsCenter" element={<RoleGate allowInvestigator allowReadOnly><ReportsCenter /></RoleGate>} />
+        <Route path="/Organizations" element={<ConsumerGate><OrganizationsDirectory /></ConsumerGate>} />
         <Route path="/ClientAuthorizations" element={<ClientAuthorizations />} />
         <Route path="/Team" element={<Team />} />
         <Route path="/OrganizationSettings" element={<OrganizationSettings />} />

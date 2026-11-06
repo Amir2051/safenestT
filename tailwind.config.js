@@ -10,6 +10,16 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			// SafeNestT brand blend: the app's legacy purple accent is remapped to
+  			// the brand magenta (#FF1493) so every page picks it up automatically.
+  			purple: {
+  				50: '#fff0f7', 100: '#ffe0f0', 200: '#ffc2e2', 300: '#ff8fc8', 400: '#ff4fa8',
+  				500: '#ff1493', 600: '#e00a7e', 700: '#b80866', 800: '#8f0a52', 900: '#6b0b3f', 950: '#42041f'
+  			},
+  			sn: {
+  				cyan: '#00D9FF', magenta: '#FF1493', lime: '#00FF00', navy: '#0A0E27',
+  				ink: '#05080b', panel: '#0a0e1a', line: '#1b2338'
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

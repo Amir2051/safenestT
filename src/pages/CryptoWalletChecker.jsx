@@ -131,7 +131,7 @@ export default function CryptoWalletChecker() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8 text-white">
+    <div className="min-h-screen p-6 lg:p-8 text-white">
       <div className="max-w-7xl mx-auto space-y-6">
         
         <div className="flex justify-between items-start">

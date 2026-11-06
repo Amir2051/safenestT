@@ -17,7 +17,8 @@ export default async function(req) {
     });
 
     const joinable = (tenants || [])
-      .filter((t) => t && t.name)
+      // Never list personal workspaces (they hold an individual's case data).
+      .filter((t) => t && t.name && t.plan !== 'personal')
       .map((t) => ({
         id: t.id,
         name: t.name,

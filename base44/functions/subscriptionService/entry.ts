@@ -5,6 +5,20 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'), {
   apiVersion: '2023-10-16',
 });
 
+const CHECKOUT_PLANS = {
+  professional: { priceId: 'price_1UYWgmBgEK1rvq8hw9gRnQkO', audience: 'organization', storedPlan: 'professional' },
+  team: { priceId: 'price_1UYW9OBgEK1rvq8hsGNWSrNZ', audience: 'organization', storedPlan: 'team' },
+  individual: { priceId: 'price_1UYbD6BgEK1rvq8hxP1Dz0oJ', audience: 'regular_user', storedPlan: 'basic' },
+  individual_plus: { priceId: 'price_1UYbDABgEK1rvq8haBqP88kf', audience: 'regular_user', storedPlan: 'elite' },
+};
+
+function getBillingAudience(user) {
+  if (user.role === 'admin' || user.is_admin) return 'organization';
+  if (user.organization_role) return 'organization';
+  if (user.organization_name && ['owner', 'admin', 'investigator'].includes(user.tenant_role)) return 'organization';
+  return 'regular_user';
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -114,7 +128,7 @@ Deno.serve(async (req) => {
           is_trial_active: (user.subscription_status === 'trial' || isTrialCancelled) && trialEnd > now,
           is_trial_cancelled: isTrialCancelled,
           trial_still_active: trialStillActive,
-          is_premium: user.subscription_plan === 'basic' || user.subscription_plan === 'elite',
+          is_premium: ['basic', 'elite', 'individual', 'individual_plus', 'professional', 'team'].includes(user.subscription_plan),
           can_access_premium: ((user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method) || trialStillActive,
           requires_payment: !user.has_payment_method && user.payment_required,
           payment_methods: paymentMethods
@@ -198,7 +212,7 @@ Deno.serve(async (req) => {
             // Block premium features
             await base44.auth.updateMe({
               subscription_status: 'inactive',
-              subscription_plan: 'free'
+              subscription_plan: 'inactive'
             });
             toSend.push({
               id: crypto.randomUUID(),
@@ -258,11 +272,22 @@ Deno.serve(async (req) => {
       }
 
       case 'create-checkout-session': {
-        const { priceId } = params;
-        
+        const { priceId, plan } = params;
+        const planConfig = CHECKOUT_PLANS[plan];
+        const audience = getBillingAudience(user);
+
+        // Enforce the account-type pricing boundary on the server, not just in the UI.
+        if (!planConfig || planConfig.priceId !== priceId || planConfig.audience !== audience) {
+          return Response.json({ error: 'This subscription plan is not available for your account type.' }, { status: 403 });
+        }
+
+        const selectedPrice = await stripe.prices.retrieve(priceId);
+        if (!selectedPrice.active || !selectedPrice.recurring || selectedPrice.unit_amount <= 0 || !selectedPrice.livemode) {
+          return Response.json({ error: 'The selected subscription price is unavailable.' }, { status: 400 });
+        }
+
         let stripeCustomerId = user.stripe_customer_id;
         if (!stripeCustomerId) {
-             // Create customer if missing (logic duplicated for safety)
              const customers = await stripe.customers.list({ email: user.email, limit: 1 });
              if (customers.data.length > 0) {
                  stripeCustomerId = customers.data[0].id;
@@ -277,19 +302,23 @@ Deno.serve(async (req) => {
              await base44.auth.updateMe({ stripe_customer_id: stripeCustomerId });
         }
 
+        const checkoutMetadata = {
+          plan: planConfig.storedPlan,
+          plan_tier: plan,
+          audience,
+          user_id: user.id,
+        };
+
         const session = await stripe.checkout.sessions.create({
              customer: stripeCustomerId,
-             line_items: [
-                 {
-                     price: priceId,
-                     quantity: 1,
-                 },
-             ],
+             line_items: [{ price: priceId, quantity: 1 }],
              mode: 'subscription',
              success_url: `${req.headers.get('origin')}/PaymentSuccess?session_id={CHECKOUT_SESSION_ID}`,
              cancel_url: `${req.headers.get('origin')}/Subscription?status=cancel`,
              billing_address_collection: 'auto',
              allow_promotion_codes: true,
+             metadata: checkoutMetadata,
+             subscription_data: { metadata: checkoutMetadata },
         });
 
         return Response.json({ url: session.url });
@@ -326,7 +355,7 @@ Deno.serve(async (req) => {
           // Cancel active subscription
           await base44.auth.updateMe({
             subscription_status: 'canceled',
-            subscription_plan: 'free',
+            subscription_plan: 'inactive',
             cancelled_at: new Date().toISOString()
           });
         }

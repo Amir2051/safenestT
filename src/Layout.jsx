@@ -19,6 +19,8 @@ import PrivacyConsentBanner from "./components/shared/PrivacyConsentBanner";
 import ReadOnlyBanner from "./components/shared/ReadOnlyBanner";
 import PendingVerificationBanner from "./components/shared/PendingVerificationBanner";
 import { isAnalyticsAllowed, isChatAllowed } from "./lib/PrivacyGuard";
+import { useAuth } from "@/lib/AuthContext";
+import { isPlatformAdmin } from "@/lib/organizationRoles";
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -70,8 +72,12 @@ function HeaderSkeleton() {
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
 
-  const [user, setUser]               = useState(null);
-  const [userLoading, setUserLoading] = useState(true);
+  // One signed-in user for the whole app (AuthContext), so the sidebar, gates
+  // and pages always agree on the role.
+  const { user: authUser, isLoadingAuth } = useAuth();
+  const [user, setUser]               = useState(authUser);
+  const userLoading                   = isLoadingAuth;
+  useEffect(() => { setUser(authUser); }, [authUser]);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showMenuButton, setShowMenuButton]     = useState(false);
@@ -82,11 +88,6 @@ export default function Layout({ children, currentPageName }) {
 
   // ── Fetch user + maintenance config ────────────────────────────────────────
   useEffect(() => {
-    base44.auth.me()
-      .then(setUser)
-      .catch(() => {})
-      .finally(() => setUserLoading(false));
-
     base44.entities.SystemConfig.list()
       .then(configs => setMaintenanceMode(configs[0]?.under_construction || false))
       .catch(() => {
@@ -166,7 +167,7 @@ export default function Layout({ children, currentPageName }) {
   const handleLogout     = () => base44.auth.logout();
   const handleMenuOpen   = () => { setIsMobileMenuOpen(true);  setShowMenuButton(false); };
   const handleMenuClose  = () => setIsMobileMenuOpen(false);
-  const handleUserUpdate = () => base44.auth.me().then(setUser).catch(() => {});
+  const handleUserUpdate = () => base44.auth.me().then((u) => setUser((prev) => ({ ...prev, ...u }))).catch(() => {});
 
   // ── Swipe gestures ──────────────────────────────────────────────────────────
   const onTouchStart = (e) => {
@@ -265,11 +266,12 @@ export default function Layout({ children, currentPageName }) {
           {/* Ambient glow */}
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/[0.04] rounded-full blur-[120px]" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/[0.04] rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/[0.04] rounded-full blur-[120px]" />
           </div>
 
           {/* Command Header */}
           <CommandHeader user={user} onMenuOpen={handleMenuOpen} onLogout={handleLogout} />
+          <div className="relative z-10 sn-brand-line" aria-hidden="true" />
           <div className="relative z-10 bg-[#06090d]/70 border-b border-slate-800/60 px-3 sm:px-4 h-10 flex items-center justify-between gap-2">
             <Breadcrumb />
             <NotificationCenter />
@@ -283,7 +285,7 @@ export default function Layout({ children, currentPageName }) {
             style={{ overscrollBehaviorY: 'none' }}
           >
             <div className="flex-1">
-              {maintenanceMode && user?.role !== 'admin' && !user?.is_admin ? (
+              {maintenanceMode && !isPlatformAdmin(user) ? (
                 <div className="flex items-center justify-center min-h-[80vh] p-6">
                   <div className="max-w-2xl w-full text-center space-y-6">
                     <div className="w-24 h-24 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -308,7 +310,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </main>
 
-        {!user?.is_admin && user?.role !== 'admin' && <MobileCommandNav user={user} />}
+        {!isPlatformAdmin(user) && <MobileCommandNav user={user} />}
       </div>
 
       <style>{`

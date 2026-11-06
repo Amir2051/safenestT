@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
+import { resolveProviderKey } from "../../shared/tenantProviderKeys.ts";
 
 /**
  * osintProxy — server-side OSINT dispatcher for CONFIGURED + public providers.
@@ -26,7 +27,10 @@ export default async function (req) {
     const { provider, target, network } = payload || {};
 
     if (!provider || provider === "status") {
-      return Response.json({ ok: true, data: providerStatuses() });
+      return Response.json({
+        ok: true,
+        data: await providerStatuses(base44.asServiceRole.entities, user.tenant_id || user.data?.tenant_id || null),
+      });
     }
 
     switch (provider) {
@@ -41,15 +45,27 @@ export default async function (req) {
   }
 }
 
-function providerStatuses() {
+/**
+ * Truthful provider status. Reputation keys resolve per tenant (the
+ * organization's own credential first, then the platform secret), so a
+ * provisioned key is reported as configured instead of a hardcoded "no".
+ */
+async function providerStatuses(entities: any, tenantId: string | null) {
+  const virustotal = await resolveProviderKey(entities, tenantId, "virustotal", secrets);
+  const shodan = await resolveProviderKey(entities, tenantId, "shodan", secrets);
+  const keyNote = (provider: string, envName: string, resolved: any) =>
+    resolved.key
+      ? `Configured — key resolved for this organization (${resolved.source === "tenant" ? "organization key" : "platform key"}).`
+      : `Not configured — add a ${provider} key in Organization Settings → Provider Keys, or set ${envName} in Secrets.`;
+
   return [
     { provider: "dns", label: "DNS (DoH)", configured: true, category: "network", note: "Public — Cloudflare DNS-over-HTTPS" },
     { provider: "rdap", label: "WHOIS / RDAP", configured: true, category: "network", note: "Public — RDAP" },
     { provider: "etherscan", label: "Etherscan", configured: !!secrets.get("ETHERSCAN_API_KEY"), category: "blockchain", note: "Ethereum mainnet address + tx lookup" },
     { provider: "alchemy", label: "Alchemy", configured: !!secrets.get("ALCHEMY_API_KEY"), category: "blockchain", note: "Ethereum mainnet balance + token balances" },
-    { provider: "virustotal", label: "VirusTotal", configured: false, category: "reputation", note: "Not configured — add VIRUSTOTAL_API_KEY in Secrets (optional)" },
-    { provider: "shodan", label: "Shodan", configured: false, category: "infrastructure", note: "Not configured — add SHODAN_API_KEY in Secrets (optional)" },
-    { provider: "firecrawl", label: "Firecrawl", configured: false, category: "web", note: "Not configured — add FIRECRAWL_API_KEY in Secrets (optional)" },
+    { provider: "virustotal", label: "VirusTotal", configured: !!virustotal.key, key_source: virustotal.source, category: "reputation", note: keyNote("VirusTotal", "VIRUSTOTAL_API_KEY", virustotal) },
+    { provider: "shodan", label: "Shodan", configured: !!shodan.key, key_source: shodan.source, category: "infrastructure", note: keyNote("Shodan", "SHODAN_API_KEY", shodan) },
+    { provider: "firecrawl", label: "Firecrawl", configured: !!secrets.get("FIRECRAWL_API_KEY"), category: "web", note: "Web content extraction (optional)" },
   ];
 }
 

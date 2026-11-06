@@ -68,7 +68,7 @@ export default function Upgrade() {
   const isActive = user.payment_status === 'active';
 
   return (
-    <div className="min-h-screen bg-[#0f1419] p-6 lg:p-8">
+    <div className="min-h-screen p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="text-center">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 px-4 py-2 rounded-full border border-cyan-500/30 mb-4">

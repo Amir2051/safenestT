@@ -78,7 +78,7 @@ export default function PrivacyScore() {
   ].filter(Boolean).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] p-4 lg:p-8">
+    <div className="min-h-screen p-4 lg:p-8">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
           <Star className="w-5 h-5 text-white" />

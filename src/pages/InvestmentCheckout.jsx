@@ -46,10 +46,10 @@ export default function InvestmentCheckout() {
     setProcessing(false);
   };
 
-  if (!company) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
+  if (!company) return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="max-w-md w-full">
         {step === 1 && (
           <Card className="bg-slate-900 border-slate-800">

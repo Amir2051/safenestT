@@ -1,57 +1,22 @@
 {
   "name": "Tenant",
-  "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "Tenant / organization display name"
-    },
-    "slug": {
-      "type": "string",
-      "description": "URL-safe unique slug"
-    },
-    "owner_user_id": {
-      "type": "string",
-      "description": "User id of the tenant owner"
-    },
-    "owner_email": {
-      "type": "string",
-      "description": "Email of the tenant owner"
-    },
-    "plan": {
-      "type": "string",
-      "enum": [
-        "personal",
-        "team",
-        "enterprise"
-      ],
-      "default": "personal",
-      "description": "Tenant plan tier"
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "pending_verification",
-        "active",
-        "verified",
-        "suspended",
-        "deleted"
-      ],
-      "default": "active",
-      "description": "Organization lifecycle status. 'pending_verification' = new org awaiting platform-admin company verification."
-    },
-    "members": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "User ids of members (denormalized for RLS read access)"
-    },
     "description": {
       "type": "string"
     },
+    "members": {
+      "description": "User ids of members (denormalized for RLS read access)",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "description": "Tenant / organization display name",
+      "type": "string"
+    },
     "organization_type": {
-      "type": "string",
+      "description": "Type of organization. For new-org requests this is the requested type, approved by a platform admin after company verification.",
       "enum": [
         "bank_financial",
         "insurance",
@@ -62,39 +27,73 @@
         "individual_investigator",
         "other"
       ],
-      "description": "Type of organization. For new-org requests this is the requested type, approved by a platform admin after company verification."
-    },
-    "requested_by_user_id": {
-      "type": "string",
-      "description": "User id of the account that requested this organization (new-org requests)"
-    },
-    "requested_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "verified_by": {
-      "type": "string",
-      "description": "User id of the platform admin who verified the company/org"
-    },
-    "verified_by_email": {
       "type": "string"
     },
-    "verified_at": {
-      "type": "string",
-      "format": "date-time"
+    "owner_email": {
+      "description": "Email of the tenant owner",
+      "type": "string"
     },
-    "verification_notes": {
-      "type": "string",
-      "description": "Platform-admin notes from company verification"
+    "owner_user_id": {
+      "description": "User id of the tenant owner",
+      "type": "string"
+    },
+    "plan": {
+      "default": "personal",
+      "description": "Tenant plan tier. Personal workspaces are never listed as joinable.",
+      "enum": [
+        "personal",
+        "team",
+        "enterprise"
+      ],
+      "type": "string"
+    },
+    "rejected_at": {
+      "format": "date-time",
+      "type": "string"
     },
     "rejected_by": {
       "type": "string"
     },
-    "rejected_at": {
-      "type": "string",
-      "format": "date-time"
-    },
     "rejection_reason": {
+      "type": "string"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "requested_by_user_id": {
+      "description": "User id of the account that requested this organization (new-org requests)",
+      "type": "string"
+    },
+    "slug": {
+      "description": "URL-safe unique slug",
+      "type": "string"
+    },
+    "status": {
+      "default": "active",
+      "description": "Organization lifecycle status. 'pending_verification' = new org awaiting platform-admin company verification. Writes go through the orgAccess server function only.",
+      "enum": [
+        "pending_verification",
+        "active",
+        "verified",
+        "suspended",
+        "deleted"
+      ],
+      "type": "string"
+    },
+    "verification_notes": {
+      "description": "Platform-admin notes from company verification",
+      "type": "string"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "verified_by": {
+      "description": "User id of the platform admin who verified the company/org",
+      "type": "string"
+    },
+    "verified_by_email": {
       "type": "string"
     }
   },
@@ -103,6 +102,16 @@
     "owner_user_id"
   ],
   "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "read": {
       "$or": [
         {
@@ -118,25 +127,11 @@
         }
       ]
     },
-    "create": {
-      "created_by_id": "{{user.id}}"
-    },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
       "user_condition": {
         "role": "admin"
       }
     }
-  }
+  },
+  "type": "object"
 }

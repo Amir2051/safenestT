@@ -54,7 +54,7 @@ export default function CryptoFraudCenter() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Verifying access...</p>
@@ -65,7 +65,7 @@ export default function CryptoFraudCenter() {
 
   if (!accessGranted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="max-w-md w-full bg-gradient-to-br from-[#1a2332] to-[#0f1419] border-red-500/30">
           <CardContent className="p-8 text-center">
             <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -98,7 +98,7 @@ export default function CryptoFraudCenter() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] p-6">
+    <div className="min-h-screen p-6">
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-500/5 rounded-full blur-[150px]" />

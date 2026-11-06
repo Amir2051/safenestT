@@ -1,4 +1,5 @@
 import { MIA_PERSONA, MIA_SPECIALISTS } from "./miaAgents.ts";
+import { evidenceResultNote } from "./toolResult.ts";
 
 /**
  * MIA Multi-Agent investigation engine (server-side).
@@ -150,12 +151,37 @@ function buildContext(base44: any, caseItem: any) {
     base44.entities.EvidenceItem.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
     base44.entities.InvestigationTarget.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
     base44.entities.InvestigationFinding.filter({ case_id: caseItem.id }, "-created_date", 100).catch(() => []),
-  ]).then(([evidence, targets, findings]: any[]) => ({ evidence: evidence || [], targets: targets || [], findings: findings || [] }));
+    // Engine dossiers hold the raw lookup results for evidence created before
+    // results were stored on the evidence record itself.
+    base44.entities.InvestigationReport.filter({ case_id: caseItem.id, report_type: "dossier" }, "-created_date", 20).catch(() => []),
+  ]).then(([evidence, targets, findings, dossiers]: any[]) => {
+    const dossierResults: Record<string, any> = {};
+    for (const r of dossiers || []) {
+      for (const item of (Array.isArray(r?.content?.evidence) ? r.content.evidence : [])) {
+        const call = item?.data?.tool_call || {};
+        if (item?.evidence_id) {
+          dossierResults[item.evidence_id] = {
+            capability: call.capability || item.source, target: item.target, status: call.status,
+            data: call.result?.data !== undefined ? call.result.data : item?.data?.data,
+          };
+        }
+      }
+    }
+    const ev = (evidence || []).map((e: any) => ({ ...e, _result: evidenceResultNote(e, dossierResults[e.file_hash]) }));
+    return { evidence: ev, targets: targets || [], findings: findings || [] };
+  });
+}
+
+/** True when an evidence item can support a claim: a primary record, or a lookup that returned data. */
+function evidenceSupports(e: any) {
+  return typeof e?._result === "string" && (e._result === "primary record" || e._result.startsWith("data:"));
 }
 
 function contextBlock(caseItem: any, ctx: any) {
   const evidence = (ctx.evidence || []).map((e: any) => ({
     id: e.id, filename: e.filename, type: e.evidence_type, description: truncate(e.description, 500), tags: e.tags,
+    // What the item actually contains. A lookup that returned no records is NOT evidence of anything.
+    result: e._result,
   }));
   const targets = (ctx.targets || []).map((t: any) => ({
     type: t.type, value: t.value, network: t.network, label: t.label, status: t.status,
@@ -226,7 +252,11 @@ function buildDossier(caseItem: any, ctx: any, findings: any[]) {
       title: "Evidence Summary",
       classification: "EVIDENCE",
       content: (ctx.evidence || []).length
-        ? `${ctx.evidence.length} evidence item(s) attached. Only evidence-checked findings are carried into this dossier.`
+        ? `${ctx.evidence.length} evidence item(s) attached` +
+          ` (${ctx.evidence.filter((e: any) => e._result === "primary record").length} primary record(s); ` +
+          `${ctx.evidence.filter((e: any) => String(e._result || "").startsWith("data:")).length} automated lookup(s) returned data; ` +
+          `${ctx.evidence.filter((e: any) => !evidenceSupports(e)).length} returned nothing usable). ` +
+          `Only evidence-checked findings are carried into this dossier.`
         : "No evidence items are attached to this case.",
     },
     {
@@ -464,12 +494,53 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
       const out = await askModel(base44,
         `${MIA_PERSONA}\n\nExecute the REALITY-CHECK phase. For each proposed finding decide whether the supplied ` +
         `evidence supports it: "supported", "partially_supported" or "unsupported", with reasoning. Never upgrade a ` +
-        `claim beyond the supplied evidence. Respond as JSON.\n\nPROPOSED FINDINGS:\n${JSON.stringify(proposed, null, 2)}\n\n` +
+        `claim beyond the supplied evidence. Each evidence item has a "result" field: an automated lookup whose result ` +
+        `is "empty", "not_applicable", "error" or "unknown" found NOTHING and cannot support any claim. The fact that a ` +
+        `lookup was run is not evidence. Respond as JSON.\n\nPROPOSED FINDINGS:\n${JSON.stringify(proposed, null, 2)}\n\n` +
         `${contextBlock(caseItem, ctx)}`,
         REALITY_SCHEMA, "mia:reality_check");
 
       const verifications = Array.isArray(out?.verifications) ? out.verifications : [];
       const updates: any[] = [];
+      const updateErrors: any[] = [];
+
+      // Persist one finding's reality-check outcome. Errors are logged and
+      // carried into the run output — a verdict must never be lost silently.
+      const persistVerdict = async (finding: any, mapped: string, reasoning: string | null, verdict: string | null) => {
+        const refs = Array.isArray(finding.evidence_refs) ? finding.evidence_refs : [];
+        // Evidence gate, enforced in code (not in the prompt): a finding may only
+        // be "verified" when at least one evidence item is actually attached. A
+        // "supported" verdict with no evidence is recorded as "partially_supported".
+        // Second gate: a finding cannot be "verified" when every cited item is an
+        // automated lookup that returned nothing (empty / not applicable / failed).
+        const byId = new Map((ctx.evidence || []).map((e: any) => [e.id, e]));
+        const cited = refs.map((id: string) => byId.get(id)).filter(Boolean);
+        const onlyEmptyLookups = cited.length > 0 && cited.length === refs.length && cited.every((e: any) => !evidenceSupports(e));
+        const gated = mapped === "verified" && (refs.length === 0 || onlyEmptyLookups) ? "partially_supported" : mapped;
+        const gateReason = gated === mapped ? null
+          : refs.length === 0 ? "downgraded_to_partially_supported_no_evidence"
+          : "downgraded_to_partially_supported_lookups_returned_no_data";
+        try {
+          await base44.entities.InvestigationFinding.update(finding.id, {
+            status: gated,
+            reality_check: {
+              status: gated,
+              verdict,
+              reasoning,
+              run_id: run?.id || null,
+              checked_at: new Date().toISOString(),
+              provider: MIA_PROVIDER,
+              evidence_gate: gateReason,
+            },
+          });
+        } catch (e: any) {
+          const err = truncate(e?.message || e, 500);
+          updateErrors.push({ finding_id: finding.id, attempted_status: gated, error: err });
+          console.error(`[mia] reality_check finding update failed for ${finding.id} (${gated}): ${err}`);
+        }
+        updates.push({ finding_id: finding.id, verdict, status: gated, evidence_refs: refs.length });
+      };
+
       for (const v of verifications) {
         const mapped = v?.status === "supported" ? "verified"
           : v?.status === "partially_supported" ? "partially_supported"
@@ -479,21 +550,19 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
           (v?.finding_id && f.id === v.finding_id) || titlesSimilar(f.title, v?.finding_title)
         );
         for (const f of matches) {
-          await base44.entities.InvestigationFinding.update(f.id, {
-            status: mapped,
-            reality_check: { status: mapped, reasoning: truncate(v?.reasoning, 2000), run_id: run?.id || null, checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
-          }).catch(() => {});
-          updates.push({ finding_id: f.id, status: mapped });
+          await persistVerdict(f, mapped, truncate(v?.reasoning, 2000), v?.status ?? null);
         }
       }
       // Findings the reality check did not address are NOT promoted.
       const addressed = new Set(updates.map((u) => u.finding_id));
       for (const f of createdFindings) {
         if (!addressed.has(f.id)) {
-          await base44.entities.InvestigationFinding.update(f.id, {
-            status: "partially_supported",
-            reality_check: { status: "not_verified", reasoning: "Reality check returned no verdict for this finding; treated as unverified.", checked_at: new Date().toISOString(), provider: MIA_PROVIDER },
-          }).catch(() => {});
+          await persistVerdict(
+            f,
+            "partially_supported",
+            "Reality check returned no verdict for this finding; treated as unverified.",
+            "not_verified"
+          );
         }
       }
 
@@ -502,10 +571,17 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
         return { ...f, status: u ? u.status : "partially_supported" };
       });
 
-      phases.reality_check = { status: "completed", completed_at: new Date().toISOString(), output: { ...out, finding_updates: updates } };
+      phases.reality_check = {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        output: { ...out, finding_updates: updates, update_errors: updateErrors },
+      };
       await finishRun(base44, run, {
-        status: "completed", output: { ...out, finding_updates: updates }, completed_at: new Date().toISOString(), duration_ms: Date.now() - p0,
-        persisted_outputs: { finding_updates: updates },
+        status: "completed",
+        output: { ...out, finding_updates: updates, update_errors: updateErrors },
+        completed_at: new Date().toISOString(),
+        duration_ms: Date.now() - p0,
+        persisted_outputs: { finding_updates: updates, update_errors: updateErrors },
       });
     } catch (e: any) {
       const err = truncate(e?.message || e, 2000);

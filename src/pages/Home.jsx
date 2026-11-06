@@ -11,7 +11,7 @@ export default function Home() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-white">Loading...</div>
     </div>
   );

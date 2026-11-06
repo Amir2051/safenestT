@@ -10,6 +10,7 @@ import {
 import {
   ORGANIZATION_TYPES, ORG_TYPE_LABELS, ROLE_LABELS, ORG_ROLE_OPTIONS,
 } from "@/lib/organizationRoles";
+import { orgAccess } from "@/lib/orgAccess";
 
 /**
  * Platform-admin organization verification queue.
@@ -26,7 +27,7 @@ export default function OrganizationVerifications() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(null);
 
-  const isPlatformAdmin = user?.role === "admin" || user?.is_admin;
+  const isPlatformAdmin = user?.role === "admin";
 
   const load = async () => {
     setLoading(true);
@@ -65,32 +66,8 @@ export default function OrganizationVerifications() {
   const approveOrg = async (org) => {
     setBusy(org.id);
     try {
-      // 1. Activate the organization.
-      await base44.entities.Tenant.update(org.id, {
-        status: "active",
-        verified_by: user.id,
-        verified_by_email: user.email,
-        verified_at: new Date().toISOString(),
-      });
-      // 2. Activate the requester's membership and grant ORG_ADMIN.
-      const mems = await base44.entities.TenantMembership.filter({ tenant_id: org.id, user_id: org.requested_by_user_id || org.owner_user_id });
-      for (const m of mems) {
-        await base44.entities.TenantMembership.update(m.id, {
-          status: "active",
-          organization_role: "ORG_ADMIN",
-          verified_by: user.id,
-          verified_at: new Date().toISOString(),
-        });
-      }
-      // 3. Update the requester's user profile (platform admin can update users).
-      const targetId = org.requested_by_user_id || org.owner_user_id;
-      if (targetId) {
-        await base44.entities.User.update(targetId, {
-          account_status: "active",
-          organization_role: "ORG_ADMIN",
-          tenant_id: org.id,
-        }).catch(() => {});
-      }
+      // Activates the org, makes the requester ORG_ADMIN, and grants data access.
+      await orgAccess("verifyOrg", { tenantId: org.id, approve: true });
       await load();
     } catch (e) {
       setError(e?.message || "Failed to approve organization.");
@@ -101,15 +78,7 @@ export default function OrganizationVerifications() {
     if (!confirm(`Reject organization request from "${org.name}"?`)) return;
     setBusy(org.id);
     try {
-      await base44.entities.Tenant.update(org.id, {
-        status: "suspended",
-        rejected_by: user.id,
-        rejected_at: new Date().toISOString(),
-      });
-      const mems = await base44.entities.TenantMembership.filter({ tenant_id: org.id, user_id: org.requested_by_user_id || org.owner_user_id });
-      for (const m of mems) {
-        await base44.entities.TenantMembership.update(m.id, { status: "revoked", rejected_by: user.id, rejected_at: new Date().toISOString() });
-      }
+      await orgAccess("verifyOrg", { tenantId: org.id, approve: false });
       await load();
     } catch (e) {
       setError(e?.message || "Failed to reject organization.");
@@ -120,11 +89,7 @@ export default function OrganizationVerifications() {
     setBusy(m.id);
     try {
       // Company verified — advance to pending_role_assignment so the org admin assigns the role.
-      await base44.entities.TenantMembership.update(m.id, {
-        status: "pending_role_assignment",
-        verified_by: user.id,
-        verified_at: new Date().toISOString(),
-      });
+      await orgAccess("verifyMember", { membershipId: m.id, approve: true });
       await load();
     } catch (e) {
       setError(e?.message || "Failed to verify member.");
@@ -135,11 +100,7 @@ export default function OrganizationVerifications() {
     if (!confirm(`Reject membership request from ${m.user_email}?`)) return;
     setBusy(m.id);
     try {
-      await base44.entities.TenantMembership.update(m.id, {
-        status: "revoked",
-        rejected_by: user.id,
-        rejected_at: new Date().toISOString(),
-      });
+      await orgAccess("verifyMember", { membershipId: m.id, approve: false });
       await load();
     } catch (e) {
       setError(e?.message || "Failed to reject member.");

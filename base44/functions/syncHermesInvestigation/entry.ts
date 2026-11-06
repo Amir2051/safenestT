@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
+import { summarizeToolResult, canonicalJson, sha256Hex } from "../../shared/toolResult.ts";
 
 /**
  * syncHermesInvestigation — server-side single sync step for a Hermes
@@ -124,6 +125,8 @@ function persistedRunStatus(sourceBacked, persisted) {
 function extractStatus(data) {
   return String(data?.status || data?.state || "pending").toLowerCase();
 }
+
+const RESULT_JSON_CAP = 20000; // characters stored on the record; the hash covers the full payload
 
 // ── Hermes result → SafeNestT entity mappers ────────────────────────────────
 // These map the ACTUAL Hermes /report response schema (inspected live) into
@@ -477,9 +480,28 @@ export default async function (req: Request): Promise<Response> {
         // ── 1. Evidence → EvidenceItem. Capture hermes_evidence_id → SafeNestT id
         // so findings can link via evidence_refs (FindingsTab joins on
         // EvidenceItem.id, not the Hermes id).
-        const evidencePayloads = hermesEvidence.map((e) => {
+        const evidencePayloads = await Promise.all(hermesEvidence.map(async (e) => {
           const hermesEid = e.evidence_id;
           const toolCall = e.data?.tool_call || {};
+          // Keep what the lookup actually returned, with a fingerprint of it.
+          const rawData = toolCall.result?.data !== undefined ? toolCall.result.data : e.data?.data;
+          const verdict = summarizeToolResult({ capability: toolCall.capability || e.source, target: e.target, status: toolCall.status, data: rawData });
+          const canon = rawData === undefined ? "" : canonicalJson(rawData);
+          const toolResult = {
+            capability: String(toolCall.capability || e.source || ""),
+            target: String(e.target || ""),
+            target_kind: verdict.target_kind,
+            status: String(toolCall.status || ""),
+            state: verdict.state,
+            summary: verdict.summary,
+            record_count: verdict.record_count,
+            retrieved_at: e.observed_at || now,
+            data_json: canon.slice(0, RESULT_JSON_CAP),
+            data_sha256: canon ? await sha256Hex(canon) : "",
+            data_bytes: canon.length,
+            truncated: canon.length > RESULT_JSON_CAP,
+            source_reference: String(hermesEid || ""),
+          };
           return {
             tenant_id: tenantId,
             case_id: caseId,
@@ -493,12 +515,17 @@ export default async function (req: Request): Promise<Response> {
             file_hash: hermesEid,
             description: `${e.source || "Hermes evidence"} · target: ${e.target || "—"}`,
             tags: [e.source_type, e.source].filter(Boolean),
-            processing_status: "processed",
-            processing_notes: JSON.stringify({ capability: toolCall.capability, status: toolCall.status, tool_status: toolCall.tool_status }).slice(0, 1000),
-            detected_targets: e.target ? [{ type: "domain", value: e.target }] : [],
+            // Empty / inapplicable lookups need a person to look before anyone relies on them.
+            processing_status: verdict.state === "data" ? "processed" : verdict.state === "error" ? "failed" : "review_required",
+            processing_notes: JSON.stringify({ capability: toolCall.capability, status: toolCall.status, tool_status: toolCall.tool_status, result_state: verdict.state }).slice(0, 1000),
+            detected_targets: e.target ? [{ type: verdict.target_kind || "other", value: e.target }] : [],
             original_import: false,
+            tool_result: toolResult,
           };
-        });
+        }));
+        // Hermes evidence id -> did that lookup return data?
+        const evidenceHasData: Record<string, boolean> = {};
+        for (const p of evidencePayloads) evidenceHasData[p.file_hash] = p.tool_result.state === "data";
         const evidenceRecs = evidencePayloads.length
           ? await base44.entities.EvidenceItem.bulkCreate(evidencePayloads).catch(() => [])
           : [];
@@ -510,14 +537,18 @@ export default async function (req: Request): Promise<Response> {
 
         // ── 2. Findings → InvestigationFinding (evidence_refs mapped to SafeNestT ids).
         const findingPayloads = hermesFindings.map((f) => {
+          // A finding whose cited lookups all came back empty / inapplicable has no data behind it.
+          const eids: string[] = Array.isArray(f.evidence_ids) ? f.evidence_ids : [];
+          const noData = eids.length > 0 && eids.every((id) => id in evidenceHasData && !evidenceHasData[id]);
+          const limitations = [...(f.factors?.limitations || []), ...(noData ? ["Every lookup cited for this finding returned no records or did not apply to the indicator."] : [])];
           const payload = {
             tenant_id: tenantId,
             case_id: caseId,
             title: findingTitle(f),
-            description: [f.factors?.finding_type, f.factors?.capability && `capability: ${f.factors.capability}`, f.factors?.limitations?.length && `limitations: ${f.factors.limitations.join("; ")}`].filter(Boolean).join(" · "),
+            description: [f.factors?.finding_type, f.factors?.capability && `capability: ${f.factors.capability}`, limitations.length && `limitations: ${limitations.join("; ")}`].filter(Boolean).join(" · "),
             category: mapFindingCategory(f.factors?.finding_type),
-            severity: severityFromScore(f.risk_score),
-            confidence: confidenceFromReality(f.reality_status),
+            severity: noData ? "low" : severityFromScore(f.risk_score),
+            confidence: noData ? "low" : confidenceFromReality(f.reality_status),
             status: "proposed", // AI findings are never auto-verified
             source: "hermes",
             evidence_refs: (f.evidence_ids || []).map((id) => evidenceMap[id]).filter(Boolean),
@@ -525,7 +556,7 @@ export default async function (req: Request): Promise<Response> {
           };
           // confidence_score is a number field — only set it when Hermes
           // provided a numeric risk_score (omit rather than pass null).
-          if (typeof f.risk_score === "number") payload.confidence_score = Math.round(f.risk_score * 100);
+          if (typeof f.risk_score === "number" && !noData) payload.confidence_score = Math.round(f.risk_score * 100);
           return payload;
         });
         const findingRecs = findingPayloads.length

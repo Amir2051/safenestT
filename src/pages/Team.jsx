@@ -14,6 +14,7 @@ import {
   getEffectiveRole, getRoleLabel, canManageOrg,
   ROLE_LABELS, ORG_ROLE_OPTIONS,
 } from "@/lib/organizationRoles";
+import { orgAccess } from "@/lib/orgAccess";
 
 /**
  * Organization Team management.
@@ -186,19 +187,9 @@ function InviteDialog({ onClose, onInvited, tenantId, inviterEmail }) {
     if (!email.trim()) { setError("Enter an email address."); return; }
     setSubmitting(true);
     try {
-      // 1. Invite to the app (platform). Integration point: base44.users.inviteUser.
-      try { await base44.users.inviteUser(email.trim(), "user"); } catch (e) { /* may already exist */ }
-      // 2. Record the organization roster entry.
-      await base44.entities.TenantMembership.create({
-        tenant_id: tenantId,
-        user_id: "pending",
-        user_email: email.trim(),
-        user_name: "",
-        role: "member",
-        organization_role: orgRole,
-        status: "invited",
-        invited_by: inviterEmail,
-      });
+      // Server sends the platform invite and records the roster entry; the
+      // member gets this role automatically when they first sign in.
+      await orgAccess("inviteMember", { email: email.trim(), organizationRole: orgRole });
       onInvited();
     } catch (e) {
       setError(e?.message || "Failed to invite member.");
@@ -238,21 +229,18 @@ function InviteDialog({ onClose, onInvited, tenantId, inviterEmail }) {
 function ChangeRoleDialog({ member, onClose, onChanged, actorId }) {
   const [orgRole, setOrgRole] = useState(member.organization_role === "VIEWER" && member.status === "pending_role_assignment" ? "INVESTIGATOR" : (member.organization_role || "VIEWER"));
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const isPending = member.status === "pending_role_assignment" || member.status === "pending_verification";
   const submit = async () => {
     setSubmitting(true);
+    setError("");
     try {
-      const patch = { organization_role: orgRole };
-      // Activating a pending member: company was already verified by the
-      // platform admin — assigning the role here flips the membership active.
-      if (isPending) {
-        patch.status = "active";
-        patch.assigned_by = actorId;
-        patch.assigned_at = new Date().toISOString();
-      }
-      await base44.entities.TenantMembership.update(member.id, patch);
+      // Server activates a pending member and grants data access for the role.
+      await orgAccess("assignRole", { membershipId: member.id, organizationRole: orgRole });
       onChanged();
-    } catch (e) { /* ignore */ } finally { setSubmitting(false); }
+    } catch (e) {
+      setError(e?.message || "Failed to update role.");
+    } finally { setSubmitting(false); }
   };
   return (
     <Modal onClose={onClose} title={isPending ? "Approve & Assign Role" : "Change Role"}>
@@ -261,6 +249,7 @@ function ChangeRoleDialog({ member, onClose, onChanged, actorId }) {
           ? <>Company verified. Assign a role to activate <span className="text-slate-200">{member.user_name || member.user_email}</span> in the organization.</>
           : <>Update the assigned role for <span className="text-slate-200">{member.user_name || member.user_email}</span>.</>}
       </p>
+      {error && <ErrorBox text={error} />}
       <select value={orgRole} onChange={(e) => setOrgRole(e.target.value)} className="w-full h-9 rounded-md bg-[#0a0e13] border border-slate-700/60 text-slate-200 text-sm px-2">
         {ORG_ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -276,15 +265,21 @@ function ChangeRoleDialog({ member, onClose, onChanged, actorId }) {
 
 function ConfirmRemoveDialog({ member, onClose, onConfirmed }) {
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const submit = async () => {
     setSubmitting(true);
+    setError("");
     try {
-      await base44.entities.TenantMembership.update(member.id, { status: "revoked" });
+      // Revokes the membership AND removes the member's access to org data.
+      await orgAccess("revokeMember", { membershipId: member.id });
       onConfirmed();
-    } catch (e) { /* ignore */ } finally { setSubmitting(false); }
+    } catch (e) {
+      setError(e?.message || "Failed to remove member.");
+    } finally { setSubmitting(false); }
   };
   return (
     <Modal onClose={onClose} title="Remove Member">
+      {error && <ErrorBox text={error} />}
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-md bg-red-500/15 border border-red-500/40 flex items-center justify-center shrink-0">
           <AlertCircle className="w-5 h-5 text-red-300" />

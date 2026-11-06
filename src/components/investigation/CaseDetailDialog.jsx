@@ -52,6 +52,7 @@ import SharedFilesPanel from "../cases/SharedFilesPanel";
 import CaseDownloadButtons from "./CaseDownloadButtons";
 import { Link } from "react-router-dom";
 import AuthorizationBadge from "@/components/authorization/AuthorizationBadge";
+import { canInvestigate } from "@/lib/organizationRoles";
 
 export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -85,7 +86,9 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
   useEffect(() => {
     base44.auth.me().then(u => {
         setUser(u);
-        const isAuthorized = u?.role === 'admin' || u?.is_admin || u?.job_title === 'Fraud Specialist';
+        // Investigation roles (platform admin, org admin, investigator, analyst,
+        // case manager). job_title is a locked, admin-set legacy grant.
+        const isAuthorized = canInvestigate(u) || u?.job_title === 'Fraud Specialist';
         if (u && !isAuthorized) {
             toast.error("Unauthorized access to Investigator View");
             if (onClose) onClose();
@@ -110,7 +113,8 @@ export default function CaseDetailDialog({ caseData, onClose, onUpdate }) {
     return typeof unsub === "function" ? unsub : undefined;
   }, [caseData.id, caseEntityName]);
 
-  const isAdmin = user?.role === 'admin' || user?.is_admin;
+  // Staff controls inside the case (data rules keep org staff to their own tenant).
+  const isAdmin = canInvestigate(user);
   // Use liveCase for display so UI reflects updates immediately without closing dialog
   const redactedFields = liveCase.redacted_fields || caseData.redacted_fields || [];
 

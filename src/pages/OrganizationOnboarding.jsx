@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import {
   ShieldCheck, Building2, ArrowRight, ArrowLeft, CheckCircle2,
   Loader2, Lock, AlertCircle, Users,
 } from "lucide-react";
-import { ORGANIZATION_TYPES, ORG_TYPE_LABELS } from "@/lib/organizationRoles";
+import { ORGANIZATION_TYPES, ORG_TYPE_LABELS, getHomePath } from "@/lib/organizationRoles";
+import { orgAccess } from "@/lib/orgAccess";
 
 /**
  * Organization onboarding — the institutional "signup" flow.
@@ -27,12 +28,14 @@ import { ORGANIZATION_TYPES, ORG_TYPE_LABELS } from "@/lib/organizationRoles";
  */
 export default function OrganizationOnboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountType = searchParams.get("accountType");
   const { user, isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState("");
   const [mode, setMode] = useState("new"); // "join" | "new"
   const [orgName, setOrgName] = useState("");
-  const [orgType, setOrgType] = useState("");
+  const [orgType, setOrgType] = useState(accountType === "individual_investigator" ? "individual_investigator" : "");
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [joinable, setJoinable] = useState([]);
   const [joinableLoading, setJoinableLoading] = useState(false);
@@ -43,9 +46,12 @@ export default function OrganizationOnboarding() {
     if (isLoadingAuth) return;
     if (user) {
       setFullName(user.full_name || "");
-      // Already onboarded users skip straight into the workspace.
-      if (user.organization_name && user.organization_role) {
-        navigate("/OperationsDashboard", { replace: true });
+      // Active members go to their role-specific home. Pending requests remain
+      // on the read-only personal dashboard until verification/role assignment.
+      if (user.organization_name && user.account_status === "pending") {
+        navigate("/Dashboard", { replace: true });
+      } else if (user.organization_name && user.organization_role && user.account_status === "active") {
+        navigate(getHomePath(user), { replace: true });
       }
     }
   }, [isLoadingAuth, user, navigate]);
@@ -54,8 +60,8 @@ export default function OrganizationOnboarding() {
   useEffect(() => {
     if (step === 2 && mode === "join" && joinable.length === 0 && !joinableLoading) {
       setJoinableLoading(true);
-      base44.functions.invoke("listJoinableOrganizations", {})
-        .then((res) => setJoinable(res?.data?.organizations || []))
+      orgAccess("listJoinable")
+        .then((res) => setJoinable(res?.organizations || []))
         .catch(() => setJoinable([]))
         .finally(() => setJoinableLoading(false));
     }
@@ -88,74 +94,19 @@ export default function OrganizationOnboarding() {
     }
     setSubmitting(true);
     try {
+      // Ensure every user has a private personal workspace before any
+      // organization request is recorded. Pending requests never replace it.
+      await orgAccess("ensurePersonalTenant");
+      // Access is granted server-side only (orgAccess). Joining does NOT give
+      // access to the organization's data until a platform admin verifies the
+      // company and an org admin assigns a role.
       if (mode === "join" && selectedOrg) {
-        // Join an existing verified organization — create a PENDING membership
-        // for platform-admin company verification, then org-admin role assignment.
-        await base44.auth.updateMe({
-          organization_name: selectedOrg.name,
-          organization_type: selectedOrg.organization_type || null,
-          organization_role: "VIEWER", // read-only until approved
-          tenant_id: selectedOrg.id,
-          account_status: "pending",
-        });
-        await base44.entities.TenantMembership.create({
-          tenant_id: selectedOrg.id,
-          user_id: user.id,
-          user_email: user.email,
-          user_name: user.full_name || fullName.trim(),
-          role: "member",
-          organization_role: "VIEWER",
-          status: "pending_verification",
-          requested_at: new Date().toISOString(),
-          joined_at: new Date().toISOString(),
-        });
+        await orgAccess("requestJoinOrg", { tenantId: selectedOrg.id, fullName: fullName.trim() });
       } else {
-        // Request a NEW organization — pending Tenant + pending membership.
-        const tenant = await base44.entities.Tenant.create({
-          name: orgName.trim(),
-          organization_type: orgType,
-          owner_user_id: user.id,
-          owner_email: user.email,
-          plan: "team",
-          status: "pending_verification",
-          members: [user.id],
-          requested_by_user_id: user.id,
-          requested_at: new Date().toISOString(),
-        });
-        if (tenant?.id) {
-          await base44.auth.updateMe({
-            organization_name: orgName.trim(),
-            organization_type: orgType,
-            organization_role: "VIEWER", // read-only until the org is verified
-            tenant_id: tenant.id,
-            tenant_role: "owner",
-            account_status: "pending",
-          });
-          await base44.entities.TenantMembership.create({
-            tenant_id: tenant.id,
-            user_id: user.id,
-            user_email: user.email,
-            user_name: user.full_name || fullName.trim(),
-            role: "owner",
-            organization_role: "ORG_ADMIN", // takes effect once verified
-            status: "pending_verification",
-            requested_org_name: orgName.trim(),
-            requested_org_type: orgType,
-            requested_at: new Date().toISOString(),
-            joined_at: new Date().toISOString(),
-          });
-        } else {
-          // Tenant creation blocked (RLS) — persist org context on the profile only.
-          await base44.auth.updateMe({
-            organization_name: orgName.trim(),
-            organization_type: orgType,
-            organization_role: "VIEWER",
-            account_status: "pending",
-          });
-        }
+        await orgAccess("requestNewOrg", { orgName: orgName.trim(), orgType, fullName: fullName.trim() });
       }
-
-      navigate("/OperationsDashboard", { replace: true });
+      // Full reload so the session picks up the server-set profile fields.
+      window.location.replace("/");
     } catch (e) {
       setError(e?.message || "Failed to set up your organization. Please try again.");
     } finally {
@@ -400,7 +351,7 @@ function Step2({ mode, setMode, orgName, setOrgName, selectedOrgId, setSelectedO
             />
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">
-            A SafeNestT administrator will verify your company before the organization is activated. You get read-only access until then.
+            Your personal workspace remains available while a SafeNestT administrator verifies the organization. Organization data stays locked until approval.
           </p>
         </div>
       )}
@@ -442,8 +393,8 @@ function Step3({ mode, finalOrgName, finalOrgType, submitting, onBack, onSubmit 
         <h2 className="text-lg font-semibold text-slate-100">Review &amp; Submit</h2>
         <p className="text-slate-500 text-[13px] mt-1">
           {mode === "join"
-            ? "Your join request will be sent for verification. You'll have read-only access until an administrator approves it."
-            : "Your organization request will be sent for company verification. You'll have read-only access until a SafeNestT administrator approves it."}
+            ? "Your join request will be sent for verification. You can keep using your personal workspace while you wait; organization data stays locked until approval."
+            : "Your organization request will be sent for company verification. You can keep using your personal workspace while you wait; the organization activates only after approval."}
         </p>
       </div>
       <div className="rounded-md border border-cyan-500/30 bg-cyan-500/[0.06] p-4 flex items-start gap-3">

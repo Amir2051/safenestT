@@ -206,7 +206,7 @@ export default function ReportIncident() {
 
   if (showIC3Message) {
     return (
-      <div className="min-h-screen bg-[#000000] text-white p-6 md:p-12 flex items-center justify-center">
+      <div className="min-h-screen text-white p-6 md:p-12 flex items-center justify-center">
         <Card className="max-w-2xl bg-[#0f1419] border-green-500/30">
           <CardContent className="p-8 space-y-6">
             <div className="text-center">
@@ -250,7 +250,7 @@ export default function ReportIncident() {
   }
 
   return (
-    <div className="min-h-screen bg-[#000000] text-white p-6 md:p-12">
+    <div className="min-h-screen text-white p-6 md:p-12">
       <div className="max-w-3xl mx-auto space-y-6">
         <Button 
           variant="ghost" 
