@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   ShieldCheck, Building2, ArrowRight, ArrowLeft, CheckCircle2,
   Loader2, Lock, AlertCircle, Users,
 } from "lucide-react";
-import { ORGANIZATION_TYPES, ORG_TYPE_LABELS } from "@/lib/organizationRoles";
+import { ORGANIZATION_TYPES, ORG_TYPE_LABELS, getHomePath } from "@/lib/organizationRoles";
 import { orgAccess } from "@/lib/orgAccess";
 
 /**
@@ -28,12 +28,14 @@ import { orgAccess } from "@/lib/orgAccess";
  */
 export default function OrganizationOnboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountType = searchParams.get("accountType");
   const { user, isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState("");
   const [mode, setMode] = useState("new"); // "join" | "new"
   const [orgName, setOrgName] = useState("");
-  const [orgType, setOrgType] = useState("");
+  const [orgType, setOrgType] = useState(accountType === "individual_investigator" ? "individual_investigator" : "");
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [joinable, setJoinable] = useState([]);
   const [joinableLoading, setJoinableLoading] = useState(false);
@@ -44,9 +46,12 @@ export default function OrganizationOnboarding() {
     if (isLoadingAuth) return;
     if (user) {
       setFullName(user.full_name || "");
-      // Already onboarded users skip straight into the workspace.
-      if (user.organization_name && user.organization_role) {
-        navigate("/OperationsDashboard", { replace: true });
+      // Active members go to their role-specific home. Pending requests remain
+      // on the read-only personal dashboard until verification/role assignment.
+      if (user.organization_name && user.account_status === "pending") {
+        navigate("/Dashboard", { replace: true });
+      } else if (user.organization_name && user.organization_role && user.account_status === "active") {
+        navigate(getHomePath(user), { replace: true });
       }
     }
   }, [isLoadingAuth, user, navigate]);
