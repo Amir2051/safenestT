@@ -33,7 +33,7 @@ export const ROLE_LABELS = {
   CASE_MANAGER: "Case Manager",
   VIEWER: "Viewer (Read-Only)",
   AUDITOR: "Auditor",
-  REGULAR_USER: "Member",
+  REGULAR_USER: "Regular User",
 };
 
 export const ROLE_SHORT = {
@@ -44,7 +44,7 @@ export const ROLE_SHORT = {
   CASE_MANAGER: "CASE MANAGER",
   VIEWER: "VIEWER",
   AUDITOR: "AUDITOR",
-  REGULAR_USER: "MEMBER",
+  REGULAR_USER: "REGULAR USER",
 };
 
 /** Roles assignable to an organization member (PLATFORM_ADMIN excluded). */
