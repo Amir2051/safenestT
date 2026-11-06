@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         });
 
         await base44.asServiceRole.entities.EmailNotification.create({
-          recipient: customerEmail,
+          recipient: customerEmail || user.email,
           subject: 'Your SafeNestT subscription is active',
           template_name: 'subscription_confirmed',
           status: 'pending',
