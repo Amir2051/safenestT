@@ -6,10 +6,10 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'), {
 });
 
 const CHECKOUT_PLANS = {
-  professional: { priceId: 'price_1UYWgmBgEK1rvq8hw9gRnQkO', audience: 'organization' },
-  team: { priceId: 'price_1UYW9OBgEK1rvq8hsGNWSrNZ', audience: 'organization' },
-  individual: { priceId: 'price_1UYbD6BgEK1rvq8hxP1Dz0oJ', audience: 'regular_user' },
-  individual_plus: { priceId: 'price_1UYbDABgEK1rvq8haBqP88kf', audience: 'regular_user' },
+  professional: { priceId: 'price_1UYWgmBgEK1rvq8hw9gRnQkO', audience: 'organization', storedPlan: 'professional' },
+  team: { priceId: 'price_1UYW9OBgEK1rvq8hsGNWSrNZ', audience: 'organization', storedPlan: 'team' },
+  individual: { priceId: 'price_1UYbD6BgEK1rvq8hxP1Dz0oJ', audience: 'regular_user', storedPlan: 'basic' },
+  individual_plus: { priceId: 'price_1UYbDABgEK1rvq8haBqP88kf', audience: 'regular_user', storedPlan: 'elite' },
 };
 
 function getBillingAudience(user) {
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
           is_trial_active: (user.subscription_status === 'trial' || isTrialCancelled) && trialEnd > now,
           is_trial_cancelled: isTrialCancelled,
           trial_still_active: trialStillActive,
-          is_premium: user.subscription_plan === 'basic' || user.subscription_plan === 'elite',
+          is_premium: ['basic', 'elite', 'individual', 'individual_plus', 'professional', 'team'].includes(user.subscription_plan),
           can_access_premium: ((user.subscription_status === 'trial' || user.subscription_status === 'active') && user.has_payment_method) || trialStillActive,
           requires_payment: !user.has_payment_method && user.payment_required,
           payment_methods: paymentMethods
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
             // Block premium features
             await base44.auth.updateMe({
               subscription_status: 'inactive',
-              subscription_plan: 'free'
+              subscription_plan: 'inactive'
             });
             toSend.push({
               id: crypto.randomUUID(),
@@ -303,7 +303,8 @@ Deno.serve(async (req) => {
         }
 
         const checkoutMetadata = {
-          plan,
+          plan: planConfig.storedPlan,
+          plan_tier: plan,
           audience,
           user_id: user.id,
         };
@@ -354,7 +355,7 @@ Deno.serve(async (req) => {
           // Cancel active subscription
           await base44.auth.updateMe({
             subscription_status: 'canceled',
-            subscription_plan: 'free',
+            subscription_plan: 'inactive',
             cancelled_at: new Date().toISOString()
           });
         }
