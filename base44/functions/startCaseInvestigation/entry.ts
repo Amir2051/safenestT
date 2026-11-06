@@ -57,7 +57,7 @@ export default async function (req: Request): Promise<Response> {
       }, { status: 400 });
     }
 
-    // ── 2. Resolve the case under the caller's RLS ───────────────────────────
+    // ── 2. Resolve the case under the caller's RLS ────────────────────────
     const resolved = await base44.functions.invoke("resolveInvestigationCase", { case_id: caseIdInput });
     const resolvedBody: any = resolved?.data ?? resolved;
     const caseId = resolvedBody?.case_id;
@@ -73,7 +73,7 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ ok: false, status: "not_found", error: "Case not found or no access" }, { status: 404 });
     }
 
-    // ── 3. Persist the confirmed selection on the case ───────────────────────
+    // ── 3. Persist the confirmed selection on the case ────────────────────
     const selectedAt = new Date().toISOString();
     const selection = {
       provider,
@@ -87,7 +87,7 @@ export default async function (req: Request): Promise<Response> {
       last_activity: selectedAt,
     }).catch(() => { /* the run below still reports the provider it used */ });
 
-    // ── 4. Route to the selected provider only ───────────────────────────────
+    // ── 4. Route to the selected provider only ──────────────────────────
     if (provider === "mia") {
       const result = await runMiaInvestigation({ base44, caseItem, user, tenantId: caseItem.tenant_id });
       const ok = result?.ok === true && (result?.status === "completed" || result?.status === "completed_with_errors");
