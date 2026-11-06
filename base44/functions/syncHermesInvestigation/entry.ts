@@ -371,7 +371,9 @@ export default async function (req: Request): Promise<Response> {
     // Hermes reports no per-phase detail for finished runs; don't fabricate a
     // "planning still running" state for a terminal, non-failed investigation.
     if (terminal && !isFailed && Object.keys(phaseStatuses).length === 0) {
-      for (const p of CANONICAL_PHASES) phases[p] = p === "dossier" ? "pending" : "completed";
+      // Planning is done once Hermes reaches a terminal state; later phases are
+      // only marked complete after SafeNestT verifies and persists the results.
+      for (const p of CANONICAL_PHASES) phases[p] = p === "planning" ? "completed" : "pending";
     }
     const mergedPhases = { ...(wf.phases || {}) };
     const now = new Date().toISOString();
