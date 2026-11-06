@@ -6,29 +6,13 @@
  * never from env vars and never from the browser.
  *
  * Contract:
- *   IN  { action: "status",
- *         target?,                      // single target (company/enity/domain/email/phone/country)
- *         targets?,                     // array of targets
- *         strategy?,                     // "controlled" | "auto"
- *         jurisdiction?,                 // e.g. "AE" (UAE) or "US" or null (global)
- *         country?,                      // coverage_country filter
- *         limit?, offset?,               // pagination
- *         searchFields?,                 // which input fields to search (default: all)
- *         maxSearches?,                  // cap on number of searches (default 6)
- *       }
+ *   IN  { action, target?, targets?, strategy?, jurisdiction?, country?,
+ *         limit?, offset?, searchFields?, maxSearches? }
  *   OUT { ok, configured, error?, data?, results?, warnings? }
- *
- * Response data:
- *   data:        { total, hits: [ { prov } ... ] }   — search results (provenance records)
- *   results:     alias for data
- *   prov:        normalised provenance record for one search target
- *   warnings:    informational messages (never includes secrets)
  *
  * Security:
  *  - No API key is ever logged, stored, or returned to the browser.
- *  - The key only exists inside this function in Deno secrets.
- *  - A Dateno failure never breaks the investigation — it returns
- *    { ok: true, configured: true, data: null, warnings: [...] }.
+ *  - A Dateno failure never breaks the investigation.
  */
 
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
@@ -318,8 +302,6 @@ export default async function (req: Request) {
       }
 
       // 4) owner_type / catalog_type filters (documented parameters)
-      //    Owner types documented in the official API: Central government, Local government,
-      //    University/Research, Company, Public Company, NGO/NPO, International Organization.
       const ownerTypes = ["Central government", "Local government", "Company", "Public Company", "University/Research", "NGO/NPO", "International Organization"];
       for (const ot of ownerTypes) {
         if (queries.length >= MAX_SEARCHES) break;
@@ -377,7 +359,6 @@ export default async function (req: Request) {
     const responseData = {
       total: allRecords.length,
       hits: allRecords.map((r) => ({
-        // Provenance record for one search target (SafeNestT-compatible).
         dataset_title: r?.dataset_title || null,
         dataset_id: r?.dataset_id || null,
         dataset_int_id: r?.dataset_int_id || null,
