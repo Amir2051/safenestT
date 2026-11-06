@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { getEffectiveRole } from "@/lib/organizationRoles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,33 +29,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const PLANS = [
-  {
-    id: "starter",
-    name: "Starter",
-    eyebrow: "GET STARTED",
-    price: "$0",
-    cadence: "forever",
-    summary: "A focused starting point for organizing your first investigations.",
-    cases: "2 active cases",
-    investigations: "2 AI investigations / month",
-    seats: "1 user",
-    features: [
-      "Core case workspace",
-      "Case and evidence organization",
-      "Essential investigation tools",
-      "A clear path to upgrade as work grows",
-    ],
-    icon: Shield,
-    tone: "slate",
-  },
+const ORGANIZATION_PLANS = [
   {
     id: "professional",
     name: "Professional",
-    eyebrow: "FOR INVESTIGATORS",
+    eyebrow: "FOR INVESTIGATORS & SMALL FIRMS",
     price: "$49",
     cadence: "per month",
-    summary: "More capacity for independent investigators and growing practices.",
+    summary: "A paid starting point for investigators and small organizations.",
     cases: "Up to 25 active cases",
     investigations: "30 AI investigations / month",
     seats: "1 user",
@@ -110,6 +92,50 @@ const PLANS = [
   },
 ];
 
+const REGULAR_USER_PLANS = [
+  {
+    id: "individual",
+    name: "Individual",
+    eyebrow: "FOR PERSONAL ACCOUNTS",
+    price: "$24.99",
+    cadence: "per month",
+    summary: "Essential SafeNestT access for individuals managing their personal protection and cases.",
+    cases: "Personal case workspace",
+    investigations: "Core investigation support",
+    seats: "1 user",
+    features: [
+      "Personal SafeNestT workspace",
+      "Case and activity organization",
+      "Core protection and investigation tools",
+      "Secure account and billing access",
+    ],
+    priceId: "price_1UYbD6BgEK1rvq8hxP1Dz0oJ",
+    icon: Shield,
+    tone: "cyan",
+    popular: true,
+  },
+  {
+    id: "individual_plus",
+    name: "Individual Plus",
+    eyebrow: "MORE PERSONAL CAPACITY",
+    price: "$49.99",
+    cadence: "per month",
+    summary: "Expanded SafeNestT access for individuals who need more advanced protection and investigation support.",
+    cases: "Expanded personal workspace",
+    investigations: "Enhanced investigation support",
+    seats: "1 user",
+    features: [
+      "Everything in Individual",
+      "Expanded personal workspace capacity",
+      "Enhanced investigation and analysis tools",
+      "Access to advanced workflows",
+    ],
+    priceId: "price_1UYbDABgEK1rvq8haBqP88kf",
+    icon: Sparkles,
+    tone: "violet",
+  },
+];
+
 const STATUS_LABELS = {
   active: "Active",
   trialing: "Trial active",
@@ -129,10 +155,12 @@ const formatDate = (value) => {
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
-const normalizePlan = (value) => {
+const normalizePlan = (value, fallback = "individual") => {
   const plan = String(value || "").toLowerCase();
-  if (["professional", "team", "enterprise"].includes(plan)) return plan;
-  return "starter";
+  if (["professional", "team", "enterprise", "individual", "individual_plus"].includes(plan)) return plan;
+  if (plan === "basic") return "individual";
+  if (["elite", "premium"].includes(plan)) return "individual_plus";
+  return fallback;
 };
 
 export default function Subscription() {
@@ -141,6 +169,8 @@ export default function Subscription() {
   const [loadingPlan, setLoadingPlan] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const queryClient = useQueryClient();
+  const isRegularUser = getEffectiveRole(user) === "REGULAR_USER";
+  const plans = isRegularUser ? REGULAR_USER_PLANS : ORGANIZATION_PLANS;
 
   useEffect(() => {
     let mounted = true;
@@ -177,7 +207,10 @@ export default function Subscription() {
     retry: 1,
   });
 
-  const currentPlan = normalizePlan(subscriptionInfo?.subscription_plan || user?.subscription_plan);
+  const currentPlan = normalizePlan(
+    subscriptionInfo?.subscription_plan || user?.subscription_plan,
+    isRegularUser ? "individual" : "professional"
+  );
   const status = String(subscriptionInfo?.subscription_status || user?.subscription_status || "inactive").toLowerCase();
   const statusLabel = STATUS_LABELS[status] || status.replaceAll("_", " ");
   const nextBillingDate = formatDate(
@@ -187,7 +220,7 @@ export default function Subscription() {
   const trialActive = Boolean(subscriptionInfo?.is_trial_active) || status === "trialing" || status === "trial";
   const hasManagedSubscription =
     ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(status) &&
-    Boolean(user?.stripe_subscription_id || ["professional", "team"].includes(currentPlan));
+    Boolean(user?.stripe_subscription_id || ["professional", "team", "individual", "individual_plus"].includes(currentPlan));
   const canCancel =
     Boolean(user?.stripe_subscription_id) &&
     ["active", "trialing", "past_due", "unpaid"].includes(status);
@@ -204,6 +237,7 @@ export default function Subscription() {
       const response = await base44.functions.invoke("subscriptionService", {
         endpoint: "create-checkout-session",
         priceId: plan.priceId,
+        plan: plan.id,
       });
       const checkoutUrl = response?.data?.url || response?.url;
       if (!checkoutUrl) throw new Error("Stripe did not return a checkout link.");
@@ -304,7 +338,7 @@ export default function Subscription() {
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-slate-400">
-                    {PLANS.find((plan) => plan.id === currentPlan)?.name || "Starter"} plan
+                    {plans.find((plan) => plan.id === currentPlan)?.name || (isRegularUser ? "Individual" : "Professional")} plan
                     {trialActive && trialEndDate ? ` · Trial ends ${trialEndDate}` : ""}
                     {!trialActive && nextBillingDate ? ` · Next billing ${nextBillingDate}` : ""}
                   </p>
@@ -343,15 +377,15 @@ export default function Subscription() {
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Plans & capacity</p>
-              <h2 id="plans-heading" className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Choose your operating level</h2>
+              <h2 id="plans-heading" className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{isRegularUser ? "Choose your individual plan" : "Choose your organization plan"}</h2>
             </div>
             <p className="text-xs text-slate-500">USD · Monthly billing for paid plans</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const Icon = plan.icon;
-              const isCurrentPlan = plan.id === currentPlan && (plan.id === "starter" || ["active", "trialing", "trial", "past_due", "unpaid"].includes(status));
+              const isCurrentPlan = plan.id === currentPlan && ["active", "trialing", "trial", "past_due", "unpaid"].includes(status);
               const isLockedByExistingSubscription = hasManagedSubscription && !isCurrentPlan && plan.priceId;
               const isLoadingThisPlan = loadingPlan === plan.id;
               const accent = {
@@ -419,15 +453,6 @@ export default function Subscription() {
                   {plan.id === "enterprise" ? (
                     <Button asChild className="w-full border border-fuchsia-300/25 bg-fuchsia-300/[0.08] text-fuchsia-100 hover:bg-fuchsia-300/[0.14]">
                       <a href={supportLink}>Discuss Enterprise <ArrowUpRight className="ml-2 h-4 w-4" /></a>
-                    </Button>
-                  ) : plan.id === "starter" ? (
-                    <Button
-                      variant="outline"
-                      disabled={isCurrentPlan}
-                      onClick={() => window.location.assign("/Billing")}
-                      className="w-full border-white/15 bg-white/[0.03] text-slate-200 hover:bg-white/[0.07] disabled:opacity-60"
-                    >
-                      {isCurrentPlan ? "Your current plan" : "Included with SafeNestT"}
                     </Button>
                   ) : isCurrentPlan ? (
                     <Button disabled className="w-full bg-cyan-300/10 text-cyan-100 opacity-100">
