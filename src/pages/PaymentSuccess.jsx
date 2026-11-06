@@ -48,9 +48,9 @@ export default function PaymentSuccess() {
       await base44.entities.AuditLog.create({
         action_type: 'subscription_upgraded',
         action_category: 'subscription',
-        description: `Upgraded to ${plan === 'basic' ? 'Basic Protection' : 'Elite Protection'} plan`,
+        description: `Upgraded to ${plan === 'basic' ? 'Individual' : 'Individual Plus'} plan`,
         metadata: {
-          plan_name: plan === 'basic' ? 'Basic Protection' : 'Elite Protection',
+          plan_name: plan === 'basic' ? 'Individual' : 'Individual Plus',
           previous_value: 'free',
           new_value: plan,
           ip_address: transactionId // Note: transactionId is used as a placeholder for IP address here, which might not be accurate.
@@ -89,7 +89,7 @@ export default function PaymentSuccess() {
       events.push({
         type: 'conversion',
         plan,
-        amount: plan === 'basic' ? 9.99 : 14.99,
+        amount: plan === 'basic' ? 24.99 : 49.99,
         timestamp: new Date().toISOString()
       });
       localStorage.setItem('analytics_events', JSON.stringify(events));
@@ -107,8 +107,10 @@ export default function PaymentSuccess() {
     );
   }
 
-  const planName = user.subscription_plan === 'basic' ? 'Basic Protection' : 
-                   user.subscription_plan === 'elite' ? 'Elite Protection' : 'Premium';
+  const planName = user.subscription_plan === 'basic' ? 'Individual' : 
+                   user.subscription_plan === 'elite' ? 'Individual Plus' :
+                   user.subscription_plan === 'professional' ? 'Professional' :
+                   user.subscription_plan === 'team' ? 'Team' : 'SafeNestT';
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -148,15 +150,9 @@ export default function PaymentSuccess() {
           <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
             Thank You! 🎉
           </h1>
-          {user.subscription_plan === 'premium' || user.subscription_plan === 'elite' ? (
-              <p className="text-2xl text-green-400 font-semibold mb-2">
-                Your Cyber Monday subscription is active. Thank you for supporting SafeNestT.
-              </p>
-          ) : (
-              <p className="text-2xl text-green-400 font-semibold mb-2">
-                Your SafeNest protection is now active
-              </p>
-          )}
+          <p className="text-2xl text-green-400 font-semibold mb-2">
+            Your SafeNestT subscription is active.
+          </p>
           <p className="text-gray-400 mb-8 text-lg">
             You now have full access to {planName} features
           </p>
