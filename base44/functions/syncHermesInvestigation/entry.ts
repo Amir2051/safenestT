@@ -170,13 +170,32 @@ function confidenceFromReality(realityStatus) {
 // findings can carry an object (e.g. { investigation_synthesis: "..." }).
 // InvestigationFinding.title and risk_factors[].factor are both strings, so
 // coerce to a meaningful string here — never pass the raw object through.
+// Guard against a raw model chain-of-thought (or any oversized blob) leaking
+// into a finding title. A title must read as a title — never a reasoning dump.
+function cleanFindingTitle(raw, f) {
+  const s = String(raw || "").trim();
+  const looksLikeReasoning =
+    s.length > 300 ||
+    /\bthinking process\b/i.test(s) ||
+    /^here'?s (a|my) (thinking|reasoning|thought)/i.test(s) ||
+    /\blet me (think|analyze|count|break|start)\b/i.test(s) ||
+    /(^|\n)\s*\d+\.\s/.test(s) ||
+    /\*\*(analyze|synthesize|draft|key)/i.test(s);
+  if (looksLikeReasoning) {
+    const ft = f?.factors?.finding_type || f?.finding_type;
+    return ft ? `Hermes finding: ${String(ft).toLowerCase().replace(/_/g, " ")} (review required)` : "Hermes finding (review required)";
+  }
+  return s.length > 180 ? s.slice(0, 177) + "…" : (s || (f?.finding_id || "Hermes finding"));
+}
+
 function findingTitle(f) {
   const c = f?.claim;
-  if (typeof c === "string" && c.trim()) return c;
-  if (c && typeof c === "object") {
-    return c.investigation_synthesis || c.summary || c.title || c.conclusion || JSON.stringify(c).slice(0, 140);
+  let raw = "";
+  if (typeof c === "string" && c.trim()) raw = c;
+  else if (c && typeof c === "object") {
+    raw = c.investigation_synthesis || c.summary || c.title || c.conclusion || "";
   }
-  return f?.finding_id || "Hermes finding";
+  return cleanFindingTitle(raw || f?.finding_id || "Hermes finding", f);
 }
 
 function confidenceFrom01(v) {
