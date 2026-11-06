@@ -318,7 +318,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
             <p className="text-[10px] text-gray-500 truncate mt-0.5">{user?.email || ""}</p>
           </div>
         </div>
-        {effectiveRole !== "REGULAR_USER" && !collapsed && (
+        {!collapsed && (
           <div className="flex items-center gap-1.5 mb-3 px-1">
             <span className="text-[9px] font-mono uppercase tracking-wider text-slate-500">Role</span>
             <Badge className="text-[9px] px-1.5 py-0.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">{ROLE_LABELS[effectiveRole]}</Badge>
