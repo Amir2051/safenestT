@@ -169,7 +169,7 @@ export default function Subscription() {
   const [loadingPlan, setLoadingPlan] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const queryClient = useQueryClient();
-  const isRegularUser = getEffectiveRole(user) === "REGULAR_USER";
+  const isRegularUser = !user || getEffectiveRole(user) === "REGULAR_USER";
   const plans = isRegularUser ? REGULAR_USER_PLANS : ORGANIZATION_PLANS;
 
   useEffect(() => {
@@ -382,7 +382,7 @@ export default function Subscription() {
             <p className="text-xs text-slate-500">USD · Monthly billing for paid plans</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className={`grid gap-4 md:grid-cols-2 ${isRegularUser ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}> 
             {plans.map((plan) => {
               const Icon = plan.icon;
               const isCurrentPlan = plan.id === currentPlan && ["active", "trialing", "trial", "past_due", "unpaid"].includes(status);
