@@ -262,11 +262,21 @@ function buildDossier(caseItem: any, ctx: any, findings: any[]) {
     {
       title: "Verified Findings",
       classification: "EVIDENCE",
-      content: eligible.length
-        ? eligible.map((f) => `[${f.status}] ${f.title}: ${truncate(f.description, 600)}`).join(" ")
-        : "No findings passed the reality-check gate.",
+      content: eligible.filter((f) => f.status === "verified").length
+        ? eligible.filter((f) => f.status === "verified").map((f) => `${f.title}: ${truncate(f.description, 600)}`).join(" ")
+        : "No findings were fully verified by the reality check.",
     },
   ];
+
+  const qualified = eligible.filter((f) => f.status !== "verified");
+  if (qualified.length) {
+    sections.push({
+      title: "Partially Supported Findings",
+      classification: "ANALYSIS",
+      content: `Qualified — evidence supports these only in part and they require corroboration before being relied on: ` +
+        qualified.map((f) => `[${f.status}] ${f.title}: ${truncate(f.description, 600)}`).join(" "),
+    });
+  }
 
   if (unsupported.length) {
     sections.push({
@@ -683,6 +693,8 @@ async function persistWorkflow(base44: any, caseItem: any, phases: any, status: 
     workflow: {
       ...wf,
       provider: MIA_PROVIDER,
+      model: MIA_MODEL,
+      provider_model: MIA_MODEL,
       phases,
       current_phase: allCompleted ? "closed" : MIA_PHASES[completedCount] || "planning",
       mia_status: status,
