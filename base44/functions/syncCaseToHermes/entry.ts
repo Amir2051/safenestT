@@ -303,6 +303,22 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ ok: false, status: "no_investigation_id", error: "Hermes accepted the request but did not return an investigation_id", action: "create_failed", case_id: caseId });
     }
 
+    // ── Capture the live underlying model/provider the Hermes gateway is
+    // running, so the case records what actually ran — not just the
+    // "hermes-agent" routing alias. Best-effort: a failed or slow health
+    // probe must never undo an investigation that was already created.
+    let hermesModel: string | null = null;
+    let hermesModelProvider: string | null = null;
+    try {
+      const healthRes = await base44.functions.invoke("hermesProxy", { action: "health" });
+      const healthBody: any = healthRes?.data ?? healthRes;
+      if (healthBody?.ok) {
+        const m = healthBody.data?.model || {};
+        hermesModel = m.model || m.id || null;
+        hermesModelProvider = m.provider || null;
+      }
+    } catch { /* health is advisory only */ }
+
     // ── Store the canonical mapping on the SafeNestT case.
     await base44.entities.InvestigationCase.update(caseId, {
       sync_status: "active",
@@ -314,6 +330,8 @@ export default async function (req: Request): Promise<Response> {
         hermes_status: createRes.data?.status || "queued",
         hermes_error: null,
         provider: "hermes",
+        hermes_model: hermesModel,
+        hermes_model_provider: hermesModelProvider,
         has_external_indicators: hasExternalIndicator,
       },
     }).catch(() => null);
@@ -322,7 +340,7 @@ export default async function (req: Request): Promise<Response> {
       tenant_id: caseItem.tenant_id, actor: user.email, actor_name: user.full_name || user.email,
       timestamp: now, action: "hermes_case_synced", object_type: "case", object_id: caseId, case_id: caseId,
       description: `SafeNestT case synced to Hermes: investigation ${investigationId} created (${hasExternalIndicator ? `${targetObjs.length} targets` : "narrative-only"})`,
-      metadata: { investigation_id: investigationId, target_count: targetObjs.length, has_external_indicators: hasExternalIndicator }, source: "user",
+      metadata: { investigation_id: investigationId, target_count: targetObjs.length, has_external_indicators: hasExternalIndicator, hermes_model: hermesModel, hermes_model_provider: hermesModelProvider }, source: "user",
     }).catch(() => null);
 
     return Response.json({
