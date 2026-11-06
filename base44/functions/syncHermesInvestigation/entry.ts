@@ -64,6 +64,8 @@ function isPartialStatus(status) {
   ].includes(s);
 }
 
+// A successful HTTP/tool invocation is not the same as source-backed evidence;
+// the gates below decide whether a run may be marked complete.
 function hasSourceBackedEvidence(reportData) {
   const metadataKeys = new Set(["domain", "target", "source", "query", "status"]);
   function hasSubstantiveValue(value, key = "") {
@@ -96,6 +98,27 @@ function hasPersistedResults(persisted) {
 
 function persistedRunStatus(sourceBacked, persisted) {
   return sourceBacked && hasPersistedResults(persisted) ? "completed" : "failed";
+}
+
+// Build clean, de-duplicated risk factors from Hermes findings. Drops findings
+// whose lookups returned nothing (e.g. a crypto trace run against no wallet,
+// reported upstream as "for None"), strips markdown, and caps length so a
+// whole synthesis document can never be stored as a single risk factor.
+function buildRiskFactors(findings, titleOf) {
+  const seen = new Set();
+  const out = [];
+  for (const f of Array.isArray(findings) ? findings : []) {
+    const raw = String(titleOf(f) || "");
+    if (/\b(for|on) None\b/.test(raw) || /returned no data|trace failed/i.test(raw)) continue;
+    let text = raw.replace(/[#*`>_]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    if (text.length > 160) text = text.slice(0, 157).trimEnd() + "…";
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ factor: text, weight: f?.risk_score != null ? Math.round(f.risk_score * 100) : 0 });
+  }
+  return out;
 }
 
 function extractStatus(data) {
@@ -324,6 +347,32 @@ export default async function (req: Request): Promise<Response> {
     const wasTerminal = prevStatus && isTerminal(prevStatus);
 
     const wf = caseItem.workflow || { current_phase: "planning", phases: {} };
+
+    // Idempotency guard: once this Hermes investigation's results are persisted
+    // and the case is finalized, a later sync (page reload, cron, resume) must
+    // NOT rewrite the workflow. Hermes does not return per-phase detail, so the
+    // defaults below (planning=running, others=pending) would clobber a closed
+    // case back to "investigating". Only refresh the sync timestamp.
+    const alreadyFinalized = !!wf.phases?.dossier?.output?.results_persisted
+      && wf.hermes_investigation_id === investigationId
+      && terminal && !isFailed;
+    if (alreadyFinalized) {
+      await base44.entities.InvestigationCase.update(caseId, { last_synced_at: new Date().toISOString() }).catch(() => null);
+      const finalPhases = {};
+      for (const p of CANONICAL_PHASES) finalPhases[p] = wf.phases?.[p]?.status || "completed";
+      return Response.json({
+        ok: true, status: "ok", case_id: caseId, hermes_investigation_id: investigationId,
+        hermes_status: hermesStatus, case_status: caseItem.status, phases: finalPhases,
+        progress: caseItem.investigation_progress ?? 100, terminal: true,
+        persisted: { ...(wf.phases.dossier.output || {}) }, action: "already_finalized",
+      });
+    }
+
+    // Hermes reports no per-phase detail for finished runs; don't fabricate a
+    // "planning still running" state for a terminal, non-failed investigation.
+    if (terminal && !isFailed && Object.keys(phaseStatuses).length === 0) {
+      for (const p of CANONICAL_PHASES) phases[p] = p === "dossier" ? "pending" : "completed";
+    }
     const mergedPhases = { ...(wf.phases || {}) };
     const now = new Date().toISOString();
     for (const p of CANONICAL_PHASES) {
@@ -584,7 +633,7 @@ export default async function (req: Request): Promise<Response> {
               hermes_error: statusData?.error || `Hermes returned partial results (${hermesStatus}); saved results require investigator review.`,
               risk_score: persisted.risk_score,
               risk_level: persisted.risk_level,
-              risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
+              risk_factors: buildRiskFactors(hermesFindings, findingTitle),
             },
           }).catch(() => null);
         } else {
@@ -604,9 +653,10 @@ export default async function (req: Request): Promise<Response> {
               ...wf2,
               current_phase: "closed",
               phases: completedPhases,
+              hermes_error: null,
               risk_score: persisted.risk_score,
               risk_level: persisted.risk_level,
-              risk_factors: hermesFindings.map((f) => ({ factor: findingTitle(f), weight: f.risk_score != null ? Math.round(f.risk_score * 100) : 0 })),
+              risk_factors: buildRiskFactors(hermesFindings, findingTitle),
             },
           }).catch(() => null);
         }
