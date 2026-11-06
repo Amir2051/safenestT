@@ -63,6 +63,7 @@ const ORG_ITEMS = {
   team: { id: "team", label: "Team", icon: Users, path: "/Team", glow: "cyan" },
   orgSettings: { id: "org-settings", label: "Organization", icon: Building2, path: "/OrganizationSettings", glow: "cyan" },
   assistant: { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+  subscription: { id: "subscription", label: "Subscription & Pricing", icon: CreditCard, path: "/Subscription", glow: "purple" },
   settings: { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
   help: { id: "help", label: "Help & Support", icon: HelpCircle, path: "/HelpCenter", glow: "blue" },
 };
@@ -78,36 +79,36 @@ const ORG_SECTIONS = {
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.audit, ORG_ITEMS.clientAuth] },
     { label: "Organization", items: [ORG_ITEMS.team, ORG_ITEMS.orgSettings] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   INVESTIGATOR: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   ANALYST: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   CASE_MANAGER: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.investigations, ORG_ITEMS.cases, ORG_ITEMS.caseImport, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports, ORG_ITEMS.clientAuth] },
-    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.assistant, ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   VIEWER: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Investigations", items: [ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.globalSearch] },
     { label: "Case Workspace", items: [ORG_ITEMS.evidence, ORG_ITEMS.findings, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
   AUDITOR: [
     { label: "Overview", items: [ORG_ITEMS.dashboard] },
     { label: "Review", items: [ORG_ITEMS.audit, ORG_ITEMS.cases, ORG_ITEMS.investigations, ORG_ITEMS.evidence, ORG_ITEMS.reports] },
-    { label: "Account", items: [ORG_ITEMS.settings, ORG_ITEMS.help] },
+    { label: "Account", items: [ORG_ITEMS.subscription, ORG_ITEMS.settings, ORG_ITEMS.help] },
   ],
 };
 
@@ -205,6 +206,7 @@ export default function FuturisticSidebar({ user, onLogout, onNavigate }) {
       label: "Account",
       items: [
         { id: "assistant", label: "AI Assistant", icon: Bot, path: "/MiaAssistant", glow: "purple", badge: "AI" },
+        { id: "subscription", label: "Subscription & Pricing", icon: CreditCard, path: "/Subscription", glow: "purple" },
         { id: "settings", label: "Settings", icon: SettingsIcon, path: "/Settings", glow: "gray" },
       ],
     },
