@@ -515,10 +515,17 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
         // automated lookup that returned nothing (empty / not applicable / failed).
         const byId = new Map((ctx.evidence || []).map((e: any) => [e.id, e]));
         const cited = refs.map((id: string) => byId.get(id)).filter(Boolean);
-        const onlyEmptyLookups = cited.length > 0 && cited.length === refs.length && cited.every((e: any) => !evidenceSupports(e));
-        const gated = mapped === "verified" && (refs.length === 0 || onlyEmptyLookups) ? "partially_supported" : mapped;
+        // A finding may stay "verified" ONLY if at least one cited evidence item
+        // actually resolves to stored evidence AND carries real data (a primary
+        // record, or a lookup that returned data). This closes two holes at once:
+        // lookups that ran but returned nothing, and evidence_refs that point at
+        // ids which do not resolve to any stored evidence. Otherwise a
+        // "supported" verdict is recorded as "partially_supported".
+        const hasRealSupport = cited.some((e: any) => evidenceSupports(e));
+        const gated = mapped === "verified" && !hasRealSupport ? "partially_supported" : mapped;
         const gateReason = gated === mapped ? null
           : refs.length === 0 ? "downgraded_to_partially_supported_no_evidence"
+          : cited.length < refs.length ? "downgraded_to_partially_supported_unresolved_evidence_refs"
           : "downgraded_to_partially_supported_lookups_returned_no_data";
         try {
           await base44.entities.InvestigationFinding.update(finding.id, {
