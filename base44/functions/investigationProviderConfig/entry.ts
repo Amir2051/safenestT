@@ -65,11 +65,14 @@ export default async function (req: Request): Promise<Response> {
 
       const health = await base44.functions.invoke("hermesProxy", { action: "health" });
       const body: any = health?.data ?? health;
+      const hm: any = body?.data?.model || {};
       return Response.json({
         ok: body?.ok === true,
         provider: "hermes",
         status: body?.ok === true ? "ok" : (body?.status || "failed"),
         ms: Date.now() - t0,
+        model: hm.model || hm.id || null,
+        model_provider: hm.provider || null,
         error: body?.ok === true ? undefined : body?.error,
       });
     }
