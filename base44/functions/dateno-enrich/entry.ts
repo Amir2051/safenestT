@@ -235,8 +235,42 @@ export default async function (req: Request) {
       corpus.push(singleTarget);
     }
 
+    // Routing guard: Dateno is an open-data DATASET catalog, not an entity/IOC
+    // lookup. Structured indicators (wallets, tx hashes, IPs, emails, phones)
+    // never match a dataset and only produce zero-yield searches, so drop them
+    // here and only query Dateno with name / keyword / domain terms.
+    function isNonDatasetIndicator(v: string): boolean {
+      const s = String(v || "").trim();
+      if (/^0x[0-9a-fA-F]{40}$/.test(s)) return true;                  // ETH wallet
+      if (/^0x[0-9a-fA-F]{64}$/.test(s)) return true;                  // ETH tx hash
+      if (/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(s)) return true; // BTC wallet
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(s)) return true;             // IPv4
+      if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)) return true;          // email
+      if (/^\+?\d[\d\s().-]{6,}$/.test(s)) return true;               // phone
+      return false;
+    }
+    const droppedIndicators = corpus.filter((t) => isNonDatasetIndicator(t));
+    if (droppedIndicators.length) {
+      const kept = corpus.filter((t) => !isNonDatasetIndicator(t));
+      corpus.length = 0;
+      corpus.push(...kept);
+    }
+
     if (corpus.length === 0) {
-      return Response.json({ ok: true, data: { total: 0, hits: [], warnings: [] } });
+      return Response.json({
+        ok: true,
+        configured: true,
+        provider: "dateno",
+        data: {
+          total: 0,
+          hits: [],
+          skipped: true,
+          reason: droppedIndicators.length
+            ? "Dateno is a public-dataset catalog, not an IOC/entity lookup. The supplied targets were structured indicators (wallet/tx/IP/email/phone) that cannot match a dataset, so no search was run."
+            : "No searchable dataset-type term was supplied.",
+          warnings: droppedIndicators.length ? [`Skipped ${droppedIndicators.length} indicator(s) unsuitable for Dateno dataset search.`] : [],
+        },
+      });
     }
 
     // Structured search strategy (deterministic, auditable, no LLM):
