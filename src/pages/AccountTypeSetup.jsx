@@ -22,13 +22,17 @@ export default function AccountTypeSetup() {
     // Never change an existing user's established workspace from a query string.
     if (requestedType && !user.tenant_id && !user.organization_name && !autoHandling) {
       setAutoHandling(true);
-      if (requestedType === "personal") {
-        orgAccess("ensurePersonalTenant")
-          .then(() => window.location.replace("/Dashboard"))
-          .catch((e) => { setError(e?.message || "We couldn't create your personal workspace."); setAutoHandling(false); });
-      } else if (["organization", "individual_investigator"].includes(requestedType)) {
-        window.location.replace(`/OrganizationOnboarding?accountType=${encodeURIComponent(requestedType)}`);
-      }
+      orgAccess("ensurePersonalTenant")
+        .then(() => {
+          if (requestedType === "personal") {
+            window.location.replace("/Dashboard");
+          } else if (["organization", "individual_investigator"].includes(requestedType)) {
+            window.location.replace(`/OrganizationOnboarding?accountType=${encodeURIComponent(requestedType)}`);
+          } else {
+            window.location.replace("/Dashboard");
+          }
+        })
+        .catch((e) => { setError(e?.message || "We couldn't create your personal workspace."); setAutoHandling(false); });
       return;
     }
 
