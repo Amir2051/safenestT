@@ -94,6 +94,9 @@ export default function OrganizationOnboarding() {
     }
     setSubmitting(true);
     try {
+      // Ensure every user has a private personal workspace before any
+      // organization request is recorded. Pending requests never replace it.
+      await orgAccess("ensurePersonalTenant");
       // Access is granted server-side only (orgAccess). Joining does NOT give
       // access to the organization's data until a platform admin verifies the
       // company and an org admin assigns a role.
@@ -348,7 +351,7 @@ function Step2({ mode, setMode, orgName, setOrgName, selectedOrgId, setSelectedO
             />
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">
-            A SafeNestT administrator will verify your company before the organization is activated. You get read-only access until then.
+            Your personal workspace remains available while a SafeNestT administrator verifies the organization. Organization data stays locked until approval.
           </p>
         </div>
       )}
@@ -390,8 +393,8 @@ function Step3({ mode, finalOrgName, finalOrgType, submitting, onBack, onSubmit 
         <h2 className="text-lg font-semibold text-slate-100">Review &amp; Submit</h2>
         <p className="text-slate-500 text-[13px] mt-1">
           {mode === "join"
-            ? "Your join request will be sent for verification. You'll have read-only access until an administrator approves it."
-            : "Your organization request will be sent for company verification. You'll have read-only access until a SafeNestT administrator approves it."}
+            ? "Your join request will be sent for verification. You can keep using your personal workspace while you wait; organization data stays locked until approval."
+            : "Your organization request will be sent for company verification. You can keep using your personal workspace while you wait; the organization activates only after approval."}
         </p>
       </div>
       <div className="rounded-md border border-cyan-500/30 bg-cyan-500/[0.06] p-4 flex items-start gap-3">
