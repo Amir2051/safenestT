@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getEffectiveRole } from "@/lib/organizationRoles";
+import PersonalUserDashboard from "@/components/dashboard/PersonalUserDashboard";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -275,6 +277,10 @@ export default function Dashboard() {
   const bonusMonthsEarned = completedReferrals;
 
   const securityScore = user.risk_score ?? 0;
+
+  if (getEffectiveRole(user) === "REGULAR_USER") {
+    return <PersonalUserDashboard user={user} />;
+  }
 
   return (
     <div
