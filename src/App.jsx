@@ -30,6 +30,7 @@ import OAuthConsent from './pages/OAuthConsent';
 import ClientAuthorizations from './pages/ClientAuthorizations';
 import OrganizationOnboarding from './pages/OrganizationOnboarding';
 import AccountTypeSetup from './pages/AccountTypeSetup';
+import AuthPage from './pages/AuthPage';
 import OrganizationsDirectory from './pages/OrganizationsDirectory';
 import Team from './pages/Team';
 import OrganizationSettings from './pages/OrganizationSettings';
@@ -66,13 +67,10 @@ function RoleHome() {
   return <Navigate to={getHomePath(user)} replace />;
 }
 
-// Stable public entry point for the original Base44-hosted sign-in flow.
+// Branded email/password login and pre-registration account-type selection.
 function LoginRoute() {
-  const { isAuthenticated, navigateToLogin } = useAuth();
-  useEffect(() => {
-    if (!isAuthenticated) navigateToLogin();
-  }, [isAuthenticated, navigateToLogin]);
-  return isAuthenticated ? <Navigate to="/" replace /> : null;
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />;
 }
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
@@ -149,6 +147,8 @@ const AuthenticatedApp = () => {
       <Routes>
         <Route path="/auth/login" element={<LoginRoute />} />
         <Route path="/login" element={<LoginRoute />} />
+        <Route path="/signup" element={<AuthPage />} />
+        <Route path="/register" element={<AuthPage />} />
         <Route path="/" element={<PublicLanding />} />
         <Route path="/TermsAndConditions" element={<PublicLegalLayout><Pages.TermsAndConditions /></PublicLegalLayout>} />
         <Route path="/PrivacyPolicy" element={<PublicLegalLayout><Pages.PrivacyPolicy /></PublicLegalLayout>} />
@@ -174,6 +174,8 @@ const AuthenticatedApp = () => {
       <Routes>
         <Route path="/auth/login" element={<LoginRoute />} />
         <Route path="/login" element={<LoginRoute />} />
+        <Route path="/signup" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/" element={<RoleHome />} />
         {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
