@@ -49,11 +49,36 @@ const TARGET_TYPE_RANK = {
   blockchain_network: 11, narrative: 13, other: 12,
 };
 
+// Reject indicators that are obviously invalid or placeholder so the engine is
+// never asked to investigate junk (e.g. a bare "0x" wallet, a short numeric
+// string, or a domain with no dot). Deliberately conservative — only clearly
+// bad values are dropped, so real non-ETH addresses are never discarded.
+function isPlaceholderIndicator(type: string, v: string): boolean {
+  const s = v.trim();
+  const low = s.toLowerCase();
+  if (!s) return true;
+  if (["0x", "n/a", "na", "none", "null", "unknown", "test", "example", "tbd"].includes(low)) return true;
+  if (type === "wallet_address") {
+    if (/^0x[0-9a-f]*$/i.test(s) && s.length !== 42) return true; // 0x-prefixed must be a full 40-hex ETH address
+    if (/^\d+$/.test(s) && s.length < 20) return true;            // short pure-numeric is not an address
+    if (s.length < 12) return true;
+  }
+  if (type === "transaction_hash") {
+    if (/^0x[0-9a-f]*$/i.test(s) && s.length !== 66) return true; // ETH tx hash is 0x + 64 hex
+    if (s.length < 16) return true;
+  }
+  if ((type === "domain" || type === "url") && !s.includes(".")) return true;
+  if (type === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)) return true;
+  return false;
+}
+
 function makeTarget(type: any, value: any, extra: any = {}) {
   if (!value || typeof value !== "string") return null;
   const v = value.trim();
   if (!v) return null;
-  return { type: type || "other", value: v, ...extra };
+  const t = type || "other";
+  if (isPlaceholderIndicator(t, v)) return null;
+  return { type: t, value: v, ...extra };
 }
 
 function pushUnique(map: Map<string, any>, t: any) {
