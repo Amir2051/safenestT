@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { orgAccess } from "@/lib/orgAccess";
 import SafeNestTMark from "@/components/shared/SafeNestTMark";
@@ -8,18 +8,36 @@ import { ArrowRight, Building2, CheckCircle2, Loader2, ShieldCheck, UserRound } 
 
 export default function AccountTypeSetup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedType = searchParams.get("accountType");
   const { user, isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
   const [creating, setCreating] = useState(false);
+  const [autoHandling, setAutoHandling] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!isLoadingAuth && user?.tenant_id && !user?.organization_name) {
-      navigate("/Dashboard", { replace: true });
+    if (isLoadingAuth || !user) return;
+
+    // OAuth signups return here with the account type selected before redirect.
+    // Never change an existing user's established workspace from a query string.
+    if (requestedType && !user.tenant_id && !user.organization_name && !autoHandling) {
+      setAutoHandling(true);
+      if (requestedType === "personal") {
+        orgAccess("ensurePersonalTenant")
+          .then(() => window.location.replace("/Dashboard"))
+          .catch((e) => { setError(e?.message || "We couldn't create your personal workspace."); setAutoHandling(false); });
+      } else if (["organization", "individual_investigator"].includes(requestedType)) {
+        window.location.replace(`/OrganizationOnboarding?accountType=${encodeURIComponent(requestedType)}`);
+      }
+      return;
     }
-    if (!isLoadingAuth && user?.organization_name) {
+
+    if (user?.tenant_id && !user?.organization_name) {
+      navigate("/Dashboard", { replace: true });
+    } else if (user?.organization_name) {
       navigate("/OrganizationOnboarding", { replace: true });
     }
-  }, [isLoadingAuth, user, navigate]);
+  }, [isLoadingAuth, user, navigate, requestedType, autoHandling]);
 
   const createPersonalWorkspace = async () => {
     setCreating(true);
