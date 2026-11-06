@@ -65,7 +65,8 @@ export default async function (req: Request): Promise<Response> {
 
       const health = await base44.functions.invoke("hermesProxy", { action: "health" });
       const body: any = health?.data ?? health;
-      const hm: any = body?.data?.model || {};
+      const hd: any = body?.data || {};
+      const hm: any = hd.model || {};
       return Response.json({
         ok: body?.ok === true,
         provider: "hermes",
@@ -73,6 +74,11 @@ export default async function (req: Request): Promise<Response> {
         ms: Date.now() - t0,
         model: hm.model || hm.id || null,
         model_provider: hm.provider || null,
+        // Surface the gateway's declared tool inventory + environment so routing
+        // gaps (a target type with no matching tool) are diagnosable without
+        // guessing. Shape varies by gateway build, so check the common keys.
+        tools: hd.tools || hd.available_tools || hd.capabilities || hd.tool_registry || null,
+        environment: hd.environment || hd.env || null,
         error: body?.ok === true ? undefined : body?.error,
       });
     }
