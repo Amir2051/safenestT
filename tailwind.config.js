@@ -20,6 +20,14 @@ module.exports = {
   				cyan: '#00D9FF', magenta: '#FF1493', lime: '#00FF00', navy: '#0A0E27',
   				ink: '#05080b', panel: '#0a0e1a', line: '#1b2338'
   			},
+  			// SafeNestT OS prototype palette — "Hybrid Mission Control".
+  			// Dark graphite foundation, cobalt/cyan accents, restrained amber.
+  			os: {
+  				bg: '#0A0C10', surface: '#0F1319', panel: '#141A22', raised: '#19212B',
+  				line: '#232C38', line2: '#2E3A48', text: '#E7ECF3', muted: '#8A96A7',
+  				cobalt: '#3B82F6', cobalt2: '#1D4ED8', cyan: '#22D3EE', amber: '#F0A73A',
+  				green: '#34C77B', red: '#E5484D', violet: '#8B5CF6'
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

@@ -38,6 +38,7 @@ import OrganizationVerifications from './pages/OrganizationVerifications';
 import HermesSyntheticTest from './pages/HermesSyntheticTest';
 import InvestigationProviders from './pages/InvestigationProviders';
 import { getHomePath, isOrgMember, isPlatformAdmin } from '@/lib/organizationRoles';
+import OsRoot from '@/os/OsRoot';
 
 // Personal-protection (consumer) pages. Hidden from organization staff, who
 // get the investigation workspace instead; individual clients and platform
@@ -112,6 +113,13 @@ const AuthenticatedApp = () => {
   // can set up their organization before entering the workspace.
   if (typeof window !== 'undefined' && window.location.pathname === '/OrganizationOnboarding') {
     return <OrganizationOnboarding />;
+  }
+
+  // SafeNestT OS prototype — an isolated interface shell mounted under /os.
+  // It renders only synthetic in-browser data, sits outside the production
+  // layout, and is never wired to entities, functions or providers.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/os') && isAuthenticated) {
+    return <OsRoot />;
   }
 
   // New users choose an account type once. Existing personal workspaces are
