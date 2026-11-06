@@ -126,10 +126,11 @@ Deno.serve(async (req) => {
         const orgName = clean(body.orgName);
         const orgType = ORG_TYPES.includes(body.orgType) ? body.orgType : "other";
         if (!orgName) return fail(400, "Organization name is required.");
+        if (!me.tenant_id) return fail(409, "Create your personal workspace before requesting an organization.");
         const tenant = await sr.Tenant.create({
           name: orgName, organization_type: orgType,
           owner_user_id: me.id, owner_email: me.email,
-          plan: "team", status: "pending_verification", members: [me.id],
+          plan: "team", status: "pending_verification", members: [],
           requested_by_user_id: me.id, requested_at: now(),
         });
         await sr.TenantMembership.create({
@@ -138,11 +139,9 @@ Deno.serve(async (req) => {
           role: "owner", organization_role: "ORG_ADMIN", status: "pending_verification",
           requested_org_name: orgName, requested_org_type: orgType, requested_at: now(), joined_at: now(),
         });
-        // Their own (empty, pending) tenant — safe to set; read-only until verified.
-        await sr.User.update(me.id, {
-          organization_name: orgName, organization_type: orgType,
-          organization_role: "VIEWER", tenant_id: tenant.id, tenant_role: "owner", account_status: "pending",
-        });
+        // Keep the user's personal workspace and profile active while the
+        // organization request is pending. The pending membership grants no
+        // organization data access. Approval activates the org membership.
         await audit("org_requested", { tenant_id: tenant.id, org_name: orgName });
         return ok({ tenant_id: tenant.id });
       }
@@ -161,11 +160,9 @@ Deno.serve(async (req) => {
             requested_at: now(), joined_at: now(),
           });
         }
-        // Deliberately NOT setting tenant_id: no access to the org's data until approved.
-        await sr.User.update(me.id, {
-          organization_name: tenant.name, organization_type: tenant.organization_type || null,
-          organization_role: "VIEWER", account_status: "pending",
-        });
+        // Keep the user's personal workspace and role unchanged while the
+        // join request is pending. No organization profile or data access is
+        // activated until verification and role assignment are complete.
         await audit("join_requested", { tenant_id: tenant.id });
         return ok({ pending: true });
       }
