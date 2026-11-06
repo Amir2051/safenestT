@@ -29,43 +29,41 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const customerEmail = session.customer_email || session.customer_details?.email;
-        
-        if (!customerEmail) break;
+        const subscription = session.subscription
+          ? await stripe.subscriptions.retrieve(session.subscription)
+          : null;
 
-        const users = await base44.asServiceRole.entities.User.filter({ email: customerEmail });
-        if (users.length === 0) break;
-
-        const user = users[0];
-        let planName = session.metadata?.plan || 'basic';
-
-        // Check for Cyber Monday Deal (Amount: 24999 cents)
-        if (session.amount_total === 24999) {
-          planName = 'premium';
+        let user = null;
+        if (session.metadata?.user_id) {
+          user = await base44.asServiceRole.entities.User.get(session.metadata.user_id).catch(() => null);
         }
+        if (!user && customerEmail) {
+          const users = await base44.asServiceRole.entities.User.filter({ email: customerEmail });
+          user = users[0] || null;
+        }
+        if (!user) break;
+
+        const subscriptionPrice = subscription?.items?.data?.[0]?.price;
+        const planName =
+          session.metadata?.plan ||
+          subscription?.metadata?.plan ||
+          subscriptionPrice?.metadata?.plan ||
+          'individual';
 
         await base44.asServiceRole.entities.User.update(user.id, {
           has_payment_method: true,
           stripe_customer_id: session.customer,
           stripe_subscription_id: session.subscription,
           subscription_plan: planName,
-          subscription_status: 'active',
-          billing_cycle_anchor: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          subscription_status: subscription?.status || 'active',
+          billing_cycle_anchor: subscription?.current_period_end
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null
         });
-
-        // Send welcome notification
-        const notification = {
-          id: crypto.randomUUID(),
-          title: '🎉 Payment Method Added!',
-          message: `Your ${planName} plan will activate after your 14-day free trial ends.`,
-          type: 'premium',
-          priority: 'normal',
-          timestamp: Date.now(),
-          read: false
-        };
 
         await base44.asServiceRole.entities.EmailNotification.create({
           recipient: customerEmail,
-          subject: 'Payment Method Added Successfully',
+          subject: 'Your SafeNestT subscription is active',
           template_name: 'subscription_confirmed',
           status: 'pending',
           metadata: {
@@ -142,7 +140,7 @@ Deno.serve(async (req) => {
           message: 'Your payment method was declined. Update it now to keep your protection active.',
           type: 'premium',
           priority: 'high',
-          actionUrl: window.location.origin + '/Billing',
+          actionUrl: '/Billing',
           timestamp: Date.now(),
           read: false
         };
@@ -170,7 +168,7 @@ Deno.serve(async (req) => {
 
         await base44.asServiceRole.entities.User.update(user.id, {
           subscription_status: 'canceled',
-          subscription_plan: 'free'
+          subscription_plan: 'inactive'
         });
 
         break;
