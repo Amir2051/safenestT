@@ -1,4 +1,5 @@
 import './App.css'
+import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -63,6 +64,15 @@ function RoleHome() {
   const { user } = useAuth();
   if (!user) return null;
   return <Navigate to={getHomePath(user)} replace />;
+}
+
+// Stable public entry point for the original Base44-hosted sign-in flow.
+function LoginRoute() {
+  const { isAuthenticated, navigateToLogin } = useAuth();
+  useEffect(() => {
+    if (!isAuthenticated) navigateToLogin();
+  }, [isAuthenticated, navigateToLogin]);
+  return isAuthenticated ? <Navigate to="/" replace /> : null;
 }
 
 // Pages rendered through the pagesConfig loop that must be admin-only.
@@ -137,6 +147,8 @@ const AuthenticatedApp = () => {
   if (!isAuthenticated && !isLoadingAuth && !isLoadingPublicSettings) {
     return (
       <Routes>
+        <Route path="/auth/login" element={<LoginRoute />} />
+        <Route path="/login" element={<LoginRoute />} />
         <Route path="/" element={<PublicLanding />} />
         <Route path="/TermsAndConditions" element={<PublicLegalLayout><Pages.TermsAndConditions /></PublicLegalLayout>} />
         <Route path="/PrivacyPolicy" element={<PublicLegalLayout><Pages.PrivacyPolicy /></PublicLegalLayout>} />
@@ -160,6 +172,8 @@ const AuthenticatedApp = () => {
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
+        <Route path="/auth/login" element={<LoginRoute />} />
+        <Route path="/login" element={<LoginRoute />} />
         <Route path="/" element={<RoleHome />} />
         {/* Consolidated admin routes — legacy duplicate pages redirect to canonical locations */}
         <Route path="/AdminDashboard" element={<Navigate to="/OperationsDashboard" replace />} />
