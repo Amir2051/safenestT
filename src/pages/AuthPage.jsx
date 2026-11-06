@@ -28,8 +28,10 @@ export default function AuthPage() {
   const [notice, setNotice] = useState("");
 
   const finishAccountSetup = async (type) => {
+    // Every new user receives a private personal workspace first. An
+    // organization request is separate and remains pending until approval.
+    await orgAccess("ensurePersonalTenant");
     if (type === "personal") {
-      await orgAccess("ensurePersonalTenant");
       window.location.replace("/Dashboard");
       return;
     }
