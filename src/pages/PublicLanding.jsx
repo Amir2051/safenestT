@@ -1,6 +1,4 @@
 import React from "react";
-import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Lock, ArrowRight, FileSearch, Wallet, Network,
