@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { orgAccess } from "@/lib/orgAccess";
 import SafeNestTMark from "@/components/shared/SafeNestTMark";
@@ -12,7 +12,6 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function AuthPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const initialMode = location.pathname.toLowerCase().includes("signup") || location.pathname.toLowerCase().includes("register") ? "signup" : "login";
