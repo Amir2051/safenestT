@@ -696,6 +696,9 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
     risk_score: risk?.risk_score,
     risk_level: risk?.risk_level,
     risk_factors: risk?.risk_factors,
+    ai_opinion: risk?.ai_opinion,
+    ai_contribution: risk?.ai_contribution,
+    review_status: risk?.review_status,
   });
 
   return {
