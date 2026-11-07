@@ -1,3 +1,4 @@
+import { matchLoss } from "./lossMatch.ts";
 /**
  * On-chain lookups for MIA (Etherscan API V2, Ethereum mainnet, chainid=1).
  * Pulls real transaction history for every Ethereum wallet on the case and
@@ -96,6 +97,26 @@ export async function runOnchainEvidence(base44: any, caseItem: any, targets: an
     };
     const saved = await base44.entities.EvidenceItem.create(rec).catch(() => null);
     out.push({ ...(saved || rec), _result: `${r.state}: ${r.summary}` });
+
+    // Multi-pass loss matching (proposal for human review).
+    const loss = Number(caseItem?.amount_stolen_usd);
+    if (r.state === "data" && Number.isFinite(loss) && loss > 0) {
+      const m = await matchLoss(w, loss, caseItem?.incident_date).catch((e: any) => ({ state: "error", summary: String(e?.message || e), data: null }));
+      const mt = new Date().toISOString(); const mj = m.data ? JSON.stringify(m.data) : "";
+      const mrec = {
+        tenant_id: caseItem.tenant_id, case_id: caseItem.id,
+        filename: `loss_match_${w.slice(0, 10)}.json`, file_url: `etherscan://ethereum/${w}#loss-match`,
+        evidence_type: "blockchain", source: "onchain_lookup",
+        uploaded_by: user?.email || "mia_multi_agent", uploaded_by_name: "MIA loss matching",
+        uploaded_at: mt, file_hash: `lossmatch:${w}:${mt.slice(0, 10)}`,
+        description: `Loss matching (proposal, requires investigator review) · wallet ${w} · ${m.summary}`,
+        tags: ["etherscan", "loss_match", "review_required"], processing_status: "review_required",
+        detected_targets: [{ type: "wallet_address", value: w }], original_import: false,
+        tool_result: { capability: "mia.loss_match", target: w, target_kind: "wallet_address", status: m.state === "error" ? "error" : "success", state: m.state, summary: m.summary, record_count: m.data?.best_match?.payments?.length ?? 0, retrieved_at: mt, data_json: mj.slice(0, 20000), data_bytes: mj.length, truncated: mj.length > 20000, source_reference: `https://etherscan.io/address/${w}` },
+      };
+      const ms = await base44.entities.EvidenceItem.create(mrec).catch(() => null);
+      out.push({ ...(ms || mrec), _result: `${m.state}: ${m.summary}` });
+    }
   }
   return out;
 }
