@@ -573,7 +573,17 @@ export function buildCaseReport(input = {}) {
     findings: included,
     excluded_findings: excluded,
     reality_check_note: str(out("reality_check").notes),
-    risk: riskScore == null ? null : { score: riskScore, level: riskLevel, factors: riskFactors },
+    risk: riskScore == null ? null : {
+      score: riskScore, level: riskLevel, factors: riskFactors,
+      ai: isObj(wf.risk_ai_opinion) ? {
+        score: Number.isFinite(Number(wf.risk_ai_opinion.score)) ? Number(wf.risk_ai_opinion.score) : null,
+        level: str(wf.risk_ai_opinion.level), reasoning: str(wf.risk_ai_opinion.reasoning),
+        drivers: arr(wf.risk_ai_opinion.drivers).map(str).filter(Boolean),
+        gaps: arr(wf.risk_ai_opinion.data_gaps).map(str).filter(Boolean),
+        contribution: Number.isFinite(Number(wf.risk_ai_contribution)) ? Number(wf.risk_ai_contribution) : null,
+      } : null,
+      review_status: str(wf.risk_review_status) || null,
+    },
     evidence: evOrdered,
     shared_query_target: sharedQueryTarget,
     gaps,

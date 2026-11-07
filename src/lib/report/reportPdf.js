@@ -280,7 +280,14 @@ export function renderReportPdf(model, { integrity = "" } = {}) {
     doc.setFillColor(...C.zebra); doc.roundedRect(PAGE.m, y, W, 6, 3, 3, "F");
     doc.setFillColor(...col); doc.roundedRect(PAGE.m, y, Math.max(6, (W * model.risk.score) / 100), 6, 3, 3, "F");
     y += 20;
-    para("The score is computed deterministically from the evidence-checked findings, the reported loss and the fraud type. No AI model is involved in scoring.", { size: 8.5, color: C.muted });
+    para(`Baseline score is rule-based (findings, reported loss, fraud type).${model.risk.ai ? " MIA's independent opinion follows; the final score is set by investigator review." : " No AI opinion was recorded for this run."}`, { size: 8.5, color: C.muted });
+    if (model.risk.ai) {
+      const a = model.risk.ai;
+      para(`MIA opinion: ${a.score ?? "—"}/100${a.level ? ` (${a.level})` : ""}${a.contribution != null ? ` · ${a.contribution >= 0 ? "+" : ""}${a.contribution} vs baseline` : ""}${model.risk.review_status === "pending_review" ? " · pending investigator review" : ""}`, { size: 9 });
+      if (a.reasoning) para(a.reasoning, { size: 8.5 });
+      if (a.drivers.length) para(`Drivers: ${a.drivers.join("; ")}`, { size: 8.5, color: C.muted });
+      if (a.gaps.length) para(`Data gaps: ${a.gaps.join("; ")}`, { size: 8.5, color: C.muted });
+    }
     table([
       { header: "Contributing factor", width: 0.8, key: "factor" },
       { header: "Points", width: 0.2, render: (r) => `+${r.weight}`, bold: true, color: () => C.ink },

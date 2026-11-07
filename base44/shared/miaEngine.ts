@@ -737,7 +737,7 @@ async function persistWorkflow(base44: any, caseItem: any, phases: any, status: 
       mia_status: status,
       mia_error: status === "failed" ? (extra?.error || null) : null,
       mia_updated_at: new Date().toISOString(),
-      ...(extra?.risk_score != null ? { risk_score: extra.risk_score, risk_level: extra.risk_level, risk_factors: extra.risk_factors || [] } : {}),
+      ...(extra?.risk_score != null ? { risk_score: extra.risk_score, risk_level: extra.risk_level, risk_factors: extra.risk_factors || [], risk_ai_opinion: extra.ai_opinion || null, risk_ai_contribution: extra.ai_contribution ?? null, risk_review_status: extra.review_status || null } : {}),
     },
     investigation_progress: progress,
     last_activity: new Date().toISOString(),

@@ -198,7 +198,15 @@ export default function CaseReportDocument({ model, integrity = "", draft = true
               <span className={`ml-2 border rounded px-2 py-0.5 text-[11px] font-bold ${RISK_TXT[model.risk.level]} border-current`}>{model.risk.level.toUpperCase()} RISK</span>
             </div>
             <div className="h-1.5 bg-slate-100 rounded-full mt-3 overflow-hidden"><div className={`h-full ${RISK_BAR[model.risk.level]}`} style={{ width: `${Math.max(2, model.risk.score)}%` }} /></div>
-            <p className="text-[12px] text-slate-500 mt-3 mb-3">The score is computed deterministically from the evidence-checked findings, the reported loss and the fraud type. No AI model is involved in scoring.</p>
+            <p className="text-[12px] text-slate-500 mt-3 mb-3">Baseline score is rule-based (findings, reported loss, fraud type).{model.risk.ai ? " MIA's independent opinion is shown below with its reasoning; the final score is set by investigator review." : " No AI opinion was recorded for this run."}</p>
+            {model.risk.ai && (
+              <div className="border border-slate-200 rounded p-3 mb-3 text-[12px]">
+                <p className="font-semibold text-slate-900">MIA opinion: {model.risk.ai.score ?? "—"}/100 {model.risk.ai.level ? `(${model.risk.ai.level})` : ""}{model.risk.ai.contribution != null ? ` · ${model.risk.ai.contribution >= 0 ? "+" : ""}${model.risk.ai.contribution} vs baseline` : ""}{model.risk.review_status === "pending_review" ? " · pending investigator review" : ""}</p>
+                {model.risk.ai.reasoning && <p className="text-slate-700 mt-1">{model.risk.ai.reasoning}</p>}
+                {model.risk.ai.drivers.length > 0 && <p className="text-slate-600 mt-1">Drivers: {model.risk.ai.drivers.join("; ")}</p>}
+                {model.risk.ai.gaps.length > 0 && <p className="text-amber-700 mt-1">Data gaps: {model.risk.ai.gaps.join("; ")}</p>}
+              </div>
+            )}
             <Table cols={[{ header: "Contributing factor", key: "factor" }, { header: "Points", width: "15%", render: (r) => `+${r.weight}`, className: "font-bold text-slate-900" }]} rows={model.risk.factors} />
           </Section>
         )}
