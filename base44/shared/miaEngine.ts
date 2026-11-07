@@ -262,11 +262,11 @@ function buildDossier(caseItem: any, ctx: any, findings: any[]) {
         : "No evidence items are attached to this case.",
     },
     {
-      title: "Verified Findings",
+      title: "AI-Supported Findings (pending investigator review)",
       classification: "EVIDENCE",
       content: eligible.filter((f) => f.status === "verified").length
         ? eligible.filter((f) => f.status === "verified").map((f) => `${f.title}: ${truncate(f.description, 600)}`).join(" ")
-        : "No findings were fully verified by the reality check.",
+        : "No findings were supported by the evidence in the AI reality check.",
     },
   ];
 
@@ -546,7 +546,10 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
           : "downgraded_to_partially_supported_lookups_returned_no_data";
         try {
           await base44.entities.InvestigationFinding.update(finding.id, {
-            status: gated,
+            // Human-in-the-loop: an AI "supported" verdict queues the finding for
+            // investigator review; only a human can mark it verified.
+            status: gated === "verified" ? "under_review" : gated,
+            ai_verdict: gated,
             reality_check: {
               status: gated,
               verdict,
@@ -621,12 +624,39 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
     }
   }
 
-  // ── Phase: risk (deterministic) ────────────────────────────────────────────
+  // ── Phase: risk (baseline + AI opinion) ────────────────────────────────────────────
   let risk: any = null;
   {
-    const run = await recordRun(base44, { ...runBase, phase: "risk", status: "running", started_at: new Date().toISOString(), prompt: "(deterministic — no LLM call)" });
+    const run = await recordRun(base44, { ...runBase, phase: "risk", status: "running", started_at: new Date().toISOString(), prompt: "(rule-based baseline + MIA risk opinion)" });
     const p0 = Date.now();
-    risk = computeRisk(caseItem, createdFindings);
+    const baseline = computeRisk(caseItem, createdFindings);
+    let ai: any = null;
+    try {
+      ai = await askModel(base44,
+        `${MIA_PERSONA}\n\nRISK OPINION. A rule-based baseline scored this case ${baseline.risk_score}/100 (${baseline.risk_level}) ` +
+        `from: ${JSON.stringify(baseline.risk_factors)}. Give YOUR independent risk score 0-100 with reasoning. ` +
+        `Base it only on findings and evidence below; cite evidence ids. Name what the baseline misses or overstates, ` +
+        `and list the data gaps that limit confidence. Do not invent facts.\n\n` +
+        `FINDINGS:\n${JSON.stringify(createdFindings.map((f: any) => ({ id: f.id, title: f.title, severity: f.severity, ai_status: f.status })), null, 2)}\n\n${contextBlock(caseItem, ctx)}`,
+        { type: "object", properties: {
+          score: { type: "number" }, level: { type: "string", enum: ["low", "medium", "high", "critical"] },
+          reasoning: { type: "string" }, drivers: { type: "array", items: { type: "string" } },
+          baseline_critique: { type: "string" }, data_gaps: { type: "array", items: { type: "string" } },
+          evidence_ids: { type: "array", items: { type: "string" } },
+        }, required: ["score", "level", "reasoning"] }, "mia:risk_opinion");
+      agentsRun.push("mia_risk_opinion");
+    } catch (e: any) {
+      agentsFailed.push({ agent: "mia_risk_opinion", error: truncate(e?.message || e, 300) });
+    }
+    const aiScore = ai && Number.isFinite(Number(ai.score)) ? Math.max(0, Math.min(100, Math.round(Number(ai.score)))) : null;
+    risk = {
+      ...baseline,
+      baseline_score: baseline.risk_score,
+      ai_opinion: ai ? { score: aiScore, level: ai.level, reasoning: truncate(ai.reasoning, 2000), drivers: ai.drivers || [], baseline_critique: truncate(ai.baseline_critique, 1000), data_gaps: ai.data_gaps || [], evidence_ids: ai.evidence_ids || [] } : null,
+      ai_contribution: aiScore != null ? aiScore - baseline.risk_score : null,
+      review_status: "pending_review",
+      summary: `Baseline ${baseline.risk_score}/100 (rule-based)` + (aiScore != null ? `; MIA opinion ${aiScore}/100 (${ai.level}), ${aiScore - baseline.risk_score >= 0 ? "+" : ""}${aiScore - baseline.risk_score} vs baseline` : "; MIA opinion unavailable") + `. Final score set by investigator review.`,
+    };
     phases.risk = { status: "completed", completed_at: new Date().toISOString(), output: risk };
     persisted.risk_score = risk.risk_score;
     persisted.risk_level = risk.risk_level;
