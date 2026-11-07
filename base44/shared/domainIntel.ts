@@ -34,6 +34,7 @@ async function j(url: string, init?: RequestInit, ms = 15000) {
 
 async function rdap(d: string) {
   const r = await j(`https://rdap.org/domain/${d}`);
+  if (r.status === 404 && /No RDAP service/i.test(JSON.stringify(r.body || ""))) return { state: "not_applicable", summary: `Registry for .${d.split(".").pop()} offers no public RDAP; WHOIS history needs a WHOIS provider`, data: null };
   if (r.status === 404) return { state: "empty", summary: `No WHOIS/RDAP record for ${d} (domain may be expired or unregistered)`, data: null };
   if (!r.ok || !r.body) return { state: "error", summary: `RDAP lookup failed (${r.status || (r as any).err})`, data: null };
   const ev = Object.fromEntries((r.body.events || []).map((e: any) => [e.eventAction, e.eventDate]));
