@@ -8,12 +8,7 @@
  * Pass 5: flag address-poisoning (dust from look-alike addresses).
  * Output is a proposal for human review, never an established fact.
  */
-const V2 = "https://api.etherscan.io/v2/api";
-
-async function es(params: Record<string, string>, key: string) {
-  const r = await fetch(`${V2}?${new URLSearchParams({ chainid: "1", ...params, apikey: key })}`).catch(() => null);
-  return r ? await r.json().catch(() => ({})) : {};
-}
+import { esCall } from "./etherscanClient.ts";
 
 async function dailyPrices(fromSec: number, toSec: number): Promise<Record<string, number>> {
   const r = await fetch(`https://api.coingecko.com/api/v3/coins/ethereum/market_chart/range?vs_currency=usd&from=${fromSec - 86400}&to=${toSec + 86400}`).catch(() => null);
@@ -29,10 +24,14 @@ export async function matchLoss(address: string, lossUsd: number, incidentDate?:
   const key = Deno.env.get("ETHERSCAN_API_KEY");
   if (!key) return { state: "error", summary: "ETHERSCAN_API_KEY is not configured", data: null };
   const a = address.toLowerCase();
-  const [n, i] = await Promise.all([
-    es({ module: "account", action: "txlist", address: a, startblock: "0", endblock: "99999999", page: "1", offset: "1000", sort: "asc" }, key),
-    es({ module: "account", action: "txlistinternal", address: a, startblock: "0", endblock: "99999999", page: "1", offset: "1000", sort: "asc" }, key),
-  ]);
+  // A failed Etherscan call must surface as an error, never as "no transactions".
+  let n: any, i: any;
+  try {
+    n = await esCall({ module: "account", action: "txlist", address: a, startblock: "0", endblock: "99999999", page: "1", offset: "1000", sort: "asc" }, key);
+    i = await esCall({ module: "account", action: "txlistinternal", address: a, startblock: "0", endblock: "99999999", page: "1", offset: "1000", sort: "asc" }, key);
+  } catch (e: any) {
+    return { state: "error", summary: `Etherscan failed during loss matching: ${e?.message || e}`, data: null };
+  }
   const norm = (Array.isArray(n?.result) ? n.result : []).map((t: any) => ({ ...t, kind: "normal" }));
   const intl = (Array.isArray(i?.result) ? i.result : []).map((t: any) => ({ ...t, kind: "internal" }));
   const txs = [...norm, ...intl].filter((t: any) => t.isError !== "1")

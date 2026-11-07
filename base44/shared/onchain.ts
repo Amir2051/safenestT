@@ -1,4 +1,5 @@
 import { matchLoss } from "./lossMatch.ts";
+import { esCall } from "./etherscanClient.ts";
 /**
  * On-chain lookups for MIA (Etherscan API V2, Ethereum mainnet, chainid=1).
  * Pulls real transaction history for every Ethereum wallet on the case and
@@ -19,51 +20,60 @@ export function collectEthWallets(caseItem: any, targets: any[] = []): string[] 
   return [...out].slice(0, 5);
 }
 
-async function call(params: Record<string, string>, key: string) {
-  const qs = new URLSearchParams({ chainid: "1", ...params, apikey: key });
-  const res = await fetch(`${V2}?${qs}`);
-  const body = await res.json().catch(() => ({}));
-  return body;
-}
+const MAX_TX = 1000; // Etherscan page cap; beyond this totals are flagged as partial.
 
 export async function lookupWallet(address: string) {
   const key = Deno.env.get("ETHERSCAN_API_KEY");
   if (!key) return { state: "error", summary: "ETHERSCAN_API_KEY is not configured", data: null };
   try {
-    const [bal, txs, toks] = await Promise.all([
-      call({ module: "account", action: "balance", address, tag: "latest" }, key),
-      call({ module: "account", action: "txlist", address, startblock: "0", endblock: "99999999", page: "1", offset: "200", sort: "desc" }, key),
-      call({ module: "account", action: "tokentx", address, page: "1", offset: "100", sort: "desc" }, key),
-    ]);
-    const apiErr = [bal, txs, toks].find((b) => b?.status === "0" && typeof b?.result === "string" && !/no transactions/i.test(b?.message + b?.result));
-    if (apiErr) return { state: "error", summary: `Etherscan error: ${apiErr.result || apiErr.message}`, data: null };
-    const list = Array.isArray(txs?.result) ? txs.result : [];
-    const tokens = Array.isArray(toks?.result) ? toks.result : [];
+    // Sequential through the shared throttled client: near-simultaneous calls trip the free-tier rate limit.
+    const bal = await esCall({ module: "account", action: "balance", address, tag: "latest" }, key);
+    const txs = await esCall({ module: "account", action: "txlist", address, startblock: "0", endblock: "99999999", page: "1", offset: String(MAX_TX), sort: "desc" }, key);
+    // Internal transfers (contract payouts, routers, exchanges) are real inbound/outbound ETH that txlist never shows.
+    const itx = await esCall({ module: "account", action: "txlistinternal", address, startblock: "0", endblock: "99999999", page: "1", offset: String(MAX_TX), sort: "desc" }, key);
+    const toks = await esCall({ module: "account", action: "tokentx", address, page: "1", offset: "100", sort: "desc" }, key);
+
+    const normalAll: any[] = Array.isArray(txs?.result) ? txs.result : [];
+    const internalAll: any[] = Array.isArray(itx?.result) ? itx.result : [];
+    const tokens: any[] = Array.isArray(toks?.result) ? toks.result : [];
+    const ok = (t: any) => t?.isError !== "1"; // failed transactions move no ETH
+    const failed = normalAll.filter((t) => !ok(t)).length;
+    const normal = normalAll.filter(ok);
+    const internal = internalAll.filter(ok);
     const a = address.toLowerCase();
-    const inbound = list.filter((t: any) => String(t.to).toLowerCase() === a);
-    const outbound = list.filter((t: any) => String(t.from).toLowerCase() === a);
-    const sum = (xs: any[]) => xs.reduce((s, t) => s + Number(t.value || 0) / 1e18, 0);
+    const val = (t: any) => Number(t.value || 0) / 1e18;
+    const all = [...normal, ...internal];
+    const inbound = all.filter((t) => String(t.to).toLowerCase() === a);
+    const outbound = all.filter((t) => String(t.from).toLowerCase() === a);
+    const inboundInternal = internal.filter((t) => String(t.to).toLowerCase() === a);
+    const sum = (xs: any[]) => xs.reduce((s, t) => s + val(t), 0);
     const top = (xs: any[], k: string) => {
       const m: Record<string, number> = {};
       for (const t of xs) m[String(t[k]).toLowerCase()] = (m[String(t[k]).toLowerCase()] || 0) + 1;
       return Object.entries(m).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([addr, n]) => ({ addr, n }));
     };
+    const truncated = normalAll.length >= MAX_TX || internalAll.length >= MAX_TX;
+    const stamps = [...normalAll, ...internalAll].map((t) => Number(t.timeStamp)).filter((n) => Number.isFinite(n) && n > 0);
     const balance = Number(bal?.result || 0) / 1e18;
     const data = {
       address, chain: "ethereum", balance_eth: Number(balance.toFixed(6)),
-      tx_count: list.length, inbound_count: inbound.length, outbound_count: outbound.length,
+      tx_count: normalAll.length, failed_tx_count: failed, internal_tx_count: internalAll.length,
+      inbound_count: inbound.length, inbound_internal_count: inboundInternal.length, outbound_count: outbound.length,
       eth_in: Number(sum(inbound).toFixed(6)), eth_out: Number(sum(outbound).toFixed(6)),
-      first_seen: list.length ? new Date(Number(list[list.length - 1].timeStamp) * 1000).toISOString() : null,
-      last_seen: list.length ? new Date(Number(list[0].timeStamp) * 1000).toISOString() : null,
+      eth_in_internal: Number(sum(inboundInternal).toFixed(6)),
+      history_truncated: truncated,
+      first_seen: stamps.length ? new Date(Math.min(...stamps) * 1000).toISOString() : null,
+      last_seen: stamps.length ? new Date(Math.max(...stamps) * 1000).toISOString() : null,
       top_senders: top(inbound, "from"), top_recipients: top(outbound, "to"),
       token_transfers: tokens.length,
       tokens: [...new Set(tokens.map((t: any) => t.tokenSymbol))].slice(0, 10),
-      recent: list.slice(0, 15).map((t: any) => ({ hash: t.hash, time: new Date(Number(t.timeStamp) * 1000).toISOString(), from: t.from, to: t.to, eth: Number(t.value) / 1e18 })),
+      recent: normalAll.slice(0, 15).map((t: any) => ({ hash: t.hash, time: new Date(Number(t.timeStamp) * 1000).toISOString(), from: t.from, to: t.to, eth: val(t) })),
+      recent_internal: internalAll.slice(0, 10).map((t: any) => ({ hash: t.hash, time: new Date(Number(t.timeStamp) * 1000).toISOString(), from: t.from, to: t.to, eth: val(t) })),
     };
-    if (!list.length && !tokens.length) return { state: "empty", summary: `No on-chain transactions found for ${address}`, data };
+    if (!normalAll.length && !internalAll.length && !tokens.length) return { state: "empty", summary: `No on-chain transactions found for ${address}`, data };
     return {
       state: "data",
-      summary: `${list.length} ETH tx (${inbound.length} in / ${outbound.length} out, ${data.eth_in} ETH in, ${data.eth_out} ETH out), ${tokens.length} token transfers, balance ${data.balance_eth} ETH, active ${data.first_seen?.slice(0,10)} to ${data.last_seen?.slice(0,10)}`,
+      summary: `${normalAll.length} ETH tx${failed ? ` (${failed} failed)` : ""} + ${internalAll.length} internal transfers (${inbound.length} in / ${outbound.length} out, ${data.eth_in} ETH in incl. ${data.eth_in_internal} internal, ${data.eth_out} ETH out), ${tokens.length} token transfers, balance ${data.balance_eth} ETH, active ${data.first_seen?.slice(0, 10)} to ${data.last_seen?.slice(0, 10)}${truncated ? " [history truncated at " + MAX_TX + "; totals partial]" : ""}`,
       data,
     };
   } catch (e: any) {
