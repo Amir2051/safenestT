@@ -676,7 +676,7 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
       status: "generated",
       generated_by: "ai_run",
       generated_date: new Date().toISOString(),
-      content: { ...dossier, provider: MIA_PROVIDER, risk_score: risk.risk_score, risk_level: risk.risk_level },
+      content: { ...dossier, provider: MIA_PROVIDER, risk_score: risk.risk_score, risk_level: risk.risk_level, risk_assessment: risk },
       sections: dossier.sections,
       conclusion: dossier.conclusion,
       recommended_actions: dossier.recommended_actions,
