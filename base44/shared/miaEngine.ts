@@ -2,6 +2,7 @@ import { MIA_PERSONA, MIA_SPECIALISTS } from "./miaAgents.ts";
 import { evidenceResultNote } from "./toolResult.ts";
 import { runOnchainEvidence } from "./onchain.ts";
 import { runDomainEvidence } from "./domainIntel.ts";
+import { runIdentityEvidence } from "./identityIntel.ts";
 
 /**
  * MIA Multi-Agent investigation engine (server-side).
@@ -349,7 +350,9 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
   const onchain = await runOnchainEvidence(base44, caseItem, ctx.targets, user).catch(() => []);
   // Domain intelligence, routed by indicator type (domains only).
   const domainEv = await runDomainEvidence(base44, caseItem, ctx.targets, user).catch(() => []);
-  ctx.evidence = [...onchain, ...domainEv, ...ctx.evidence];
+  // Breach-data search (Dehashed): emails, domains, names, phones only.
+  const identityEv = await runIdentityEvidence(base44, caseItem, ctx.targets, user).catch(() => []);
+  ctx.evidence = [...onchain, ...domainEv, ...identityEv, ...ctx.evidence];
   const phases: Record<string, any> = {};
   MIA_PHASES.forEach((p) => { phases[p] = { status: "pending" }; });
 
