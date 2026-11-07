@@ -19,16 +19,17 @@ Deno.serve(async (req) => {
   if (!API_KEY) {
     return Response.json({ error: 'Etherscan API key not configured. Set ETHERSCAN_API_KEY environment variable.' }, { status: 503 });
   }
-  const BASE_URL = 'https://api.etherscan.io/api';
+  // Etherscan API V2 (V1 is retired). chainid=1 = Ethereum mainnet.
+  const BASE_URL = 'https://api.etherscan.io/v2/api';
 
   try {
     // Fetch data in parallel
     // We fetch: Balance, Normal Tx, ERC20 Tx, ERC721 Tx
     const [balanceRes, txRes, tokenRes, erc721Res] = await Promise.all([
-      fetch(`${BASE_URL}?module=account&action=balance&address=${address}&tag=latest&apikey=${API_KEY}`),
-      fetch(`${BASE_URL}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${API_KEY}`),
-      fetch(`${BASE_URL}?module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc&apikey=${API_KEY}`),
-      fetch(`${BASE_URL}?module=account&action=tokennfttx&address=${address}&page=1&offset=50&sort=desc&apikey=${API_KEY}`)
+      fetch(`${BASE_URL}?chainid=1&module=account&action=balance&address=${address}&tag=latest&apikey=${API_KEY}`),
+      fetch(`${BASE_URL}?chainid=1&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${API_KEY}`),
+      fetch(`${BASE_URL}?chainid=1&module=account&action=tokentx&address=${address}&page=1&offset=50&sort=desc&apikey=${API_KEY}`),
+      fetch(`${BASE_URL}?chainid=1&module=account&action=tokennfttx&address=${address}&page=1&offset=50&sort=desc&apikey=${API_KEY}`)
     ]);
 
     const balanceData = await balanceRes.json();

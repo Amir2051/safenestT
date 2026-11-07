@@ -1,5 +1,6 @@
 import { MIA_PERSONA, MIA_SPECIALISTS } from "./miaAgents.ts";
 import { evidenceResultNote } from "./toolResult.ts";
+import { runOnchainEvidence } from "./onchain.ts";
 
 /**
  * MIA Multi-Agent investigation engine (server-side).
@@ -343,6 +344,9 @@ export async function runMiaInvestigation({ base44, caseItem, user, tenantId }: 
   const startedAt = new Date().toISOString();
   const t0 = Date.now();
   const ctx = await buildContext(base44, caseItem);
+  // Real on-chain history for every Ethereum wallet on the case (Etherscan V2).
+  const onchain = await runOnchainEvidence(base44, caseItem, ctx.targets, user).catch(() => []);
+  ctx.evidence = [...onchain, ...ctx.evidence];
   const phases: Record<string, any> = {};
   MIA_PHASES.forEach((p) => { phases[p] = { status: "pending" }; });
 
