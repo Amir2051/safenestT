@@ -25,18 +25,44 @@ export function collectDomains(caseItem: any, targets: any[] = []): string[] {
   return [...out].slice(0, 4);
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+function retryMs(): number { const raw = Deno.env.get("DOMAIN_RETRY_MS"); const v = raw === undefined || raw === "" ? NaN : Number(raw); return Number.isFinite(v) && v >= 0 ? v : 1500; }
+
+/**
+ * Fetch JSON with one retry on transient failures (429/5xx or a non-JSON block page).
+ * Never throws on a non-JSON body: the HTTP status and a short snippet are kept so the
+ * recorded evidence says WHY a lookup failed instead of a bare JSON parse error.
+ */
 async function j(url: string, init?: RequestInit, ms = 15000) {
-  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
-  try { const r = await fetch(url, { ...init, signal: c.signal }); const txt = await r.text(); return { ok: r.ok, status: r.status, body: txt ? JSON.parse(txt) : null }; }
-  catch (e: any) { return { ok: false, status: 0, body: null, err: e?.message || String(e) }; }
-  finally { clearTimeout(t); }
+  let last: any = { ok: false, status: 0, body: null, err: "no attempt made" };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    try {
+      const r = await fetch(url, { ...init, signal: c.signal });
+      const txt = await r.text();
+      let body: any = null; let parsed = true;
+      if (txt) { try { body = JSON.parse(txt); } catch { parsed = false; } }
+      if (parsed) { last = { ok: r.ok, status: r.status, body }; if (r.status !== 429 && r.status < 500) return last; }
+      else {
+        const type = (r.headers.get("content-type") || "unknown type").split(";")[0];
+        last = { ok: false, status: r.status, body: null, err: `HTTP ${r.status} returned ${type}, not JSON (${txt.slice(0, 60).replace(/\s+/g, " ").trim()})` };
+        if (r.status === 404) return last; // a definite "not found" is not transient
+      }
+    } catch (e: any) {
+      return { ok: false, status: 0, body: null, err: e?.message || String(e) }; // timeouts/network: do not retry
+    } finally { clearTimeout(t); }
+    if (attempt < 2) await sleep(retryMs());
+  }
+  return last;
 }
+
+const why = (r: any) => (r.err ? r.err : `HTTP ${r.status}`);
 
 async function rdap(d: string) {
   const r = await j(`https://rdap.org/domain/${d}`);
   if (r.status === 404 && /No RDAP service/i.test(JSON.stringify(r.body || ""))) return { state: "not_applicable", summary: `Registry for .${d.split(".").pop()} offers no public RDAP; WHOIS history needs a WHOIS provider`, data: null };
   if (r.status === 404) return { state: "empty", summary: `No WHOIS/RDAP record for ${d} (domain may be expired or unregistered)`, data: null };
-  if (!r.ok || !r.body) return { state: "error", summary: `RDAP lookup failed (${r.status || (r as any).err})`, data: null };
+  if (!r.ok || !r.body) return { state: "error", summary: `RDAP lookup failed (${why(r)})`, data: null };
   const ev = Object.fromEntries((r.body.events || []).map((e: any) => [e.eventAction, e.eventDate]));
   const ent = (r.body.entities || []).map((e: any) => ({ roles: e.roles, name: (e.vcardArray?.[1] || []).find((x: any) => x[0] === "fn")?.[3] || null, org: (e.vcardArray?.[1] || []).find((x: any) => x[0] === "org")?.[3] || null }));
   const registrar = ent.find((e: any) => (e.roles || []).includes("registrar"))?.name || null;
@@ -46,7 +72,7 @@ async function rdap(d: string) {
 
 async function crtsh(d: string) {
   const r = await j(`https://crt.sh/?q=${encodeURIComponent("%." + d)}&output=json`, undefined, 25000);
-  if (!r.ok || !Array.isArray(r.body)) return { state: "error", summary: `crt.sh lookup failed (${r.status || (r as any).err})`, data: null };
+  if (!r.ok || !Array.isArray(r.body)) return { state: "error", summary: `crt.sh lookup failed (${why(r)})`, data: null };
   if (!r.body.length) return { state: "empty", summary: `No TLS certificates logged for ${d}`, data: null };
   const names = [...new Set(r.body.flatMap((c: any) => String(c.name_value).split("\n")))].slice(0, 40);
   const dates = r.body.map((c: any) => c.not_before).sort();
@@ -56,7 +82,7 @@ async function crtsh(d: string) {
 
 async function wayback(d: string) {
   const r = await j(`https://web.archive.org/cdx/search/cdx?url=${d}&output=json&fl=timestamp,original,statuscode&collapse=timestamp:6&limit=200`, undefined, 25000);
-  if (!r.ok || !Array.isArray(r.body)) return { state: "error", summary: `Wayback lookup failed (${r.status || (r as any).err})`, data: null };
+  if (!r.ok || !Array.isArray(r.body)) return { state: "error", summary: `Wayback lookup failed (${why(r)})`, data: null };
   const rows = r.body.slice(1);
   if (!rows.length) return { state: "empty", summary: `No Wayback Machine snapshots for ${d}`, data: null };
   const ts = rows.map((x: any) => x[0]).sort();
@@ -68,7 +94,8 @@ async function shodan(d: string) {
   const key = Deno.env.get("SHODAN_API_KEY"); if (!key) return { state: "error", summary: "SHODAN_API_KEY not configured", data: null };
   const r = await j(`https://api.shodan.io/dns/domain/${d}?key=${key}`);
   if (r.status === 404) return { state: "empty", summary: `Shodan has no DNS data for ${d}`, data: null };
-  if (!r.ok || !r.body) return { state: "error", summary: `Shodan lookup failed (${r.status || (r as any).err})`, data: null };
+  if (r.status === 403) return { state: "error", summary: "Shodan lookup failed (HTTP 403): the API key was refused or its plan does not include DNS domain lookups", data: null };
+  if (!r.ok || !r.body) return { state: "error", summary: `Shodan lookup failed (${why(r)})`, data: null };
   const recs = (r.body.data || []).map((x: any) => ({ sub: x.subdomain, type: x.type, value: x.value, last_seen: x.last_seen }));
   if (!recs.length) return { state: "empty", summary: `Shodan returned no DNS records for ${d}`, data: null };
   const ips = [...new Set(recs.filter((x: any) => x.type === "A").map((x: any) => x.value))];
@@ -79,7 +106,7 @@ async function virustotal(d: string) {
   const key = Deno.env.get("VIRUSTOTAL_API_KEY"); if (!key) return { state: "error", summary: "VIRUSTOTAL_API_KEY not configured", data: null };
   const r = await j(`https://www.virustotal.com/api/v3/domains/${d}`, { headers: { "x-apikey": key } });
   if (r.status === 404) return { state: "empty", summary: `VirusTotal has no record of ${d}`, data: null };
-  if (!r.ok || !r.body?.data) return { state: "error", summary: `VirusTotal lookup failed (${r.status || (r as any).err})`, data: null };
+  if (!r.ok || !r.body?.data) return { state: "error", summary: `VirusTotal lookup failed (${why(r)})`, data: null };
   const a = r.body.data.attributes || {}; const s = a.last_analysis_stats || {};
   return { state: "data", summary: `${s.malicious || 0} engines flag malicious, ${s.suspicious || 0} suspicious; categories ${Object.values(a.categories || {}).slice(0,3).join(", ") || "none"}`, data: { domain: d, stats: s, categories: a.categories, reputation: a.reputation, creation_date: a.creation_date ? new Date(a.creation_date * 1000).toISOString() : null, registrar: a.registrar } };
 }

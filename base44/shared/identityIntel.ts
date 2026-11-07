@@ -22,7 +22,7 @@ export function collectIdentityQueries(caseItem: any, targets: any[] = []) {
 }
 
 async function search(field: string, value: string) {
-  const key = Deno.env.get("Dehashed_api_key") || Deno.env.get("DEHASHED_API_KEY");
+  const key = (Deno.env.get("Dehashed_api_key") || Deno.env.get("DEHASHED_API_KEY") || "").trim();
   if (!key) return { state: "error", summary: "Dehashed key not configured", data: null };
   const query = `${field}:"${value}"`;
   try {
@@ -37,7 +37,9 @@ async function search(field: string, value: string) {
       });
     }
     const body = await r.json().catch(() => null);
-    if (r.status === 401 || r.status === 403) return { state: "error", summary: `Dehashed rejected the key (HTTP ${r.status})`, data: null };
+    // Dehashed v2: 401 = no auth header was seen; 403 = a header was seen but the key is not valid.
+    if (r.status === 401) return { state: "error", summary: "Dehashed returned HTTP 401: no Authorization header was recognized (check how the Dehashed_api_key secret is stored/passed)", data: null };
+    if (r.status === 403) return { state: "error", summary: "Dehashed returned HTTP 403: the API key was rejected (invalid, expired, or no API access/credits)", data: null };
     if (!r.ok) return { state: "error", summary: `Dehashed error HTTP ${r.status}${body?.message ? `: ${body.message}` : ""}`, data: null };
     const entries = (body?.entries || []).map((e: any) => ({
       database: e.database_name, email: e.email, username: e.username, name: e.name, phone: e.phone,
